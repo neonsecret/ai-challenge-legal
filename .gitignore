@@ -35,3 +35,7 @@ speed_agent/page_cache.json
 .flashrank_cache/
 .pytest_cache/
 .chroma/
+
+# Other
+other_people/
+tmp/
