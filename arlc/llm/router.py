@@ -26,7 +26,7 @@ def _get_backend() -> str:
 
     choice = os.environ.get("LLM_BACKEND", "anthropic").lower()
     if choice == "auto":
-        import llm_vertex
+        from arlc.llm import vertex_backend as llm_vertex
         _backend = "vertex" if llm_vertex.is_configured() else "anthropic"
         logger.info(f"[LLM] auto-detected backend: {_backend}")
     elif choice in ("vertex", "anthropic"):
@@ -46,13 +46,13 @@ def _call_backend(
 ) -> tuple[str, float, float, float, int, int]:
     backend = _get_backend()
     if backend == "vertex":
-        import llm_vertex
+        from arlc.llm import vertex_backend as llm_vertex
         return llm_vertex.call_llm(
             system_prompt, user_message, max_tokens,
             model=model, system_blocks=system_blocks,
         )
     else:
-        import llm_anthropic
+        from arlc.llm import anthropic_backend as llm_anthropic
         return llm_anthropic.call_llm(
             system_prompt, user_message, max_tokens,
             model=model, system_blocks=system_blocks,

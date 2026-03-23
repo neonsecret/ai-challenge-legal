@@ -47,26 +47,26 @@ cp .env.example .env        # set ANTHROPIC_API_KEY and EVAL_API_KEY
 uv sync                     # or: pip install -e .
 
 # 2. Prepare corpus (downloads docs from platform API)
-make prepare                # or: python prepare_corpus.py
+make prepare                # or: python -m arlc.indexing.prepare_corpus
 
 # 3. Run pipeline
-make run                    # or: python finals.py --workers 5 --output output/run1
+make run                    # or: python run.py --workers 5 --output output/run1
 ```
 
 ## Key Components
 
-| File | Purpose |
-|------|---------|
-| `finals.py` | Pipeline orchestrator — routing, retrieval, answering, post-processing |
-| `router.py` | Deterministic document routing via regex (no LLM) |
-| `retriever.py` | Hybrid BM25 + dense vector + cross-encoder reranking |
-| `answerer_v3.py` | Answer generation via Anthropic SDK (Claude Sonnet) |
-| `indexer.py` | Vector + BM25 index builder |
-| `prepare_corpus.py` | End-to-end corpus download, indexing, and smoke test |
-| `llm_anthropic.py` | Anthropic SDK backend |
-| `llm_reranker.py` | LLM-based page reranking |
-| `page_verifier.py` | Page citation verification |
-| `format_guardian.py` | Answer format validation and fixing |
+| Module | Purpose |
+|--------|---------|
+| `arlc/pipeline.py` | Pipeline orchestrator — routing, retrieval, answering, post-processing |
+| `arlc/router.py` | Deterministic document routing via regex (no LLM) |
+| `arlc/retriever.py` | Hybrid BM25 + dense vector + cross-encoder reranking |
+| `arlc/answerer.py` | Answer generation via Anthropic SDK (Claude Sonnet) |
+| `arlc/indexing/indexer.py` | Vector + BM25 index builder |
+| `arlc/indexing/prepare_corpus.py` | End-to-end corpus download, indexing, and smoke test |
+| `arlc/llm/anthropic_backend.py` | Anthropic SDK backend |
+| `arlc/llm/reranker.py` | LLM-based page reranking |
+| `arlc/page_verifier.py` | Page citation verification |
+| `arlc/format_guardian.py` | Answer format validation and fixing |
 | [`speed_agent/`](speed_agent/README.md) | **Speed pipeline** — PyPy + oracle metadata, 152ms avg TTFT |
 
 ## Data Setup
@@ -78,7 +78,7 @@ The `data/` directory is not included in the repo (copyrighted legal documents).
 git clone https://github.com/agentic-challenge/arlc-starter-kit.git starter_kit
 
 # 2. Download corpus and build all indexes
-make prepare    # or: python prepare_corpus.py
+make prepare    # or: python -m arlc.indexing.prepare_corpus
 
 # This creates:
 #   data/documents/          — PDF corpus (303 documents)

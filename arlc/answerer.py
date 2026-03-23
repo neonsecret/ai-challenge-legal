@@ -42,7 +42,7 @@ RETRY_DELAYS_RATE_LIMIT = [10, 30, 60]  # exponential backoff for rate limits
 # Data indices (loaded once at import time)
 # ---------------------------------------------------------------------------
 
-_DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
+_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 _ARTICLE_INDEX: dict = {}
 _article_path = os.path.join(_DATA_DIR, "article_page_index.json")
@@ -1967,7 +1967,7 @@ async def generate_answer(
         # Also extract law doc_ids from the question text via router
         # This catches multi-law questions where retriever only returns one law's pages
         try:
-            from router import route as _route_fn
+            from arlc.router import route as _route_fn
             _route_result = _route_fn(question, answer_type)
             if _route_result.target_doc_ids:
                 for _rdid in _route_result.target_doc_ids:

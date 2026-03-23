@@ -53,10 +53,10 @@ MAX_RETRIES = 2
 def _get_llm_fn():
     """Get the best available LLM call function."""
     try:
-        import llm_router
+        from arlc.llm import router as llm_router
         return llm_router.call_llm
     except ImportError:
-        import llm_anthropic
+        from arlc.llm import anthropic_backend as llm_anthropic
         return llm_anthropic.call_llm
 
 
@@ -186,7 +186,7 @@ def llm_rerank_pages(
 
             # Rebuild PageResult list with updated combined scores
             # We import PageResult here to avoid circular imports at module level
-            from retriever import PageResult
+            from arlc.retriever import PageResult
             result = [
                 PageResult(
                     doc_id=page.doc_id,

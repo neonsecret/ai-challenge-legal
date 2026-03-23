@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import anthropic
 import chromadb
 import bm25s
-from legal_tokenizer import legal_tokenize_corpus, legal_tokenize_queries
+from arlc.indexing.legal_tokenizer import legal_tokenize_corpus, legal_tokenize_queries
 import pymupdf
 from dotenv import load_dotenv
 from sentence_transformers import CrossEncoder, SentenceTransformer
@@ -52,7 +52,7 @@ _DOC_DATE_PAGES: dict[str, int] = {}
 def _load_doc_date_pages() -> None:
     """Populate _DOC_DATE_PAGES from case_metadata_index.json."""
     global _DOC_DATE_PAGES
-    meta_path = os.path.join(os.path.dirname(__file__), "data", "case_metadata_index.json")
+    meta_path = os.path.join(os.path.dirname(__file__), "..", "data", "case_metadata_index.json")
     if not os.path.exists(meta_path):
         return
     try:
@@ -1532,7 +1532,7 @@ def retrieve_pages(
         results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type)
 
     if use_llm_rerank and len(results) > 1:
-        from llm_reranker import llm_rerank_pages
+        from arlc.llm.reranker import llm_rerank_pages
         results = llm_rerank_pages(question, results)
 
     if include_context_pages:

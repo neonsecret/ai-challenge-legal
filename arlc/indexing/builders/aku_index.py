@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import llm_router
+from arlc.llm import router as llm_router
 
 DOCUMENTS_DIR = Path("data/documents")
 DOCUMENTS_MD_DIR = Path("data/documents_md")

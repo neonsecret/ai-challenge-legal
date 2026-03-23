@@ -18,6 +18,9 @@ dependencies = [
     "sentence-transformers>=5.2.3",
 ]
 
+[project.scripts]
+arlc = "arlc.pipeline:main"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
