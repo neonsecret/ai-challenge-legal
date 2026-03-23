@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="320" viewBox="0 0 900 320">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0d1117;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#161b22;stop-opacity:1"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#58a6ff"/>
+      <stop offset="100%" style="stop-color:#3fb950"/>
+    </linearGradient>
+    <linearGradient id="bar-green" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3fb950"/>
+      <stop offset="100%" style="stop-color:#238636"/>
+    </linearGradient>
+    <linearGradient id="bar-red" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f85149"/>
+      <stop offset="100%" style="stop-color:#da3633"/>
+    </linearGradient>
+    <linearGradient id="bar-blue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#58a6ff"/>
+      <stop offset="100%" style="stop-color:#1f6feb"/>
+    </linearGradient>
+    <linearGradient id="bar-yellow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#d29922"/>
+      <stop offset="100%" style="stop-color:#9e6a03"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="320" rx="12" fill="url(#bg)"/>
+  <rect x="1" y="1" width="898" height="318" rx="11" fill="none" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="450" y="42" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="24" font-weight="700" fill="#e6edf3">ARLC 2026 — Experiment Journey</text>
+  <text x="450" y="66" text-anchor="middle" font-family="system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif" font-size="13" fill="#8b949e">15 submissions  ·  150+ experiments  ·  0.401 → 0.920 warmup  ·  0.719 finals</text>
+
+  <!-- Score progression chart -->
+  <!-- Axes -->
+  <line x1="70" y1="90" x2="70" y2="250" stroke="#30363d" stroke-width="1"/>
+  <line x1="70" y1="250" x2="840" y2="250" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Y axis labels -->
+  <text x="60" y="94" text-anchor="end" font-family="monospace" font-size="10" fill="#8b949e">1.0</text>
+  <text x="60" y="134" text-anchor="end" font-family="monospace" font-size="10" fill="#8b949e">0.8</text>
+  <text x="60" y="174" text-anchor="end" font-family="monospace" font-size="10" fill="#8b949e">0.6</text>
+  <text x="60" y="214" text-anchor="end" font-family="monospace" font-size="10" fill="#8b949e">0.4</text>
+  <text x="60" y="254" text-anchor="end" font-family="monospace" font-size="10" fill="#8b949e">0.2</text>
+
+  <!-- Grid lines -->
+  <line x1="70" y1="90" x2="840" y2="90" stroke="#21262d" stroke-width="0.5"/>
+  <line x1="70" y1="130" x2="840" y2="130" stroke="#21262d" stroke-width="0.5"/>
+  <line x1="70" y1="170" x2="840" y2="170" stroke="#21262d" stroke-width="0.5"/>
+  <line x1="70" y1="210" x2="840" y2="210" stroke="#21262d" stroke-width="0.5"/>
+
+  <!-- Score bars: warmup v1-v15 + finals v1-v2 -->
+  <!-- v1: 0.401 --> <rect x="90" y="189" width="32" height="61" rx="3" fill="url(#bar-red)" opacity="0.9"/>
+  <!-- v2: 0.527 --> <rect x="135" y="166" width="32" height="84" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v3: 0.591 --> <rect x="180" y="156" width="32" height="94" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v4: 0.587 --> <rect x="225" y="156" width="32" height="94" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v5: 0.589 --> <rect x="270" y="156" width="32" height="94" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v6: 0.587 --> <rect x="315" y="156" width="32" height="94" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v7: 0.587 --> <rect x="360" y="156" width="32" height="94" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v8: 0.702 --> <rect x="405" y="138" width="32" height="112" rx="3" fill="url(#bar-blue)" opacity="0.9"/>
+  <!-- v9: 0.499 --> <rect x="450" y="170" width="32" height="80" rx="3" fill="url(#bar-red)" opacity="0.9"/>
+  <!-- v10: 0.567 --> <rect x="495" y="159" width="32" height="91" rx="3" fill="url(#bar-yellow)" opacity="0.9"/>
+  <!-- v11: 0.909 --> <rect x="540" y="105" width="32" height="145" rx="3" fill="url(#bar-green)" opacity="0.9"/>
+  <!-- v12: 0.891 --> <rect x="585" y="108" width="32" height="142" rx="3" fill="url(#bar-green)" opacity="0.9"/>
+  <!-- v13: 0.872 --> <rect x="630" y="111" width="32" height="139" rx="3" fill="url(#bar-green)" opacity="0.9"/>
+  <!-- v14: 0.920 --> <rect x="675" y="103" width="32" height="147" rx="3" fill="url(#bar-green)" opacity="0.9"/>
+  <!-- v15: 0.910 --> <rect x="720" y="104" width="32" height="146" rx="3" fill="url(#bar-green)" opacity="0.9"/>
+
+  <!-- Gap -->
+  <line x1="770" y1="100" x2="770" y2="250" stroke="#30363d" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Finals v1: 0.461 --> <rect x="785" y="176" width="32" height="74" rx="3" fill="url(#bar-red)" opacity="0.9"/>
+  <!-- Finals v2: 0.719 --> <rect x="830" y="135" width="32" height="115" rx="3" fill="url(#bar-blue)" opacity="0.9"/>
+
+  <!-- Score labels on top of bars -->
+  <text x="106" y="185" text-anchor="middle" font-family="monospace" font-size="8" fill="#e6edf3">.40</text>
+  <text x="151" y="162" text-anchor="middle" font-family="monospace" font-size="8" fill="#e6edf3">.53</text>
+  <text x="421" y="134" text-anchor="middle" font-family="monospace" font-size="8" fill="#e6edf3">.70</text>
+  <text x="466" y="166" text-anchor="middle" font-family="monospace" font-size="8" fill="#e6edf3">.50</text>
+  <text x="556" y="101" text-anchor="middle" font-family="monospace" font-size="8" fill="#e6edf3">.91</text>
+  <text x="691" y="99" text-anchor="middle" font-family="monospace" font-size="8" fill="#3fb950" font-weight="700">.92</text>
+  <text x="801" y="172" text-anchor="middle" font-family="monospace" font-size="8" fill="#f85149">.46</text>
+  <text x="846" y="131" text-anchor="middle" font-family="monospace" font-size="8" fill="#58a6ff">.72</text>
+
+  <!-- X axis labels -->
+  <text x="106" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#8b949e">v1</text>
+  <text x="286" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#8b949e">v5</text>
+  <text x="421" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#8b949e">v8</text>
+  <text x="556" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#8b949e">v11</text>
+  <text x="691" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#8b949e">v14</text>
+  <text x="736" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#8b949e">v15</text>
+  <text x="801" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#f85149">F1</text>
+  <text x="846" y="264" text-anchor="middle" font-family="monospace" font-size="9" fill="#58a6ff">F2</text>
+
+  <!-- Phase labels -->
+  <text x="300" y="280" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#8b949e">← Warmup (15 submissions) →</text>
+  <text x="823" y="280" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" fill="#8b949e">Finals</text>
+
+  <!-- Bottom CTA -->
+  <rect x="290" y="293" width="320" height="20" rx="10" fill="#238636" opacity="0.8"/>
+  <text x="450" y="307" text-anchor="middle" font-family="system-ui,sans-serif" font-size="12" font-weight="600" fill="#ffffff">Explore the interactive experiment tree →</text>
+</svg>
