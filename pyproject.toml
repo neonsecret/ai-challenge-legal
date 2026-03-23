@@ -10,6 +10,7 @@ dependencies = [
     "docling>=2.0.0",
     "bm25s>=0.3.2",
     "chromadb>=1.5.2",
+    "faiss-cpu>=1.7.4",
     "flashrank>=0.2.10",
     "openai>=2.24.0",
     "pymupdf>=1.27.1",

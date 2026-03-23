@@ -5,6 +5,7 @@ import os
 import json
 import threading
 from dataclasses import dataclass
+import numpy as np
 import anthropic
 import chromadb
 import bm25s
@@ -30,9 +31,18 @@ def _get_anthropic_client() -> anthropic.Anthropic:
         )
     return _anthropic_client
 
-CHROMA_DIR = "data/chroma_db"  # Fallback: PGC collection was wiped, using original
+CHROMA_DIR = "data/chroma_db"  # Fallback ChromaDB path
 DOCUMENTS_DIR = "data/documents"
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
+# Snowflake Arctic Embed L v2.0: 1024-dim, retrieval-optimized (2024), replaces BGE-large-en-v1.5
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Snowflake/snowflake-arctic-embed-l-v2.0")
+# FAISS: pure vector math, no SQLite overhead — faster search, lower memory than ChromaDB
+# Credit: FAISS backend choice inspired by IAS Partners (guy4)
+FAISS_INDEX_PATH = "data/faiss_index.bin"
+FAISS_METADATA_PATH = "data/faiss_metadata.json"
+# VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
+VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
+# Embedding prefixes: Arctic uses "query: " for queries, "" for documents
+# BGE uses "Represent this sentence for searching relevant passages: " for queries
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 BM25_CACHE_DIR = "data/bm25_cache"  # Must match CHROMA_DIR corpus
 BM25_IDS_PATH = "data/bm25_cache/corpus_ids.json"
@@ -83,6 +93,8 @@ _bm25_doc_ids = None
 _collection = None
 _reranker = None
 _embedding_model = None
+_faiss_index = None       # FAISS index (loaded lazily)
+_faiss_metadata = None    # FAISS metadata list (loaded lazily)
 
 # Locks for thread-safe lazy initialization
 _bm25_lock = threading.Lock()
@@ -92,6 +104,7 @@ _collection_lock = threading.Lock()
 _reranker_lock = threading.Lock()
 _embedding_lock = threading.Lock()
 _doc_index_lock = threading.Lock()
+_faiss_lock = threading.Lock()
 
 
 @dataclass
@@ -132,25 +145,148 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15) -> list[di
     return [chunks[i] for i, _ in indexed[:top_k]]
 
 
+def _is_arctic_model() -> bool:
+    """Check if the configured embedding model is Snowflake Arctic Embed."""
+    return "arctic" in EMBEDDING_MODEL.lower()
+
+
 def get_embedding_model() -> SentenceTransformer:
-    """Get BGE embedding model (cached, thread-safe)."""
+    """Get embedding model (cached, thread-safe). Supports Arctic Embed and BGE."""
     global _embedding_model
     if _embedding_model is None:
         with _embedding_lock:
             if _embedding_model is None:
                 import torch
-                # Use MPS GPU acceleration on Apple Silicon (1.35x speedup)
-                device = 'mps' if torch.backends.mps.is_available() else 'cpu'
-                _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device)
+                # Auto-detect device: MPS (Apple Silicon) > CUDA > CPU
+                device = (
+                    'mps' if torch.backends.mps.is_available()
+                    else 'cuda' if torch.cuda.is_available()
+                    else 'cpu'
+                )
+                model_kwargs = {}
+                if _is_arctic_model():
+                    model_kwargs["trust_remote_code"] = True
+                _embedding_model = SentenceTransformer(
+                    EMBEDDING_MODEL, device=device, **model_kwargs
+                )
     return _embedding_model
 
 
 def embed_query(question: str) -> list[float]:
-    """Embed a query with BGE prefix for asymmetric retrieval."""
+    """Embed a query for asymmetric retrieval.
+
+    Arctic Embed v2.0: uses prompt_name='query' which prepends 'query: ' prefix.
+    BGE-large-en-v1.5: uses manual BGE_QUERY_PREFIX prepend.
+    """
     model = get_embedding_model()
     with _embedding_lock:  # tokenizer is not thread-safe
-        embedding = model.encode(BGE_QUERY_PREFIX + question, normalize_embeddings=True)
+        if _is_arctic_model():
+            # Arctic Embed uses prompt_name for query/document distinction
+            embedding = model.encode(question, prompt_name='query', normalize_embeddings=True)
+        else:
+            # BGE uses explicit prefix string
+            embedding = model.encode(BGE_QUERY_PREFIX + question, normalize_embeddings=True)
     return embedding.tolist()
+
+
+def _load_faiss():
+    """Load FAISS index and metadata from disk (cached, thread-safe)."""
+    global _faiss_index, _faiss_metadata
+    if _faiss_index is None:
+        with _faiss_lock:
+            if _faiss_index is None:
+                import faiss
+                print(f"Loading FAISS index from {FAISS_INDEX_PATH}...")
+                _faiss_index = faiss.read_index(FAISS_INDEX_PATH)
+                with open(FAISS_METADATA_PATH) as f:
+                    _faiss_metadata = json.load(f)
+                print(f"FAISS index loaded: {_faiss_index.ntotal} vectors")
+    return _faiss_index, _faiss_metadata
+
+
+def _search_faiss(query_embedding: list[float], top_k: int = 50) -> dict:
+    """Search FAISS index, returning results in ChromaDB-compatible format.
+
+    Returns dict with keys: ids, documents, metadatas, distances
+    Each is a list-of-lists (matching ChromaDB's batch format).
+    Distances are cosine distances (1 - similarity) for ChromaDB compatibility.
+    """
+    index, metadata = _load_faiss()
+    query_np = np.array([query_embedding], dtype='float32')
+    import faiss
+    faiss.normalize_L2(query_np)  # normalize query for cosine similarity
+    top_k = min(top_k, index.ntotal)
+    D, I = index.search(query_np, top_k)  # D=similarities (inner product), I=indices
+
+    ids = []
+    documents = []
+    metadatas = []
+    distances = []
+    for i in range(top_k):
+        idx = int(I[0][i])
+        if idx < 0:  # FAISS returns -1 for unfilled slots
+            continue
+        entry = metadata[idx]
+        ids.append(entry["chunk_id"])
+        documents.append(entry["text"])
+        metadatas.append({
+            "pdf_id": entry["pdf_id"],
+            "page": entry["page"],
+            "source_file": entry["source_file"],
+        })
+        # Convert inner product similarity to cosine distance for ChromaDB compat
+        distances.append(1.0 - float(D[0][i]))
+
+    return {
+        "ids": [ids],
+        "documents": [documents],
+        "metadatas": [metadatas],
+        "distances": [distances],
+    }
+
+
+def _faiss_count() -> int:
+    """Return total number of vectors in FAISS index."""
+    index, _ = _load_faiss()
+    return index.ntotal
+
+
+def _faiss_get_all() -> dict:
+    """Get all documents and metadata from FAISS (equivalent to collection.get())."""
+    _, metadata = _load_faiss()
+    ids = [entry["chunk_id"] for entry in metadata]
+    documents = [entry["text"] for entry in metadata]
+    metadatas = [{"pdf_id": entry["pdf_id"], "page": entry["page"],
+                  "source_file": entry["source_file"]} for entry in metadata]
+    return {"ids": ids, "documents": documents, "metadatas": metadatas}
+
+
+def _faiss_get_by_ids(chunk_ids: list[str]) -> dict:
+    """Get specific chunks by ID from FAISS metadata."""
+    _, metadata = _load_faiss()
+    # Build lookup on first call (O(n) once, then O(1) per lookup)
+    if not hasattr(_faiss_get_by_ids, "_id_map"):
+        _faiss_get_by_ids._id_map = {entry["chunk_id"]: entry for entry in metadata}
+    id_map = _faiss_get_by_ids._id_map
+
+    ids = []
+    documents = []
+    metadatas = []
+    for cid in chunk_ids:
+        entry = id_map.get(cid)
+        if entry:
+            ids.append(entry["chunk_id"])
+            documents.append(entry["text"])
+            metadatas.append({"pdf_id": entry["pdf_id"], "page": entry["page"],
+                              "source_file": entry["source_file"]})
+    return {"ids": ids, "documents": documents, "metadatas": metadatas}
+
+
+def _use_faiss() -> bool:
+    """Check if FAISS backend should be used (preferred when available)."""
+    if VECTOR_BACKEND != "faiss":
+        return False
+    return os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_METADATA_PATH)
 
 
 def get_collection():
@@ -158,6 +294,7 @@ def get_collection():
 
     No embedding function needed here — we always pass query_embeddings explicitly.
     Avoids loading BGE a second time via SentenceTransformerEmbeddingFunction.
+    Used as fallback when FAISS is not available.
     """
     global _collection
     if _collection is None:
@@ -169,10 +306,16 @@ def get_collection():
 
 
 def _load_all_chunks():
-    """Load all chunks from ChromaDB once into memory. Builds both indexes simultaneously."""
+    """Load all chunks from vector store once into memory. Builds both indexes simultaneously.
+
+    Uses FAISS metadata when available (faster, no SQLite), falls back to ChromaDB.
+    """
     global _doc_index, _chunks_by_doc
-    collection = get_collection()
-    all_results = collection.get(include=["documents", "metadatas"])
+    if _use_faiss():
+        all_results = _faiss_get_all()
+    else:
+        collection = get_collection()
+        all_results = collection.get(include=["documents", "metadatas"])
 
     doc_text_index = {}
     chunks_by_doc = {}
@@ -651,10 +794,13 @@ def build_bm25_index():
             except Exception as e:
                 print(f"BM25 cache load failed ({e}), rebuilding...")
 
-        # Build from ChromaDB
+        # Build from vector store (FAISS or ChromaDB)
         print("Building BM25 index...")
-        collection = get_collection()
-        all_results = collection.get(include=["documents", "metadatas"])
+        if _use_faiss():
+            all_results = _faiss_get_all()
+        else:
+            collection = get_collection()
+            all_results = collection.get(include=["documents", "metadatas"])
 
         corpus_texts = all_results["documents"]
         corpus_ids = all_results["ids"]
@@ -913,7 +1059,7 @@ def _doc_fusion_select(
     bm25_p1_idx, bm25_p1_ids = bm25_p1_result
     bm25_doc_idx, bm25_doc_doc_ids = bm25_doc_result
 
-    collection = get_collection()
+    collection = get_collection() if not _use_faiss() else None
     chunks_by_doc_map = get_chunks_by_doc()
 
     # Map chunk_id -> doc_id for BM25 all-pages index
@@ -952,12 +1098,16 @@ def _doc_fusion_select(
 
     # --- Signal 2 & 3: Dense embedding scores + RRF ---
     query_emb = embed_query(question)
-    dense_n = min(128, collection.count())
-    vector_results = collection.query(
-        query_embeddings=[query_emb],
-        n_results=dense_n,
-        include=["metadatas", "distances"],
-    )
+    if _use_faiss():
+        dense_n = min(128, _faiss_count())
+        vector_results = _search_faiss(query_emb, top_k=dense_n)
+    else:
+        dense_n = min(128, collection.count())
+        vector_results = collection.query(
+            query_embeddings=[query_emb],
+            n_results=dense_n,
+            include=["metadatas", "distances"],
+        )
 
     dense_std_doc_scores: dict[str, float] = {}
     dense_rrf_doc_scores: dict[str, float] = {}
@@ -1210,7 +1360,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
         # If decomposition failed, fall through to standard retrieval
         print("[MULTI-HOP] Decomposition failed, using standard retrieval")
 
-    collection = get_collection()
+    collection = get_collection() if not _use_faiss() else None
 
     # Step 0: Extract article filter for metadata-aware retrieval
     article_filter = _extract_article_filter(question)
@@ -1257,11 +1407,14 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
                 keyword_chunks = _prescore_keyword_chunks(question, keyword_chunks, top_n=30)
 
         # Also get vector search results to supplement
-        vector_results = collection.query(
-            query_embeddings=[embed_query(question)],
-            n_results=max(n_results, 15),
-            include=["documents", "metadatas", "distances"],
-        )
+        if _use_faiss():
+            vector_results = _search_faiss(embed_query(question), top_k=max(n_results, 15))
+        else:
+            vector_results = collection.query(
+                query_embeddings=[embed_query(question)],
+                n_results=max(n_results, 15),
+                include=["documents", "metadatas", "distances"],
+            )
 
         vector_chunks = []
         for i in range(len(vector_results["ids"][0])):
@@ -1330,11 +1483,14 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
 
         # Original query embedding
         query_emb = embed_query(question)
-        vector_results = collection.query(
-            query_embeddings=[query_emb],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"],
-        )
+        if _use_faiss():
+            vector_results = _search_faiss(query_emb, top_k=top_k)
+        else:
+            vector_results = collection.query(
+                query_embeddings=[query_emb],
+                n_results=top_k,
+                include=["documents", "metadatas", "distances"],
+            )
         vector_ranking = vector_results["ids"][0]
 
         # HyDE: generate a hypothetical passage and embed it for additional signal
@@ -1343,12 +1499,15 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
         hyde_passage = generate_hyde_passage(question) if use_hyde else None
         if hyde_passage:
             try:
-                hyde_emb = embed_query(hyde_passage)  # uses BGE prefix internally
-                hyde_results = collection.query(
-                    query_embeddings=[hyde_emb],
-                    n_results=top_k,
-                    include=["documents", "metadatas", "distances"],
-                )
+                hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
+                if _use_faiss():
+                    hyde_results = _search_faiss(hyde_emb, top_k=top_k)
+                else:
+                    hyde_results = collection.query(
+                        query_embeddings=[hyde_emb],
+                        n_results=top_k,
+                        include=["documents", "metadatas", "distances"],
+                    )
                 hyde_ranking = hyde_results["ids"][0]
             except Exception:
                 pass
@@ -1390,10 +1549,13 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
             if chunk_id in vector_lookup:
                 final_chunks.append(vector_lookup[chunk_id])
             else:
-                chunk_data = collection.get(
-                    ids=[chunk_id],
-                    include=["documents", "metadatas"],
-                )
+                if _use_faiss():
+                    chunk_data = _faiss_get_by_ids([chunk_id])
+                else:
+                    chunk_data = collection.get(
+                        ids=[chunk_id],
+                        include=["documents", "metadatas"],
+                    )
                 if len(chunk_data["ids"]) > 0:
                     final_chunks.append({
                         "chunk_id": chunk_data["ids"][0],

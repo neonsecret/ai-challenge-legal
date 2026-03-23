@@ -11,6 +11,7 @@ Usage:
     python -m tests.test_e2e_pipeline --full        # 20 questions
 """
 
+import asyncio
 import json
 import os
 import sys
@@ -144,7 +145,7 @@ def test_single_question(q, verbose=True):
                     "page_number": p.page_number if hasattr(p, "page_number") else p.get("page_number", 0),
                     "text": p.text if hasattr(p, "text") else p.get("text", ""),
                 })
-            ar = generate_answer(question, answer_type, source_pages)
+            ar = asyncio.run(generate_answer(question, answer_type, source_pages))
             answer_value = ar.answer
             result["steps"]["answer"] = {
                 "value": str(ar.answer)[:100],
