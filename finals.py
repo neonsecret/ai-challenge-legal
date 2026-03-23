@@ -53,6 +53,21 @@ if os.path.exists(_CASE_META_PATH):
         for _cid, _cinfo in _raw_cm.items():
             _case_meta_for_oracle[_cid.upper()] = _cinfo
 
+# Cross-reference graph for IndexRAG (guy2) + ontology traversal (guy1)
+_XREF_GRAPH_PATH = os.path.join(os.path.dirname(__file__), "data", "cross_reference_graph.json")
+_xref_graph: dict = {}
+if os.path.exists(_XREF_GRAPH_PATH):
+    try:
+        with open(_XREF_GRAPH_PATH) as _xf:
+            _xref_graph = json.load(_xf)
+    except (json.JSONDecodeError, OSError):
+        _xref_graph = {}
+
+# Comparison keywords for cross-ref expansion
+_COMPARISON_RE = re.compile(
+    r"\b(compar|differ|both|earlier|later|versus|vs\.?|distinguish|contrast)\b", re.IGNORECASE
+)
+
 # Architecture summary for submission
 ARCHITECTURE_SUMMARY = (
     "Simplified RAG: deterministic document routing (regex case/law extraction) "
@@ -388,6 +403,68 @@ def _enforce_page_limit(chunk_pages: list[dict], max_pages: int = 3) -> list[dic
     return result
 
 
+def _boost_cross_references(pages, question: str):
+    """Add cross-referenced pages from the graph when targets are resolved.
+
+    # Cross-reference retrieval from IndexRAG (guy2) + ontology traversal (guy1)
+
+    For comparison questions, always include referenced doc pages.
+    Cap: max 1 cross-ref page per 3 existing pages.
+    Returns the (possibly extended) pages list.
+    """
+    if not _xref_graph or not pages:
+        return pages
+
+    is_comparison = bool(_COMPARISON_RE.search(question))
+
+    # Collect existing (doc_id, page_number) pairs
+    existing = set()
+    for p in pages:
+        doc_id = p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", "")
+        page_num = p.page_number if hasattr(p, "page_number") else p.get("page_number", 1)
+        existing.add((doc_id, page_num))
+
+    # Max cross-ref additions
+    max_additions = max(1, len(pages) // 3)
+    additions = []
+
+    for p in pages:
+        if len(additions) >= max_additions:
+            break
+        doc_id = p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", "")
+        page_num = str(p.page_number if hasattr(p, "page_number") else p.get("page_number", 1))
+
+        doc_refs = _xref_graph.get(doc_id, {})
+        page_refs = doc_refs.get(page_num, [])
+
+        for ref in page_refs:
+            if len(additions) >= max_additions:
+                break
+            target_doc = ref.get("target_doc")
+            target_page = ref.get("target_page")
+            if target_doc is None or target_page is None:
+                continue
+            # For non-comparison questions, only add if target is a different doc
+            if not is_comparison and target_doc == doc_id:
+                continue
+            if (target_doc, target_page) in existing:
+                continue
+            # Create a lightweight PageResult-like object
+            from types import SimpleNamespace
+            additions.append(SimpleNamespace(
+                doc_id=target_doc,
+                page_number=target_page,
+                score=0.3,  # low score — cross-ref supplement
+                text="",    # text will be empty; answerer handles gracefully
+            ))
+            existing.add((target_doc, target_page))
+            print(f"  [cross-ref] Added {target_doc}:p{target_page} from ref in {doc_id}:p{page_num}")
+
+    if additions:
+        return list(pages) + additions
+    return pages
+
+
 def _pages_to_source_dicts(pages) -> list[dict]:
     """Convert PageResult objects to dicts for the answerer."""
     result = []
@@ -695,6 +772,9 @@ async def _process_question_inner(
 
     # Low-confidence fallback is handled in retriever.py (threshold 0.5)
 
+    # Cross-reference boosting: add pages from linked docs (comparison questions benefit most)
+    pages = _boost_cross_references(pages, question)
+
     # Convert PageResult objects to dicts for the answerer
     source_pages = _pages_to_source_dicts(pages)
 
@@ -767,11 +847,12 @@ async def _process_question_inner(
     if result.get("answer") is not None and result.get("model_name") != "oracle":
         try:
             from page_verifier import verify_pages as _verify_pages
+            import page_verifier as _pv_mod
             _chunk_pages = result.get("chunk_pages", [])
             if _chunk_pages:
                 _verified_pages = _verify_pages(
                     question, result["answer"], answer_type, _chunk_pages,
-                    use_llm_fallback=False,  # Keep it deterministic, no extra PPQ
+                    use_llm_fallback=_pv_mod.ENABLE_LLM_FALLBACK,
                 )
                 # Check if any pages changed
                 _old = str(_chunk_pages)

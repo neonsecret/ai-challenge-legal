@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import anthropic
 import chromadb
 import bm25s
+from legal_tokenizer import legal_tokenize_corpus, legal_tokenize_queries
 import pymupdf
 from dotenv import load_dotenv
 from sentence_transformers import CrossEncoder, SentenceTransformer
@@ -35,6 +36,13 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
 BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 BM25_CACHE_DIR = "data/bm25_cache"  # Must match CHROMA_DIR corpus
 BM25_IDS_PATH = "data/bm25_cache/corpus_ids.json"
+
+# Multi-signal fusion BM25 index variants
+# Credit: Multi-signal fusion architecture from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
+BM25_PAGE1_CACHE_DIR = "data/bm25_page1_cache"
+BM25_PAGE1_IDS_PATH = "data/bm25_page1_cache/corpus_ids.json"
+BM25_DOC_CACHE_DIR = "data/bm25_doc_cache"
+BM25_DOC_IDS_PATH = "data/bm25_doc_cache/corpus_ids.json"
 
 # doc_id -> page where date_of_issue appears (from case_metadata_index.json).
 # Judge/claimant/defendant are always page 1 — only dates need a targeted lookup.
@@ -68,12 +76,18 @@ _doc_index = None         # pdf_id -> full text (for keyword matching)
 _chunks_by_doc = None     # pdf_id -> list[dict] (for fast page retrieval, replaces collection.get())
 _bm25_index = None
 _bm25_corpus_ids = None
+_bm25_page1_index = None
+_bm25_page1_ids = None
+_bm25_doc_index = None
+_bm25_doc_ids = None
 _collection = None
 _reranker = None
 _embedding_model = None
 
 # Locks for thread-safe lazy initialization
 _bm25_lock = threading.Lock()
+_bm25_page1_lock = threading.Lock()
+_bm25_doc_lock = threading.Lock()
 _collection_lock = threading.Lock()
 _reranker_lock = threading.Lock()
 _embedding_lock = threading.Lock()
@@ -645,7 +659,7 @@ def build_bm25_index():
         corpus_texts = all_results["documents"]
         corpus_ids = all_results["ids"]
 
-        corpus_tokens = bm25s.tokenize(corpus_texts, stopwords="en")
+        corpus_tokens = legal_tokenize_corpus(corpus_texts)
 
         retriever = bm25s.BM25()
         retriever.index(corpus_tokens)
@@ -664,6 +678,134 @@ def build_bm25_index():
         _bm25_index = retriever
 
     return _bm25_index, _bm25_corpus_ids
+
+
+def build_bm25_page1_index():
+    """Build BM25 index over first-page-only chunks (document identification signal).
+
+    # Multi-signal fusion from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
+    Page 1 typically contains the document title, law number, and preamble — strong
+    signal for identifying which document a query refers to.
+    """
+    global _bm25_page1_index, _bm25_page1_ids
+    if _bm25_page1_index is not None:
+        return _bm25_page1_index, _bm25_page1_ids
+
+    with _bm25_page1_lock:
+        if _bm25_page1_index is not None:
+            return _bm25_page1_index, _bm25_page1_ids
+
+        # Try loading from disk cache first
+        if os.path.exists(BM25_PAGE1_IDS_PATH) and os.path.exists(BM25_PAGE1_CACHE_DIR):
+            try:
+                print("Loading BM25 page1 index from disk cache...")
+                retriever = bm25s.BM25.load(BM25_PAGE1_CACHE_DIR, load_corpus=False)
+                with open(BM25_PAGE1_IDS_PATH) as f:
+                    corpus_ids = json.load(f)
+                _bm25_page1_ids = corpus_ids
+                _bm25_page1_index = retriever
+                print("BM25 page1 index loaded from cache.")
+                return _bm25_page1_index, _bm25_page1_ids
+            except Exception as e:
+                print(f"BM25 page1 cache load failed ({e}), rebuilding...")
+
+        # Build from in-memory chunks (page 1 only)
+        print("Building BM25 page1 index...")
+        chunks_by_doc = get_chunks_by_doc()
+
+        corpus_texts = []
+        corpus_ids = []
+        for doc_id, chunks in chunks_by_doc.items():
+            for chunk in chunks:
+                if chunk["metadata"].get("page", 1) == 1:
+                    corpus_texts.append(chunk["text"])
+                    corpus_ids.append(chunk["chunk_id"])
+
+        if not corpus_texts:
+            print("BM25 page1 index: no page-1 chunks found, skipping.")
+            return None, None
+
+        corpus_tokens = legal_tokenize_corpus(corpus_texts)
+        retriever = bm25s.BM25()
+        retriever.index(corpus_tokens)
+
+        try:
+            os.makedirs(BM25_PAGE1_CACHE_DIR, exist_ok=True)
+            retriever.save(BM25_PAGE1_CACHE_DIR)
+            with open(BM25_PAGE1_IDS_PATH, "w") as f:
+                json.dump(corpus_ids, f)
+            print("BM25 page1 index saved to disk cache.")
+        except Exception as e:
+            print(f"BM25 page1 cache save failed (non-fatal): {e}")
+
+        _bm25_page1_ids = corpus_ids
+        _bm25_page1_index = retriever
+
+    return _bm25_page1_index, _bm25_page1_ids
+
+
+def build_bm25_doc_index():
+    """Build BM25 index over concatenated document text (one entry per doc).
+
+    # Multi-signal fusion from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
+    Document-level BM25 captures full-document term frequency — strong signal for
+    identifying target documents when queries mention law names or case numbers.
+    """
+    global _bm25_doc_index, _bm25_doc_ids
+    if _bm25_doc_index is not None:
+        return _bm25_doc_index, _bm25_doc_ids
+
+    with _bm25_doc_lock:
+        if _bm25_doc_index is not None:
+            return _bm25_doc_index, _bm25_doc_ids
+
+        # Try loading from disk cache first
+        if os.path.exists(BM25_DOC_IDS_PATH) and os.path.exists(BM25_DOC_CACHE_DIR):
+            try:
+                print("Loading BM25 doc-level index from disk cache...")
+                retriever = bm25s.BM25.load(BM25_DOC_CACHE_DIR, load_corpus=False)
+                with open(BM25_DOC_IDS_PATH) as f:
+                    doc_ids = json.load(f)
+                _bm25_doc_ids = doc_ids
+                _bm25_doc_index = retriever
+                print("BM25 doc-level index loaded from cache.")
+                return _bm25_doc_index, _bm25_doc_ids
+            except Exception as e:
+                print(f"BM25 doc-level cache load failed ({e}), rebuilding...")
+
+        # Build from in-memory chunks (concatenate all pages per doc)
+        print("Building BM25 doc-level index...")
+        chunks_by_doc = get_chunks_by_doc()
+
+        doc_texts = []
+        doc_ids = []
+        for doc_id, chunks in chunks_by_doc.items():
+            # Concatenate all chunk texts for this document
+            full_text = "\n".join(chunk["text"] for chunk in chunks)
+            doc_texts.append(full_text)
+            doc_ids.append(doc_id)
+
+        if not doc_texts:
+            print("BM25 doc-level index: no documents found, skipping.")
+            return None, None
+
+        corpus_tokens = legal_tokenize_corpus(doc_texts)
+        retriever = bm25s.BM25()
+        retriever.index(corpus_tokens)
+
+        try:
+            os.makedirs(BM25_DOC_CACHE_DIR, exist_ok=True)
+            retriever.save(BM25_DOC_CACHE_DIR)
+            with open(BM25_DOC_IDS_PATH, "w") as f:
+                json.dump(doc_ids, f)
+            print("BM25 doc-level index saved to disk cache.")
+        except Exception as e:
+            print(f"BM25 doc-level cache save failed (non-fatal): {e}")
+
+        _bm25_doc_ids = doc_ids
+        _bm25_doc_index = retriever
+
+    return _bm25_doc_index, _bm25_doc_ids
 
 
 def generate_hyde_passage(question: str) -> str | None:
@@ -707,6 +849,213 @@ def reciprocal_rank_fusion(rankings: list[list[str]], k: int = 60, weights: list
     return [chunk_id for chunk_id, score in sorted_ids]
 
 
+# ---------------------------------------------------------------------------
+# Multi-signal document fusion
+# Multi-signal fusion from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
+# ---------------------------------------------------------------------------
+
+USE_MULTI_SIGNAL_FUSION = True  # Enable/disable multi-signal document fusion
+
+# Dense-only page ranking insight from IAS Partners (guy4)
+# BM25 hurts page-level ranking within a known document — dense similarity only is better
+PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
+
+# Per-type configs inspired by IAS Partners dual-pipeline (guy4)
+RETRIEVAL_CONFIGS = {
+    "boolean": {"top_k": 128, "max_docs": 3, "max_pages": 3},
+    "number":  {"top_k": 128, "max_docs": 2, "max_pages": 2},
+    "date":    {"top_k": 64,  "max_docs": 2, "max_pages": 1},
+    "name":    {"top_k": 128, "max_docs": 3, "max_pages": 3},
+    "names":   {"top_k": 128, "max_docs": 3, "max_pages": 3},
+    "free_text": {"top_k": 64, "max_docs": 4, "max_pages": 5},
+}
+
+DOC_FUSION_WEIGHTS = {
+    "bm25_std": 0.10,     # standard BM25 page score (max per doc)
+    "dense_std": 0.05,    # dense embedding score (max per doc)
+    "dense_rrf": 0.20,    # dense RRF rank score
+    "bm25_doc": 0.30,     # document-level BM25
+    "bm25_page1": 0.30,   # page-1-only BM25
+}
+
+DOC_FUSION_GAP_THRESHOLD = 0.15  # Adaptive doc selection gap
+
+
+def _doc_fusion_select(
+    question: str,
+    max_docs: int = 3,
+) -> list[str] | None:
+    """Select target documents using multi-signal fusion.
+
+    Combines 5 signals to identify the most relevant documents before page-level
+    ranking. Returns list of doc_ids, or None if fusion indexes are not available.
+
+    Signals:
+    1. bm25_std — max BM25 page score per doc (existing all-pages index)
+    2. dense_std — max dense embedding score per doc
+    3. dense_rrf — dense RRF rank score per doc
+    4. bm25_doc — document-level BM25 score
+    5. bm25_page1 — page-1-only BM25 score
+    """
+    if not USE_MULTI_SIGNAL_FUSION:
+        return None
+
+    # Load all required indexes
+    bm25_all, bm25_all_ids = build_bm25_index()
+    bm25_p1_result = build_bm25_page1_index()
+    bm25_doc_result = build_bm25_doc_index()
+
+    if bm25_p1_result is None or bm25_p1_result[0] is None:
+        return None
+    if bm25_doc_result is None or bm25_doc_result[0] is None:
+        return None
+
+    bm25_p1_idx, bm25_p1_ids = bm25_p1_result
+    bm25_doc_idx, bm25_doc_doc_ids = bm25_doc_result
+
+    collection = get_collection()
+    chunks_by_doc_map = get_chunks_by_doc()
+
+    # Map chunk_id -> doc_id for BM25 all-pages index
+    chunk_to_doc = {}
+    for doc_id, chunks in chunks_by_doc_map.items():
+        for chunk in chunks:
+            chunk_to_doc[chunk["chunk_id"]] = doc_id
+
+    # Map chunk_id -> doc_id for BM25 page1 index
+    chunk_to_doc_p1 = {}
+    for doc_id, chunks in chunks_by_doc_map.items():
+        for chunk in chunks:
+            if chunk["metadata"].get("page", 1) == 1:
+                chunk_to_doc_p1[chunk["chunk_id"]] = doc_id
+
+    query_tokens = legal_tokenize_queries(question)
+
+    # --- Signal 1: BM25 standard (max page score per doc) ---
+    bm25_results, bm25_scores = bm25_all.retrieve(query_tokens, k=min(128, len(bm25_all_ids)))
+    bm25_std_doc_scores: dict[str, float] = {}
+    indices = bm25_results[0] if len(bm25_results.shape) > 1 else bm25_results
+    scores_arr = bm25_scores[0] if len(bm25_scores.shape) > 1 else bm25_scores
+    for idx_i, idx in enumerate(indices):
+        if idx < len(bm25_all_ids):
+            chunk_id = bm25_all_ids[idx]
+            doc_id = chunk_to_doc.get(chunk_id)
+            if doc_id:
+                score = float(scores_arr[idx_i]) if idx_i < len(scores_arr) else 0.0
+                if doc_id not in bm25_std_doc_scores or score > bm25_std_doc_scores[doc_id]:
+                    bm25_std_doc_scores[doc_id] = score
+
+    # Normalize BM25 std scores
+    max_bm25_std = max(bm25_std_doc_scores.values(), default=1.0) or 1.0
+    for d in bm25_std_doc_scores:
+        bm25_std_doc_scores[d] /= max_bm25_std
+
+    # --- Signal 2 & 3: Dense embedding scores + RRF ---
+    query_emb = embed_query(question)
+    dense_n = min(128, collection.count())
+    vector_results = collection.query(
+        query_embeddings=[query_emb],
+        n_results=dense_n,
+        include=["metadatas", "distances"],
+    )
+
+    dense_std_doc_scores: dict[str, float] = {}
+    dense_rrf_doc_scores: dict[str, float] = {}
+    k_rrf = 60
+    for rank, (meta, dist) in enumerate(
+        zip(vector_results["metadatas"][0], vector_results["distances"][0])
+    ):
+        doc_id = meta["pdf_id"]
+        sim = 1.0 - float(dist)  # ChromaDB cosine distance -> similarity
+        # Signal 2: max dense score per doc
+        if doc_id not in dense_std_doc_scores or sim > dense_std_doc_scores[doc_id]:
+            dense_std_doc_scores[doc_id] = sim
+        # Signal 3: RRF rank score (accumulate across pages)
+        rrf_score = 1.0 / (k_rrf + rank + 1)
+        dense_rrf_doc_scores[doc_id] = dense_rrf_doc_scores.get(doc_id, 0.0) + rrf_score
+
+    # Normalize dense scores
+    max_dense_std = max(dense_std_doc_scores.values(), default=1.0) or 1.0
+    for d in dense_std_doc_scores:
+        dense_std_doc_scores[d] /= max_dense_std
+    max_dense_rrf = max(dense_rrf_doc_scores.values(), default=1.0) or 1.0
+    for d in dense_rrf_doc_scores:
+        dense_rrf_doc_scores[d] /= max_dense_rrf
+
+    # --- Signal 4: BM25 doc-level ---
+    bm25_doc_results, bm25_doc_scores = bm25_doc_idx.retrieve(query_tokens, k=min(64, len(bm25_doc_doc_ids)))
+    bm25_doc_doc_scored: dict[str, float] = {}
+    d_indices = bm25_doc_results[0] if len(bm25_doc_results.shape) > 1 else bm25_doc_results
+    d_scores = bm25_doc_scores[0] if len(bm25_doc_scores.shape) > 1 else bm25_doc_scores
+    for idx_i, idx in enumerate(d_indices):
+        if idx < len(bm25_doc_doc_ids):
+            doc_id = bm25_doc_doc_ids[idx]
+            score = float(d_scores[idx_i]) if idx_i < len(d_scores) else 0.0
+            bm25_doc_doc_scored[doc_id] = score
+
+    max_bm25_doc = max(bm25_doc_doc_scored.values(), default=1.0) or 1.0
+    for d in bm25_doc_doc_scored:
+        bm25_doc_doc_scored[d] /= max_bm25_doc
+
+    # --- Signal 5: BM25 page1 ---
+    bm25_p1_results, bm25_p1_scores = bm25_p1_idx.retrieve(query_tokens, k=min(64, len(bm25_p1_ids)))
+    bm25_p1_doc_scored: dict[str, float] = {}
+    p1_indices = bm25_p1_results[0] if len(bm25_p1_results.shape) > 1 else bm25_p1_results
+    p1_scores = bm25_p1_scores[0] if len(bm25_p1_scores.shape) > 1 else bm25_p1_scores
+    for idx_i, idx in enumerate(p1_indices):
+        if idx < len(bm25_p1_ids):
+            chunk_id = bm25_p1_ids[idx]
+            doc_id = chunk_to_doc_p1.get(chunk_id)
+            if doc_id:
+                score = float(p1_scores[idx_i]) if idx_i < len(p1_scores) else 0.0
+                if doc_id not in bm25_p1_doc_scored or score > bm25_p1_doc_scored[doc_id]:
+                    bm25_p1_doc_scored[doc_id] = score
+
+    max_bm25_p1 = max(bm25_p1_doc_scored.values(), default=1.0) or 1.0
+    for d in bm25_p1_doc_scored:
+        bm25_p1_doc_scored[d] /= max_bm25_p1
+
+    # --- Fuse all signals ---
+    all_doc_ids = set()
+    for scores_dict in [bm25_std_doc_scores, dense_std_doc_scores, dense_rrf_doc_scores,
+                        bm25_doc_doc_scored, bm25_p1_doc_scored]:
+        all_doc_ids.update(scores_dict.keys())
+
+    fused_scores: dict[str, float] = {}
+    w = DOC_FUSION_WEIGHTS
+    for doc_id in all_doc_ids:
+        fused_scores[doc_id] = (
+            w["bm25_std"] * bm25_std_doc_scores.get(doc_id, 0.0)
+            + w["dense_std"] * dense_std_doc_scores.get(doc_id, 0.0)
+            + w["dense_rrf"] * dense_rrf_doc_scores.get(doc_id, 0.0)
+            + w["bm25_doc"] * bm25_doc_doc_scored.get(doc_id, 0.0)
+            + w["bm25_page1"] * bm25_p1_doc_scored.get(doc_id, 0.0)
+        )
+
+    # Sort by fused score descending
+    sorted_docs = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
+
+    if not sorted_docs:
+        return None
+
+    # Adaptive document selection: select 1-max_docs based on gap threshold
+    selected = [sorted_docs[0][0]]
+    top_score = sorted_docs[0][1]
+
+    for i in range(1, min(len(sorted_docs), max_docs)):
+        doc_id, score = sorted_docs[i]
+        # Include doc if its score is within gap threshold of top score
+        if top_score > 0 and (top_score - score) / top_score <= DOC_FUSION_GAP_THRESHOLD:
+            selected.append(doc_id)
+        else:
+            break
+
+    print(f"[doc_fusion] selected {len(selected)} docs: "
+          f"{', '.join(f'{d[:12]}({fused_scores[d]:.3f})' for d in selected)}")
+
+    return selected
+
+
 def _generate_query_variants(question: str) -> list[str]:
     """Generate 2 alternative query phrasings using Haiku. Returns empty list on failure."""
     try:
@@ -737,6 +1086,10 @@ def prewarm():
     get_collection()
     build_doc_index()      # also populates _chunks_by_doc via _load_all_chunks()
     build_bm25_index()
+    # Multi-signal fusion indexes (graceful if not yet built)
+    if USE_MULTI_SIGNAL_FUSION:
+        build_bm25_page1_index()
+        build_bm25_doc_index()
     get_reranker()
     print("Caches ready.")
 
@@ -957,7 +1310,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
     else:
         # No keyword matches: use BM25 + vector with RRF, augmented by HyDE
         bm25_index, corpus_ids = build_bm25_index()
-        query_tokens = bm25s.tokenize(question, stopwords="en")
+        query_tokens = legal_tokenize_queries(question)
 
         # Scale top_k based on metadata filters (need larger pool before filtering)
         base_top_k = max(n_results, 50)
@@ -1007,7 +1360,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[
             variants = _generate_query_variants(question)
             for variant in variants[:2]:
                 try:
-                    v_tokens = bm25s.tokenize(variant, stopwords="en")
+                    v_tokens = legal_tokenize_queries(variant)
                     v_results, _ = bm25_index.retrieve(v_tokens, k=top_k)
                     v_bm25_ranking = [corpus_ids[idx] for idx in (v_results[0] if len(v_results.shape) > 1 else v_results) if idx < len(corpus_ids)]
                     variant_rankings.append(v_bm25_ranking)
@@ -1138,6 +1491,16 @@ def retrieve_pages(
         If True, apply LLM reranking after cross-encoder (adds one Haiku call).
         Enterprise RAG winner used this as their highest-impact strategy.
     """
+    # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
+    # Apply per-answer-type retrieval config if available, using caller's values as overrides
+    type_cfg = RETRIEVAL_CONFIGS.get(answer_type, {})
+    if type_cfg:
+        # Only apply config defaults when caller used the function defaults
+        if max_per_doc == 1 and "max_docs" in type_cfg:
+            pass  # max_per_doc is per-doc pages, not max_docs — leave as caller set
+        if max_total == 3 and "max_pages" in type_cfg:
+            max_total = type_cfg["max_pages"]
+
     if target_doc_ids:
         # For 2-doc name/names comparison questions where the router boosts a specific non-p1 page
         # for EACH doc (e.g., claim value on p2), cap mpd=1 to get exactly 1 boosted page per doc.
@@ -1233,6 +1596,37 @@ def _fair_case_select(
     return selected
 
 
+def _dense_page_scores(question: str, doc_id: str, chunks: list[dict]) -> dict[int, float]:
+    """Rank pages within a document using dense embedding similarity only.
+
+    # Dense-only page ranking insight from IAS Partners (guy4)
+    Returns dict of page_number -> max_similarity_score.
+    """
+    if not chunks:
+        return {}
+
+    query_emb = embed_query(question)
+    model = get_embedding_model()
+
+    # Embed all chunk texts for this doc
+    chunk_texts = [BGE_QUERY_PREFIX + chunk["text"][:2000] for chunk in chunks]
+    with _embedding_lock:
+        chunk_embeddings = model.encode(chunk_texts, normalize_embeddings=True)
+
+    import numpy as np  # noqa: E402 — lazy import to avoid startup cost
+    query_arr = np.array(query_emb)
+    similarities = chunk_embeddings @ query_arr
+
+    page_scores: dict[int, float] = {}
+    for chunk, sim in zip(chunks, similarities):
+        page_num = chunk["metadata"].get("page", 1)
+        sim_val = float(sim)
+        if page_num not in page_scores or sim_val > page_scores[page_num]:
+            page_scores[page_num] = sim_val
+
+    return page_scores
+
+
 def _retrieve_pages_targeted(
     question: str,
     target_doc_ids: list[str],
@@ -1298,25 +1692,50 @@ def _retrieve_pages_targeted(
         if not doc_chunks:
             continue
 
-        # Score all chunks against the question using cross-encoder
-        # Use 2000 chars to capture more legal context than the default 1000
-        # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
-        pairs = [(_ce_query, chunk["text"][:2000]) for chunk in doc_chunks]
-        with _reranker_lock:  # tokenizer is not thread-safe
-            scores = ranker.predict(pairs)
+        # Dense-only page ranking insight from IAS Partners (guy4)
+        # When PAGE_RANK_USE_BM25 is False, use dense similarity for initial page
+        # scoring, then cross-encoder reranking on top candidates only.
+        if not PAGE_RANK_USE_BM25:
+            # Phase 1: Dense similarity scoring for all chunks
+            dense_scores = _dense_page_scores(question, doc_id, doc_chunks)
+            # Phase 2: Select top candidate chunks by dense score, then cross-encoder rerank
+            chunk_dense = []
+            for chunk in doc_chunks:
+                pg = chunk["metadata"].get("page", 1)
+                chunk_dense.append((dense_scores.get(pg, 0.0), chunk))
+            chunk_dense.sort(key=lambda x: x[0], reverse=True)
+            # Take top 20 chunks by dense score for cross-encoder reranking
+            top_chunks = [c for _, c in chunk_dense[:20]]
+            pairs = [(_ce_query, chunk["text"][:2000]) for chunk in top_chunks]
+            with _reranker_lock:
+                ce_scores = ranker.predict(pairs)
+            # Merge: use cross-encoder scores for the top candidates
+            page_scores: dict[int, float] = {}
+            for chunk, score in zip(top_chunks, ce_scores):
+                page_num = chunk["metadata"].get("page", 1)
+                score_val = float(score)
+                if page_num not in page_scores or score_val > page_scores[page_num]:
+                    page_scores[page_num] = score_val
+        else:
+            # Original: Score all chunks against the question using cross-encoder
+            # Use 2000 chars to capture more legal context than the default 1000
+            # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
+            pairs = [(_ce_query, chunk["text"][:2000]) for chunk in doc_chunks]
+            with _reranker_lock:  # tokenizer is not thread-safe
+                scores = ranker.predict(pairs)
+            page_scores: dict[int, float] = {}
+            for chunk, score in zip(doc_chunks, scores):
+                page_num = chunk["metadata"].get("page", 1)
+                score_val = float(score)
+                if page_num not in page_scores or score_val > page_scores[page_num]:
+                    page_scores[page_num] = score_val
 
-        # Group chunk scores by page number, take max score per page.
-        # Also track which pages contain article DEFINITION headers.
-        page_scores: dict[int, float] = {}
+        # Track which pages contain article DEFINITION headers.
         _art_def_pages: set[int] = set()
         _has_router_boost = bool(boost_pages and doc_id in boost_pages)
-        for chunk, score in zip(doc_chunks, scores):
-            page_num = chunk["metadata"].get("page", 1)
-            score_val = float(score)
-            if page_num not in page_scores or score_val > page_scores[page_num]:
-                page_scores[page_num] = score_val
-            # Detect article definition pages (only when no router boost exists)
-            if _art_root_nums and not _has_router_boost:
+        if _art_root_nums and not _has_router_boost:
+            for chunk in doc_chunks:
+                page_num = chunk["metadata"].get("page", 1)
                 chunk_text = chunk["text"]
                 for art_num in _art_root_nums:
                     if re.search(rf'(?:^|\n)\s*{re.escape(art_num)}\.\s*\n', chunk_text):
