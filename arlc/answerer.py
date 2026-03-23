@@ -85,20 +85,28 @@ class AnswerResult:
 
 
 # ---------------------------------------------------------------------------
-# Anthropic client (lazy singleton)
+# Anthropic client (lazy singleton) — supports both direct SDK and Vertex AI
 # ---------------------------------------------------------------------------
 
 _client: anthropic.Anthropic | None = None
-
+_ANTHROPIC_CREDITS_EXHAUSTED: bool = False
 
 
 def _get_client() -> anthropic.Anthropic:
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY"),
-            timeout=120.0,  # 2 min timeout to prevent hanging on dead connections
-        )
+        backend = os.environ.get("LLM_BACKEND", "anthropic").lower()
+        if backend == "vertex" or (backend == "auto" and os.environ.get("VERTEX_PROJECT_ID")):
+            from anthropic import AnthropicVertex
+            _client = AnthropicVertex(
+                project_id=os.environ["VERTEX_PROJECT_ID"],
+                region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+            )
+        else:
+            _client = anthropic.Anthropic(
+                api_key=os.environ.get("ANTHROPIC_API_KEY"),
+                timeout=120.0,
+            )
     return _client
 
 
