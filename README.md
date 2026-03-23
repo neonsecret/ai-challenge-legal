@@ -1,7 +1,7 @@
 # ARLC 2026 Legal QA Pipeline
 
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 [![Experiment Tree](https://img.shields.io/badge/Interactive-Experiment_Tree-brightgreen)](https://neonsecret.github.io/ai-challenge-legal/)
 
 A three-stage RAG pipeline for the [ARLC 2026 Agentic RAG Legal Challenge](https://agentic-challenge.ai/) — question answering over DIFC (Dubai International Financial Centre) legal documents.
@@ -167,4 +167,4 @@ Explore our experiments interactively in the **[Experiment Tree](docs/experiment
 
 ## License
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE) — Free for academic and open-source use. Commercial use requires sharing modifications under the same license. For commercial licensing inquiries, contact the author.

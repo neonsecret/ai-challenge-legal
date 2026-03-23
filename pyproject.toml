@@ -3,7 +3,7 @@ name = "arlc-legal-qa"
 version = "1.0.0"
 description = "ARLC 2026 Agentic RAG Legal Challenge — DIFC legal document QA pipeline"
 readme = "README.md"
-license = "MIT"
+license = "AGPL-3.0-or-later"
 requires-python = ">=3.13"
 dependencies = [
     "anthropic>=0.84.0",
