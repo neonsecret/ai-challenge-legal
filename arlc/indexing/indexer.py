@@ -6,12 +6,13 @@ import shutil
 import base64
 import pymupdf
 import chromadb
-import anthropic
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
 
 load_dotenv()
+
+from arlc.llm.router import call_llm
 
 DOCUMENTS_DIR = "data/documents"
 CHROMA_DIR = "data/chroma_db"
@@ -89,14 +90,13 @@ Text:
 Output ONLY the retrieval index entry (max 200 chars), no preamble."""
 
     try:
-        response = anthropic.completion(
-            model=os.environ["MODEL_NAME"],
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
+        text, *_ = call_llm(
+            system_prompt="You are a document summarizer.",
+            user_message=prompt,
             max_tokens=80,
-            timeout=45,
+            model=os.environ.get("INDEXER_MODEL", "claude-sonnet-4-6"),
         )
-        summary = response.choices[0].message.content.strip()
+        summary = text.strip()
         if len(summary) > 200:
             summary = summary[:197] + "..."
     except Exception as e:
@@ -140,14 +140,13 @@ Write a 1-sentence (max 100 chars) context describing what this chunk covers. In
 Output ONLY the sentence."""
 
     try:
-        response = anthropic.completion(
-            model=os.environ["MODEL_NAME"],
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0,
+        text, *_ = call_llm(
+            system_prompt="You are a document summarizer.",
+            user_message=prompt,
             max_tokens=40,
-            timeout=18,
+            model=os.environ.get("INDEXER_MODEL", "claude-sonnet-4-6"),
         )
-        context = response.choices[0].message.content.strip()
+        context = text.strip()
         if len(context) > 120:
             context = context[:117] + "..."
     except Exception:
@@ -169,20 +168,23 @@ def _ocr_page(page, pdf_file: str, page_num: int) -> str:
         # Base64 encode
         img_b64 = base64.b64encode(png_bytes).decode()
 
-        # Call vision API
-        response = anthropic.completion(
+        # Call vision API via LLM router
+        # Note: call_llm doesn't support image blocks, so we use the anthropic SDK directly
+        import anthropic as _anthropic_sdk
+        _client = _anthropic_sdk.Anthropic()
+        response = _client.messages.create(
             model=_ocr_model,
+            max_tokens=2048,
             messages=[{
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{img_b64}"}},
+                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
                     {"type": "text", "text": "Extract all text from this legal document page. Return only the extracted text, no commentary."}
                 ]
             }],
-            max_tokens=2048,
         )
 
-        text = response.choices[0].message.content.strip()
+        text = response.content[0].text.strip()
         print(f"  [OCR] {pdf_file} page {page_num + 1}")
         return text
     except Exception as e:
