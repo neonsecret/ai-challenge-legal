@@ -41,11 +41,11 @@ load_dotenv()
 #              "total_time_ms": int, "input_tokens": int, "output_tokens": int,
 #              "model_name": str}
 
-from indexer import build_index, CHROMA_DIR
-from format_guardian import FormatGuardian
+from arlc.indexing.indexer import build_index, CHROMA_DIR
+from arlc.format_guardian import FormatGuardian
 
 # Case metadata for cross-case oracle citation expansion
-_CASE_META_PATH = os.path.join(os.path.dirname(__file__), "data", "case_metadata_index.json")
+_CASE_META_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "case_metadata_index.json")
 _case_meta_for_oracle: dict = {}
 if os.path.exists(_CASE_META_PATH):
     with open(_CASE_META_PATH) as _cmf:
@@ -54,7 +54,7 @@ if os.path.exists(_CASE_META_PATH):
             _case_meta_for_oracle[_cid.upper()] = _cinfo
 
 # Cross-reference graph for IndexRAG (guy2) + ontology traversal (guy1)
-_XREF_GRAPH_PATH = os.path.join(os.path.dirname(__file__), "data", "cross_reference_graph.json")
+_XREF_GRAPH_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "cross_reference_graph.json")
 _xref_graph: dict = {}
 if os.path.exists(_XREF_GRAPH_PATH):
     try:
@@ -85,21 +85,21 @@ def _import_pipeline_modules():
     answer_fn = None
 
     try:
-        from router import route as _route
+        from arlc.router import route as _route
         route_fn = _route
         print("  router.route: OK")
     except ImportError:
         print("  WARNING: router.py not found, using fallback routing", file=sys.stderr)
 
     try:
-        from retriever import retrieve_pages as _retrieve_pages
+        from arlc.retriever import retrieve_pages as _retrieve_pages
         retrieve_fn = _retrieve_pages
         print("  retriever.retrieve_pages: OK")
     except (ImportError, AttributeError):
         print("  WARNING: retriever.retrieve_pages not found, using fallback", file=sys.stderr)
 
     try:
-        from answerer_v3 import generate_answer as _generate_answer
+        from arlc.answerer import generate_answer as _generate_answer
         answer_fn = _generate_answer
         print("  answerer_v3.generate_answer: OK")
     except ImportError:
@@ -125,7 +125,7 @@ def _fallback_retrieve_pages(question: str, target_doc_ids: list[str] | None = N
                               boost_pages: dict | None = None,
                               case_doc_groups: dict | None = None) -> list[dict]:
     """Fallback: use existing retriever.retrieve() and convert format."""
-    from retriever import retrieve
+    from arlc.retriever import retrieve
     chunks = retrieve(question, n_results=25)
 
     # Group by doc_id, take top-1 page per doc
@@ -151,8 +151,8 @@ def _fallback_retrieve_pages(question: str, target_doc_ids: list[str] | None = N
 def _fallback_generate_answer(question: str, answer_type: str,
                                source_pages: list[dict]) -> dict:
     """Fallback: use existing answerer.answer_question()."""
-    from answerer import answer_question
-    from retriever import retrieve
+    from arlc.answerer import answer_question
+    from arlc.retriever import retrieve
 
     chunks = retrieve(question, n_results=25)
     result = answer_question(question, answer_type, chunks)
@@ -536,7 +536,7 @@ async def _process_question(
                 if cached_pages:
                     print(f"  SONNET FALLBACK: {question_id[:16]} using {len(cached_pages)} cached pages", file=sys.stderr)
                     try:
-                        from answerer_v3 import generate_answer as _gen_answer_fallback
+                        from arlc.answerer import generate_answer as _gen_answer_fallback
                         t_fb_start = time.monotonic()
                         fb_result = await asyncio.wait_for(
                             _gen_answer_fallback(
@@ -647,7 +647,7 @@ async def _process_question_inner(
     # The answerer's oracle can answer judge/party/date/claim comparisons
     # directly from case_metadata_index — no retrieval needed.
     # Skipping retrieval avoids 60-300s cross-encoder scoring for cross-case queries.
-    from answerer_v3 import _lookup_oracle, AnswerResult as _AnswerResult
+    from arlc.answerer import _lookup_oracle, AnswerResult as _AnswerResult
 
     # Fast path A: router pre-computed the answer (date/claim comparisons)
     # Guard: skip if answer is a list of dicts (router bug for list-format parties) or
@@ -820,7 +820,7 @@ async def _process_question_inner(
             )
     except asyncio.TimeoutError:
         print(f"  INNER TIMEOUT: {question_id[:12]} answer_fn >300s", file=sys.stderr)
-        from answerer_v3 import AnswerResult
+        from arlc.answerer import AnswerResult
         answer_result = AnswerResult(answer=None, chunk_pages=[])
 
     t_total = time.monotonic() - t_start
@@ -846,8 +846,8 @@ async def _process_question_inner(
     # This is deterministic (no LLM) so it adds 0 PPQ.
     if result.get("answer") is not None and result.get("model_name") != "oracle":
         try:
-            from page_verifier import verify_pages as _verify_pages
-            import page_verifier as _pv_mod
+            from arlc.page_verifier import verify_pages as _verify_pages
+            import arlc.page_verifier as _pv_mod
             _chunk_pages = result.get("chunk_pages", [])
             if _chunk_pages:
                 _verified_pages = _verify_pages(
@@ -887,8 +887,8 @@ async def _process_question_inner(
         and result.get("answer") is not None
     ):
         try:
-            from answerer_v3 import _extract_pages_used as _extract_vp
-            import llm_router as _verify_router
+            from arlc.answerer import _extract_pages_used as _extract_vp
+            from arlc.llm import router as _verify_router
             # Build numbered page list from top-5 retrieved pages.
             # Track (doc_id, page_num) pairs so verification is unambiguous
             # when multiple docs share the same page number.
@@ -1496,7 +1496,7 @@ async def run_pipeline(
         # Import lazy loaders directly — much faster than a full retrieval warmup.
         # These are thread-safe singletons; calling them now means concurrent workers
         # never race to initialize them.
-        import retriever as _ret_mod
+        import arlc.retriever as _ret_mod
         _ret_mod.get_chunks_by_doc()      # load all 3000+ ChromaDB chunks into memory
         _ret_mod.get_reranker()           # load cross-encoder model onto MPS/CPU
         _ret_mod.get_embedding_model()    # load BGE model onto MPS/CPU
@@ -1515,7 +1515,7 @@ async def run_pipeline(
     # sorting still helps with cost savings.
     print("=== Step 3c: Sorting questions for prompt cache efficiency ===")
     try:
-        from router import get_router
+        from arlc.router import get_router
         _sort_router = get_router()
         def _get_sort_key(q):
             r = _sort_router.route(q["question"], q.get("answer_type", "free_text"))
@@ -1595,7 +1595,7 @@ async def run_pipeline(
         _art_index_path = Path("data/article_page_index.json")
         with open(_art_index_path) as f:
             _art_index = json.load(f)
-        from router import get_router
+        from arlc.router import get_router
         _router_inst = get_router()
         _art_restored = 0
         for _r in _working_results:

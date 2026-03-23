@@ -14,15 +14,15 @@ test:
 
 # Prepare corpus (download + index)
 prepare:
-	uv run python prepare_corpus.py
+	uv run python -m arlc.indexing.prepare_corpus
 
 # Build indexes only (skip download)
 index:
-	uv run python build_case_metadata_auto.py
-	uv run python build_law_index_v2.py
-	uv run python build_article_index.py
-	uv run python indexer.py
+	uv run python -m arlc.indexing.builders.case_metadata
+	uv run python -m arlc.indexing.builders.law_index
+	uv run python -m arlc.indexing.builders.article_index
+	uv run python -m arlc.indexing.indexer
 
 # Run the pipeline
 run:
-	uv run python finals.py --workers 5 --output output/run1
+	uv run python run.py --workers 5 --output output/run1

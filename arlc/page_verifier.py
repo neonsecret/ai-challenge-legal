@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # LLM page intersection approach inspired by IAS Partners (guy4)
 ENABLE_LLM_FALLBACK = os.environ.get("PAGE_VERIFY_LLM", "false").lower() == "true"
 
-DOCUMENTS_DIR = os.path.join(os.path.dirname(__file__), "data", "documents")
+DOCUMENTS_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "documents")
 
 # Page text cache: doc_id -> {page_num (int) -> text}
 _page_text_cache: dict[str, dict[int, str]] = {}
@@ -327,7 +327,7 @@ def _find_best_page_llm(
     Returns page number or None.
     """
     try:
-        import llm_router
+        from arlc.llm import router as llm_router
     except ImportError:
         return None
 

@@ -157,7 +157,7 @@ def step_index(force: bool = False):
         print("  Removing existing index...")
         shutil.rmtree(CHROMA_DIR)
 
-    from indexer import build_index
+    from arlc.indexing.indexer import build_index
     print("  Building ChromaDB index...")
     t0 = time.monotonic()
     build_index()
@@ -335,8 +335,8 @@ async def step_smoke_test(n_questions: int = 10):
     print(f"  Testing {len(sample)} random questions...")
 
     try:
-        from router import route
-        from retriever import retrieve_pages
+        from arlc.router import route
+        from arlc.retriever import retrieve_pages
     except ImportError as e:
         print(f"  ERROR: Cannot import pipeline modules: {e}")
         return False

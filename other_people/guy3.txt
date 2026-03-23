@@ -1,0 +1,64 @@
+Sharing some takeaways:
+
+1. Structure is essential
+Knowing the corpus matters more than throwing a bigger model at it.
+Extracting structure from documents and creating specialized retrieval tools per document type along with dense+sparse index gave a big boost:
+* faster retrieval
+* better grounding quality
+* fewer hallucinations
+Multimodal LLMs are extremely helpful - either for parsing tricky layouts or repairing imperfect outputs from tools like Docling.
+
+
+2. Context-aware chunking is not always beneficial
+When chunks are created strictly based on document structure, they may become very small. If we then prepend long document titles or hierarchical breadcrumbs, these structural tokens may dominate the embedding.
+
+For example:
+"NON PROFIT INCORPORATED ORGANISATIONS LAW DIFC LAW NO. 6 OF 2012 > PART 1: GENERAL > 2. Legislative Authority: The Law is made by the Ruler of Dubai."
+
+In this case, the embedding may be driven more by:
+* the law name
+* section hierarchy
+* document type
+
+rather than the key fact:
+"The Law is made by the Ruler of Dubai."
+
+As a result, the dense embedding collapses toward document identity rather than the actual semantic content of the chunk.
+
+
+3. Caching is powerful, but may be tricky
+Actually it was my main bet and point of interest for the competition.
+
+I wanted to explore KV-cache blending (non-prefix cache) from the LMCache project - allowing reuse of cached chunks at arbitrary positions in the prompt, not just prefix reuse.
+
+The idea:
+* precompute cache for all chunks and offload to CPU RAM
+* reuse across agent steps
+* reduce encoding time and effectively grow context without TTFT penalties
+
+Especially useful when an agent performs multiple retrieval iterations.
+
+However, I couldn’t get it working with my hardware and spent too much time debugging it.
+The approach is promising, but the tooling still feels quite raw.
+
+
+4. New Qwen models are really good
+Specifically: Qwen3.5-35B-A3B-FP8
+* very solid function calling
+* good instruction following in agent loops
+* SPEED!
+
+Interestingly, swapping it for gpt-5.4 degraded performance in my setup.
+For agentic pipelines, especially RAG, instruction following and tool-use reliability > raw model size or general intelligence.
+
+
+5. Structured output may enforce model to reason (even without full CoT or thinking)
+Adding a "reasoning" field into the output JSON schema noticeably improved answer quality and stability along with traceability.
+And the schema and key placement are critical:
+{"reasoning": ..., "answer": ..., "grounding": ...}
+By forcing the model to explain its decision before outputting the final answer, the result naturally conditions on the intermediate logic.
+
+
+Overall takeaway:
+
+In agentic RAG systems, the biggest gains often come not from "smarter" models, but from better structure, indexing and alignment with how the system is actually used.
