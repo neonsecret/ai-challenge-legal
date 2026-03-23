@@ -142,6 +142,23 @@ Where:
 - **G** — grounding (citation accuracy)
 - **F** — speed bonus (F >= 1.0 for fast responses)
 
+## Post-Competition Upgrades
+
+After the competition ended, we studied other participants' published approaches and integrated their best ideas into our pipeline. These upgrades were **not used in our competition submissions** — they represent what we learned from the community afterward.
+
+| Technique | Inspired By | Description |
+|-----------|------------|-------------|
+| Docling PDF extraction | [IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack), guy3 (structure-first) | Structural PDF parsing replacing raw PyMuPDF |
+| Multi-signal document fusion | [IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack) (Ivanov, Agishev, Sadchikov) | 5-weight doc fusion, dense-only page ranking |
+| Custom legal tokenizer | [IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack) | Compound legal reference expansion for BM25 |
+| IndexRAG (AKU extraction, bridging facts) | [Bao & Shi, 2026](https://arxiv.org/abs/2603.16415) (Continuum AI) | QA-structured facts + cross-reference graph at index time |
+| Typed document ontology concept | DotaGPT author (private post) | Structural navigation instead of embedding search |
+| Embedding decontamination | guy3 (structure-first methodology) | Strip boilerplate before embedding, preserve for BM25 |
+| Structured reasoning with grounding | guy3 (structure-first methodology) | Force LLM to cite page evidence per claim |
+| Gemini PDF preprocessing insight | DotaGPT author | Vision models for image-embedded structural elements |
+
+Thank you to all participants who shared their approaches — it made everyone's systems better.
+
 ## Our Journey
 
 Read the full story of building this system — from first submission (0.401) to peak warmup (0.920) to finals (0.719) — in **[JOURNEY.md](JOURNEY.md)**.
