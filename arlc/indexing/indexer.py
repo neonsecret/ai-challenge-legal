@@ -1,11 +1,13 @@
-"""Index PDF documents into ChromaDB for retrieval."""
+"""Index PDF documents into ChromaDB and/or FAISS for retrieval."""
 
 import os
 import re
+import json
 import shutil
 import base64
 import pymupdf
 import chromadb
+import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
@@ -16,7 +18,14 @@ from arlc.llm.router import call_llm
 
 DOCUMENTS_DIR = "data/documents"
 CHROMA_DIR = "data/chroma_db"
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "BAAI/bge-large-en-v1.5")
+# Snowflake Arctic Embed L v2.0: 1024-dim, retrieval-optimized (2024), replaces BGE-large-en-v1.5
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Snowflake/snowflake-arctic-embed-l-v2.0")
+# FAISS: pure vector math, no SQLite overhead — strictly better than ChromaDB for ~27K vectors
+# Credit: FAISS backend choice inspired by IAS Partners (guy4)
+FAISS_INDEX_PATH = "data/faiss_index.bin"
+FAISS_METADATA_PATH = "data/faiss_metadata.json"
+# VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
+VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
 
 _ocr_model = os.environ.get("MODEL_NAME", "")
 
@@ -295,17 +304,34 @@ def extract_pages(pdf_path: str) -> list[dict]:
     return chunks
 
 
-def build_index():
-    """Build ChromaDB index from all PDF documents."""
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=EMBEDDING_MODEL
+def _get_embedding_function():
+    """Get the SentenceTransformer embedding function for the configured model.
+
+    Arctic Embed v2.0 requires trust_remote_code=True.
+    """
+    model_kwargs = {}
+    if "arctic" in EMBEDDING_MODEL.lower():
+        model_kwargs["trust_remote_code"] = True
+    return embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name=EMBEDDING_MODEL,
+        **model_kwargs,
     )
+
+
+def build_index():
+    """Build vector index from all PDF documents.
+
+    Builds FAISS index by default (VECTOR_BACKEND=faiss). Set VECTOR_BACKEND=chroma
+    for ChromaDB fallback. Both backends can be built simultaneously if desired.
+    """
+    ef = _get_embedding_function()
 
     # Clear BM25 disk cache — it will be rebuilt after indexing
     bm25_cache = "data/bm25_cache"
     if os.path.exists(bm25_cache):
         shutil.rmtree(bm25_cache)
 
+    # ChromaDB setup (always built for backward compat; FAISS is added alongside)
     client = chromadb.PersistentClient(path=CHROMA_DIR)
 
     # Delete existing collection if it exists
@@ -321,7 +347,7 @@ def build_index():
     )
 
     pdf_files = sorted(f for f in os.listdir(DOCUMENTS_DIR) if f.endswith(".pdf"))
-    print(f"Indexing {len(pdf_files)} PDF files...")
+    print(f"Indexing {len(pdf_files)} PDF files (backend={VECTOR_BACKEND}, model={EMBEDDING_MODEL})...")
 
     all_ids = []
     all_texts = []
@@ -397,6 +423,34 @@ def build_index():
     print("  Computing embeddings from decontaminated text...")
     all_embeddings = ef(all_embed_texts)
 
+    # --- Build FAISS index ---
+    if VECTOR_BACKEND == "faiss" or os.environ.get("BUILD_BOTH_BACKENDS"):
+        import faiss
+
+        print("  Building FAISS index...")
+        embeddings_np = np.array(all_embeddings).astype('float32')
+        faiss.normalize_L2(embeddings_np)  # normalize for cosine similarity via inner product
+        dim = embeddings_np.shape[1]
+        index = faiss.IndexFlatIP(dim)  # inner product on L2-normalized vectors = cosine similarity
+        index.add(embeddings_np)
+        faiss.write_index(index, FAISS_INDEX_PATH)
+        print(f"  FAISS index saved: {FAISS_INDEX_PATH} ({index.ntotal} vectors, {dim}-dim)")
+
+        # Save metadata mapping: index position -> {chunk_id, doc_id, page, text}
+        faiss_metadata = []
+        for i in range(len(all_ids)):
+            faiss_metadata.append({
+                "chunk_id": all_ids[i],
+                "pdf_id": all_metadatas[i]["pdf_id"],
+                "page": all_metadatas[i]["page"],
+                "source_file": all_metadatas[i]["source_file"],
+                "text": all_texts[i],
+            })
+        with open(FAISS_METADATA_PATH, "w") as f:
+            json.dump(faiss_metadata, f)
+        print(f"  FAISS metadata saved: {FAISS_METADATA_PATH} ({len(faiss_metadata)} entries)")
+
+    # --- Build ChromaDB index (always, for backward compat) ---
     # Add in batches — store ORIGINAL text but use CLEANED embeddings
     batch_size = 100
     for i in range(0, len(all_ids), batch_size):
@@ -407,7 +461,7 @@ def build_index():
             embeddings=all_embeddings[i:end],
             metadatas=all_metadatas[i:end],
         )
-        print(f"  Indexed {end}/{len(all_ids)} chunks")
+        print(f"  Indexed {end}/{len(all_ids)} chunks (ChromaDB)")
 
     print(f"Done! Total chunks: {len(all_ids)}")
     return collection
