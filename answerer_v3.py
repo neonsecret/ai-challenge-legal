@@ -81,6 +81,7 @@ class AnswerResult:
     input_tokens: int = 0
     output_tokens: int = 0
     model_name: str = MODEL
+    grounding: list[dict] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +222,13 @@ RULES:
 10. CRITICAL — CONDITIONS AND EXCEPTIONS: If the source contains conditions ("unless", "except", "provided that", "subject to", "notwithstanding", "upon approval", "prior to", "within", "shall not", "not exceeding"), you MUST mention them. Omitting a stated condition is a critical completeness failure.
 11. State what IS established first, then note conditions or limitations.
 12. If a provision requires prior approval, registration, written consent, or notice, state this explicitly.
-13. CRITICAL: After stating what IS known, explicitly note what the document does NOT specify. Examples: "The Law does not specify the exact timeline for..." / "The provisions are silent on whether..." — Omitting this when information IS absent will fail the confidence calibration criterion."""
+13. CRITICAL: After stating what IS known, explicitly note what the document does NOT specify. Examples: "The Law does not specify the exact timeline for..." / "The provisions are silent on whether..." — Omitting this when information IS absent will fail the confidence calibration criterion.
+
+After your answer in <answer> tags, provide a GROUNDING section listing which pages support each key claim:
+GROUNDING:
+- "[claim]" → page N
+- "[claim]" → page M"""
+# Structured reasoning with grounding inspired by guy3 (structure-first methodology)
 
 _SYSTEM_FREE_TEXT_CASE = """You are a DIFC legal expert writing precise answers about DIFC court case outcomes for a professional legal QA evaluation.
 
@@ -259,7 +266,12 @@ RULES:
 10. Extract all available information from the provided text
 11. CRITICAL — ORDER CONDITIONS: Include ALL conditions attached to court orders (deadlines, reporting requirements, contingencies). If the order says "within 14 days", "subject to assessment", "upon payment of", or "provided that", include it verbatim.
 12. CONFIDENCE CALIBRATION: If important details (specific costs amounts, judge name, order date) are genuinely not present in the retrieved source text, explicitly state this (e.g., "No specific costs amounts are mentioned in the order"). This is required — not a flaw.
-13. CRITICAL: After stating what IS known, explicitly note what the document does NOT specify. Examples: "No specific costs amount is mentioned in the order." / "The document is silent on whether..." — Omitting this when information IS absent will fail the confidence calibration criterion."""
+13. CRITICAL: After stating what IS known, explicitly note what the document does NOT specify. Examples: "No specific costs amount is mentioned in the order." / "The document is silent on whether..." — Omitting this when information IS absent will fail the confidence calibration criterion.
+
+After your answer in <answer> tags, provide a GROUNDING section listing which pages support each key claim:
+GROUNDING:
+- "[claim]" → page N
+- "[claim]" → page M"""
 
 _SYSTEM_FREE_TEXT_TRICK = """You are a DIFC legal expert. The DIFC Courts operate as a civil and commercial jurisdiction under DIFC Law No. 10 of 2004 (the Judicial Authority Law) and DIFC Law No. 12 of 2004 (the Court Law, as amended). There is no criminal jurisdiction, no jury system, no plea bargaining, no Miranda rights, and no parole system.
 
@@ -985,7 +997,6 @@ def _call_llm(
     """
     global _ANTHROPIC_CREDITS_EXHAUSTED
     # Skip Anthropic SDK entirely if credits already known to be exhausted
-    if _ANTHROPIC_CREDITS_EXHAUSTED and _USE_FALLBACK:
     last_exc = None
     for attempt in range(1 + MAX_RETRIES):
         if attempt > 0:
@@ -1316,6 +1327,21 @@ def _truncate_free_text(text: str, limit: int = 705) -> str:
     return window.strip()
 
 
+def _extract_grounding(response: str) -> list[dict]:
+    """Parse the GROUNDING section from LLM response into structured claim→page mappings."""
+    grounding: list[dict] = []
+    match = re.search(r'GROUNDING:\s*\n(.*)', response, re.DOTALL)
+    if not match:
+        return grounding
+    for line in match.group(1).strip().splitlines():
+        line = line.strip().lstrip("-").strip()
+        # Match patterns like: "[claim]" → page N  or  "claim" -> page N
+        m = re.match(r'"(.+?)"\s*(?:→|->)\s*page\s+(\d+)', line, re.IGNORECASE)
+        if m:
+            grounding.append({"claim": m.group(1), "page": int(m.group(2))})
+    return grounding
+
+
 def _parse_answer(text: str, answer_type: str) -> object:
     """Convert raw LLM text to the correct Python type.
 
@@ -1334,6 +1360,8 @@ def _parse_answer(text: str, answer_type: str) -> object:
             text = re.sub(r'</?analysis>', '', text).strip()
         # Safety net: always strip CoT tags that might survive extraction
         text = re.sub(r'</?(?:analysis|answer|thinking|scratchpad)>', '', text).strip()
+        # Strip GROUNDING section if it leaked into the answer text
+        text = re.sub(r'\s*GROUNDING:\s*\n.*', '', text, flags=re.DOTALL).strip()
         # Detect leaked numbered CoT format (e.g. "1. QUESTION PARSE:..." / "1. OUTCOME:...")
         # This happens when max_tokens truncates before <answer> tags and no <analysis> tags present
         if re.match(r'^\d+\.\s*(?:QUESTION PARSE|KEY PROVISIONS|CONDITIONS CHECK|GAPS|DRAFT|OUTCOME|ORDER|RULING)', text):
@@ -2105,6 +2133,7 @@ async def generate_answer(
     )
 
     parsed = _parse_answer(raw, answer_type)
+    grounding = _extract_grounding(raw) if answer_type == "free_text" else []
 
     # Build chunk_pages: prefer LLM-identified pages for RAG path.
     # The LLM sees [SOURCE N | Page: P] headers and reports which pages
@@ -2149,4 +2178,5 @@ async def generate_answer(
         input_tokens=in_tok,
         output_tokens=out_tok,
         model_name=ft_model,
+        grounding=grounding,
     )

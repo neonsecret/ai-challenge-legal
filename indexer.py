@@ -21,6 +21,50 @@ _ocr_model = os.environ.get("MODEL_NAME", "")
 
 _doc_summary_cache: dict[str, str] = {}
 
+# Embedding decontamination insight from guy3 (structure-first methodology)
+# Boilerplate patterns that dominate embedding space, making all pages of the
+# same document cluster together instead of discriminating by content.
+_BOILERPLATE_PATTERNS = [
+    re.compile(r'IN\s+THE\s+DUBAI\s+INTERNATIONAL\s+FINANCIAL\s+CENTRE\s+COURTS?', re.IGNORECASE),
+    re.compile(r'IN\s+THE\s+COURT\s+OF\s+FIRST\s+INSTANCE', re.IGNORECASE),
+    re.compile(r'IN\s+THE\s+SMALL\s+CLAIMS\s+TRIBUNAL', re.IGNORECASE),
+    re.compile(r'COURT\s+OF\s+APPEAL', re.IGNORECASE),
+    re.compile(r'(?:Claim|Case)\s+No\s*:\s*\S+', re.IGNORECASE),
+    re.compile(r'^BETWEEN\s*$', re.MULTILINE | re.IGNORECASE),
+    re.compile(r'^(?:Claimant|Defendant|Respondent|Applicant)s?\s*$', re.MULTILINE | re.IGNORECASE),
+    re.compile(r'Page\s+\d+\s+of\s+\d+', re.IGNORECASE),
+    re.compile(r'^\s*\d{1,3}\s*$', re.MULTILINE),  # standalone page numbers
+    re.compile(r'^\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\s*$', re.MULTILINE),  # date stamps on their own line
+]
+
+
+def clean_text_for_embedding(text: str, doc_metadata: dict | None = None) -> str:
+    """Strip structural boilerplate from text before embedding.
+
+    Removes repeated document titles, court headers, page numbers, and other
+    structural elements that contaminate embedding space. The original text
+    is preserved for BM25 and display — only the embedding vector uses this
+    cleaned version.
+    """
+    cleaned = text
+
+    # Strip document title if provided in metadata
+    if doc_metadata and doc_metadata.get("title"):
+        title = doc_metadata["title"]
+        # Remove exact and near-exact title occurrences (case-insensitive)
+        cleaned = re.sub(re.escape(title), '', cleaned, flags=re.IGNORECASE)
+
+    # Strip known boilerplate patterns
+    for pattern in _BOILERPLATE_PATTERNS:
+        cleaned = pattern.sub('', cleaned)
+
+    # Collapse excessive whitespace left by removals
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    cleaned = cleaned.strip()
+
+    return cleaned
+
+
 # Legal structure header pattern for structure-aware chunking
 _LEGAL_HEADER_PATTERN = re.compile(
     r'(?=\n(?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+)',
@@ -339,13 +383,26 @@ def build_index():
                     print(f"    {completed}/{len(pending_contexts)} contexts done")
         print(f"  Contexts complete ({len(pending_contexts)} chunks)")
 
-    # Add in batches
+    # Embedding decontamination: clean text for embedding, keep original for storage/BM25
+    print("  Cleaning text for embedding decontamination...")
+    all_embed_texts = []
+    for i, text in enumerate(all_texts):
+        meta = all_metadatas[i]
+        doc_meta = {"title": meta.get("pdf_id", "").replace("_", " ")}
+        all_embed_texts.append(clean_text_for_embedding(text, doc_meta))
+
+    # Pre-compute embeddings from cleaned text
+    print("  Computing embeddings from decontaminated text...")
+    all_embeddings = ef(all_embed_texts)
+
+    # Add in batches — store ORIGINAL text but use CLEANED embeddings
     batch_size = 100
     for i in range(0, len(all_ids), batch_size):
         end = min(i + batch_size, len(all_ids))
         collection.add(
             ids=all_ids[i:end],
             documents=all_texts[i:end],
+            embeddings=all_embeddings[i:end],
             metadatas=all_metadatas[i:end],
         )
         print(f"  Indexed {end}/{len(all_ids)} chunks")

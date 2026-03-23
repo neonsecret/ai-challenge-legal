@@ -117,6 +117,30 @@ def step_download(force: bool = False):
 
 
 # ---------------------------------------------------------------------------
+# Step 1.5: Convert PDFs to structured Markdown (Docling)
+# ---------------------------------------------------------------------------
+
+def step_docling_convert(force: bool = False):
+    """Convert PDFs to structured Markdown using Docling."""
+    _step_header("1.5", "Docling PDF → Markdown conversion")
+
+    from docling_converter import OUTPUT_DIR, convert_all
+
+    if OUTPUT_DIR.exists() and not force:
+        existing = list(OUTPUT_DIR.glob("*.md"))
+        if existing:
+            print(f"  Docling output exists: {OUTPUT_DIR} ({len(existing)} docs)")
+            print("  Use --force to reconvert")
+            return
+
+    print("  Converting PDFs to structured Markdown...")
+    t0 = time.monotonic()
+    converted = convert_all(force=force)
+    elapsed = time.monotonic() - t0
+    print(f"  Docling conversion complete in {elapsed:.1f}s ({converted} docs)")
+
+
+# ---------------------------------------------------------------------------
 # Step 2: Index documents into ChromaDB
 # ---------------------------------------------------------------------------
 
@@ -377,6 +401,9 @@ async def main():
         pdfs = list(DOCS_DIR.glob("*.pdf")) if DOCS_DIR.exists() else []
         n_docs = len(pdfs)
         print(f"  {n_docs} PDFs in {DOCS_DIR}")
+
+    # Step 1.5: Docling conversion
+    step_docling_convert(force=args.force)
 
     # Step 2: Index
     if not args.skip_indexing:

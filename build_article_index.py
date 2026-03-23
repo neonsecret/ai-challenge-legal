@@ -16,7 +16,93 @@ import re
 import pymupdf
 
 DOCS_DIR = "data/documents"
+DOCLING_DIR = "data/documents_md"
 OUTPUT = "data/article_page_index.json"
+
+# Docling-based article extraction inspired by guy3 (structure-first) and guy1 (typed ontology)
+
+# Map Docling heading prefixes to article_page_index key prefixes
+_DOCLING_HEADING_RE = re.compile(
+    r'^(Article|ARTICLE)\s+(\d+[A-Z]?(?:\(\d+\))?)'
+    r'|^(Section|SECTION)\s+(\d+[A-Z]?)'
+    r'|^(Rule|RULE)\s+(\d+[A-Z]?)'
+    r'|^(Regulation|REGULATION)\s+(\d+(?:\.\d+)?)'
+    r'|^(Schedule|SCHEDULE)\s+(\d+)'
+    r'|^(Part|PART)\s+([\dIVXLivxl]+)'
+    r'|^(Appendix|APPENDIX)\s+(\d+)'
+    r'|^(Chapter|CHAPTER)\s+([\dIVXLivxl]+)',
+    re.IGNORECASE
+)
+
+
+def _heading_to_key(heading: str) -> str | None:
+    """Convert a Docling section heading to an article_page_index key.
+
+    E.g. "Article 28" -> "article_28", "Schedule 3" -> "schedule_3",
+         "Article 5(1)" -> "article_5_sub_1"
+    """
+    m = _DOCLING_HEADING_RE.match(heading.strip())
+    if not m:
+        return None
+    # Find which group matched (pairs of prefix, number)
+    groups = m.groups()
+    for i in range(0, len(groups), 2):
+        if groups[i] is not None:
+            prefix = groups[i].lower()
+            number = groups[i + 1]
+            # Handle "Article 5(1)" -> article_5_sub_1
+            sub_match = re.match(r'(\d+)\((\d+)\)', number)
+            if sub_match:
+                return f"{prefix}_{sub_match.group(1)}_sub_{sub_match.group(2)}"
+            return f"{prefix}_{number}"
+    return None
+
+
+def extract_articles_from_docling(doc_id: str) -> dict[str, list[int]] | None:
+    """Extract article-page mappings from a Docling structure JSON file.
+
+    Args:
+        doc_id: The document ID (PDF filename without extension).
+
+    Returns:
+        Dict of article_key -> [page_numbers], or None if structure file not found.
+    """
+    structure_path = os.path.join(DOCLING_DIR, f"{doc_id}_structure.json")
+    if not os.path.exists(structure_path):
+        return None
+
+    try:
+        with open(structure_path) as f:
+            structure = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+    # Skip case documents (we only want law/regulation articles)
+    doc_type = structure.get("type", "")
+    if doc_type in ("case", "court_order"):
+        return None
+
+    sections = structure.get("sections", [])
+    if not sections:
+        return None
+
+    articles: dict[str, list[int]] = {}
+    for section in sections:
+        heading = section.get("heading", "")
+        page = section.get("page")
+        if not heading or not page:
+            continue
+
+        key = _heading_to_key(heading)
+        if key is None:
+            continue
+
+        if key not in articles:
+            articles[key] = []
+        if page not in articles[key]:
+            articles[key].append(page)
+
+    return articles if articles else None
 
 
 def classify_document(full_text: str, page_count: int) -> str:
@@ -372,11 +458,15 @@ def extract_subsection_pages(doc: pymupdf.Document, articles: dict[str, list[int
     return subsections
 
 
-def build_index(merge: bool = True):
+def build_index(merge: bool = True, from_docling: bool = False):
     """Build the complete article-to-page reverse index.
 
     If merge=True (default), loads the existing index and preserves manual
     corrections: existing article entries are kept, new ones are added.
+
+    If from_docling=True, reads Docling structure JSON files as primary source
+    for article-page mappings, falling back to regex extraction. Docling entries
+    take precedence over regex-extracted entries for the same key.
     """
     # Load existing index for merge
     existing_index = {}
@@ -409,8 +499,21 @@ def build_index(merge: bool = True):
 
         doc_type = classify_document(full_text, len(doc))
 
-        # Extract article/rule/section mappings
+        # Extract article/rule/section mappings via regex
         article_pages = extract_article_pages(doc)
+
+        # Merge Docling structure if available and requested
+        n_docling = 0
+        if from_docling:
+            docling_articles = extract_articles_from_docling(pdf_id)
+            if docling_articles:
+                # Docling is primary: Docling entries override regex entries
+                merged = dict(article_pages)
+                for k, v in docling_articles.items():
+                    if k not in article_pages:
+                        n_docling += 1
+                    merged[k] = v  # Docling wins on conflict
+                article_pages = merged
 
         # Extract subsection-level pages for LAW/REGULATION documents
         n_subs = 0
@@ -466,8 +569,9 @@ def build_index(merge: bool = True):
         index[pdf_id] = entry
         n_articles = len([k for k in article_pages if "_sub_" not in k])
         sub_info = f", {n_subs} subsections" if n_subs > 0 else ""
+        docling_info = f", +{n_docling} from Docling" if n_docling > 0 else ""
         order_info = f", ORDER pages: {entry.get('order_pages', [])}" if doc_type == "CASE" else ""
-        print(f"  {pdf_id[:20]}... [{doc_type}] {page_count}-page, {n_articles} articles{sub_info}{order_info}")
+        print(f"  {pdf_id[:20]}... [{doc_type}] {page_count}-page, {n_articles} articles{sub_info}{docling_info}{order_info}")
 
     # Save
     with open(OUTPUT, "w") as f:
@@ -486,4 +590,5 @@ def build_index(merge: bool = True):
 if __name__ == "__main__":
     import sys
     merge = "--no-merge" not in sys.argv
-    build_index(merge=merge)
+    from_docling = "--from-docling" in sys.argv
+    build_index(merge=merge, from_docling=from_docling)
