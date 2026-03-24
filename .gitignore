@@ -30,6 +30,7 @@ speed_agent/page_cache.json
 # Claude Code
 .claude/
 .worktrees/
+.planning/
 
 # Cache
 .flashrank_cache/
