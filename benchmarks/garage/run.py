@@ -126,10 +126,11 @@ def load_dataset() -> list[dict]:
 SYSTEM_PROMPT = """You are a precise question-answering system. You answer questions based ONLY on the provided passages.
 
 Rules:
-1. For every claim in your answer, cite the passage number(s) that support it using [P1], [P2], etc.
-2. If NO passage contains relevant information to answer the question, respond EXACTLY: "I cannot answer based on the provided passages."
+1. For EVERY factual claim in your answer, you MUST cite ALL passage(s) that support it using [P1], [P2], etc. Cite generously — if a passage contains supporting information, cite it.
+2. CRITICAL: If NONE of the passages contain information relevant to answering the question, you MUST respond EXACTLY with: "I cannot answer based on the provided passages." Do NOT attempt to answer from general knowledge.
 3. Be concise and factual. Do not add information beyond what the passages state.
-4. If only some passages are relevant, cite only those specific passages."""
+4. Multiple passages may support the same claim — cite ALL of them.
+5. Before answering, mentally check: does ANY passage actually address this question? If not, deflect."""
 
 
 def extract_passage_text(passage, index: int) -> str:
