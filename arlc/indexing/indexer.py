@@ -16,6 +16,58 @@ load_dotenv()
 
 from arlc.llm.router import call_llm
 
+# ---------------------------------------------------------------------------
+# Entity extraction at index time
+# Inspired by CPBD (Azamat Yelmagambetov, 1st place) who indexes entities as
+# a separate BM25 column alongside raw text. We extract entities from each
+# chunk at index time and store them as a metadata field so retrievers can
+# use entity-aware filtering without re-parsing at query time.
+# ---------------------------------------------------------------------------
+
+# Load case metadata for party name entity extraction
+_CASE_METADATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "case_metadata_index.json")
+_case_metadata: dict = {}
+
+def _load_case_metadata() -> dict:
+    global _case_metadata
+    if _case_metadata:
+        return _case_metadata
+    if os.path.exists(_CASE_METADATA_PATH):
+        try:
+            with open(_CASE_METADATA_PATH) as f:
+                _case_metadata = json.load(f)
+        except Exception:
+            pass
+    return _case_metadata
+
+
+# Regex patterns for entity extraction from chunk text
+_ENTITY_PATTERNS = [
+    # Case numbers: SCT 295/2025, CFI 010/2024, ENF-022-2023, etc.
+    re.compile(r'\b((?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+)\b', re.IGNORECASE),
+    # Article references: Article 14, Article 14(2)(b)
+    re.compile(r'\b(Article\s+\d+(?:\(\w+\))*)\b', re.IGNORECASE),
+    # Law number references: Law No. 5 of 2020, DIFC Law No. 2
+    re.compile(r'\b((?:DIFC\s+)?Law\s+No\.?\s*\d+(?:\s+of\s+\d+)?)\b', re.IGNORECASE),
+    # Regulation references: Regulation No. 1
+    re.compile(r'\b(Regulation\s+No\.?\s*\d+)\b', re.IGNORECASE),
+]
+
+
+def extract_entities_from_chunk(text: str) -> list[str]:
+    """Extract legal entities (case IDs, article refs, law names) from chunk text.
+
+    Returns deduplicated list of entity strings, normalized to lowercase.
+    Used at index time to populate the 'entities' metadata field.
+    """
+    entities: set[str] = set()
+    for pattern in _ENTITY_PATTERNS:
+        for match in pattern.findall(text):
+            entity = re.sub(r'\s+', ' ', match.strip()).lower()
+            if entity:
+                entities.add(entity)
+    return sorted(entities)
+
 DOCUMENTS_DIR = "data/documents"
 CHROMA_DIR = "data/chroma_db"
 # Snowflake Arctic Embed L v2.0: 1024-dim, retrieval-optimized (2024), replaces BGE-large-en-v1.5
@@ -372,10 +424,14 @@ def build_index():
             chunk_id = f"{pdf_id}_{chunk_info['page']}_{chunk_info['chunk_idx']}"
             all_ids.append(chunk_id)
             all_texts.append(chunk_info["text"])  # raw text; SAC prefix prepended below
+            # Entity extraction at index time (inspired by CPBD, Azamat Yelmagambetov, 1st place)
+            # Stored as pipe-separated string (ChromaDB metadata requires scalar values).
+            entities = extract_entities_from_chunk(chunk_info["text"])
             all_metadatas.append({
                 "pdf_id": pdf_id,
                 "page": chunk_info["page"],   # 1-based, used for grounding
                 "source_file": pdf_file,
+                "entities": "|".join(entities),  # pipe-separated for ChromaDB scalar compat
             })
             if summary:
                 chunk_key = f"{chunk_info['page']}_{chunk_info['chunk_idx']}"
@@ -436,7 +492,7 @@ def build_index():
         faiss.write_index(index, FAISS_INDEX_PATH)
         print(f"  FAISS index saved: {FAISS_INDEX_PATH} ({index.ntotal} vectors, {dim}-dim)")
 
-        # Save metadata mapping: index position -> {chunk_id, doc_id, page, text}
+        # Save metadata mapping: index position -> {chunk_id, doc_id, page, text, entities}
         faiss_metadata = []
         for i in range(len(all_ids)):
             faiss_metadata.append({
@@ -445,6 +501,8 @@ def build_index():
                 "page": all_metadatas[i]["page"],
                 "source_file": all_metadatas[i]["source_file"],
                 "text": all_texts[i],
+                # Entities extracted at index time (pipe-separated string)
+                "entities": all_metadatas[i].get("entities", ""),
             })
         with open(FAISS_METADATA_PATH, "w") as f:
             json.dump(faiss_metadata, f)

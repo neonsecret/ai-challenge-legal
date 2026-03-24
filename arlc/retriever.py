@@ -256,8 +256,16 @@ def _faiss_get_all() -> dict:
     _, metadata = _load_faiss()
     ids = [entry["chunk_id"] for entry in metadata]
     documents = [entry["text"] for entry in metadata]
-    metadatas = [{"pdf_id": entry["pdf_id"], "page": entry["page"],
-                  "source_file": entry["source_file"]} for entry in metadata]
+    metadatas = [
+        {
+            "pdf_id": entry["pdf_id"],
+            "page": entry["page"],
+            "source_file": entry["source_file"],
+            # entities field added at index time (CPBD-inspired); may be absent in old indexes
+            **({"entities": entry["entities"]} if entry.get("entities") else {}),
+        }
+        for entry in metadata
+    ]
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
 
@@ -277,8 +285,11 @@ def _faiss_get_by_ids(chunk_ids: list[str]) -> dict:
         if entry:
             ids.append(entry["chunk_id"])
             documents.append(entry["text"])
-            metadatas.append({"pdf_id": entry["pdf_id"], "page": entry["page"],
-                              "source_file": entry["source_file"]})
+            meta = {"pdf_id": entry["pdf_id"], "page": entry["page"],
+                    "source_file": entry["source_file"]}
+            if entry.get("entities"):
+                meta["entities"] = entry["entities"]
+            metadatas.append(meta)
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
 
@@ -1007,13 +1018,19 @@ USE_MULTI_SIGNAL_FUSION = True  # Enable/disable multi-signal document fusion
 PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
 
 # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
+# top_k: retrieval depth — how many candidates to pull before reranking.
+# Inspired by CPBD (Azamat Yelmagambetov, 1st place) who swept 22 depth values.
+# - free_text: 100 — broad context needed; content may span many pages
+# - name/names: 80 — comparison questions need both docs represented in pool
+# - boolean/number: 50 — usually pinpointed to a specific page or article
+# - date: 30 — almost always metadata page 1-2; deeper pool adds noise
 RETRIEVAL_CONFIGS = {
-    "boolean": {"top_k": 128, "max_docs": 3, "max_pages": 3},
-    "number":  {"top_k": 128, "max_docs": 2, "max_pages": 2},
-    "date":    {"top_k": 64,  "max_docs": 2, "max_pages": 1},
-    "name":    {"top_k": 128, "max_docs": 3, "max_pages": 3},
-    "names":   {"top_k": 128, "max_docs": 3, "max_pages": 3},
-    "free_text": {"top_k": 64, "max_docs": 4, "max_pages": 5},
+    "boolean":   {"top_k": 50,  "max_docs": 3, "max_pages": 3},
+    "number":    {"top_k": 50,  "max_docs": 2, "max_pages": 2},
+    "date":      {"top_k": 30,  "max_docs": 2, "max_pages": 1},
+    "name":      {"top_k": 80,  "max_docs": 3, "max_pages": 3},
+    "names":     {"top_k": 80,  "max_docs": 3, "max_pages": 3},
+    "free_text": {"top_k": 100, "max_docs": 4, "max_pages": 5},
 }
 
 DOC_FUSION_WEIGHTS = {
@@ -1030,6 +1047,7 @@ DOC_FUSION_GAP_THRESHOLD = 0.15  # Adaptive doc selection gap
 def _doc_fusion_select(
     question: str,
     max_docs: int = 3,
+    answer_type: str = "",
 ) -> list[str] | None:
     """Select target documents using multi-signal fusion.
 
@@ -1042,9 +1060,16 @@ def _doc_fusion_select(
     3. dense_rrf — dense RRF rank score per doc
     4. bm25_doc — document-level BM25 score
     5. bm25_page1 — page-1-only BM25 score
+
+    Per-type retrieval depth (inspired by CPBD, Azamat Yelmagambetov, 1st place):
+    top_k is taken from RETRIEVAL_CONFIGS[answer_type] when available.
     """
     if not USE_MULTI_SIGNAL_FUSION:
         return None
+
+    # Per-type top_k: use answer_type config if available
+    type_cfg = RETRIEVAL_CONFIGS.get(answer_type, {})
+    fusion_top_k = type_cfg.get("top_k", 128)
 
     # Load all required indexes
     bm25_all, bm25_all_ids = build_bm25_index()
@@ -1078,7 +1103,7 @@ def _doc_fusion_select(
     query_tokens = legal_tokenize_queries(question)
 
     # --- Signal 1: BM25 standard (max page score per doc) ---
-    bm25_results, bm25_scores = bm25_all.retrieve(query_tokens, k=min(128, len(bm25_all_ids)))
+    bm25_results, bm25_scores = bm25_all.retrieve(query_tokens, k=min(fusion_top_k, len(bm25_all_ids)))
     bm25_std_doc_scores: dict[str, float] = {}
     indices = bm25_results[0] if len(bm25_results.shape) > 1 else bm25_results
     scores_arr = bm25_scores[0] if len(bm25_scores.shape) > 1 else bm25_scores
@@ -1099,10 +1124,10 @@ def _doc_fusion_select(
     # --- Signal 2 & 3: Dense embedding scores + RRF ---
     query_emb = embed_query(question)
     if _use_faiss():
-        dense_n = min(128, _faiss_count())
+        dense_n = min(fusion_top_k, _faiss_count())
         vector_results = _search_faiss(query_emb, top_k=dense_n)
     else:
-        dense_n = min(128, collection.count())
+        dense_n = min(fusion_top_k, collection.count())
         vector_results = collection.query(
             query_embeddings=[query_emb],
             n_results=dense_n,
@@ -1133,7 +1158,7 @@ def _doc_fusion_select(
         dense_rrf_doc_scores[d] /= max_dense_rrf
 
     # --- Signal 4: BM25 doc-level ---
-    bm25_doc_results, bm25_doc_scores = bm25_doc_idx.retrieve(query_tokens, k=min(64, len(bm25_doc_doc_ids)))
+    bm25_doc_results, bm25_doc_scores = bm25_doc_idx.retrieve(query_tokens, k=min(fusion_top_k, len(bm25_doc_doc_ids)))
     bm25_doc_doc_scored: dict[str, float] = {}
     d_indices = bm25_doc_results[0] if len(bm25_doc_results.shape) > 1 else bm25_doc_results
     d_scores = bm25_doc_scores[0] if len(bm25_doc_scores.shape) > 1 else bm25_doc_scores
@@ -1148,7 +1173,7 @@ def _doc_fusion_select(
         bm25_doc_doc_scored[d] /= max_bm25_doc
 
     # --- Signal 5: BM25 page1 ---
-    bm25_p1_results, bm25_p1_scores = bm25_p1_idx.retrieve(query_tokens, k=min(64, len(bm25_p1_ids)))
+    bm25_p1_results, bm25_p1_scores = bm25_p1_idx.retrieve(query_tokens, k=min(fusion_top_k, len(bm25_p1_ids)))
     bm25_p1_doc_scored: dict[str, float] = {}
     p1_indices = bm25_p1_results[0] if len(bm25_p1_results.shape) > 1 else bm25_p1_results
     p1_scores = bm25_p1_scores[0] if len(bm25_p1_scores.shape) > 1 else bm25_p1_scores
@@ -1330,16 +1355,22 @@ def _extract_article_filter(question: str) -> str | None:
     return None
 
 
-def retrieve(question: str, n_results: int = 15, use_hyde: bool = True) -> list[dict]:
+def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_type: str = "") -> list[dict]:
     """
     Hybrid retrieval: keyword match + BM25 + vector search with RRF.
 
     For questions with keyword matches (specific case/law): return up to 25 chunks.
     For pure vector questions: return 15 chunks using BM25 + vector RRF (+ HyDE if enabled).
 
+    answer_type: when provided, overrides n_results with per-type top_k from RETRIEVAL_CONFIGS.
+    Inspired by CPBD (Azamat Yelmagambetov, 1st place) who swept 22 depth values per type.
+
     NEW: Metadata-aware filtering when question mentions specific articles.
     NEW: Query decomposition for multi-hop cross-document questions.
     """
+    # Per-type retrieval depth: RETRIEVAL_CONFIGS[answer_type]["top_k"] overrides n_results
+    if answer_type and answer_type in RETRIEVAL_CONFIGS:
+        n_results = RETRIEVAL_CONFIGS[answer_type]["top_k"]
     # Multi-hop query decomposition: disabled for now (causes pipeline hangs in parallel)
     if False and detect_multi_hop(question):
         sub_queries = decompose_query(question)
@@ -2097,6 +2128,28 @@ def _retrieve_pages_targeted(
     all_page_scores.sort(key=lambda p: p.score, reverse=True)
     if case_doc_groups and len(case_doc_groups) >= 2:
         results = _fair_case_select(all_page_scores, case_doc_groups, max_total)
+    elif len(target_doc_ids) >= 2:
+        # Post-fusion minimum page heuristic: for multi-doc comparison questions,
+        # ensure BOTH documents contribute at least 1 page to the final result.
+        # Without this, a high-scoring doc can crowd out the second doc entirely.
+        # Inspired by CPBD (Azamat Yelmagambetov, 1st place) doc_rescue heuristic.
+        doc_represented = {p.doc_id for p in all_page_scores[:max_total]}
+        results = list(all_page_scores[:max_total])
+        for doc_id in target_doc_ids:
+            if doc_id not in doc_represented and len(results) >= 1:
+                # Find the best page for this doc from all_page_scores
+                for candidate in all_page_scores:
+                    if candidate.doc_id == doc_id:
+                        # Replace the lowest-scoring result to make room
+                        if len(results) >= max_total:
+                            results[-1] = candidate
+                        else:
+                            results.append(candidate)
+                        doc_represented.add(doc_id)
+                        print(f"[retriever] post-fusion rescue: injected {doc_id[:12]}:p{candidate.page_number} "
+                              f"(score={candidate.score:.3f}) to ensure multi-doc coverage")
+                        break
+        results.sort(key=lambda p: p.score, reverse=True)
     else:
         results = all_page_scores[:max_total]
 
@@ -2115,8 +2168,8 @@ def _retrieve_pages_fallback(
     answer_type: str,
 ) -> list[PageResult]:
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
-    # Use existing hybrid retrieval to get ranked chunks
-    chunks = retrieve(question, n_results=25, use_hyde=False)
+    # Use existing hybrid retrieval to get ranked chunks — pass answer_type for per-type depth
+    chunks = retrieve(question, n_results=25, use_hyde=False, answer_type=answer_type)
 
     if not chunks:
         return []
