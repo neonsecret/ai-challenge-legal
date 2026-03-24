@@ -12,9 +12,11 @@ import argparse
 import json
 import os
 import sys
+import threading
 import zipfile
 from pathlib import Path
 
+import numpy as np
 import requests
 
 # ---------------------------------------------------------------------------
@@ -31,6 +33,20 @@ DATA_DIR = BENCH_DIR / "data"
 CORPUS_DIR = DATA_DIR / "corpus"
 BENCHMARKS_DIR = DATA_DIR / "benchmarks"
 RESULTS_PATH = BENCH_DIR / "results.json"
+INDEX_DIR = DATA_DIR / "index"
+FAISS_INDEX_PATH = INDEX_DIR / "faiss_index.bin"
+FAISS_METADATA_PATH = INDEX_DIR / "faiss_metadata.json"
+BM25_CACHE_DIR = INDEX_DIR / "bm25_cache"
+BM25_IDS_PATH = BM25_CACHE_DIR / "corpus_ids.json"
+
+# Module-level caches
+_faiss_index = None
+_faiss_metadata = None
+_bm25_index = None
+_bm25_ids = None
+_embedding_model = None
+_reranker = None
+_reranker_lock = threading.Lock()
 
 # Dropbox download URL for pre-generated data
 DROPBOX_URL = "https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4?dl=1"
@@ -96,45 +112,122 @@ def load_benchmarks() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Index loading
+# ---------------------------------------------------------------------------
+
+def _load_faiss():
+    """Load FAISS index and metadata (cached)."""
+    global _faiss_index, _faiss_metadata
+    if _faiss_index is None:
+        import faiss
+        _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
+        with open(FAISS_METADATA_PATH) as f:
+            _faiss_metadata = json.load(f)
+        print(f"[legalbench-rag] FAISS index loaded: {_faiss_index.ntotal} vectors")
+    return _faiss_index, _faiss_metadata
+
+
+def _load_bm25():
+    """Load BM25 index and chunk IDs (cached)."""
+    global _bm25_index, _bm25_ids
+    if _bm25_index is None:
+        import bm25s
+        _bm25_index = bm25s.BM25.load(str(BM25_CACHE_DIR))
+        with open(BM25_IDS_PATH) as f:
+            _bm25_ids = json.load(f)
+        print(f"[legalbench-rag] BM25 index loaded: {len(_bm25_ids)} chunks")
+    return _bm25_index, _bm25_ids
+
+
+def _get_embedding_model():
+    """Get embedding model (cached)."""
+    global _embedding_model
+    if _embedding_model is None:
+        from sentence_transformers import SentenceTransformer
+        import torch
+        device = (
+            'mps' if torch.backends.mps.is_available()
+            else 'cuda' if torch.cuda.is_available()
+            else 'cpu'
+        )
+        _embedding_model = SentenceTransformer(
+            "Snowflake/snowflake-arctic-embed-l-v2.0",
+            device=device,
+            trust_remote_code=True,
+        )
+    return _embedding_model
+
+
+# ---------------------------------------------------------------------------
 # Retrieval adapter: map our pipeline output to character spans
 # ---------------------------------------------------------------------------
 
 def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
-    """Run our retriever on a query and return retrieved text spans.
+    """Hybrid BM25 + vector retrieval over LegalBench-RAG corpus.
 
     Returns list of {"file": str, "start": int, "end": int, "text": str}.
-    We use full-corpus retrieval since legalbench-rag has its own corpus.
+    Note: No cross-encoder reranking — paper found rerankers HURT on legal text.
     """
-    from arlc.retriever import retrieve
+    from arlc.indexing.legal_tokenizer import legal_tokenize_queries
 
-    # Use our retriever in full-corpus mode (no target doc IDs)
-    results = retrieve(query, n_results=10, use_hyde=False)
+    has_faiss = FAISS_INDEX_PATH.exists()
+    has_bm25 = BM25_CACHE_DIR.exists()
 
-    # Map retrieved chunks back to character positions in corpus files.
-    # Our retriever returns chunks with doc_id and text. We do a simple
-    # substring search to find character spans in the corpus files.
-    spans = []
-    for chunk in results:
-        text = chunk.get("text", "")
-        doc_id = chunk.get("doc_id", "")
-        if not text or not doc_id:
-            continue
+    if not has_faiss and not has_bm25:
+        raise RuntimeError(
+            "No indexes found. Run build_index.py first:\n"
+            "  python benchmarks/legalbench-rag/build_index.py"
+        )
 
-        # Search for this text in corpus files
-        for corpus_file in corpus_dir.rglob("*.txt"):
-            try:
-                content = corpus_file.read_text(encoding="utf-8", errors="replace")
-            except Exception:
+    # Score by chunk_id (int index into metadata)
+    scores = {}  # chunk_id -> score
+
+    # --- Vector search ---
+    if has_faiss:
+        index, metadata = _load_faiss()
+        model = _get_embedding_model()
+        query_emb = model.encode(query, prompt_name='query', normalize_embeddings=True)
+        query_np = np.array([query_emb], dtype='float32')
+        import faiss
+        faiss.normalize_L2(query_np)
+        k_vec = min(50, index.ntotal)
+        D, I = index.search(query_np, k_vec)
+        for j in range(k_vec):
+            idx = int(I[0][j])
+            if idx < 0:
                 continue
-            idx = content.find(text[:200])  # match on first 200 chars
-            if idx >= 0:
-                spans.append({
-                    "file": str(corpus_file.relative_to(corpus_dir)),
-                    "start": idx,
-                    "end": idx + len(text),
-                    "text": text,
-                })
-                break
+            scores[idx] = float(D[0][j])
+
+    # --- BM25 search ---
+    if has_bm25:
+        bm25, bm25_ids = _load_bm25()
+        tokenized_q = legal_tokenize_queries(query)
+        results, bm25_scores = bm25.retrieve(tokenized_q, k=50)
+        for j in range(len(results[0])):
+            chunk_idx = int(results[0][j])
+            if chunk_idx < 0:
+                continue
+            bm25_score = float(bm25_scores[0][j])
+            if chunk_idx in scores:
+                scores[chunk_idx] += bm25_score * 0.3
+            else:
+                scores[chunk_idx] = bm25_score * 0.3
+
+    # Sort by score, take top 10 (paper uses k=10)
+    ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
+
+    _, metadata = _load_faiss()
+    spans = []
+    for chunk_idx, _ in ranked:
+        if chunk_idx >= len(metadata):
+            continue
+        entry = metadata[chunk_idx]
+        spans.append({
+            "file": entry["file"],
+            "start": entry["start"],
+            "end": entry["end"],
+            "text": entry["text"],
+        })
 
     return spans
 

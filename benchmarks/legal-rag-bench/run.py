@@ -14,8 +14,11 @@ import json
 import os
 import re
 import sys
+import threading
 from difflib import SequenceMatcher
 from pathlib import Path
+
+import numpy as np
 
 # ---------------------------------------------------------------------------
 # Path setup
@@ -28,6 +31,20 @@ from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
 RESULTS_PATH = BENCH_DIR / "results.json"
+DATA_DIR = BENCH_DIR / "data"
+FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
+FAISS_METADATA_PATH = DATA_DIR / "faiss_metadata.json"
+BM25_CACHE_DIR = DATA_DIR / "bm25_cache"
+BM25_IDS_PATH = BM25_CACHE_DIR / "corpus_ids.json"
+
+# Module-level caches
+_faiss_index = None
+_faiss_metadata = None
+_bm25_index = None
+_bm25_ids = None
+_embedding_model = None
+_reranker = None
+_reranker_lock = threading.Lock()
 
 
 # ---------------------------------------------------------------------------
@@ -57,40 +74,180 @@ def build_corpus_index(corpus_ds) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Index loading
+# ---------------------------------------------------------------------------
+
+def _load_faiss():
+    """Load FAISS index and metadata (cached)."""
+    global _faiss_index, _faiss_metadata
+    if _faiss_index is None:
+        import faiss
+        _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
+        with open(FAISS_METADATA_PATH) as f:
+            _faiss_metadata = json.load(f)
+        print(f"[legal-rag-bench] FAISS index loaded: {_faiss_index.ntotal} vectors")
+    return _faiss_index, _faiss_metadata
+
+
+def _load_bm25():
+    """Load BM25 index and corpus IDs (cached)."""
+    global _bm25_index, _bm25_ids
+    if _bm25_index is None:
+        import bm25s
+        _bm25_index = bm25s.BM25.load(str(BM25_CACHE_DIR))
+        with open(BM25_IDS_PATH) as f:
+            _bm25_ids = json.load(f)
+        print(f"[legal-rag-bench] BM25 index loaded: {len(_bm25_ids)} documents")
+    return _bm25_index, _bm25_ids
+
+
+def _get_embedding_model():
+    """Get embedding model (cached)."""
+    global _embedding_model
+    if _embedding_model is None:
+        from sentence_transformers import SentenceTransformer
+        import torch
+        device = (
+            'mps' if torch.backends.mps.is_available()
+            else 'cuda' if torch.cuda.is_available()
+            else 'cpu'
+        )
+        _embedding_model = SentenceTransformer(
+            "Snowflake/snowflake-arctic-embed-l-v2.0",
+            device=device,
+            trust_remote_code=True,
+        )
+    return _embedding_model
+
+
+def _get_reranker():
+    """Get cross-encoder reranker (cached)."""
+    global _reranker
+    if _reranker is None:
+        from sentence_transformers import CrossEncoder
+        import torch
+        _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=1024)
+        if torch.backends.mps.is_available():
+            _reranker.model.to('mps')
+    return _reranker
+
+
+# ---------------------------------------------------------------------------
+# Hybrid retrieval
+# ---------------------------------------------------------------------------
+
+def _hybrid_retrieve(question: str, top_k: int = 3) -> list[dict]:
+    """Hybrid BM25 + vector + cross-encoder retrieval over the benchmark corpus.
+
+    Returns list of {"id": str, "text": str, "title": str} for top_k passages.
+    """
+    from arlc.indexing.legal_tokenizer import legal_tokenize_queries
+
+    has_faiss = FAISS_INDEX_PATH.exists()
+    has_bm25 = BM25_CACHE_DIR.exists()
+
+    if not has_faiss and not has_bm25:
+        raise RuntimeError(
+            "No indexes found. Run build_index.py first:\n"
+            "  python benchmarks/legal-rag-bench/build_index.py"
+        )
+
+    candidates = {}  # id -> {"text", "title", "score"}
+
+    # --- Vector search ---
+    if has_faiss:
+        index, metadata = _load_faiss()
+        model = _get_embedding_model()
+        query_emb = model.encode(question, prompt_name='query', normalize_embeddings=True)
+        query_np = np.array([query_emb], dtype='float32')
+        import faiss
+        faiss.normalize_L2(query_np)
+        k_vec = min(50, index.ntotal)
+        D, I = index.search(query_np, k_vec)
+        for j in range(k_vec):
+            idx = int(I[0][j])
+            if idx < 0:
+                continue
+            entry = metadata[idx]
+            pid = entry["id"]
+            sim = float(D[0][j])
+            if pid not in candidates or sim > candidates[pid]["score"]:
+                candidates[pid] = {
+                    "text": entry["text"],
+                    "title": entry.get("title", ""),
+                    "score": sim,
+                }
+
+    # --- BM25 search ---
+    if has_bm25:
+        bm25, bm25_ids = _load_bm25()
+        tokenized_q = legal_tokenize_queries(question)
+        results, scores = bm25.retrieve(tokenized_q, k=50)
+        for j in range(len(results[0])):
+            doc_idx = int(results[0][j])
+            if doc_idx < 0 or doc_idx >= len(bm25_ids):
+                continue
+            pid = bm25_ids[doc_idx]
+            bm25_score = float(scores[0][j])
+            if pid in candidates:
+                # Boost: add normalized BM25 score to vector score
+                candidates[pid]["score"] += bm25_score * 0.3
+            elif has_faiss:
+                # BM25-only hit: need text from FAISS metadata
+                _, metadata = _load_faiss()
+                for entry in metadata:
+                    if entry["id"] == pid:
+                        candidates[pid] = {
+                            "text": entry["text"],
+                            "title": entry.get("title", ""),
+                            "score": bm25_score * 0.3,
+                        }
+                        break
+
+    # --- Cross-encoder reranking ---
+    candidate_list = [
+        {"id": pid, **info} for pid, info in candidates.items()
+    ]
+    # Pre-filter to top 20 by fusion score before expensive reranking
+    candidate_list.sort(key=lambda x: x["score"], reverse=True)
+    candidate_list = candidate_list[:20]
+
+    if len(candidate_list) > top_k:
+        reranker = _get_reranker()
+        pairs = [(question, c["text"][:2000]) for c in candidate_list]
+        with _reranker_lock:
+            rerank_scores = reranker.predict(pairs)
+        for i, score in enumerate(rerank_scores):
+            candidate_list[i]["score"] = float(score)
+        candidate_list.sort(key=lambda x: x["score"], reverse=True)
+
+    return candidate_list[:top_k]
+
+
+# ---------------------------------------------------------------------------
 # Pipeline adapter
 # ---------------------------------------------------------------------------
 
 async def run_pipeline(question: str, corpus_index: dict) -> dict:
-    """Run our pipeline on a question against the Legal RAG Bench corpus.
-
-    Since our pipeline is built for DIFC documents, we adapt by:
-    1. Using full-corpus retrieval mode (no routing)
-    2. Treating each corpus passage as a virtual document page
-    3. Generating an answer with our answerer
+    """Run our hybrid pipeline on a question against the Legal RAG Bench corpus.
 
     Returns dict with: answer, retrieved_passage_ids, contexts
     """
     from arlc.answerer import generate_answer
 
-    # For this benchmark, we do a simple text similarity retrieval
-    # against the corpus passages since our retriever is DIFC-specific.
-    # This measures our answerer's quality given relevant context.
-    retrieved_ids = _simple_retrieve(question, corpus_index, top_k=3)
+    retrieved = _hybrid_retrieve(question, top_k=3)
+    retrieved_ids = [r["id"] for r in retrieved]
 
-    # Build source pages from retrieved passages
     source_pages = []
     contexts = []
-    for pid in retrieved_ids:
-        passage = corpus_index.get(pid, {})
-        text = passage.get("text", "")
-        contexts.append(text)
+    for r in retrieved:
+        contexts.append(r["text"])
         source_pages.append({
-            "doc_id": pid,
+            "doc_id": r["id"],
             "page_number": 1,
-            "text": text,
+            "text": r["text"],
         })
 
-    # Generate answer (async)
     answer_result = await generate_answer(
         question=question,
         answer_type="free_text",
@@ -102,29 +259,6 @@ async def run_pipeline(question: str, corpus_index: dict) -> dict:
         "retrieved_passage_ids": retrieved_ids,
         "contexts": contexts,
     }
-
-
-def _simple_retrieve(question: str, corpus_index: dict, top_k: int = 3) -> list[str]:
-    """Simple BM25-style keyword retrieval over corpus passages.
-
-    This is a lightweight retrieval fallback for benchmarks where our
-    DIFC-specific retriever doesn't apply directly.
-    """
-    query_terms = set(re.findall(r'\w+', question.lower()))
-
-    scores = []
-    for pid, passage in corpus_index.items():
-        text = passage.get("text", "").lower()
-        # Simple term overlap scoring
-        doc_terms = set(re.findall(r'\w+', text))
-        if not doc_terms:
-            continue
-        overlap = len(query_terms & doc_terms)
-        score = overlap / (len(query_terms) + 1)  # +1 to avoid division by zero
-        scores.append((pid, score))
-
-    scores.sort(key=lambda x: x[1], reverse=True)
-    return [pid for pid, _ in scores[:top_k]]
 
 
 # ---------------------------------------------------------------------------
