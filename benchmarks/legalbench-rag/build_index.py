@@ -27,7 +27,7 @@ DATA_DIR = BENCH_DIR / "data"
 CORPUS_DIR = DATA_DIR / "corpus"
 INDEX_DIR = DATA_DIR / "index"
 
-DROPBOX_URL = "https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4?dl=1"
+DROPBOX_URL = "https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4?rlkey=5n8zrbk4c08lbit3iiexofmwg&st=0hu354cq&dl=1"
 
 # RCTS chunking parameters (matches paper's best config)
 CHUNK_SIZE = 500

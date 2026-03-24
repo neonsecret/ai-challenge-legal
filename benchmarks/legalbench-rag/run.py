@@ -49,7 +49,7 @@ _reranker = None
 _reranker_lock = threading.Lock()
 
 # Dropbox download URL for pre-generated data
-DROPBOX_URL = "https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4?dl=1"
+DROPBOX_URL = "https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4?rlkey=5n8zrbk4c08lbit3iiexofmwg&st=0hu354cq&dl=1"
 
 
 # ---------------------------------------------------------------------------
