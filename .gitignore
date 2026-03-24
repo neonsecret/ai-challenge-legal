@@ -37,6 +37,9 @@ speed_agent/page_cache.json
 .pytest_cache/
 .chroma/
 
+# Paper drafts (not for public repo)
+paper/
+
 # Other
 other_people/
 tmp/
