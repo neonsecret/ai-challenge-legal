@@ -161,7 +161,7 @@ def main():
         texts,
         normalize_embeddings=True,
         show_progress_bar=True,
-        batch_size=64,
+        batch_size=16,
     )
 
     print("[build_index] Building FAISS index...")
