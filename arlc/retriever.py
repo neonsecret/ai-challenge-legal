@@ -123,10 +123,12 @@ def get_reranker() -> CrossEncoder:
         with _reranker_lock:
             if _reranker is None:
                 import torch
-                _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=1024)
-                # Enable MPS GPU acceleration on Apple Silicon (3x speedup for typical batch sizes)
-                if torch.backends.mps.is_available():
-                    _reranker.model.to('mps')
+                device = (
+                    'cuda' if torch.cuda.is_available()
+                    else 'mps' if torch.backends.mps.is_available()
+                    else 'cpu'
+                )
+                _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=1024, device=device)
     return _reranker
 
 
