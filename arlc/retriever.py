@@ -1799,6 +1799,10 @@ def _retrieve_pages_targeted(
     case_doc_groups: dict[str, list[str]] | None = None,
 ) -> list[PageResult]:
     """Retrieve pages by reranking all chunks from target documents."""
+    # Small-doc full inclusion: for documents with ≤8 pages, skip reranking and
+    # return all pages. Avoids cross-encoder mistakes on short documents where a
+    # wrong page choice is particularly costly. (Inspired by Vitaliy Pokrovskiy, 3rd place)
+    SMALL_DOC_THRESHOLD = int(os.environ.get("SMALL_DOC_PAGES", "8"))
     chunks_by_doc_map = get_chunks_by_doc()
     ranker = get_reranker()
 
@@ -1852,6 +1856,25 @@ def _retrieve_pages_targeted(
     for doc_id in target_doc_ids:
         doc_chunks = chunks_by_doc_map.get(doc_id, [])
         if not doc_chunks:
+            continue
+
+        # Small-doc full inclusion: return ALL pages for short documents
+        # to avoid cross-encoder selection errors on docs where every page matters.
+        unique_pages = set(c["metadata"].get("page", 1) for c in doc_chunks)
+        if len(unique_pages) <= SMALL_DOC_THRESHOLD:
+            for pg in sorted(unique_pages):
+                # Find the chunk with most text for this page
+                best_chunk = max(
+                    (c for c in doc_chunks if c["metadata"].get("page", 1) == pg),
+                    key=lambda c: len(c.get("text", "")),
+                )
+                all_page_scores.append(PageResult(
+                    doc_id=doc_id,
+                    page_number=pg,
+                    score=1.0,  # all pages equally scored for small docs
+                    text=best_chunk.get("text", ""),
+                ))
+            print(f"[retriever] small-doc full inclusion: {doc_id[:12]} ({len(unique_pages)} pages)")
             continue
 
         # Dense-only page ranking insight from IAS Partners (guy4)
