@@ -148,16 +148,19 @@ After the competition ended, we studied other participants' published approaches
 
 | Technique | Inspired By | Description |
 |-----------|------------|-------------|
-| Docling PDF extraction | [IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack), guy3 (structure-first) | Structural PDF parsing replacing raw PyMuPDF |
-| Multi-signal document fusion | [IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack) (Ivanov, Agishev, Sadchikov) | 5-weight doc fusion, dense-only page ranking |
-| Custom legal tokenizer | [IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack) | Compound legal reference expansion for BM25 |
+| Docling PDF extraction | [Alexander Ivanov / IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack), [Maksim Metelskii](https://www.linkedin.com/posts/maksim-metelskii_agentic-legal-rag-challenge-activity-7441865119560601600-WuyP) | Structural PDF parsing replacing raw PyMuPDF |
+| Multi-signal document fusion | [Alexander Ivanov / IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack) | 5-weight doc fusion, dense-only page ranking |
+| Custom legal tokenizer | [Alexander Ivanov / IAS Partners](https://github.com/iamalexandreevich/ai-agentic-legal-rag-hack) | Compound legal reference expansion for BM25 |
 | IndexRAG (AKU extraction, bridging facts) | [Bao & Shi, 2026](https://arxiv.org/abs/2603.16415) (Continuum AI) | QA-structured facts + cross-reference graph at index time |
-| Typed document ontology concept | DotaGPT author (private post) | Structural navigation instead of embedding search |
-| Embedding decontamination | guy3 (structure-first methodology) | Strip boilerplate before embedding, preserve for BM25 |
-| Structured reasoning with grounding | guy3 (structure-first methodology) | Force LLM to cite page evidence per claim |
-| Gemini PDF preprocessing insight | DotaGPT author | Vision models for image-embedded structural elements |
+| Typed document ontology | [Dmitry Savostyanov](https://t.me/savostyanov_dmitry/734) (DotaGPT agent approach) | Structural navigation instead of embedding search |
+| Embedding decontamination | [Maksim Metelskii](https://www.linkedin.com/posts/maksim-metelskii_agentic-legal-rag-challenge-activity-7441865119560601600-WuyP) (structure-first methodology) | Strip boilerplate before embedding, preserve for BM25 |
+| Structured reasoning with grounding | [Maksim Metelskii](https://www.linkedin.com/posts/maksim-metelskii_agentic-legal-rag-challenge-activity-7441865119560601600-WuyP) | Force LLM to cite page evidence per claim |
+| Gemini PDF preprocessing | [Dmitry Savostyanov](https://t.me/savostyanov_dmitry/735) | Vision models for image-embedded structural elements |
+| Evaluation tooling insights | [Dmitry Donchenko / mlboost](https://x.com/dmitry_ml/status/2036139258373616051) | Visual review UI + LLM-as-judge for batch evaluation |
+| Scoring methodology insights | [Dmitry Stepanov](https://medium.com/@stepdi/building-a-legal-rag-system-lessons-from-the-arlc-2026-d3818deeb0c1) | Structured output via tool_use, reranker tradeoffs |
+| Top-3 pipeline insights | [Vitaliy Pokrovskiy](https://www.linkedin.com/pulse/3rd-place-out-155-teams-what-i-learned-building-rag-legal-pokrovskiy-yzuof) | Agentic RAG approach, 3rd place warmup |
 
-Thank you to all participants who shared their approaches — it made everyone's systems better.
+Thank you to all participants who shared their approaches — the open exchange of ideas after the competition made everyone's systems better.
 
 ## Benchmark Results
 
