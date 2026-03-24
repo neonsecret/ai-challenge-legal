@@ -357,17 +357,32 @@ def extract_pages(pdf_path: str) -> list[dict]:
 
 
 def _get_embedding_function():
-    """Get the SentenceTransformer embedding function for the configured model.
+    """Get the SentenceTransformer embedding model with GPU auto-detection.
 
-    Arctic Embed v2.0 requires trust_remote_code=True.
+    Uses SentenceTransformer directly (not chromadb's wrapper) so we can
+    control the device — CUDA > MPS > CPU.  Arctic Embed v2.0 requires
+    trust_remote_code=True.
     """
+    import torch
+    from sentence_transformers import SentenceTransformer
+
+    device = (
+        'cuda' if torch.cuda.is_available()
+        else 'mps' if torch.backends.mps.is_available()
+        else 'cpu'
+    )
     model_kwargs = {}
     if "arctic" in EMBEDDING_MODEL.lower():
         model_kwargs["trust_remote_code"] = True
-    return embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=EMBEDDING_MODEL,
-        **model_kwargs,
-    )
+    model = SentenceTransformer(EMBEDDING_MODEL, device=device, **model_kwargs)
+    print(f"  Embedding model loaded on {device}")
+
+    def encode(texts: list[str]) -> list[list[float]]:
+        embeddings = model.encode(texts, normalize_embeddings=True,
+                                  batch_size=256, show_progress_bar=True)
+        return embeddings.tolist()
+
+    return encode
 
 
 def build_index():
@@ -392,9 +407,21 @@ def build_index():
     except Exception:
         pass
 
+    # ChromaDB collection — we pass pre-computed embeddings so no embedding_function needed.
+    # Query-time uses FAISS, not ChromaDB. Kept for backward compat only.
+    chroma_ef = None
+    if "arctic" in EMBEDDING_MODEL.lower():
+        chroma_ef_kwargs = {"trust_remote_code": True}
+    else:
+        chroma_ef_kwargs = {}
+    try:
+        chroma_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=EMBEDDING_MODEL, **chroma_ef_kwargs)
+    except Exception:
+        pass  # ChromaDB query-time embedding not critical — FAISS is primary
     collection = client.create_collection(
         name="legal_docs",
-        embedding_function=ef,
+        embedding_function=chroma_ef,
         metadata={"hnsw:space": "cosine"},
     )
 
