@@ -142,17 +142,24 @@ def llm_rerank_pages(
 
     candidates_block = "\n\n---\n\n".join(candidate_blocks)
 
+    # Recall-biased LLM reranker prompt — inspired by CPBD (1st place, G=0.990).
+    # Key insight: "Missing a gold page is ~6x worse than including a marginally
+    # relevant page" (F-beta 2.5 scoring). Bias scoring toward INCLUSION.
     prompt = (
         f"You are a legal document relevance expert.\n\n"
         f"QUESTION: {question}\n\n"
         f"Rate each candidate page's relevance to answering the question above.\n"
         f"Score 0.0 (not relevant) to 1.0 (directly answers the question).\n\n"
+        f"CRITICAL BIAS: When uncertain whether a page is relevant, ROUND UP.\n"
+        f"Missing a relevant page is approximately 6x worse than including a\n"
+        f"marginally relevant one. When in doubt, score higher.\n\n"
         f"Scoring guide:\n"
         f"  1.0 — Page directly and completely answers the question\n"
         f"  0.8 — Page contains the key legal provision or fact asked about\n"
-        f"  0.6 — Page contains related information but not the direct answer\n"
-        f"  0.3 — Page is tangentially related to the topic\n"
-        f"  0.0 — Page is not relevant to this question\n\n"
+        f"  0.6 — Page contains related information or supporting context\n"
+        f"  0.4 — Page is possibly relevant — score here when UNCERTAIN\n"
+        f"  0.1 — Page is very unlikely to be relevant\n"
+        f"  0.0 — Page is clearly not relevant to this question\n\n"
         f"CANDIDATE PAGES:\n\n"
         f"{candidates_block}\n\n"
         f"Output ONLY a valid JSON object mapping candidate number strings to float scores.\n"
