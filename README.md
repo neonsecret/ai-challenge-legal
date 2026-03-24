@@ -159,6 +159,32 @@ After the competition ended, we studied other participants' published approaches
 
 Thank you to all participants who shared their approaches — it made everyone's systems better.
 
+## Benchmark Results
+
+### ARLC 2026 Competition
+
+| Phase | S_det | S_asst | G | T | F | Total |
+|-------|-------|--------|-------|-------|-------|-------|
+| Warmup (best, v14) | 0.986 | 0.820 | 0.957 | 0.995 | 1.033 | **0.920** |
+| Finals (v2) | 0.939 | 0.761 | 0.797 | 1.000 | 1.018 | **0.719** |
+
+- Oracle coverage: **37.3%** of questions answered deterministically (zero LLM calls)
+- Page verifier correction rate: **26.3%** (pages corrected after answer generation)
+- E2E pipeline test: **20/20** on real corpus (FAISS + Arctic Embed + Vertex AI)
+
+### External Benchmarks (Preliminary)
+
+> **Note**: These are preliminary results on subset samples. Full-dataset runs are in progress for verified scores.
+
+| Benchmark | Our Score | Sample | SOTA/Baseline | Notes |
+|-----------|----------|--------|---------------|-------|
+| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | **0.872 RAF** | 50/2366 | 0.607 (Nova Pro) | Passage-level grounding; optimized citation prompts |
+| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | 0.759 acc | 20/607 NDAs | 0.875 (BERT_large) | NDA entailment classification; zero-shot |
+| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | In progress | — | 0.94 (Kanon 2) | Victorian criminal law QA |
+| [LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag) | In progress | — | No leaderboard | Character-level retrieval on contracts |
+
+*GaRAGe score uses explicit passage citation prompts vs paper's zero-shot baseline. Full 2366-item run pending for verified comparison.*
+
 ## Our Journey
 
 Read the full story of building this system — from first submission (0.401) to peak warmup (0.920) to finals (0.719) — in **[JOURNEY.md](JOURNEY.md)**.
