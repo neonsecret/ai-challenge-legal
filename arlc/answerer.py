@@ -553,6 +553,72 @@ def _lookup_oracle(
                     logger.info(f"[Oracle] Judge change in {all_case_ids[0]}: {list(judge_docs.keys())} -> True")
                     return AnswerResult(answer=True, chunk_pages=pages)
 
+    # Cross-case name comparison (answer is a case ID, not a person name)
+    # Handles: "Which case was issued earlier?", "Which had higher claim?", "Which had more defendants?"
+    if answer_type == "name" and len(all_case_ids) >= 2:
+        case1_meta = _find_case_data(all_case_ids[0])
+        case2_meta = _find_case_data(all_case_ids[1])
+        if case1_meta and case2_meta:
+            # Date comparison: "earlier", "later", "more recent", "first"
+            if any(k in q_lower for k in ["earlier", "later", "more recent", "first issued", "before", "after"]):
+                doi1 = case1_meta.get("date_of_issue", {})
+                doi2 = case2_meta.get("date_of_issue", {})
+                if isinstance(doi1, dict) and isinstance(doi2, dict) and doi1.get("value") and doi2.get("value"):
+                    d1, d2 = doi1["value"], doi2["value"]
+                    if any(k in q_lower for k in ["earlier", "first", "before"]):
+                        winner = all_case_ids[0] if d1 < d2 else all_case_ids[1]
+                    else:
+                        winner = all_case_ids[0] if d1 > d2 else all_case_ids[1]
+                    pages = []
+                    for cid in all_case_ids[:2]:
+                        did = _get_doc_id(cid)
+                        if did:
+                            pages.append({"doc_id": did, "page_numbers": [1]})
+                    logger.info(f"[Oracle] Date comparison: {all_case_ids[0]}={d1} vs {all_case_ids[1]}={d2} -> {winner}")
+                    return AnswerResult(answer=winner, chunk_pages=pages)
+
+            # Claim amount comparison: "higher claim", "larger amount", "more claimed"
+            if any(k in q_lower for k in ["higher claim", "larger claim", "more claimed", "greater amount", "higher amount", "larger amount", "bigger"]):
+                def _get_claim(m):
+                    for key in ["claim_value_aed", "claim_value"]:
+                        cv = m.get(key, {})
+                        if isinstance(cv, dict) and cv.get("value"):
+                            return cv["value"]
+                    return None
+                v1, v2 = _get_claim(case1_meta), _get_claim(case2_meta)
+                if v1 is not None and v2 is not None:
+                    winner = all_case_ids[0] if float(v1) > float(v2) else all_case_ids[1]
+                    pages = []
+                    for cid in all_case_ids[:2]:
+                        did = _get_doc_id(cid)
+                        if did:
+                            pages.append({"doc_id": did, "page_numbers": [1]})
+                    logger.info(f"[Oracle] Claim comparison: {all_case_ids[0]}={v1} vs {all_case_ids[1]}={v2} -> {winner}")
+                    return AnswerResult(answer=winner, chunk_pages=pages)
+
+            # Party count comparison: "more defendants", "more claimants"
+            if any(k in q_lower for k in ["more defendant", "more claimant", "fewer defendant", "fewer claimant"]):
+                role = "defendant" if "defendant" in q_lower else "claimant"
+                def _count_parties(m):
+                    p = m.get(role, [])
+                    if isinstance(p, list):
+                        return len(p)
+                    elif isinstance(p, dict) and p.get("names"):
+                        return len(p["names"])
+                    return 1 if p else 0
+                c1, c2 = _count_parties(case1_meta), _count_parties(case2_meta)
+                if "fewer" in q_lower:
+                    winner = all_case_ids[0] if c1 < c2 else all_case_ids[1]
+                else:
+                    winner = all_case_ids[0] if c1 > c2 else all_case_ids[1]
+                pages = []
+                for cid in all_case_ids[:2]:
+                    did = _get_doc_id(cid)
+                    if did:
+                        pages.append({"doc_id": did, "page_numbers": [1]})
+                logger.info(f"[Oracle] Party count comparison: {all_case_ids[0]}={c1} vs {all_case_ids[1]}={c2} -> {winner}")
+                return AnswerResult(answer=winner, chunk_pages=pages)
+
     # Single-case lookups
     case_id = all_case_ids[0]
     meta = _find_case_data(case_id)
