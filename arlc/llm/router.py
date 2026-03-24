@@ -1,9 +1,10 @@
 """LLM router — delegates to the configured LLM backend with retry logic.
 
 Backend selection via LLM_BACKEND env var:
-  - "anthropic" (default): use Anthropic SDK directly
+  - "litellm" (default): use LiteLLM proxy (round-robin across endpoints)
   - "vertex": use Vertex AI (AnthropicVertex client)
-  - "auto": try Vertex first if configured, fall back to Anthropic SDK
+  - "anthropic": use Anthropic SDK directly
+  - "auto": try litellm first, then vertex, then anthropic
 """
 
 import logging
@@ -24,16 +25,26 @@ def _get_backend() -> str:
     if _backend is not None:
         return _backend
 
-    choice = os.environ.get("LLM_BACKEND", "anthropic").lower()
+    choice = os.environ.get("LLM_BACKEND", "litellm").lower()
     if choice == "auto":
-        from arlc.llm import vertex_backend as llm_vertex
-        _backend = "vertex" if llm_vertex.is_configured() else "anthropic"
-        logger.info(f"[LLM] auto-detected backend: {_backend}")
-    elif choice in ("vertex", "anthropic"):
+        # Try litellm first (multi-endpoint), then vertex, then anthropic
+        from arlc.llm import litellm_backend
+        if litellm_backend.is_configured():
+            _backend = "litellm"
+            logger.info("[LLM] auto-detected backend: litellm")
+        else:
+            from arlc.llm import vertex_backend as llm_vertex
+            if llm_vertex.is_configured():
+                _backend = "vertex"
+                logger.info("[LLM] auto-detected backend: vertex")
+            else:
+                _backend = "anthropic"
+                logger.info("[LLM] auto-detected backend: anthropic")
+    elif choice in ("litellm", "vertex", "anthropic"):
         _backend = choice
     else:
-        logger.warning(f"[LLM] Unknown LLM_BACKEND={choice!r}, falling back to anthropic")
-        _backend = "anthropic"
+        logger.warning(f"[LLM] Unknown LLM_BACKEND={choice!r}, falling back to litellm")
+        _backend = "litellm"
     return _backend
 
 
@@ -45,7 +56,13 @@ def _call_backend(
     system_blocks: list[dict] | None,
 ) -> tuple[str, float, float, float, int, int]:
     backend = _get_backend()
-    if backend == "vertex":
+    if backend == "litellm":
+        from arlc.llm import litellm_backend
+        return litellm_backend.call_llm(
+            system_prompt, user_message, max_tokens,
+            model=model, system_blocks=system_blocks,
+        )
+    elif backend == "vertex":
         from arlc.llm import vertex_backend as llm_vertex
         return llm_vertex.call_llm(
             system_prompt, user_message, max_tokens,
@@ -61,7 +78,7 @@ def _call_backend(
 
 def _is_rate_limit(exc: Exception) -> bool:
     msg = str(exc).lower()
-    return "429" in msg or "rate limit" in msg or "overloaded" in msg
+    return "429" in msg or "rate limit" in msg or "overloaded" in msg or "resource_exhausted" in msg
 
 
 def call_llm(

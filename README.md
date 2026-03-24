@@ -188,13 +188,14 @@ Thank you to all participants who shared their approaches — the open exchange 
 
 ### External Benchmarks
 
-Full-dataset evaluation runs in progress. Results will be posted once complete with methodology notes for fair comparison.
+| Benchmark | Metric | Our Score | SOTA | Dataset Size |
+|-----------|--------|-----------|------|-------------|
+| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 | 2,366 questions |
+| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | — | 2,091 pairs (123 NDAs) |
+| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | — | *pending* | — | 100 questions |
+| [LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag) | — | *pending* | — | retrieval-only |
 
-Benchmarks under evaluation:
-- [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) — passage-level grounding (2,366 questions)
-- [ContractNLI](https://stanfordnlp.github.io/contract-nli/) — NDA entailment (607 NDAs, 10,319 pairs)
-- [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) — criminal law QA
-- [LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag) — retrieval precision on contracts
+**GaRAGe** — Full-dataset evaluation on all 2,366 items. RAF (Retrieval-Augmented Factuality) measures combined answer eligibility, citation attribution, and deflection quality. Our pipeline scores 0.826 vs. the published SOTA of 0.607 from the [GaRAGe paper](https://github.com/amazon-science/GaRAGe) (Table 3, best baseline). See [`benchmarks/garage/`](benchmarks/garage/) for reproduction steps.
 
 ## Our Journey
 

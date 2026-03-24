@@ -85,24 +85,30 @@ class AnswerResult:
 
 
 # ---------------------------------------------------------------------------
-# Anthropic client (lazy singleton) — supports both direct SDK and Vertex AI
+# Anthropic client (lazy singleton) — supports direct SDK, Vertex AI, and LiteLLM proxy
 # ---------------------------------------------------------------------------
 
 _client: anthropic.Anthropic | None = None
 _ANTHROPIC_CREDITS_EXHAUSTED: bool = False
+_USE_LITELLM: bool = False
 
 
-def _get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        backend = os.environ.get("LLM_BACKEND", "anthropic").lower()
+def _get_client() -> anthropic.Anthropic | None:
+    global _client, _USE_LITELLM
+    if _client is None and not _USE_LITELLM:
+        backend = os.environ.get("LLM_BACKEND", "litellm").lower()
+        if backend == "litellm":
+            from arlc.llm import litellm_backend
+            if litellm_backend.is_configured():
+                _USE_LITELLM = True
+                return None
         if backend == "vertex" or (backend == "auto" and os.environ.get("VERTEX_PROJECT_ID")):
             from anthropic import AnthropicVertex
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
             )
-        else:
+        elif backend != "litellm":
             _client = anthropic.Anthropic(
                 api_key=os.environ.get("ANTHROPIC_API_KEY"),
                 timeout=120.0,
@@ -1111,6 +1117,14 @@ def _call_llm_once(
             can be cached independently of the type-specific prompt that follows.
             This enables cache hits across different answer types for the same law.
     """
+    # LiteLLM proxy path — uses OpenAI-compatible streaming
+    if _USE_LITELLM:
+        from arlc.llm import litellm_backend
+        return litellm_backend.call_llm(
+            system_prompt, user_message, max_tokens,
+            model=model, system_blocks=system_blocks,
+        )
+
     client = _get_client()
     start = time.perf_counter()
 

@@ -51,19 +51,25 @@ MODEL = os.environ.get("GARAGE_MODEL", "claude-sonnet-4-6")
 # ---------------------------------------------------------------------------
 
 _client = None
+_use_litellm = False
 
 def get_client():
-    global _client
-    if _client is None:
+    global _client, _use_litellm
+    if _client is None and not _use_litellm:
         import anthropic
-        backend = os.environ.get("LLM_BACKEND", "anthropic").lower()
+        backend = os.environ.get("LLM_BACKEND", "litellm").lower()
+        if backend == "litellm":
+            from arlc.llm import litellm_backend
+            if litellm_backend.is_configured():
+                _use_litellm = True
+                return None
         if backend == "vertex" or (backend == "auto" and os.environ.get("VERTEX_PROJECT_ID")):
             from anthropic import AnthropicVertex
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
             )
-        else:
+        elif backend != "litellm":
             _client = anthropic.Anthropic(
                 api_key=os.environ.get("ANTHROPIC_API_KEY"),
                 timeout=120.0,
@@ -171,10 +177,16 @@ def build_user_prompt(question: str, passages: list) -> str:
 
 async def call_llm(question: str, passages: list) -> str:
     """Call Claude to answer a question given passages."""
-    client = get_client()
     user_prompt = build_user_prompt(question, passages)
 
     try:
+        if _use_litellm:
+            import asyncio
+            from arlc.llm import litellm_backend
+            text, *_ = await asyncio.to_thread(
+                litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 512, MODEL)
+            return text
+        client = get_client()
         response = client.messages.create(
             model=MODEL,
             max_tokens=512,
@@ -349,6 +361,9 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Limit queries (0=all)")
     parser.add_argument("--workers", type=int, default=5, help="Concurrent workers")
     args = parser.parse_args()
+
+    # Initialize LLM backend (sets _use_litellm flag)
+    get_client()
 
     # Step 1: Download
     download_dataset()

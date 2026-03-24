@@ -18,13 +18,14 @@ pip install -r requirements.txt
 
 ## Run
 ```bash
-# Dry run (download dataset only):
+# 1. Download dataset and build indexes (required before first run):
 python benchmarks/legal-rag-bench/run.py --dry-run
+python benchmarks/legal-rag-bench/build_index.py
 
-# Quick test:
+# 2. Quick test:
 python benchmarks/legal-rag-bench/run.py --limit 5
 
-# Full evaluation:
+# 3. Full evaluation:
 python benchmarks/legal-rag-bench/run.py
 ```
 

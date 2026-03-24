@@ -13,13 +13,14 @@ pip install -r requirements.txt
 
 ## Run
 ```bash
-# Dry run (download data only, no LLM calls):
+# 1. Download data and build indexes (required before first run):
 python benchmarks/legalbench-rag/run.py --dry-run
+python benchmarks/legalbench-rag/build_index.py
 
-# Quick test with 5 queries:
+# 2. Quick test with 5 queries:
 python benchmarks/legalbench-rag/run.py --limit 5
 
-# Full evaluation:
+# 3. Full evaluation (retrieval-only, no LLM calls needed):
 python benchmarks/legalbench-rag/run.py
 ```
 
