@@ -40,6 +40,7 @@ BM25_IDS_PATH = BM25_CACHE_DIR / "corpus_ids.json"
 # Module-level caches
 _faiss_index = None
 _faiss_metadata = None
+_faiss_metadata_dict = None
 _bm25_index = None
 _bm25_ids = None
 _embedding_model = None
@@ -79,12 +80,13 @@ def build_corpus_index(corpus_ds) -> dict:
 
 def _load_faiss():
     """Load FAISS index and metadata (cached)."""
-    global _faiss_index, _faiss_metadata
+    global _faiss_index, _faiss_metadata, _faiss_metadata_dict
     if _faiss_index is None:
         import faiss
         _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
         with open(FAISS_METADATA_PATH) as f:
             _faiss_metadata = json.load(f)
+        _faiss_metadata_dict = {e["id"]: e for e in _faiss_metadata}
         print(f"[legal-rag-bench] FAISS index loaded: {_faiss_index.ntotal} vectors")
     return _faiss_index, _faiss_metadata
 
@@ -136,7 +138,7 @@ def _get_reranker():
 # Hybrid retrieval
 # ---------------------------------------------------------------------------
 
-def _hybrid_retrieve(question: str, top_k: int = 3) -> list[dict]:
+def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     """Hybrid BM25 + vector + cross-encoder retrieval over the benchmark corpus.
 
     Returns list of {"id": str, "text": str, "title": str} for top_k passages.
@@ -152,7 +154,10 @@ def _hybrid_retrieve(question: str, top_k: int = 3) -> list[dict]:
             "  python benchmarks/legal-rag-bench/build_index.py"
         )
 
-    candidates = {}  # id -> {"text", "title", "score"}
+    # Collect per-system rankings for RRF
+    passage_info = {}  # pid -> {"text", "title"}
+    vec_rank = {}      # pid -> rank (1-based)
+    bm25_rank = {}     # pid -> rank (1-based)
 
     # --- Vector search ---
     if has_faiss:
@@ -162,55 +167,64 @@ def _hybrid_retrieve(question: str, top_k: int = 3) -> list[dict]:
         query_np = np.array([query_emb], dtype='float32')
         import faiss
         faiss.normalize_L2(query_np)
-        k_vec = min(50, index.ntotal)
+        k_vec = min(100, index.ntotal)
         D, I = index.search(query_np, k_vec)
+        rank = 0
         for j in range(k_vec):
             idx = int(I[0][j])
             if idx < 0:
                 continue
             entry = metadata[idx]
             pid = entry["id"]
-            sim = float(D[0][j])
-            if pid not in candidates or sim > candidates[pid]["score"]:
-                candidates[pid] = {
+            if pid not in vec_rank:
+                rank += 1
+                vec_rank[pid] = rank
+                passage_info[pid] = {
                     "text": entry["text"],
                     "title": entry.get("title", ""),
-                    "score": sim,
                 }
 
     # --- BM25 search ---
     if has_bm25:
         bm25, bm25_ids = _load_bm25()
         tokenized_q = legal_tokenize_queries(question)
-        results, scores = bm25.retrieve(tokenized_q, k=50)
+        results, scores = bm25.retrieve(tokenized_q, k=100)
+        rank = 0
         for j in range(len(results[0])):
             doc_idx = int(results[0][j])
             if doc_idx < 0 or doc_idx >= len(bm25_ids):
                 continue
             pid = bm25_ids[doc_idx]
-            bm25_score = float(scores[0][j])
-            if pid in candidates:
-                # Boost: add normalized BM25 score to vector score
-                candidates[pid]["score"] += bm25_score * 0.3
-            elif has_faiss:
-                # BM25-only hit: need text from FAISS metadata
-                _, metadata = _load_faiss()
-                for entry in metadata:
-                    if entry["id"] == pid:
-                        candidates[pid] = {
+            if pid not in bm25_rank:
+                rank += 1
+                bm25_rank[pid] = rank
+                if pid not in passage_info and has_faiss:
+                    entry = _faiss_metadata_dict.get(pid)
+                    if entry:
+                        passage_info[pid] = {
                             "text": entry["text"],
                             "title": entry.get("title", ""),
-                            "score": bm25_score * 0.3,
                         }
-                        break
 
-    # --- Cross-encoder reranking ---
+    # --- Reciprocal Rank Fusion (RRF) ---
+    RRF_K = 60  # standard RRF constant
+    rrf_scores = {}
+    all_pids = set(vec_rank) | set(bm25_rank)
+    for pid in all_pids:
+        score = 0.0
+        if pid in vec_rank:
+            score += 1.0 / (RRF_K + vec_rank[pid])
+        if pid in bm25_rank:
+            score += 1.0 / (RRF_K + bm25_rank[pid])
+        rrf_scores[pid] = score
+
+    # --- Cross-encoder reranking on top 50 by RRF ---
     candidate_list = [
-        {"id": pid, **info} for pid, info in candidates.items()
+        {"id": pid, "score": rrf_scores[pid], **passage_info.get(pid, {"text": "", "title": ""})}
+        for pid in all_pids if pid in passage_info
     ]
-    # Pre-filter to top 20 by fusion score before expensive reranking
     candidate_list.sort(key=lambda x: x["score"], reverse=True)
-    candidate_list = candidate_list[:20]
+    candidate_list = candidate_list[:75]
 
     if len(candidate_list) > top_k:
         reranker = _get_reranker()
@@ -235,7 +249,7 @@ async def run_pipeline(question: str, corpus_index: dict) -> dict:
     """
     from arlc.answerer import generate_answer
 
-    retrieved = _hybrid_retrieve(question, top_k=3)
+    retrieved = _hybrid_retrieve(question, top_k=10)
     retrieved_ids = [r["id"] for r in retrieved]
 
     source_pages = []
