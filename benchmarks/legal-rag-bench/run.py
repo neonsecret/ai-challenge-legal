@@ -128,7 +128,7 @@ def _get_reranker():
     if _reranker is None:
         from sentence_transformers import CrossEncoder
         import torch
-        _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=1024)
+        _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=2048)
         if torch.backends.mps.is_available():
             _reranker.model.to('mps')
     return _reranker
@@ -167,7 +167,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
         query_np = np.array([query_emb], dtype='float32')
         import faiss
         faiss.normalize_L2(query_np)
-        k_vec = min(100, index.ntotal)
+        k_vec = min(200, index.ntotal)
         D, I = index.search(query_np, k_vec)
         rank = 0
         for j in range(k_vec):
@@ -188,7 +188,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     if has_bm25:
         bm25, bm25_ids = _load_bm25()
         tokenized_q = legal_tokenize_queries(question)
-        results, scores = bm25.retrieve(tokenized_q, k=100)
+        results, scores = bm25.retrieve(tokenized_q, k=200)
         rank = 0
         for j in range(len(results[0])):
             doc_idx = int(results[0][j])
@@ -218,17 +218,17 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
             score += 1.0 / (RRF_K + bm25_rank[pid])
         rrf_scores[pid] = score
 
-    # --- Cross-encoder reranking on top 50 by RRF ---
+    # --- Cross-encoder reranking on top 100 by RRF ---
     candidate_list = [
         {"id": pid, "score": rrf_scores[pid], **passage_info.get(pid, {"text": "", "title": ""})}
         for pid in all_pids if pid in passage_info
     ]
     candidate_list.sort(key=lambda x: x["score"], reverse=True)
-    candidate_list = candidate_list[:75]
+    candidate_list = candidate_list[:100]
 
     if len(candidate_list) > top_k:
         reranker = _get_reranker()
-        pairs = [(question, c["text"][:2000]) for c in candidate_list]
+        pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidate_list]
         with _reranker_lock:
             rerank_scores = reranker.predict(pairs)
         for i, score in enumerate(rerank_scores):
