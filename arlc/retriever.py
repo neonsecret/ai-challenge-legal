@@ -1020,17 +1020,18 @@ PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
 # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
 # top_k: retrieval depth — how many candidates to pull before reranking.
 # Inspired by CPBD (Azamat Yelmagambetov, 1st place) who swept 22 depth values.
-# - free_text: 100 — broad context needed; content may span many pages
-# - name/names: 80 — comparison questions need both docs represented in pool
-# - boolean/number: 50 — usually pinpointed to a specific page or article
-# - date: 30 — almost always metadata page 1-2; deeper pool adds noise
+# V5: Increased all top_k values to 200 (was 30-100) based on Legal RAG Bench testing.
+# Deeper candidate pool gave +0.10 retrieval accuracy — more candidates before reranking
+# means the right page has a higher chance of being in the pool at all.
+# NOTE: This is retrieval POOL depth, not output pages. "Extra pages" graveyard entry
+# refers to max output pages (max_pages), not the candidate pool. These are different.
 RETRIEVAL_CONFIGS = {
-    "boolean":   {"top_k": 50,  "max_docs": 3, "max_pages": 3},
-    "number":    {"top_k": 50,  "max_docs": 2, "max_pages": 2},
-    "date":      {"top_k": 30,  "max_docs": 2, "max_pages": 1},
-    "name":      {"top_k": 80,  "max_docs": 3, "max_pages": 3},
-    "names":     {"top_k": 80,  "max_docs": 3, "max_pages": 3},
-    "free_text": {"top_k": 100, "max_docs": 4, "max_pages": 5},
+    "boolean":   {"top_k": 200, "max_docs": 3, "max_pages": 3},
+    "number":    {"top_k": 200, "max_docs": 2, "max_pages": 2},
+    "date":      {"top_k": 200, "max_docs": 2, "max_pages": 1},
+    "name":      {"top_k": 200, "max_docs": 3, "max_pages": 3},
+    "names":     {"top_k": 200, "max_docs": 3, "max_pages": 3},
+    "free_text": {"top_k": 200, "max_docs": 4, "max_pages": 5},
 }
 
 DOC_FUSION_WEIGHTS = {
@@ -1190,22 +1191,35 @@ def _doc_fusion_select(
     for d in bm25_p1_doc_scored:
         bm25_p1_doc_scored[d] /= max_bm25_p1
 
-    # --- Fuse all signals ---
+    # --- Fuse all signals via RRF (Reciprocal Rank Fusion) ---
+    # RRF replaces additive weighted score fusion.
+    # Benchmark testing showed additive fusion HURTS recall: vector@3=0.35 but additive@3=0.15
+    # because BM25 scores dominate scale and pull vector-dominant hits down.
+    # RRF formula: score = sum(weight / (k + rank_i)) for each signal, k=60 (standard).
+    # Credit: RRF confirmed by CPBD (1st place) and Legal RAG Bench testing (40% -> 60% recall).
     all_doc_ids = set()
     for scores_dict in [bm25_std_doc_scores, dense_std_doc_scores, dense_rrf_doc_scores,
                         bm25_doc_doc_scored, bm25_p1_doc_scored]:
         all_doc_ids.update(scores_dict.keys())
 
-    fused_scores: dict[str, float] = {}
+    # Build per-signal rankings (sorted by score descending)
+    def _signal_ranking(scores_dict: dict[str, float]) -> list[str]:
+        return [d for d, _ in sorted(scores_dict.items(), key=lambda x: x[1], reverse=True)]
+
+    rrf_k = 60
     w = DOC_FUSION_WEIGHTS
-    for doc_id in all_doc_ids:
-        fused_scores[doc_id] = (
-            w["bm25_std"] * bm25_std_doc_scores.get(doc_id, 0.0)
-            + w["dense_std"] * dense_std_doc_scores.get(doc_id, 0.0)
-            + w["dense_rrf"] * dense_rrf_doc_scores.get(doc_id, 0.0)
-            + w["bm25_doc"] * bm25_doc_doc_scored.get(doc_id, 0.0)
-            + w["bm25_page1"] * bm25_p1_doc_scored.get(doc_id, 0.0)
-        )
+    signal_rankings = [
+        (_signal_ranking(bm25_std_doc_scores), w["bm25_std"]),
+        (_signal_ranking(dense_std_doc_scores), w["dense_std"]),
+        (_signal_ranking(dense_rrf_doc_scores), w["dense_rrf"]),
+        (_signal_ranking(bm25_doc_doc_scored), w["bm25_doc"]),
+        (_signal_ranking(bm25_p1_doc_scored), w["bm25_page1"]),
+    ]
+
+    fused_scores: dict[str, float] = {doc_id: 0.0 for doc_id in all_doc_ids}
+    for ranking, weight in signal_rankings:
+        for rank, doc_id in enumerate(ranking):
+            fused_scores[doc_id] += weight / (rrf_k + rank + 1)
 
     # Sort by fused score descending
     sorted_docs = sorted(fused_scores.items(), key=lambda x: x[1], reverse=True)
@@ -1497,7 +1511,8 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
         query_tokens = legal_tokenize_queries(question)
 
         # Scale top_k based on metadata filters (need larger pool before filtering)
-        base_top_k = max(n_results, 50)
+        # V5: Raised floor from 50 to 200 — deeper pool gives +0.10 retrieval accuracy
+        base_top_k = max(n_results, 200)
         top_k = base_top_k * 3 if article_filter else base_top_k
 
         bm25_results, bm25_scores = bm25_index.retrieve(query_tokens, k=top_k)
@@ -1920,8 +1935,10 @@ def _retrieve_pages_targeted(
                 pg = chunk["metadata"].get("page", 1)
                 chunk_dense.append((dense_scores.get(pg, 0.0), chunk))
             chunk_dense.sort(key=lambda x: x[0], reverse=True)
-            # Take top 20 chunks by dense score for cross-encoder reranking
-            top_chunks = [c for _, c in chunk_dense[:20]]
+            # Take top 50 chunks by dense score for cross-encoder reranking
+            # V5: Raised from 20 to 50 — larger pre-filter improves CE recall
+            # (not 100 — our BGE reranker-v2-m3 is heavier than benchmark's lighter CE)
+            top_chunks = [c for _, c in chunk_dense[:50]]
             pairs = [(_ce_query, chunk["text"][:2000]) for chunk in top_chunks]
             with _reranker_lock:
                 ce_scores = ranker.predict(pairs)
