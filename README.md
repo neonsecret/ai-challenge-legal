@@ -172,18 +172,15 @@ Thank you to all participants who shared their approaches — it made everyone's
 - Page verifier correction rate: **26.3%** (pages corrected after answer generation)
 - E2E pipeline test: **20/20** on real corpus (FAISS + Arctic Embed + Vertex AI)
 
-### External Benchmarks (Preliminary)
+### External Benchmarks
 
-> **Note**: These are preliminary results on subset samples. Full-dataset runs are in progress for verified scores.
+Full-dataset evaluation runs in progress. Results will be posted once complete with methodology notes for fair comparison.
 
-| Benchmark | Our Score | Sample | SOTA/Baseline | Notes |
-|-----------|----------|--------|---------------|-------|
-| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | **0.872 RAF** | 50/2366 | 0.607 (Nova Pro) | Passage-level grounding; optimized citation prompts |
-| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | 0.759 acc | 20/607 NDAs | 0.875 (BERT_large) | NDA entailment classification; zero-shot |
-| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | In progress | — | 0.94 (Kanon 2) | Victorian criminal law QA |
-| [LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag) | In progress | — | No leaderboard | Character-level retrieval on contracts |
-
-*GaRAGe score uses explicit passage citation prompts vs paper's zero-shot baseline. Full 2366-item run pending for verified comparison.*
+Benchmarks under evaluation:
+- [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) — passage-level grounding (2,366 questions)
+- [ContractNLI](https://stanfordnlp.github.io/contract-nli/) — NDA entailment (607 NDAs, 10,319 pairs)
+- [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) — criminal law QA
+- [LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag) — retrieval precision on contracts
 
 ## Our Journey
 
