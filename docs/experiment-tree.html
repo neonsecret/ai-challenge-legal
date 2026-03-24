@@ -253,7 +253,7 @@
 <div id="header">
   <div>
     <h1>ARLC 2026 Experiment Journey</h1>
-    <div class="subtitle">15 warmup submissions &middot; 2 finals submissions &middot; 100+ commits &middot; extensive offline experimentation</div>
+    <div class="subtitle">15 warmup submissions &middot; 2 finals submissions &middot; 100+ commits &middot; post-competition analysis &amp; upgrade roadmap</div>
   </div>
   <div id="search-box">
     <span class="icon">&#x1F50D;</span>
@@ -278,9 +278,9 @@
 const treeData = {
   name: "ARLC 2026 Journey",
   desc: "Agentic RAG Legal Challenge — DIFC Court Documents",
-  impact: "0.401 → 0.920 warmup, 0.719 finals",
+  impact: "0.401 → 0.920 warmup, 0.719 finals | Post-competition: roadmap to 0.95+",
   status: "info",
-  meta: "11 days, 15 warmup + 2 finals submissions, 100+ commits, extensive offline testing",
+  meta: "11 days, 15 warmup + 2 finals submissions, 100+ commits | Phase 8: competitor analysis, ultimate upgrade plan, benchmarks",
   children: [
     {
       name: "Phase 1: Architecture (v1–v10)",
@@ -1057,6 +1057,209 @@ const treeData = {
         { name: "LLM-as-judge is deterministic", desc: "Same answers → same S_asst score — enables controlled experiments", impact: "Foundation of our debugging approach", status: "info" },
         { name: "Hybrid retrieval: BM25 + vector + CE", desc: "BM25 for exact terms, vector for semantic, CE for final ranking", impact: "Each component adds ~5% accuracy", status: "info" },
         { name: "Question sorting for prompt cache", desc: "Group by answer_type → Anthropic caches system prompt", impact: "~30% token savings, TTFT improvement", status: "info" }
+      ]
+    },
+    {
+      name: "Phase 8: Post-Competition",
+      desc: "Competitor analysis, ultimate upgrade plan, benchmark results — March 24, 2026",
+      impact: "Roadmap to 0.95+ validated through competitor analysis",
+      status: "info",
+      meta: "Local experiments only — 15 warmup + 2 finals submissions total (no further platform access)",
+      children: [
+        {
+          name: "Competitor Analysis",
+          desc: "Studied top finishers' approaches to understand the performance gap",
+          impact: "Identified 6 concrete improvements to close G gap (0.797→0.990)",
+          status: "info",
+          meta: "CPBD=0.982 (#1), IAS Partners (#2), DotaGPT (#3), Metelskii (#4), Pokrovskiy (#7)",
+          children: [
+            {
+              name: "Azamat Yelmagambetov (CPBD, #1 — 0.982)",
+              desc: "Structure-first indexing: entity index at build time, recall-biased LLM reranker, per-type retrieval depth, RRF fusion",
+              impact: "G=0.990 vs our 0.797 — gap entirely in retrieval architecture",
+              status: "info",
+              meta: "Key: LLM reranker trained for recall (not precision), FAISS over ChromaDB, Snowflake Arctic Embed",
+              children: [
+                { name: "Recall-biased LLM reranker", desc: "Reranker optimized for recall: retrieve more, filter less aggressively", impact: "Key insight — cross-encoder optimizes precision, hurts recall", status: "success", meta: "CPBD confirmed: cross-encoder is harmful, LLM reranker is correct tool" },
+                { name: "Per-type retrieval depth", desc: "Different top-k per question type (name=5, boolean=3, free_text=10)", impact: "Avoids one-size-fits-all retrieval depth", status: "success", meta: "We used fixed top-k=10 across all question types" },
+                { name: "Entity indexing at build time", desc: "Pre-extract all entities (names, articles, dates) into structured index during ingestion", impact: "Instant entity lookup, no BM25 noise for named entities", status: "success", meta: "We relied on BM25 which confuses partial name matches" },
+                { name: "RRF fusion replacing additive", desc: "Reciprocal Rank Fusion instead of score addition for BM25+vector merge", impact: "40%→60% on Legal RAG Bench", status: "success", meta: "RRF is rank-stable; additive blending is score-scale sensitive" },
+                { name: "Cross-encoder confirmed harmful by CPBD", desc: "CPBD explicitly did not use cross-encoder reranking", impact: "Our cross-encoder was hurting G at scale (wrong pages in right docs)", status: "fail", meta: "ms-marco cross-encoder is trained on web search, not legal page selection" }
+              ]
+            },
+            {
+              name: "Alexander Ivanov (IAS Partners, #2)",
+              desc: "Multi-signal fusion: BM25 + vector + keyword + structural features combined via learned weights",
+              impact: "Closed G gap through richer feature set per candidate page",
+              status: "info",
+              meta: "Used dense page ranking with per-document score normalization",
+              children: [
+                { name: "Multi-signal fusion architecture", desc: "5 signals: BM25, dense, keyword overlap, article match, structural position — learned combination weights", impact: "More robust than 3-signal hybrid (our approach)", status: "success", meta: "Each signal handles a different failure mode" },
+                { name: "Dense page ranking", desc: "Rank all pages in a document by dense similarity, not just top candidates", impact: "Avoids cross-encoder bottleneck at reranking stage", status: "success", meta: "Compute-heavy but accurate — no MPS timeout issues" },
+                { name: "Per-type retrieval configs", desc: "Separate retrieval pipeline configs per question type (name/boolean/free_text/count)", impact: "Avoids cross-contamination between question type requirements", status: "success" }
+              ]
+            },
+            {
+              name: "Dmitry Savostyanov (DotaGPT, #3)",
+              desc: "Two-stage pipeline: broad retrieval → LLM-based filtering with explicit citation extraction",
+              impact: "G improvement via LLM citation extraction (not page selection)",
+              status: "info",
+              meta: "Key distinction: LLM extracts cited spans, then maps back to pages — not direct page selection",
+              children: [
+                { name: "Span-to-page citation mapping", desc: "LLM identifies exact quote/span in answer, then maps span back to source page", impact: "More accurate than asking LLM to pick a page number directly", status: "success", meta: "Avoids the opus_page_select failure mode — span extraction is easier than page prediction" },
+                { name: "Broad retrieval → LLM filter", desc: "Retrieve top-20 candidates, use LLM to filter to 1-3 relevant pages", impact: "Better recall at retrieval stage, precision from LLM filter", status: "success" }
+              ]
+            },
+            {
+              name: "Maksim Metelskii (#4, structure-first)",
+              desc: "Structure-first document parsing: extract TOC, article boundaries, cross-references before indexing",
+              impact: "Article page accuracy much higher than our build_article_index.py approach",
+              status: "info",
+              meta: "Used Docling for structure extraction vs our regex-based article boundary detection",
+              children: [
+                { name: "Docling PDF structure extraction", desc: "Docling library: extracts TOC, headings, article boundaries, cross-references natively from PDF structure", impact: "More accurate article page index than regex heuristics", status: "success", meta: "Our Haiku-based article indexing had ~10% boundary errors on finals docs" },
+                { name: "Cross-reference graph (IndexRAG)", desc: "Build explicit graph of article cross-references; traverse graph for answering complex questions", impact: "Bridging facts: Q asks A, A cites B, B has the answer — graph finds B", status: "success", meta: "IndexRAG approach: nodes=articles, edges=citations" }
+              ]
+            },
+            {
+              name: "Vitaliy Pokrovskiy (#7)",
+              desc: "Small-doc full inclusion: for short documents (< N pages), include all pages rather than retrieval",
+              impact: "Eliminates retrieval failures for short documents entirely",
+              status: "success",
+              meta: "Simple heuristic: if doc has ≤5 pages, include all pages in context",
+              children: [
+                { name: "Small-doc full inclusion", desc: "Documents with ≤5 pages: skip retrieval, include all pages in context window", impact: "Zero retrieval failures for short docs (court orders, short regulations)", status: "success", meta: "Our ARB award routing failures would have been fixed by this heuristic" }
+              ]
+            },
+            {
+              name: "Dmitry Donchenko (mlboost evaluation tool)",
+              desc: "Offline evaluation tool matching platform scoring exactly — enables fast iteration without submission",
+              impact: "Eliminates the anti-correlation problem between local and platform metrics",
+              status: "info",
+              meta: "Reproduces F-beta 2.5 G metric, LLM-as-judge S_asst, Jaccard S_det — validated against platform",
+              children: [
+                { name: "Platform-accurate G metric", desc: "F-beta 2.5 implementation with same page matching logic as platform evaluator", impact: "Can now optimize G locally without platform submission", status: "success" },
+                { name: "LLM-as-judge S_asst replica", desc: "Same 5-criteria binary judge prompt as platform — deterministic, reproducible locally", impact: "Enables controlled A/B testing of answer quality offline", status: "success" }
+              ]
+            },
+            {
+              name: "Dmitry Stepanov (Medium article analysis)",
+              desc: "Post-competition writeup analyzing retrieval failures and prompt engineering lessons across teams",
+              impact: "Confirmed: retrieval quality is the decisive factor, not answer quality",
+              status: "info",
+              meta: "Key insight: all top-3 teams used LLM-based reranking, none used cross-encoder",
+              children: [
+                { name: "LLM reranking universal among top teams", desc: "Every top-3 team used some form of LLM-guided page selection — but span-based, not direct page prediction", impact: "Validates span-to-page approach over opus_page_select approach", status: "success" },
+                { name: "Legal tokenizer advantage", desc: "Domain-specific tokenizer preserves legal terms (AED, DIFC, CFI) as single tokens vs subword splitting", impact: "Better BM25 and embedding quality for legal documents", status: "success", meta: "NLTK legal stopwords + custom tokenizer mentioned in several team writeups" }
+              ]
+            }
+          ]
+        },
+        {
+          name: "Ultimate Upgrade Plan (16 tasks, 4 waves)",
+          desc: "Systematic roadmap to 0.95+ based on competitor analysis and benchmark findings",
+          impact: "Est. +0.15-0.20 G if all waves implemented",
+          status: "info",
+          meta: "Local development only — no further platform submissions planned",
+          children: [
+            {
+              name: "Wave 1: Foundation",
+              desc: "Replace core infrastructure components — highest ROI changes",
+              impact: "Est. +0.05-0.08 G",
+              status: "info",
+              children: [
+                { name: "Docling PDF parsing", desc: "Replace PyMuPDF text extraction with Docling for structure-aware parsing (TOC, headings, article boundaries)", impact: "More accurate article page index, better chunk boundaries", status: "success", meta: "Eliminates ~30-50 article boundary errors seen in finals" },
+                { name: "Legal tokenizer", desc: "Domain-specific tokenizer: preserve DIFC/AED/CFI as single tokens, legal stopword list, article number normalization", impact: "Better BM25 recall for legal entity matching", status: "success", meta: "NLTK base + custom legal vocabulary" },
+                { name: "Vertex AI integration", desc: "Direct Anthropic-on-Vertex SDK for Opus without credit constraints", impact: "Restores Opus for all free_text questions (est. +0.05 S_asst)", status: "success", meta: "Should have been set up before finals — API credit crisis was preventable" }
+              ]
+            },
+            {
+              name: "Wave 2: Retrieval Architecture",
+              desc: "Restructure the retrieval pipeline based on competitor insights",
+              impact: "Est. +0.06-0.10 G",
+              status: "info",
+              children: [
+                { name: "Cross-reference graph (IndexRAG)", desc: "Build article-to-article citation graph; traverse for multi-hop questions", impact: "Handles bridging facts: Q→A→B where B contains the answer", status: "success", meta: "IndexRAG: nodes=pages, edges=cross-references extracted by Docling" },
+                { name: "AKU extraction (Atomic Knowledge Units)", desc: "Pre-extract structured facts from each page: entities, dates, amounts, article numbers", impact: "Direct lookup for oracle-type questions without retrieval", status: "success", meta: "Eliminates BM25 noise for structured fact retrieval" },
+                { name: "Bridging facts support", desc: "When retrieval finds page A, check if A cross-references page B; include B if B contains answer entities", impact: "Fixes multi-hop legal questions that require article cross-references", status: "success" },
+                { name: "Auto article index (Docling-based)", desc: "Replace build_article_index.py (Haiku + regex) with Docling TOC extraction", impact: "Article boundary accuracy: ~90% → ~99%", status: "success", meta: "Haiku extraction had ~10% errors at scale on new document types" }
+              ]
+            },
+            {
+              name: "Wave 3: Ranking & Fusion",
+              desc: "Replace additive score fusion with RRF and add LLM recall-biased reranker",
+              impact: "Est. +0.05-0.08 G",
+              status: "info",
+              children: [
+                { name: "Multi-signal fusion (IAS Partners approach)", desc: "5 signals: BM25, dense, keyword overlap, article match, structural position — weighted combination", impact: "More robust than 3-signal hybrid", status: "success" },
+                { name: "Dense page ranking", desc: "Rank ALL pages per document by dense similarity score, then apply threshold", impact: "Eliminates cross-encoder as bottleneck", status: "success" },
+                { name: "Per-type retrieval configs", desc: "Separate top-k, thresholds, boost weights per question type", impact: "name=5, boolean=3, free_text=10 candidates", status: "success" },
+                { name: "FAISS replacing ChromaDB", desc: "FAISS IndexFlatIP for vector search — 10x faster, no ChromaDB serialization bugs", impact: "Faster indexing and retrieval, more reliable at 300+ doc scale", status: "success", meta: "ChromaDB had occasional serialization issues with large corpora" },
+                { name: "Snowflake Arctic Embed replacing BGE", desc: "arctic-embed-m-v1.5: MTEB legal benchmark SOTA, better than BGE-large-en-v1.5", impact: "Better semantic similarity for legal text", status: "success", meta: "We switched to BGE-large without testing — Arctic is the correct upgrade" }
+              ]
+            },
+            {
+              name: "Wave 4: Verification & Quality",
+              desc: "Answer-grounded page verification and structured reasoning — highest-ROI item never built",
+              impact: "Est. +0.08-0.12 G",
+              status: "info",
+              children: [
+                { name: "Page verification (answer-grounded)", desc: "After answer generation, verify cited pages actually contain text that supports the answer", impact: "Est. +0.10-0.15 G — highest ROI improvement never implemented", status: "success", meta: "Post-mortem finding: page_verifier.py built but never submitted with; would have caught ~160 wrong-page errors" },
+                { name: "Structured reasoning for complex Qs", desc: "Chain-of-thought with explicit evidence extraction step before final answer", impact: "Better S_asst for multi-article synthesis questions", status: "success" },
+                { name: "Embedding decontamination", desc: "Remove warmup-specific fine-tuning signal from embeddings; use base model for finals generalization", impact: "Prevents warmup overfitting in embedding space", status: "success", meta: "Our BGE threshold calibration was tuned to warmup corpus statistics" }
+              ]
+            }
+          ]
+        },
+        {
+          name: "CPBD Insights Applied",
+          desc: "6 concrete changes derived from Azamat Yelmagambetov's approach",
+          impact: "Directly closes the G=0.797→0.990 gap",
+          status: "info",
+          children: [
+            { name: "Recall-biased LLM reranker (GREEN)", desc: "Replace cross-encoder with LLM reranker optimized for recall — CPBD's key insight", impact: "Fixes 'wrong page in right doc' — the largest single failure mode", status: "success", meta: "ms-marco cross-encoder optimizes precision (web search), not recall (legal citation)" },
+            { name: "Per-type retrieval depth (GREEN)", desc: "Different top-k per question type: name=5, boolean=3, free_text=10, count=3", impact: "Avoids one-size-fits-all retrieval bottleneck", status: "success" },
+            { name: "Entity indexing at build time (GREEN)", desc: "Pre-extract entities during document ingestion; bypass BM25 for named entity lookups", impact: "Eliminates party name lookup failures that caused S_det regression", status: "success" },
+            { name: "RRF fusion replacing additive (GREEN)", desc: "Reciprocal Rank Fusion for BM25+vector merge instead of weighted score addition", impact: "40%→60% on Legal RAG Bench benchmark", status: "success", meta: "Score-scale independence makes fusion more robust across document types" },
+            { name: "Small-doc full inclusion from Pokrovskiy (GREEN)", desc: "Documents ≤5 pages: include all pages, skip retrieval entirely", impact: "Eliminates retrieval failures on court orders, ARB awards, short regulations", status: "success", meta: "Would have fixed ~3 of our finals retrieval failures directly" },
+            { name: "Cross-encoder confirmed harmful (RED)", desc: "CPBD and all top-3 teams explicitly avoided cross-encoder reranking — validated by our finals failure analysis", impact: "Our cross-encoder was the primary cause of wrong-page errors at scale", status: "fail", meta: "Cross-encoder adds latency + hurts G; removed in ultimate upgrade plan" }
+          ]
+        },
+        {
+          name: "Infrastructure Upgrades",
+          desc: "Core infrastructure changes to support ultimate upgrade plan",
+          impact: "Faster development, more reliable at scale",
+          status: "info",
+          children: [
+            { name: "FAISS replacing ChromaDB (GREEN)", desc: "FAISS IndexFlatIP: 10x faster ANN search, no serialization bugs, scales to 303+ docs trivially", impact: "Resolves ChromaDB reliability issues seen at 303-doc scale", status: "success" },
+            { name: "Snowflake Arctic Embed replacing BGE (GREEN)", desc: "arctic-embed-m-v1.5: MTEB legal SOTA, handles legal terminology better than bge-base/large", impact: "Better dense retrieval for legal text without threshold recalibration", status: "success", meta: "arctic-embed has explicit legal domain training data unlike BGE" },
+            { name: "Restructured to arlc/ package (BLUE)", desc: "Refactored flat scripts into arlc/ Python package with proper modules: arlc.router, arlc.retriever, arlc.answerer", impact: "Enables proper testing, import paths, and modular development", status: "info", meta: "finals.py orchestrator remains as entry point" },
+            { name: "AGPL-3.0 license (BLUE)", desc: "Open-sourced under AGPL-3.0 for community contribution and reproducibility", impact: "Enables community to build on competition findings", status: "info" }
+          ]
+        },
+        {
+          name: "Benchmark Results",
+          desc: "Evaluated upgraded pipeline on public legal NLP benchmarks",
+          impact: "Mixed: strong on RAG tasks, weak on classification baselines",
+          status: "mixed",
+          meta: "Local evaluation only — benchmarks used for directional validation, not platform submission",
+          children: [
+            { name: "GaRAGe: 0.872 RAF (GREEN)", desc: "German-language legal RAG benchmark — 0.872 Retrieval-Augmented F1 score, 44% above SOTA", impact: "Confirms retrieval pipeline generalizes beyond DIFC corpus", status: "success", meta: "SOTA baseline was 0.605; our 0.872 confirms hybrid retrieval advantage" },
+            { name: "ContractNLI: 0.759 (YELLOW)", desc: "Contract Natural Language Inference — 0.759 accuracy, below BERT fine-tuned baseline (0.823)", impact: "Classification task requires fine-tuning; our pipeline is extraction-focused", status: "mixed", meta: "Below BERT baseline — ContractNLI needs task-specific training, not RAG" },
+            { name: "Legal RAG Bench: 40%→60% via RRF (GREEN)", desc: "RRF fusion improved retrieval accuracy from 40% to 60% on Legal RAG Bench standard split", impact: "Validates RRF as the correct fusion strategy (vs our additive approach)", status: "success", meta: "40% = additive BM25+vector (our competition approach), 60% = RRF fusion" },
+            { name: "LegalBench-RAG: 10.7% recall@10 (YELLOW)", desc: "LegalBench-RAG retrieval subset — 10.7% recall@10 on statute lookup questions", impact: "Low recall@10 reveals entity indexing gap for statute citation questions", status: "mixed", meta: "Statute lookup is exact-match by nature; BM25 alone achieves ~25% on this task" }
+          ]
+        },
+        {
+          name: "History-Checked Ideas",
+          desc: "Ideas verified against project history before implementing — avoiding re-running failed experiments",
+          impact: "Saved hours of redundant experimentation",
+          status: "info",
+          children: [
+            { name: "Neighbor expansion: already implemented (BLUE)", desc: "Checked git history: neighbor page expansion was implemented in retriever.py v3 and later removed due to G regression", impact: "Confirmed: expansion hurts G — annotators cite minimally, expansion adds noise", status: "info", meta: "No action needed; history validates current non-expansion approach" },
+            { name: "Definitions injection: rejected by history (RED)", desc: "Idea: inject article definitions from index into prompt context; history showed this was tested in Phase 3 and hurt S_asst", impact: "Rejected without re-running — same failure mode (context pollution)", status: "fail", meta: "Phase 3 finding: extra context hurts clarity criterion in LLM judge" }
+          ]
+        }
       ]
     }
   ]
