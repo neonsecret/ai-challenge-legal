@@ -142,19 +142,25 @@ Definitions:
 - **Contradiction**: The NDA contains a clause or language that explicitly states the OPPOSITE of the hypothesis. The NDA must actively negate or forbid what the hypothesis claims. Simply not mentioning something is NOT contradiction.
 - **NotMentioned**: The NDA does not contain any clause addressing the topic of the hypothesis. The hypothesis topic is simply absent from the agreement.
 
-CRITICAL distinction — Contradiction vs NotMentioned:
+CRITICAL distinctions:
+
+Contradiction vs NotMentioned:
 - If the NDA says NOTHING about the topic → NotMentioned (NOT Contradiction)
 - If the NDA has a clause that DIRECTLY OPPOSES the hypothesis → Contradiction
 - Silence is NOT contradiction. Only explicit opposing language counts.
-- Example: If hypothesis is "Receiving Party can share with employees" and the NDA says nothing about employees → NotMentioned
-- Example: If hypothesis is "Receiving Party can share with employees" and the NDA says "shall not disclose to any employee" → Contradiction
+
+Entailment — what counts:
+- If the NDA PERMITS something (even conditionally, e.g. "may disclose to X provided that Y"), this ENTAILS that the action is allowed.
+- Conditional permission is still permission → Entailment.
+- If the NDA has exceptions to a restriction (e.g. "shall not disclose... except to consultants, agents, or advisors"), this ENTAILS that sharing with those parties is permitted.
+- Look for: "may", "is permitted to", "except", "provided that", "subject to" — these often create entailment.
 
 Think step by step:
 1. Identify the topic of the hypothesis
-2. Search the NDA for clauses addressing that topic
+2. Search the NDA for ALL clauses addressing that topic (including exceptions and carve-outs)
 3. If no clause addresses it → NotMentioned
-4. If a clause supports the hypothesis → Entailment
-5. If a clause directly opposes the hypothesis → Contradiction
+4. If a clause supports the hypothesis (even conditionally) → Entailment
+5. If a clause directly opposes the hypothesis with no exceptions → Contradiction
 
 After your reasoning, output your final answer on the LAST line as exactly one word: Entailment, Contradiction, or NotMentioned."""
 
