@@ -1017,15 +1017,28 @@ The upgraded pipeline was validated end-to-end on the real ARLC corpus:
 
 To validate the pipeline beyond ARLC, we set up five external legal RAG benchmarks:
 
-| Benchmark | Focus | Status |
-|-----------|-------|--------|
-| **GaRAGe** | General RAG evaluation across domains | Runner implemented |
-| **ContractNLI** | Contract clause entailment | Runner implemented |
-| **Legal RAG Bench** | Legal document retrieval and QA (March 2026) | Runner + index builder implemented |
-| **LegalBench-RAG** | Legal reasoning over retrieved documents | Runner + index builder implemented |
-| **RAGAS** | RAG quality metrics (faithfulness, relevance) | Runner implemented |
+| Benchmark | Focus | Our Score | Baseline/SOTA | Sample | Notes |
+|-----------|-------|-----------|---------------|--------|-------|
+| **[GaRAGe](https://github.com/amazon-science/GaRAGe)** | Passage grounding | **0.872 RAF** | 0.607 (Nova Pro) | 50/2366 | Explicit citation prompts |
+| **[ContractNLI](https://stanfordnlp.github.io/contract-nli/)** | NDA entailment | 0.759 acc | 0.875 (BERT_large) | 20/607 NDAs | Zero-shot, CoT reasoning |
+| **[Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench)** | Criminal law retrieval | 0.60 retrieval | 0.94 (Kanon 2) | 20/100 | RRF fusion improved from 0.40 |
+| **[LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag)** | Contract retrieval | 10.7% recall@10 | No leaderboard | 20/1750 | First multi-signal entry |
 
-Each benchmark has its own runner script under `benchmarks/` and uses the pipeline's own corpus indexing for proper adaptation — not canned embeddings. Full-dataset evaluation runs are in progress. The goal is to demonstrate that the pipeline's techniques (oracle metadata, hybrid retrieval, page verification) generalize beyond DIFC legal documents.
+*Full-dataset runs in progress. Scores are preliminary on subsets.*
+
+Each benchmark has its own corpus indexed with our FAISS + Arctic Embed pipeline — not canned embeddings. A key finding from benchmark testing: **RRF (Reciprocal Rank Fusion) beats additive score fusion** — our Legal RAG Bench retrieval jumped from 40% to 60% after switching to RRF. This finding, independently confirmed by [CPBD (1st place)](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc), is now being ported back to the core pipeline.
+
+### CPBD Deep-Dive: What the #1 Team Did Differently
+
+Studying [Azamat Yelmagambetov's detailed write-up](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc) of the CPBD system (0.982 warmup, G=0.990) revealed the exact techniques that closed the grounding gap:
+
+1. **LLM reranker with recall bias** (+0.10 G) — replaced cross-encoder entirely. "When uncertain, round UP — missing a page is ~6x worse than noise." Cross-encoders rank by keyword overlap, putting cover pages at rank 1.
+2. **Adaptive top-K matrix** (22 values, route × answer_type) — `law + free_text` retrieves 19 pages, `case + name` only 3. A 6x depth difference.
+3. **5-source RRF fusion** — BM25 text + BM25 entities + BM25 summaries + section embeddings + page embeddings, with document-scoped search getting highest weight (1.0).
+4. **Post-fusion heuristics** — last_page inject, title inject, doc rescue, score-boost, diversity, adaptive K. Each fixes 1-4 questions.
+5. **Schema-Guided Reasoning** — forces CITE/SKIP decisions per page with explicit reasons before answering.
+
+Their grounding progression showed each technique's contribution: hybrid +0.19, doc-scoped +0.12, LLM reranker +0.10, query expansion +0.08, per-type top-K +0.06. We've implemented the recall-biased reranker, per-type depth, entity indexing, and doc rescue.
 
 ### Domain Adaptation Design
 
