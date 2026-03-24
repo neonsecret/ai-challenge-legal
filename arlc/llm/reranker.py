@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 # Configuration (all overridable via environment)
 # ---------------------------------------------------------------------------
 
-LLM_RERANK_MODEL = os.environ.get("LLM_RERANK_MODEL", "claude-haiku-4-5-20251001")
+LLM_RERANK_MODEL = os.environ.get("LLM_RERANK_MODEL", "claude-haiku-4-5")
 
 # Enterprise RAG winner used 70% LLM / 30% vector. We inherit cross-encoder
 # scores instead of raw vector scores, which are already stronger than pure vector.

@@ -32,7 +32,7 @@ def normalize_text(text: str) -> str:
 
 MODEL = "claude-sonnet-4-6"
 MODEL_FREE_TEXT = os.environ.get("MODEL_FREE_TEXT", "claude-opus-4-6")  # Opus for S_asst quality; override via env var
-MODEL_DECOMPOSE = "claude-haiku-4-5-20251001"  # Haiku for fast question decomposition
+MODEL_DECOMPOSE = "claude-haiku-4-5"  # Haiku for fast question decomposition
 MAX_RETRIES = 2
 RETRY_DELAYS = [2, 5]  # seconds between retries
 MAX_RETRIES_RATE_LIMIT = 3
