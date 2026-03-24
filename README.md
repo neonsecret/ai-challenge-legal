@@ -101,13 +101,20 @@ make prepare    # or: python -m arlc.indexing.prepare_corpus
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude models |
 | `EVAL_API_KEY` | Yes | ARLC platform API key (corpus download) |
 
-## Models
+## Models & Acknowledgments
 
-- **Claude Sonnet 4.6** (`claude-sonnet-4-6`) — answer generation
-- **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) — metadata extraction during indexing
-- **Snowflake Arctic Embed L v2** — dense embeddings (1024d)
-- **BAAI BGE Reranker v2 M3** — cross-encoder reranking
-- **FlashRank MiniLM** — fast initial reranking
+| Model | Provider | License | Role |
+|-------|----------|---------|------|
+| [Claude Sonnet 4.6](https://docs.anthropic.com/en/docs/about-claude/models) | [Anthropic](https://www.anthropic.com/) | API ToS | Answer generation (deterministic types) |
+| [Claude Opus 4.6](https://docs.anthropic.com/en/docs/about-claude/models) | [Anthropic](https://www.anthropic.com/) | API ToS | Answer generation (free-text), SAC summaries |
+| [Snowflake Arctic Embed L v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) | [Snowflake](https://www.snowflake.com/) | Apache 2.0 | Dense embeddings (1024d) |
+| [BGE Reranker v2 M3](https://huggingface.co/BAAI/bge-reranker-v2-m3) | [BAAI](https://www.baai.ac.cn/) | MIT | Cross-encoder reranking |
+| [FlashRank MiniLM L-12](https://huggingface.co/prithivida/flashrank) | [Prithivi Da](https://huggingface.co/prithivida) | Apache 2.0 | Fast initial reranking |
+| [FAISS](https://github.com/facebookresearch/faiss) | [Meta Research](https://ai.meta.com/) | MIT | Vector similarity search |
+| [Docling](https://github.com/DS4SD/docling) | [IBM Research](https://ds4sd.github.io/) | MIT | Structural PDF extraction |
+| [PyMuPDF](https://pymupdf.readthedocs.io/) | [Artifex](https://artifex.com/) | AGPL-3.0 | PDF text extraction (fallback) |
+
+Built with the [Anthropic API](https://docs.anthropic.com/) via [Vertex AI](https://cloud.google.com/vertex-ai).
 
 ## Development
 
