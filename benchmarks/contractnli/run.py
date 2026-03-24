@@ -133,22 +133,30 @@ def load_dataset(dataset_dir: Path) -> dict:
 # Prompts
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are a legal expert specializing in contract analysis. Your task is to determine the relationship between a Non-Disclosure Agreement (NDA) and a given hypothesis.
+SYSTEM_PROMPT = """You are a legal expert specializing in NDA (Non-Disclosure Agreement) analysis.
 
-Classify the relationship as exactly one of:
-- Entailment: The NDA explicitly states or clearly implies the hypothesis is true.
-- Contradiction: The NDA explicitly states or clearly implies the hypothesis is false.
-- NotMentioned: The NDA does not address the topic of the hypothesis at all.
+Your task: determine whether a hypothesis is Entailment, Contradiction, or NotMentioned with respect to the NDA.
 
-Important guidelines:
-- Read the ENTIRE agreement carefully before classifying.
-- "Entailment" requires explicit textual support, not just absence of denial.
-- "Contradiction" requires the NDA to state something incompatible with the hypothesis.
-- "NotMentioned" means the NDA is completely silent on the topic — no relevant clause exists.
-- When in doubt between Entailment and NotMentioned, choose NotMentioned.
-- When in doubt between Contradiction and NotMentioned, choose NotMentioned.
+Definitions:
+- **Entailment**: The NDA contains a clause or language that explicitly supports or logically implies the hypothesis is TRUE. There must be specific text you can point to.
+- **Contradiction**: The NDA contains a clause or language that explicitly states the OPPOSITE of the hypothesis. The NDA must actively negate or forbid what the hypothesis claims. Simply not mentioning something is NOT contradiction.
+- **NotMentioned**: The NDA does not contain any clause addressing the topic of the hypothesis. The hypothesis topic is simply absent from the agreement.
 
-Respond with ONLY one word: Entailment, Contradiction, or NotMentioned."""
+CRITICAL distinction — Contradiction vs NotMentioned:
+- If the NDA says NOTHING about the topic → NotMentioned (NOT Contradiction)
+- If the NDA has a clause that DIRECTLY OPPOSES the hypothesis → Contradiction
+- Silence is NOT contradiction. Only explicit opposing language counts.
+- Example: If hypothesis is "Receiving Party can share with employees" and the NDA says nothing about employees → NotMentioned
+- Example: If hypothesis is "Receiving Party can share with employees" and the NDA says "shall not disclose to any employee" → Contradiction
+
+Think step by step:
+1. Identify the topic of the hypothesis
+2. Search the NDA for clauses addressing that topic
+3. If no clause addresses it → NotMentioned
+4. If a clause supports the hypothesis → Entailment
+5. If a clause directly opposes the hypothesis → Contradiction
+
+After your reasoning, output your final answer on the LAST line as exactly one word: Entailment, Contradiction, or NotMentioned."""
 
 
 def build_user_prompt(nda_text: str, hypothesis: str) -> str:
@@ -180,30 +188,35 @@ async def classify_nli(nda_text: str, hypothesis: str, sem: asyncio.Semaphore) -
         try:
             response = client.messages.create(
                 model=MODEL,
-                max_tokens=16,
+                max_tokens=300,
                 temperature=0.0,
                 system=SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
-            answer = response.content[0].text.strip().lower()
+            answer = response.content[0].text.strip()
         except Exception as e:
             print(f"  [ERROR] LLM call failed: {e}")
             return "not_mentioned"
 
-    # Parse classification
-    if "entailment" in answer:
+    # Parse the LAST line for the classification (chain-of-thought before it)
+    last_line = answer.strip().split("\n")[-1].strip().lower()
+
+    if "entailment" in last_line:
         return "entailment"
-    elif "contradiction" in answer:
+    elif "contradiction" in last_line:
         return "contradiction"
-    elif "notmentioned" in answer or "not_mentioned" in answer or "not mentioned" in answer:
+    elif "notmentioned" in last_line or "not_mentioned" in last_line or "not mentioned" in last_line:
         return "not_mentioned"
-    else:
-        # Fallback heuristics
-        if "support" in answer or "true" in answer or "yes" in answer:
-            return "entailment"
-        elif "contradict" in answer or "false" in answer or "no" == answer.strip():
-            return "contradiction"
+
+    # Fallback: search full response for classification keywords
+    lower = answer.lower()
+    if "notmentioned" in lower or "not mentioned" in lower or "not_mentioned" in lower:
         return "not_mentioned"
+    elif "entailment" in lower:
+        return "entailment"
+    elif "contradiction" in lower:
+        return "contradiction"
+    return "not_mentioned"
 
 
 # ---------------------------------------------------------------------------
