@@ -165,7 +165,11 @@ After the competition ended, we studied other participants' published approaches
 | Gemini PDF preprocessing | [Dmitry Savostyanov](https://t.me/savostyanov_dmitry/735) | Vision models for image-embedded structural elements |
 | Evaluation tooling insights | [Dmitry Donchenko / mlboost](https://x.com/dmitry_ml/status/2036139258373616051) | Visual review UI + LLM-as-judge for batch evaluation |
 | Scoring methodology insights | [Dmitry Stepanov](https://medium.com/@stepdi/building-a-legal-rag-system-lessons-from-the-arlc-2026-d3818deeb0c1) | Structured output via tool_use, reranker tradeoffs |
-| Top-3 pipeline insights | [Vitaliy Pokrovskiy](https://www.linkedin.com/pulse/3rd-place-out-155-teams-what-i-learned-building-rag-legal-pokrovskiy-yzuof) | Agentic RAG approach, 3rd place warmup |
+| Small-doc full inclusion | [Vitaliy Pokrovskiy](https://www.linkedin.com/pulse/3rd-place-out-155-teams-what-i-learned-building-rag-legal-pokrovskiy-yzuof) (3rd place) | Skip reranking for docs ≤8 pages |
+| Recall-biased LLM reranker | [Azamat Yelmagambetov / CPBD](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc) (1st place, G=0.990) | "Round UP when uncertain" — F-beta(2.5) aware scoring |
+| Per-type retrieval depth | [Azamat Yelmagambetov / CPBD](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc) (1st place) | 22 depth values swept per question type |
+| Entity indexing at build time | [Azamat Yelmagambetov / CPBD](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc) (1st place) | Entities as separate BM25 column |
+| Component-level metrics | [Azamat Yelmagambetov / CPBD](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc) (1st place) | Per-stage precision/recall instrumentation |
 
 Thank you to all participants who shared their approaches — the open exchange of ideas after the competition made everyone's systems better.
 
