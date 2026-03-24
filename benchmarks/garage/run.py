@@ -132,14 +132,33 @@ Rules:
 4. If only some passages are relevant, cite only those specific passages."""
 
 
+def extract_passage_text(passage, index: int) -> str:
+    """Extract text from a GaRAGe passage dict.
+
+    Each passage is a dict with keys: age, date, provider, cite_N
+    where N is the 1-indexed passage number.
+    """
+    if isinstance(passage, str):
+        return passage
+    if isinstance(passage, dict):
+        # Try cite_N key first (the actual passage text)
+        cite_key = f"cite_{index + 1}"
+        if cite_key in passage:
+            return str(passage[cite_key]).strip()
+        # Fallback: try any cite_ key
+        for k, v in passage.items():
+            if k.startswith("cite_"):
+                return str(v).strip()
+        # Last resort
+        return str(passage)
+    return str(passage)
+
+
 def build_user_prompt(question: str, passages: list) -> str:
     """Build the user prompt with numbered passages."""
     parts = ["Here are the passages:\n"]
     for i, passage in enumerate(passages):
-        if isinstance(passage, dict):
-            text = passage.get("text", passage.get("passage", str(passage)))
-        else:
-            text = str(passage)
+        text = extract_passage_text(passage, i)
         parts.append(f"[P{i+1}] {text}\n")
     parts.append(f"\nQuestion: {question}")
     return "\n".join(parts)
