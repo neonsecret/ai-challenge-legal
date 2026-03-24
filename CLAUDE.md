@@ -28,6 +28,13 @@ The **core** scoring path per question is: `route -> retrieve -> answer` (one LL
 - Oracle entries: `total_time_ms` MUST be > 0
 - Trick questions: MUST return EMPTY pages `[]` + answer starting "There is no information..."
 
+## Git Safety
+
+- **NEVER commit .env, API keys, proxy URLs, company names, or any sensitive data**
+- Always scan staged files for secrets before committing (grep for sk-, rohlik, rhl, api_key, password, token patterns)
+- `.env`, `.planning/`, `paper/` are gitignored — keep it that way
+- The litellm proxy URLs and keys live ONLY in .env, never in committed code
+
 ## Data Files
 
 - `data/case_metadata_index.json` — case metadata (judges, dates, parties, claims)
