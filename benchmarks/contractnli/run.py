@@ -5,7 +5,7 @@ Tests our pipeline as a boolean/classification QA system on 607 NDAs
 with 17 hypotheses each (entailment/contradiction/not_mentioned).
 
 Usage:
-    python benchmarks/contractnli/run.py [--dry-run] [--limit N]
+    python benchmarks/contractnli/run.py [--dry-run] [--limit N] [--workers N]
 """
 
 import argparse
@@ -14,6 +14,7 @@ import json
 import os
 import re
 import sys
+import time
 import zipfile
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -33,9 +34,36 @@ load_dotenv(PROJECT_ROOT / ".env")
 DATA_DIR = BENCH_DIR / "data"
 RESULTS_PATH = BENCH_DIR / "results.json"
 
-# ContractNLI dataset URL (from the project page)
 DATASET_URL = "https://stanfordnlp.github.io/contract-nli/resources/contract-nli.zip"
 DATASET_ALT_URL = "https://github.com/stanfordnlp/contract-nli/raw/main/data/contract-nli.zip"
+
+# Model config
+MODEL = os.environ.get("CONTRACTNLI_MODEL", "claude-sonnet-4-6")
+
+
+# ---------------------------------------------------------------------------
+# Anthropic client
+# ---------------------------------------------------------------------------
+
+_client = None
+
+def get_client():
+    global _client
+    if _client is None:
+        import anthropic
+        backend = os.environ.get("LLM_BACKEND", "anthropic").lower()
+        if backend == "vertex" or (backend == "auto" and os.environ.get("VERTEX_PROJECT_ID")):
+            from anthropic import AnthropicVertex
+            _client = AnthropicVertex(
+                project_id=os.environ["VERTEX_PROJECT_ID"],
+                region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+            )
+        else:
+            _client = anthropic.Anthropic(
+                api_key=os.environ.get("ANTHROPIC_API_KEY"),
+                timeout=120.0,
+            )
+    return _client
 
 
 # ---------------------------------------------------------------------------
@@ -65,8 +93,6 @@ def download_dataset():
             continue
     else:
         print("[contractnli] ERROR: Could not download dataset from any URL.")
-        print("  Please manually download from: https://stanfordnlp.github.io/contract-nli/")
-        print(f"  and extract into {DATA_DIR}/")
         raise SystemExit(1)
 
     print("[contractnli] Extracting...")
@@ -74,7 +100,6 @@ def download_dataset():
         z.extractall(DATA_DIR)
     zip_path.unlink()
 
-    # Find the extracted directory
     for d in DATA_DIR.iterdir():
         if d.is_dir() and "contract" in d.name.lower():
             return d
@@ -83,43 +108,13 @@ def download_dataset():
 
 
 def load_dataset(dataset_dir: Path) -> dict:
-    """Load ContractNLI JSON data.
-
-    The dataset structure:
-    {
-        "documents": [
-            {
-                "id": "...",
-                "text": "full NDA text",
-                "spans": ["sentence1", "sentence2", ...],
-                "annotation_sets": [
-                    {
-                        "annotations": {
-                            "hypothesis_key": {
-                                "choice": "Entailment|Contradiction|NotMentioned",
-                                "spans": [span_indices]
-                            }
-                        }
-                    }
-                ]
-            }
-        ],
-        "labels": {
-            "hypothesis_key": {
-                "short_description": "...",
-                "hypothesis": "..."
-            }
-        }
-    }
-    """
-    # Try common file names
+    """Load ContractNLI JSON data."""
     for fname in ["test.json", "dev.json", "train.json", "contract_nli.json"]:
         fpath = dataset_dir / fname
         if fpath.exists():
             with open(fpath) as f:
                 return json.load(f)
 
-    # Search recursively
     for json_file in sorted(dataset_dir.rglob("*.json")):
         try:
             with open(json_file) as f:
@@ -131,56 +126,83 @@ def load_dataset(dataset_dir: Path) -> dict:
             continue
 
     print(f"[contractnli] ERROR: Could not find valid dataset in {dataset_dir}")
-    print(f"  Contents: {[f.name for f in dataset_dir.rglob('*') if f.is_file()][:20]}")
     raise SystemExit(1)
 
 
 # ---------------------------------------------------------------------------
-# Pipeline adapter
+# Prompts
 # ---------------------------------------------------------------------------
 
-LABEL_MAP = {"Entailment": "entailment", "Contradiction": "contradiction", "NotMentioned": "not_mentioned"}
+SYSTEM_PROMPT = """You are a legal expert specializing in contract analysis. Your task is to determine the relationship between a Non-Disclosure Agreement (NDA) and a given hypothesis.
+
+Classify the relationship as exactly one of:
+- Entailment: The NDA explicitly states or clearly implies the hypothesis is true.
+- Contradiction: The NDA explicitly states or clearly implies the hypothesis is false.
+- NotMentioned: The NDA does not address the topic of the hypothesis at all.
+
+Important guidelines:
+- Read the ENTIRE agreement carefully before classifying.
+- "Entailment" requires explicit textual support, not just absence of denial.
+- "Contradiction" requires the NDA to state something incompatible with the hypothesis.
+- "NotMentioned" means the NDA is completely silent on the topic — no relevant clause exists.
+- When in doubt between Entailment and NotMentioned, choose NotMentioned.
+- When in doubt between Contradiction and NotMentioned, choose NotMentioned.
+
+Respond with ONLY one word: Entailment, Contradiction, or NotMentioned."""
 
 
-async def classify_nli(nda_text: str, hypothesis: str) -> str:
-    """Use our pipeline to classify NDA + hypothesis as entailment/contradiction/not_mentioned.
-
-    We frame this as a boolean QA: ask the model whether the hypothesis is
-    supported, contradicted, or not mentioned in the NDA.
-    """
-    from arlc.answerer import generate_answer
-
-    # Frame the NLI task as a question
-    question = (
-        f"Based on the following contract, classify the hypothesis as one of: "
-        f"Entailment, Contradiction, or NotMentioned.\n\n"
+def build_user_prompt(nda_text: str, hypothesis: str) -> str:
+    """Build the user prompt for NLI classification."""
+    return (
+        f"NDA Text:\n{nda_text}\n\n"
         f"Hypothesis: {hypothesis}\n\n"
-        f"Respond with ONLY one word: Entailment, Contradiction, or NotMentioned."
+        f"Classification:"
     )
 
-    # Truncate NDA to avoid token limits (use first ~8000 chars)
-    truncated_text = nda_text[:8000]
 
-    source_pages = [{
-        "doc_id": "nda_document",
-        "page_number": 1,
-        "text": truncated_text,
-    }]
+# ---------------------------------------------------------------------------
+# LLM call
+# ---------------------------------------------------------------------------
 
-    result = await generate_answer(
-        question=question,
-        answer_type="name",  # single label classification
-        source_pages=source_pages,
-    )
+LABEL_MAP = {
+    "Entailment": "entailment",
+    "Contradiction": "contradiction",
+    "NotMentioned": "not_mentioned",
+}
 
-    answer = str(result.answer).strip().lower() if result.answer else ""
 
-    # Parse the classification from the answer
-    if "entailment" in answer or "support" in answer or "true" in answer:
+async def classify_nli(nda_text: str, hypothesis: str, sem: asyncio.Semaphore) -> str:
+    """Classify NDA + hypothesis as entailment/contradiction/not_mentioned."""
+    client = get_client()
+    user_prompt = build_user_prompt(nda_text, hypothesis)
+
+    async with sem:
+        try:
+            response = client.messages.create(
+                model=MODEL,
+                max_tokens=16,
+                temperature=0.0,
+                system=SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            answer = response.content[0].text.strip().lower()
+        except Exception as e:
+            print(f"  [ERROR] LLM call failed: {e}")
+            return "not_mentioned"
+
+    # Parse classification
+    if "entailment" in answer:
         return "entailment"
-    elif "contradiction" in answer or "contradict" in answer or "false" in answer:
+    elif "contradiction" in answer:
         return "contradiction"
+    elif "notmentioned" in answer or "not_mentioned" in answer or "not mentioned" in answer:
+        return "not_mentioned"
     else:
+        # Fallback heuristics
+        if "support" in answer or "true" in answer or "yes" in answer:
+            return "entailment"
+        elif "contradict" in answer or "false" in answer or "no" == answer.strip():
+            return "contradiction"
         return "not_mentioned"
 
 
@@ -195,7 +217,6 @@ def compute_metrics(predictions: list[str], golds: list[str]) -> dict:
     correct = sum(1 for p, g in zip(predictions, golds) if p == g)
     accuracy = correct / len(predictions) if predictions else 0
 
-    # Per-class metrics
     per_class = {}
     for label in labels:
         tp = sum(1 for p, g in zip(predictions, golds) if p == label and g == label)
@@ -210,7 +231,6 @@ def compute_metrics(predictions: list[str], golds: list[str]) -> dict:
 
     macro_f1 = sum(c["f1"] for c in per_class.values()) / len(labels)
 
-    # Confusion matrix
     confusion = defaultdict(Counter)
     for p, g in zip(predictions, golds):
         confusion[g][p] += 1
@@ -232,6 +252,7 @@ def main():
     parser = argparse.ArgumentParser(description="ContractNLI evaluation")
     parser.add_argument("--dry-run", action="store_true", help="Download data only")
     parser.add_argument("--limit", type=int, default=0, help="Limit NDAs (0=all)")
+    parser.add_argument("--workers", type=int, default=5, help="Concurrent workers")
     args = parser.parse_args()
 
     # Step 1: Download
@@ -248,6 +269,11 @@ def main():
         print("[contractnli] Hypotheses:")
         for key, info in labels.items():
             print(f"  {key}: {info.get('short_description', info.get('hypothesis', '')[:60])}")
+        if documents:
+            doc = documents[0]
+            text = doc.get("text", "")
+            print(f"\n[contractnli] Sample NDA length: {len(text)} chars")
+            print(f"[contractnli] Sample NDA preview: {text[:200]}...")
         print("[contractnli] Dry run complete.")
         return
 
@@ -255,14 +281,8 @@ def main():
         documents = documents[:args.limit]
         print(f"[contractnli] Limited to {args.limit} NDAs")
 
-    # Step 3: Classify each (NDA, hypothesis) pair
-    all_predictions = []
-    all_golds = []
-    per_hypothesis_results = defaultdict(lambda: {"predictions": [], "golds": []})
-
-    total_pairs = len(documents) * len(labels)
-    done = 0
-
+    # Step 3: Build all (NDA, hypothesis) pairs
+    pairs = []
     for doc in documents:
         nda_text = doc.get("text", "")
         annotations = {}
@@ -273,37 +293,80 @@ def main():
             hypothesis = hyp_info.get("hypothesis", hyp_info.get("short_description", ""))
             gold_ann = annotations.get(hyp_key, {})
             gold_label = LABEL_MAP.get(gold_ann.get("choice", "NotMentioned"), "not_mentioned")
+            pairs.append({
+                "doc_id": doc.get("id", "?"),
+                "nda_text": nda_text,
+                "hyp_key": hyp_key,
+                "hypothesis": hypothesis,
+                "gold": gold_label,
+            })
 
+    print(f"[contractnli] Total pairs: {len(pairs)}")
+
+    # Step 4: Classify with concurrency
+    sem = asyncio.Semaphore(args.workers)
+
+    async def classify_pair(pair):
+        pred = await classify_nli(pair["nda_text"], pair["hypothesis"], sem)
+        return {**pair, "prediction": pred}
+
+    async def run_all():
+        tasks = [classify_pair(p) for p in pairs]
+        done = 0
+        results = []
+        for coro in asyncio.as_completed(tasks):
+            result = await coro
             done += 1
-            print(f"  [{done}/{total_pairs}] Doc {doc.get('id', '?')[:20]} / {hyp_key}")
+            if done % 10 == 0 or done == len(tasks):
+                print(f"  [{done}/{len(tasks)}] ...")
+            results.append(result)
+        return results
 
-            prediction = asyncio.run(classify_nli(nda_text, hypothesis))
+    t0 = time.time()
+    classified = asyncio.run(run_all())
+    elapsed = time.time() - t0
 
-            all_predictions.append(prediction)
-            all_golds.append(gold_label)
-            per_hypothesis_results[hyp_key]["predictions"].append(prediction)
-            per_hypothesis_results[hyp_key]["golds"].append(gold_label)
+    # Step 5: Compute metrics
+    all_predictions = [c["prediction"] for c in classified]
+    all_golds = [c["gold"] for c in classified]
 
-    # Step 4: Compute metrics
     overall = compute_metrics(all_predictions, all_golds)
 
+    # Per-hypothesis metrics
+    per_hyp = defaultdict(lambda: {"predictions": [], "golds": []})
+    for c in classified:
+        per_hyp[c["hyp_key"]]["predictions"].append(c["prediction"])
+        per_hyp[c["hyp_key"]]["golds"].append(c["gold"])
+
     per_hyp_metrics = {}
-    for hyp_key, data in per_hypothesis_results.items():
-        per_hyp_metrics[hyp_key] = compute_metrics(data["predictions"], data["golds"])
+    for hyp_key, d in per_hyp.items():
+        per_hyp_metrics[hyp_key] = compute_metrics(d["predictions"], d["golds"])
 
     output = {
-        "aggregate": overall,
+        "aggregate": {**overall, "elapsed_seconds": elapsed},
         "per_hypothesis": per_hyp_metrics,
     }
+
+    # Remove nda_text from saved results to keep file small
+    per_query = [{k: v for k, v in c.items() if k != "nda_text"} for c in classified]
+    output["per_query"] = per_query
 
     with open(RESULTS_PATH, "w") as f:
         json.dump(output, f, indent=2)
 
-    print(f"\n[contractnli] Results saved to {RESULTS_PATH}")
+    print(f"\n[contractnli] Results ({len(all_predictions)} pairs, {elapsed:.1f}s)")
     print(f"  Accuracy: {overall['accuracy']:.4f}")
     print(f"  Macro F1: {overall['macro_f1']:.4f}")
     for label, metrics in overall["per_class"].items():
         print(f"    {label}: P={metrics['precision']:.3f} R={metrics['recall']:.3f} F1={metrics['f1']:.3f}")
+    print(f"\n  Per-hypothesis accuracy:")
+    for hyp_key in sorted(per_hyp_metrics.keys()):
+        m = per_hyp_metrics[hyp_key]
+        print(f"    {hyp_key}: {m['accuracy']:.3f} ({m['num_samples']} samples)")
+    print(f"\n  Confusion matrix:")
+    for gold_label, preds in overall["confusion_matrix"].items():
+        print(f"    {gold_label}: {dict(preds)}")
+    print(f"\n  Results saved to {RESULTS_PATH}")
 
 
 if __name__ == "__main__":
