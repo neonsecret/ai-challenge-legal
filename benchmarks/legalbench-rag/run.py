@@ -102,7 +102,7 @@ def load_benchmarks() -> list[dict]:
             benchmarks.extend(data)
         elif isinstance(data, dict):
             # Try common keys
-            for key in ("queries", "benchmarks", "items", "data"):
+            for key in ("tests", "queries", "benchmarks", "items", "data"):
                 if key in data:
                     benchmarks.extend(data[key])
                     break
@@ -300,14 +300,23 @@ def main():
         gold_snippets = item.get("snippets", item.get("ground_truth", []))
 
         # Normalize gold snippets to {"file", "start", "end"} format
+        # LegalBench-RAG format: {"file_path": "...", "span": "[start, end]", "answer": "..."}
         gold_spans = []
         for snippet in gold_snippets:
             if isinstance(snippet, dict):
-                gold_spans.append({
-                    "file": snippet.get("file", snippet.get("file_path", "")),
-                    "start": snippet.get("start", snippet.get("char_start", 0)),
-                    "end": snippet.get("end", snippet.get("char_end", 0)),
-                })
+                file_path = snippet.get("file", snippet.get("file_path", ""))
+                # Parse span: may be "[start, end]" string or {"start", "end"} dict
+                span = snippet.get("span")
+                if isinstance(span, str):
+                    span = json.loads(span)
+                if isinstance(span, list) and len(span) == 2:
+                    gold_spans.append({"file": file_path, "start": span[0], "end": span[1]})
+                else:
+                    gold_spans.append({
+                        "file": file_path,
+                        "start": snippet.get("start", snippet.get("char_start", 0)),
+                        "end": snippet.get("end", snippet.get("char_end", 0)),
+                    })
 
         print(f"  [{i+1}/{len(benchmarks)}] {query[:80]}...")
         predicted_spans = retrieve_for_query(query, CORPUS_DIR)
