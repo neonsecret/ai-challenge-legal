@@ -190,11 +190,15 @@ Thank you to all participants who shared their approaches — the open exchange 
 
 | Benchmark | Metric | Our Score | SOTA | Dataset Size |
 |-----------|--------|-----------|------|-------------|
-| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 | 2,366 questions |
-| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | — | 2,091 pairs (123 NDAs) |
-| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | Retrieval Acc | **0.690** | — | 100 questions |
+| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 (Nova Pro) | 2,366 questions |
+| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | 0.875 / 0.855 (fine-tuned BERT) | 2,091 pairs (123 NDAs) |
+| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | Retrieval Acc | **0.690** | ~0.80 ([Kanon 2](https://huggingface.co/blog/isaacus/kanon-2-embedder)) | 100 questions |
 
-**GaRAGe** — Full-dataset evaluation on all 2,366 items. RAF (Retrieval-Augmented Factuality) measures combined answer eligibility, citation attribution, and deflection quality. Our pipeline scores 0.826 vs. the published SOTA of 0.607 from the [GaRAGe paper](https://github.com/amazon-science/GaRAGe) (Table 3, best baseline). See [`benchmarks/garage/`](benchmarks/garage/) for reproduction steps.
+**GaRAGe** — Full-dataset evaluation on all 2,366 items. RAF (Retrieval-Augmented Factuality) measures combined answer eligibility, citation attribution, and deflection quality. Our pipeline scores **0.826 vs. SOTA 0.607** (Nova Pro, [GaRAGe paper](https://arxiv.org/abs/2506.07671) Table 3). No other published system exceeds 0.607. See [`benchmarks/garage/`](benchmarks/garage/) for reproduction steps.
+
+**ContractNLI** — Zero-shot 3-way NLI (entailment/contradiction/not_mentioned) on 123 NDAs × 17 hypotheses. SOTA (0.875) is a fine-tuned Span NLI BERT_large trained on the ContractNLI training set ([Koreeda & Manning, 2021](https://arxiv.org/abs/2110.01799)). Our zero-shot approach closes two-thirds of the gap without any in-domain training. Notably, our contradiction F1 (0.611) exceeds the fine-tuned baseline (0.357). See [`benchmarks/contractnli/`](benchmarks/contractnli/) for reproduction steps.
+
+**Legal RAG Bench** — 100 expert-written criminal law questions over 4,876 passages from the Victorian Judicial College Criminal Charge Book ([arxiv 2603.01710](https://arxiv.org/abs/2603.01710)). SOTA uses the legal-domain [Kanon 2 Embedder](https://huggingface.co/blog/isaacus/kanon-2-embedder) (~0.80+ retrieval accuracy); we use general-purpose Arctic Embed. See [`benchmarks/legal-rag-bench/`](benchmarks/legal-rag-bench/) for reproduction steps.
 
 ## Our Journey
 
