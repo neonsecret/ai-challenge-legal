@@ -193,7 +193,6 @@ Thank you to all participants who shared their approaches — the open exchange 
 | [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 | 2,366 questions |
 | [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | — | 2,091 pairs (123 NDAs) |
 | [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | Retrieval Acc | **0.690** | — | 100 questions |
-| [LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag) | Char-F1 | 0.016 | — | 6,889 queries (retrieval-only) |
 
 **GaRAGe** — Full-dataset evaluation on all 2,366 items. RAF (Retrieval-Augmented Factuality) measures combined answer eligibility, citation attribution, and deflection quality. Our pipeline scores 0.826 vs. the published SOTA of 0.607 from the [GaRAGe paper](https://github.com/amazon-science/GaRAGe) (Table 3, best baseline). See [`benchmarks/garage/`](benchmarks/garage/) for reproduction steps.
 
