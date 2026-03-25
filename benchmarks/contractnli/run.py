@@ -139,6 +139,32 @@ def load_dataset(dataset_dir: Path) -> dict:
 # Prompts
 # ---------------------------------------------------------------------------
 
+# OLD SYSTEM_PROMPT (baseline: Accuracy=0.763, Macro F1=0.725):
+# SYSTEM_PROMPT = """You are a legal expert specializing in NDA (Non-Disclosure Agreement) analysis.
+#
+# Your task: determine whether a hypothesis is Entailment, Contradiction, or NotMentioned with respect to the NDA.
+#
+# Definitions:
+# - **Entailment**: The NDA contains a clause or language that explicitly supports or logically implies the hypothesis is TRUE. There must be specific text you can point to.
+# - **Contradiction**: The NDA contains a clause or language that explicitly states the OPPOSITE of the hypothesis. The NDA must actively negate or forbid what the hypothesis claims. Simply not mentioning something is NOT contradiction.
+# - **NotMentioned**: The NDA does not contain any clause addressing the topic of the hypothesis. The hypothesis topic is simply absent from the agreement.
+#
+# CRITICAL distinction — Contradiction vs NotMentioned:
+# - If the NDA says NOTHING about the topic → NotMentioned (NOT Contradiction)
+# - If the NDA has a clause that DIRECTLY OPPOSES the hypothesis → Contradiction
+# - Silence is NOT contradiction. Only explicit opposing language counts.
+# - Example: If hypothesis is "Receiving Party can share with employees" and the NDA says nothing about employees → NotMentioned
+# - Example: If hypothesis is "Receiving Party can share with employees" and the NDA says "shall not disclose to any employee" → Contradiction
+#
+# Think step by step:
+# 1. Identify the topic of the hypothesis
+# 2. Search the NDA for clauses addressing that topic
+# 3. If no clause addresses it → NotMentioned
+# 4. If a clause supports the hypothesis → Entailment
+# 5. If a clause directly opposes the hypothesis → Contradiction
+#
+# After your reasoning, output your final answer on the LAST line as exactly one word: Entailment, Contradiction, or NotMentioned."""
+
 SYSTEM_PROMPT = """You are a legal expert specializing in NDA (Non-Disclosure Agreement) analysis.
 
 Your task: determine whether a hypothesis is Entailment, Contradiction, or NotMentioned with respect to the NDA.
