@@ -107,6 +107,7 @@ make prepare    # or: python -m arlc.indexing.prepare_corpus
 |-------|----------|---------|------|
 | [Claude Sonnet 4.6](https://docs.anthropic.com/en/docs/about-claude/models) | [Anthropic](https://www.anthropic.com/) | API ToS | Answer generation (deterministic types) |
 | [Claude Opus 4.6](https://docs.anthropic.com/en/docs/about-claude/models) | [Anthropic](https://www.anthropic.com/) | API ToS | Answer generation (free-text), SAC summaries |
+| [Claude Haiku 4.5](https://docs.anthropic.com/en/docs/about-claude/models) | [Anthropic](https://www.anthropic.com/) | API ToS | Question decomposition, LLM reranking |
 | [Snowflake Arctic Embed L v2.0](https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0) | [Snowflake](https://www.snowflake.com/) | Apache 2.0 | Dense embeddings (1024d) |
 | [BGE Reranker v2 M3](https://huggingface.co/BAAI/bge-reranker-v2-m3) | [BAAI](https://www.baai.ac.cn/) | MIT | Cross-encoder reranking |
 | [FlashRank MiniLM L-12](https://huggingface.co/prithivida/flashrank) | [Prithivi Da](https://huggingface.co/prithivida) | Apache 2.0 | Fast initial reranking |

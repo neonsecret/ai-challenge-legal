@@ -966,7 +966,8 @@ BEFORE (competition):                AFTER (open-source):
 ├── build_law_index.py               │   ├── llm/
 ├── build_case_index.py              │   │   ├── anthropic_backend.py
 ├── build_case_metadata.py           │   │   ├── vertex_backend.py
-├── ... (22 files)                   │   │   ├── router.py
+├── ... (22 files)                   │   │   ├── litellm_backend.py
+                                     │   │   ├── router.py
                                      │   │   └── reranker.py
                                      │   └── indexing/
                                      │       ├── docling_converter.py
@@ -1017,14 +1018,13 @@ The upgraded pipeline was validated end-to-end on the real ARLC corpus:
 
 To validate the pipeline beyond ARLC, we set up five external legal RAG benchmarks:
 
-| Benchmark | Focus | Our Score | Baseline/SOTA | Sample | Notes |
-|-----------|-------|-----------|---------------|--------|-------|
-| **[GaRAGe](https://github.com/amazon-science/GaRAGe)** | Passage grounding | **0.872 RAF** | 0.607 (Nova Pro) | 50/2366 | Explicit citation prompts |
-| **[ContractNLI](https://stanfordnlp.github.io/contract-nli/)** | NDA entailment | 0.759 acc | 0.875 (BERT_large) | 20/607 NDAs | Zero-shot, CoT reasoning |
-| **[Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench)** | Criminal law retrieval | 0.60 retrieval | 0.94 (Kanon 2) | 20/100 | RRF fusion improved from 0.40 |
-| **[LegalBench-RAG](https://github.com/zeroentropy-ai/legalbenchrag)** | Contract retrieval | 10.7% recall@10 | No leaderboard | 20/1750 | First multi-signal entry |
+| Benchmark | Focus | Our Score | Baseline/SOTA | Dataset | Notes |
+|-----------|-------|-----------|---------------|---------|-------|
+| **[GaRAGe](https://github.com/amazon-science/GaRAGe)** | Passage grounding | **0.826 RAF** | 0.607 (Nova Pro) | 2,366 (full) | +36% over SOTA |
+| **[ContractNLI](https://stanfordnlp.github.io/contract-nli/)** | NDA entailment | **0.763 acc / 0.725 F1** | 0.875 (fine-tuned BERT) | 2,091 pairs (full test) | Zero-shot; contradiction F1 0.611 beats fine-tuned 0.357 |
+| **[Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench)** | Criminal law retrieval | **0.690 retrieval** | ~0.80 (Kanon 2) | 100 (full) | General-purpose embedder vs legal-domain |
 
-*Full-dataset runs in progress. Scores are preliminary on subsets.*
+*Full-dataset results on all benchmarks. Prompt optimization tested on ContractNLI (3 variants — few-shot, global bias, conditional bias — all regressed vs baseline).*
 
 Each benchmark has its own corpus indexed with our FAISS + Arctic Embed pipeline — not canned embeddings. A key finding from benchmark testing: **RRF (Reciprocal Rank Fusion) beats additive score fusion** — our Legal RAG Bench retrieval jumped from 40% to 60% after switching to RRF. This finding, independently confirmed by [CPBD (1st place)](https://www.linkedin.com/pulse/how-build-so-agentic-legal-rag-system-azamat-yelmagambetov-w1fhc), is now being ported back to the core pipeline.
 
@@ -1151,4 +1151,4 @@ The competition attracted 340 teams and pushed the state of the art in legal doc
 
 ---
 
-*Built with Claude (Anthropic), BM25s, ChromaDB, BGE embeddings, cross-encoder reranking, and far too many cups of coffee.*
+*Built with Claude (Anthropic), BM25s, FAISS, Snowflake Arctic Embed, cross-encoder reranking, and far too many cups of coffee.*

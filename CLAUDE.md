@@ -2,17 +2,19 @@
 
 ## Pipeline Architecture
 
-The **core** scoring path per question is: `route -> retrieve -> answer` (one LLM generation call in `answerer_v3` for non-oracle questions).
+The **core** scoring path per question is: `route -> retrieve -> answer` (one LLM generation call in `arlc/answerer.py` for non-oracle questions).
 
-- `finals.py` — Orchestrator: routing, retrieval, answering, then **post-processing** (article page fixes, absence detection, telemetry/doc_id guards).
-- `router.py` — Deterministic document routing (regex, no LLM)
-- `retriever.py` — Hybrid BM25 + vector + cross-encoder reranking
-- `answerer_v3.py` — Single Anthropic SDK call per question (`claude-sonnet-4-6`)
+- `arlc/pipeline.py` — Orchestrator: routing, retrieval, answering, then **post-processing** (article page fixes, absence detection, telemetry/doc_id guards).
+- `arlc/router.py` — Deterministic document routing (regex, no LLM)
+- `arlc/retriever.py` — Hybrid BM25 + FAISS vector + cross-encoder reranking
+- `arlc/answerer.py` — Single LLM call per question (`claude-sonnet-4-6`)
+- `arlc/llm/router.py` — LLM backend selector (`LLM_BACKEND`: litellm/vertex/anthropic/auto)
+- `arlc/llm/litellm_backend.py` — Multi-endpoint round-robin with failover (default backend)
 
 ## Key Rules
 
 1. Max 1 page per document, max 3 pages total per question
-2. **Answer generation:** one main LLM call per question in `answerer_v3`
+2. **Answer generation:** one main LLM call per question in `arlc/answerer.py`
 3. TARGETED fixes only — NEVER make blanket changes to all answers
 4. Confidence calibration MUST be included when info is absent ("document does not specify...")
 5. Always run with `--workers 5` (prevents cross-encoder lock contention timeout)
