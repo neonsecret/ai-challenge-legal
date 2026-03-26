@@ -17,6 +17,8 @@ class Settings:
     ).split(",")
     # SQLite audit DB path (Phase 2 will use this)
     db_path: str = os.environ.get("NEOLEX_DB_PATH", "neolex.db")
+    # Data directory for documents and client indexes (Phase 3)
+    data_dir: str = os.environ.get("NEOLEX_DATA_DIR", "data")
 
 
 settings = Settings()

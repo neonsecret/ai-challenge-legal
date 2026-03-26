@@ -15,6 +15,7 @@ from neolex.config import settings
 from neolex.routers import health
 from neolex.routers import query as query_router
 from neolex.routers import admin as admin_router
+from neolex.routers import documents as documents_router
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +87,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -94,3 +95,4 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(query_router.router)
 app.include_router(admin_router.router)
+app.include_router(documents_router.router)

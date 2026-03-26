@@ -20,6 +20,26 @@ from neolex.config import settings
 # ---------------------------------------------------------------------------
 
 _SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS reindex_jobs (
+    job_id       TEXT PRIMARY KEY,
+    client_slug  TEXT NOT NULL,
+    status       TEXT NOT NULL DEFAULT 'pending',
+    progress     REAL NOT NULL DEFAULT 0.0,
+    started_at   TEXT NOT NULL,
+    completed_at TEXT,
+    error        TEXT,
+    doc_count    INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS documents (
+    doc_id      TEXT PRIMARY KEY,
+    client_slug TEXT NOT NULL,
+    filename    TEXT NOT NULL,
+    size_bytes  INTEGER NOT NULL,
+    upload_ts   TEXT NOT NULL,
+    indexed     INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS api_keys (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
@@ -112,7 +132,7 @@ class AuditDB:
     async def revoke_key(self, prefix: str) -> int:
         """Mark key(s) with matching key_prefix as inactive. Returns affected rows."""
         cur = await self._conn.execute(
-            "UPDATE api_keys SET active = 0 WHERE key_prefix = ?", (prefix,)
+            "UPDATE api_keys SET active = 0 WHERE key_prefix = ? AND active = 1", (prefix,)
         )
         return cur.rowcount  # type: ignore[return-value]
 
@@ -181,6 +201,93 @@ class AuditDB:
                 user_agent,
             ),
         )
+
+    # --- Reindex job management ---
+
+    async def create_reindex_job(
+        self,
+        *,
+        job_id: str,
+        client_slug: str,
+        started_at: str,
+    ) -> None:
+        """Insert a new reindex job row with status='pending'."""
+        await self._conn.execute(
+            "INSERT INTO reindex_jobs (job_id, client_slug, status, progress, started_at) "
+            "VALUES (?, ?, 'pending', 0.0, ?)",
+            (job_id, client_slug, started_at),
+        )
+
+    async def get_reindex_job(self, job_id: str) -> aiosqlite.Row | None:
+        """Return reindex_jobs row or None."""
+        async with self._conn.execute(
+            "SELECT * FROM reindex_jobs WHERE job_id = ?", (job_id,)
+        ) as cur:
+            return await cur.fetchone()
+
+    async def update_reindex_job(
+        self,
+        job_id: str,
+        *,
+        status: str,
+        progress: float = 0.0,
+        completed_at: str | None = None,
+        error: str | None = None,
+        doc_count: int = 0,
+    ) -> None:
+        """Update status, progress, and completion fields for a job."""
+        await self._conn.execute(
+            "UPDATE reindex_jobs SET status=?, progress=?, completed_at=?, error=?, doc_count=? "
+            "WHERE job_id=?",
+            (status, progress, completed_at, error, doc_count, job_id),
+        )
+
+    # --- Document registry ---
+
+    async def register_document(
+        self,
+        *,
+        doc_id: str,
+        client_slug: str,
+        filename: str,
+        size_bytes: int,
+        upload_ts: str,
+    ) -> None:
+        """Insert a document row into the registry (idempotent on conflict)."""
+        await self._conn.execute(
+            "INSERT OR IGNORE INTO documents (doc_id, client_slug, filename, size_bytes, upload_ts, indexed) "
+            "VALUES (?, ?, ?, ?, ?, 0)",
+            (doc_id, client_slug, filename, size_bytes, upload_ts),
+        )
+
+    async def get_document(self, doc_id: str, client_slug: str) -> aiosqlite.Row | None:
+        """Return documents row for a specific client's document."""
+        async with self._conn.execute(
+            "SELECT * FROM documents WHERE doc_id=? AND client_slug=?", (doc_id, client_slug)
+        ) as cur:
+            return await cur.fetchone()
+
+    async def list_documents(self, client_slug: str) -> list[aiosqlite.Row]:
+        """Return all documents for a client, newest first."""
+        async with self._conn.execute(
+            "SELECT * FROM documents WHERE client_slug=? ORDER BY upload_ts DESC", (client_slug,)
+        ) as cur:
+            return await cur.fetchall()
+
+    async def mark_document_indexed(self, doc_id: str, client_slug: str) -> None:
+        """Set indexed=1 for a document."""
+        await self._conn.execute(
+            "UPDATE documents SET indexed=1 WHERE doc_id=? AND client_slug=?",
+            (doc_id, client_slug),
+        )
+
+    async def delete_document(self, doc_id: str, client_slug: str) -> int:
+        """Delete a document row. Returns number of rows deleted."""
+        cur = await self._conn.execute(
+            "DELETE FROM documents WHERE doc_id=? AND client_slug=?",
+            (doc_id, client_slug),
+        )
+        return cur.rowcount  # type: ignore[return-value]
 
     # --- Audit log reads (admin use) ---
 
