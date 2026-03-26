@@ -65,6 +65,12 @@ async def get_api_key(
     prefix = get_prefix(raw_key)
 
     # --- Lookup key in DB ---
+    # IMPORTANT: log_event and the HTTPException raise must be separated.
+    # Raising inside the `async with get_audit_db()` block causes the context
+    # manager to roll back the transaction, losing the audit event.
+    # Pattern: do all DB work first (log + update), exit the context manager
+    # cleanly (commit), then raise the exception outside.
+    _auth_failed = False
     async with get_audit_db() as db:
         row = await db.get_key_by_hash(candidate_hash)
 
@@ -76,13 +82,16 @@ async def get_api_key(
                 ip=getattr(request.client, "host", None),
                 user_agent=request.headers.get("user-agent"),
             )
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid or revoked API key",
-            )
+            _auth_failed = True
+        else:
+            # Update last_used timestamp
+            await db.update_last_used(row["id"])
 
-        # Update last_used timestamp
-        await db.update_last_used(row["id"])
+    if _auth_failed:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or revoked API key",
+        )
 
     # --- Rate limiting ---
     rpm = int(os.environ.get("RATE_LIMIT_RPM", "60"))
