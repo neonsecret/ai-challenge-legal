@@ -156,4 +156,17 @@ def call_llm(
                 continue
 
     _call_count += 1  # advance even on total failure
+
+    # Last resort: fall back to Vertex AI directly if configured
+    from arlc.llm import vertex_backend
+    if vertex_backend.is_configured():
+        logger.warning("[litellm] All proxy endpoints failed — falling back to Vertex AI directly")
+        return vertex_backend.call_llm(
+            system_prompt=system_prompt,
+            user_message=user_message,
+            max_tokens=max_tokens,
+            model=model,
+            system_blocks=system_blocks,
+        )
+
     raise last_exc  # type: ignore[misc]
