@@ -53,12 +53,37 @@ async def live_client():
 
     Module-scoped so warm-up only happens once for all tests in this file.
     Skip if corpus not on disk.
+
+    Seeds an integration test API key in the audit DB so auth-protected endpoints
+    work without needing a pre-existing neolex.db.
     """
     if not corpus_available():
         pytest.skip("DIFC corpus not available (data/*.faiss missing). Run `make prepare`.")
 
     from dotenv import load_dotenv
     load_dotenv()
+
+    # Seed an integration key before app startup (init_schema runs in lifespan)
+    from neolex.auth.keys import generate_key, hash_key, key_prefix
+    from neolex.db.audit import get_audit_db
+
+    _int_raw_key = generate_key()
+    _int_hash = hash_key(_int_raw_key)
+    _int_prefix = key_prefix(_int_raw_key)
+
+    # Ensure schema exists and key is seeded before starting app
+    async with get_audit_db() as db:
+        await db.init_schema()
+        # Check if key already exists to avoid UNIQUE constraint on repeated runs
+        existing = await db.get_key_by_hash(_int_hash)
+        if existing is None:
+            await db.create_key(
+                name="integration-test",
+                key_hash=_int_hash,
+                key_prefix=_int_prefix,
+                client_slug="integration",
+                scope="query",
+            )
 
     # Import fresh app instance — triggers lifespan via asgi_lifespan
     from neolex.main import app
@@ -69,6 +94,7 @@ async def live_client():
             transport=ASGITransport(app=manager.app, raise_app_exceptions=True),
             base_url="http://test",
             timeout=120.0,
+            headers={"Authorization": f"Bearer {_int_raw_key}"},
         ) as client:
             yield client
 

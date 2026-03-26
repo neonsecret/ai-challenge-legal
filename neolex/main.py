@@ -49,6 +49,13 @@ async def lifespan(app: FastAPI):
         # Mirrors the --workers 5 flag in the CLI pipeline.
         app.state.semaphore = asyncio.Semaphore(settings.workers)
         app.state.workers = settings.workers
+
+        # Initialize audit DB schema (WAL mode, idempotent).
+        from neolex.db.audit import get_audit_db
+        async with get_audit_db() as db:
+            await db.init_schema()
+        logger.info("Audit DB initialized at %s (WAL mode).", settings.db_path)
+
         app.state.ready = True
         logger.info("NeoLex startup complete. Ready to serve requests.")
 

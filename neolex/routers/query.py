@@ -2,9 +2,10 @@ import asyncio
 import json
 import logging
 from typing import Annotated
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
+from neolex.auth.middleware import get_api_key
 from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_response
 from neolex.services.pipeline import run_single_question
 
@@ -13,7 +14,11 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.post("/query", response_model=QueryResponse)
-async def query(request: Request, body: QueryRequest) -> QueryResponse:
+async def query(
+    request: Request,
+    body: QueryRequest,
+    key_row: dict = Depends(get_api_key),
+) -> QueryResponse:
     """Submit a legal question and receive a grounded JSON answer with source citations.
 
     Returns 503 if pipeline is not ready (still warming up).
@@ -57,6 +62,7 @@ async def query_stream(
     request: Request,
     question: Annotated[str, Query(min_length=5, max_length=2000)],
     answer_type: Annotated[str, Query(pattern=r"^(boolean|number|name|names|date|free_text)$")] = "free_text",
+    key_row: dict = Depends(get_api_key),
 ):
     """Stream a legal query response as Server-Sent Events.
 
