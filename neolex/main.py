@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from neolex.config import settings
 from neolex.routers import health
 from neolex.routers import query as query_router
+from neolex.routers import admin as admin_router
 
 logger = logging.getLogger(__name__)
 
@@ -92,3 +93,4 @@ app.add_middleware(
 # Routers
 app.include_router(health.router)
 app.include_router(query_router.router)
+app.include_router(admin_router.router)

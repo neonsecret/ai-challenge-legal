@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
 from neolex.auth.middleware import get_api_key
+from neolex.db.audit import get_audit_db
 from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_response
 from neolex.services.pipeline import run_single_question
 
@@ -54,7 +55,21 @@ async def query(
             detail={"error": "Pipeline failed", "detail": str(exc)},
         )
 
-    return pipeline_dict_to_response(result)
+    response = pipeline_dict_to_response(result)
+    latency_ms = result.get("total_time_ms", 0)
+    sources_json = json.dumps([s.model_dump() for s in response.sources])
+    async with get_audit_db() as db:
+        await db.log_query(
+            key_hash=key_row["key_hash"],
+            question=body.question,
+            answer_text=response.answer,
+            sources_json=sources_json,
+            latency_ms=latency_ms,
+            model_name=response.model_name,
+            ip=getattr(request.client, "host", None),
+            user_agent=request.headers.get("user-agent"),
+        )
+    return response
 
 
 @router.get("/query/stream")
@@ -105,6 +120,18 @@ async def query_stream(
                 answer_fn=state.answer_fn,
             )
             response = pipeline_dict_to_response(result)
+            sources_json = json.dumps([s.model_dump() for s in response.sources])
+            async with get_audit_db() as db:
+                await db.log_query(
+                    key_hash=key_row["key_hash"],
+                    question=question,
+                    answer_text=response.answer,
+                    sources_json=sources_json,
+                    latency_ms=result.get("total_time_ms", 0),
+                    model_name=response.model_name,
+                    ip=getattr(request.client, "host", None),
+                    user_agent=request.headers.get("user-agent"),
+                )
             yield {"event": "answer", "data": response.model_dump_json()}
         except asyncio.CancelledError:
             # Client disconnected — generator is cancelled. Just return;
