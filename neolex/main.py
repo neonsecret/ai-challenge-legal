@@ -22,6 +22,7 @@ from neolex.routers import health
 from neolex.routers import query as query_router
 from neolex.routers import admin as admin_router
 from neolex.routers import documents as documents_router
+from neolex.routers import demo as demo_router
 from neolex.startup_validation import validate_startup
 
 # Configure logging before anything else.
@@ -77,6 +78,15 @@ async def lifespan(app: FastAPI):
         async with get_audit_db() as db:
             await db.init_schema()
         logger.info("Audit DB initialized at %s (WAL mode).", settings.db_path)
+
+        # Demo mode: ensure a demo API key exists.
+        if settings.demo_mode:
+            from neolex.demo_setup import ensure_demo_key
+            demo_key = await ensure_demo_key()
+            if demo_key:
+                logger.info("Demo mode: created demo API key with prefix %s", demo_key[:8])
+            else:
+                logger.info("Demo mode: demo API key already exists.")
 
         app.state.ready = True
         app.state.startup_time = time.monotonic()
@@ -172,3 +182,4 @@ app.include_router(health.router)
 app.include_router(query_router.router)
 app.include_router(admin_router.router)
 app.include_router(documents_router.router)
+app.include_router(demo_router.router)

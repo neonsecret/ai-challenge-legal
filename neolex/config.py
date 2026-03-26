@@ -37,6 +37,8 @@ class Settings:
     request_timeout_seconds: float = float(
         os.environ.get("REQUEST_TIMEOUT_SECONDS", "30")
     )
+    # Demo mode — pre-seeds a demo API key, shows demo badge in frontend.
+    demo_mode: bool = os.environ.get("DEMO_MODE", "").lower() in ("1", "true", "yes")
 
 
 settings = Settings()
