@@ -1,6 +1,6 @@
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, ASGITransport
 
 
@@ -24,11 +24,7 @@ def mock_pipeline_result() -> dict:
 
 @pytest.fixture
 async def app_client(mock_pipeline_result):
-    """
-    FastAPI test client with pipeline mocked out.
-    Bypasses lifespan (no FAISS/BM25 loading) — safe for CI.
-    Sets app.state directly to simulate post-lifespan state.
-    """
+    """Test client with pipeline fully mocked. Never touches arlc/ or data/."""
     from neolex.main import app
 
     # Inject mock state directly — bypasses lifespan so tests run without data/
@@ -38,9 +34,17 @@ async def app_client(mock_pipeline_result):
     app.state.route_fn = MagicMock()
     app.state.retrieve_fn = MagicMock()
     app.state.answer_fn = MagicMock()
-    app.state._mock_result = mock_pipeline_result  # used by mock _process_question
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
-        yield client
+    # Patch where the name is used (the router module), not where it's defined.
+    # "neolex.routers.query.run_single_question" intercepts the already-bound
+    # reference that was imported at router module load time.
+    # Using the service module path would not intercept the router's local binding.
+    with patch(
+        "neolex.routers.query.run_single_question",
+        new_callable=AsyncMock,
+        return_value=mock_pipeline_result,
+    ):
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            yield client
