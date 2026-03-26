@@ -32,14 +32,23 @@ async def get_api_key(
 ) -> dict:
     """FastAPI dependency that validates Authorization: Bearer <key>.
 
+    Also accepts ?api_key=<key> query param as fallback (needed for SSE
+    EventSource which cannot send custom headers).
+
     Returns the api_keys row as a plain dict on success.
     Raises HTTPException(401) on missing, invalid, or revoked key.
     Raises HTTPException(429) when rate limit is exceeded.
 
     Logs auth failures to the events table (event_type='auth_failure').
     """
-    # --- Extract raw key ---
-    if not authorization or not authorization.startswith("Bearer "):
+    # --- Extract raw key (header first, then query param for SSE) ---
+    raw_key = None
+    if authorization and authorization.startswith("Bearer "):
+        raw_key = authorization.removeprefix("Bearer ").strip()
+    elif request.query_params.get("api_key"):
+        raw_key = request.query_params["api_key"]
+
+    if not raw_key:
         async with get_audit_db() as db:
             await db.log_event(
                 key_hash=None,
@@ -50,10 +59,8 @@ async def get_api_key(
             )
         raise HTTPException(
             status_code=401,
-            detail="Missing API key. Use 'Authorization: Bearer <key>'",
+            detail="Missing API key. Use 'Authorization: Bearer <key>' or ?api_key=<key>",
         )
-
-    raw_key = authorization.removeprefix("Bearer ").strip()
     candidate_hash = hash_key(raw_key)
     prefix = get_prefix(raw_key)
 
