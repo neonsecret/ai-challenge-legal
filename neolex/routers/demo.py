@@ -9,6 +9,8 @@ stored only as a SHA-256 hash in SQLite — never in a plaintext file on disk.
 This endpoint is intentionally unauthenticated — it only returns information
 that the demo operator has already chosen to expose publicly.
 """
+import os
+
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -64,10 +66,11 @@ async def demo_config(request: Request) -> JSONResponse:
         "What is the jurisdiction of the DIFC Courts?",
     ]
 
+    # Serve demo key from env var if set (safe for demo deployments)
+    demo_key = os.environ.get("DEMO_API_KEY")
+
     return JSONResponse({
         "demo_mode": True,
-        # Key is intentionally null — it was printed once to stdout at startup.
-        # Serving the plaintext key over HTTP would expose it in server logs.
-        "api_key": None,
+        "api_key": demo_key,
         "sample_questions": sample_questions,
     })

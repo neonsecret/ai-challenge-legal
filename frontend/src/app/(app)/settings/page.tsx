@@ -255,26 +255,6 @@ export default function SettingsPage() {
                 </p>
               </div>
 
-              {/* Backend URL */}
-              <div>
-                <label htmlFor="backend-url" style={labelStyleDyn}>
-                  Backend URL
-                </label>
-                <input
-                  id="backend-url"
-                  type="url"
-                  value={backendUrl}
-                  onChange={(e) => setBackendUrl(e.target.value)}
-                  placeholder="http://localhost:8000"
-                  style={inputStyleBase}
-                  onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
-                />
-                <p style={mutedTextDyn}>
-                  Vitreon Legal FastAPI server address. Use Tailscale URL for remote access.
-                </p>
-              </div>
-
               {/* Save button */}
               <div>
                 <button

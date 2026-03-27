@@ -245,7 +245,7 @@ export function TrustSection({
                   setApiKey(e.target.value);
                   setError(null);
                 }}
-                placeholder="nxk_..."
+                placeholder="Enter your API key"
                 autoComplete="off"
                 className="w-full rounded-xl px-4 py-3 text-sm font-mono outline-none transition-all"
                 style={{

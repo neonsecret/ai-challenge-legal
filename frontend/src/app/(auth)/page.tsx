@@ -54,16 +54,7 @@ export default function LandingPage() {
   useEffect(() => {
     const existing = localStorage.getItem("neolex_api_key");
     if (existing) { router.replace("/chat"); return; }
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-    fetch(`${apiUrl}/api/v1/demo/config`)
-      .then(r => r.json())
-      .then(data => {
-        if (data.demo_mode && data.api_key) {
-          setDemoMode(true); setDemoKey(data.api_key); setApiKey(data.api_key);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    setLoading(false);
   }, [router]);
 
   useEffect(() => {
@@ -322,7 +313,7 @@ export default function LandingPage() {
               <form onSubmit={handleLightSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
                   <label style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.10em", color: "rgba(46,31,8,0.45)", display: "block", marginBottom: 8 }}>API Key</label>
-                  <input type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); setApiError(null); }} placeholder="nxk_..." style={{ width: "100%", padding: "10px 14px", borderRadius: 12, fontSize: 13, fontFamily: "monospace", background: "rgba(255,255,255,0.35)", border: apiError ? "0.5px solid rgba(139,53,32,0.50)" : "0.5px solid rgba(255,255,255,0.55)", color: "#2e1f08", outline: "none", boxSizing: "border-box" }}
+                  <input type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); setApiError(null); }} placeholder="Enter your API key" style={{ width: "100%", padding: "10px 14px", borderRadius: 12, fontSize: 13, fontFamily: "monospace", background: "rgba(255,255,255,0.35)", border: apiError ? "0.5px solid rgba(139,53,32,0.50)" : "0.5px solid rgba(255,255,255,0.55)", color: "#2e1f08", outline: "none", boxSizing: "border-box" }}
                     onFocus={e => { e.currentTarget.style.borderColor = "rgba(196,124,0,0.55)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(196,124,0,0.08)"; }}
                     onBlur={e => { e.currentTarget.style.borderColor = apiError ? "rgba(139,53,32,0.50)" : "rgba(255,255,255,0.55)"; e.currentTarget.style.boxShadow = "none"; }} />
                   {apiError && <p style={{ fontSize: 12, color: "#8b3520", marginTop: 4 }}>{apiError}</p>}
