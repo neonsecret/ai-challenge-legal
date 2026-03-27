@@ -46,10 +46,13 @@ RERANKER_INSTRUCTION = os.environ.get(
 # Embedding backend. Default: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
 # Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
 # Fallback: set EMBEDDING_MODEL=snowflake to use Snowflake Arctic Embed L v2.0 (no server needed).
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Snowflake/snowflake-arctic-embed-l-v2.0")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
 # FAISS: pure vector math, no SQLite overhead — faster search, lower memory than ChromaDB
 # Credit: FAISS backend choice inspired by IAS Partners (guy4)
-FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "data/faiss_index.bin")
+# Default index path matches the active embedding backend.
+# Rebuild with: EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \
+#     --corpus data/chunks/ --output data/faiss_llama-server.bin
+FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "data/faiss_llama-server.bin")
 FAISS_METADATA_PATH = os.environ.get("FAISS_METADATA_PATH", "data/faiss_metadata.json")
 # VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
 VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
