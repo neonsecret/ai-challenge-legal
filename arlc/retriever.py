@@ -33,8 +33,10 @@ def _get_anthropic_client() -> anthropic.Anthropic:
 
 CHROMA_DIR = "data/chroma_db"  # Fallback ChromaDB path
 DOCUMENTS_DIR = "data/documents"
-# Snowflake Arctic Embed L v2.0: 1024-dim, retrieval-optimized (2024), replaces BGE-large-en-v1.5
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Snowflake/snowflake-arctic-embed-l-v2.0")
+# Embedding backend. Default: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
+# Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
+# Fallback: set EMBEDDING_MODEL=snowflake to use Snowflake Arctic Embed L v2.0 (no server needed).
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
 # FAISS: pure vector math, no SQLite overhead — faster search, lower memory than ChromaDB
 # Credit: FAISS backend choice inspired by IAS Partners (guy4)
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "data/faiss_index.bin")

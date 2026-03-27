@@ -1,25 +1,42 @@
 """Embedding backend configuration for NeoLex.
 
-Environment variables:
-    EMBEDDING_MODEL   "snowflake" (default) | "qwen3-8b" | "qwen3-4b" | "qwen3-0.6b"
-    EMBEDDING_DIM     Output dimension via Matryoshka truncation (default: 1024)
+Recommended backend: llama-server
+----------------------------------
+Run Qwen3-Embedding-8B via llama.cpp (Q4_K_M GGUF, ~4.3 GB) rather than PyTorch.
+Advantages: fits both RTX 3070 (8 GB) and Apple Silicon; Metal/CUDA paths are
+more reliable than PyTorch MPS; no torch needed at inference time.
 
-Notes on GPU compatibility (RTX 3070, 8.6 GB VRAM):
-    - qwen3-8b: 8B params, requires 8-bit quantization (~8.5 GB VRAM).
-                CUDA 13.0 (torch 2.9+) degrades 8-bit kernel performance severely.
-                Effective throughput: ~1.5 texts/sec on RTX 3070 with CUDA 13.0.
-    - qwen3-4b: 4B params, runs in float16 (~8.4 GB VRAM, batch_size=1 to avoid OOM).
-                Native GPU inference, no quantization needed.
-                Effective throughput: ~6 texts/sec on RTX 3070. RECOMMENDED for indexing.
-    - qwen3-0.6b: 0.6B params, float16 (~1.2 GB VRAM). Fast but lower quality.
+    # Start the server (do this once, keep it running):
+    llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \\
+        --embedding --pooling last -ngl 99 -c 4096 --port 8088
+
+    # Set in .env:
+    EMBEDDING_MODEL=llama-server
+    LLAMA_SERVER_URL=http://localhost:8088       # default
+    LLAMA_MODEL_PATH=models/Qwen3-Embedding-8B-Q4_K_M.gguf  # for auto-start
+
+Environment variables:
+    EMBEDDING_MODEL     Backend selection (see VALID_BACKENDS below).
+                        Default: "snowflake" (no extra setup required).
+    EMBEDDING_DIM       Output dimension for Matryoshka truncation (default: 1024).
+                        Use "full" for native model dim (4096 for 8B).
+                        Ignored by llama-server backend (server controls output dim).
+    LLAMA_SERVER_URL    URL of the llama-server instance (default: http://localhost:8088).
+    LLAMA_MODEL_PATH    Path to .gguf file — used only by start_server() helper.
+
+PyTorch backends (legacy, not recommended):
+    - qwen3-8b:   ~14 GB VRAM float16; CUDA 13.0 kernel issues. Use llama-server instead.
+    - qwen3-4b:   ~8.4 GB VRAM float16; batch_size=1 on RTX 3070.
+    - qwen3-0.6b: ~1.2 GB VRAM; fast but significantly lower quality.
 """
 import os
 
 # Which embedder backend to use.
-# "snowflake"  — Snowflake Arctic Embed L v2.0 (default, unchanged arlc behaviour)
-# "qwen3-8b"   — Qwen/Qwen3-Embedding-8B (4-bit or 8-bit quantization, CUDA ≥ 13 auto-upgrades to 8-bit)
-# "qwen3-4b"   — Qwen/Qwen3-Embedding-4B (float16, batch_size=1 for RTX 3070 8 GB)
-# "qwen3-0.6b" — Qwen/Qwen3-Embedding-0.6B (fallback for low-VRAM machines)
+# "llama-server" — Qwen3-Embedding-8B GGUF via llama-server HTTP API (RECOMMENDED)
+# "snowflake"    — Snowflake Arctic Embed L v2.0 (default, no extra setup needed)
+# "qwen3-8b"     — Qwen3-Embedding-8B via PyTorch (legacy, use llama-server instead)
+# "qwen3-4b"     — Qwen3-Embedding-4B via PyTorch (legacy)
+# "qwen3-0.6b"   — Qwen3-Embedding-0.6B via PyTorch (legacy, low quality)
 EMBEDDING_BACKEND: str = os.environ.get("EMBEDDING_MODEL", "snowflake").lower()
 
 # Output dimension. Qwen3 native dim is 4096; Matryoshka truncation is used
