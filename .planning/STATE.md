@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Premium Frontend Overhaul
 status: executing
-last_updated: "2026-03-27T14:28:00Z"
-last_activity: 2026-03-27 -- Phase 13 Plan 01 COMPLETE (merge Phase 12 + glass-warm utility)
+last_updated: "2026-03-27T14:50:00Z"
+last_activity: 2026-03-27 -- Phase 13 Plan 02 COMPLETE (warm chat shell + EmptyState component)
 progress:
   total_phases: 7
   completed_phases: 1
@@ -17,15 +17,16 @@ progress:
 ## Current Position
 
 Phase: 13 (Chat Page Total Rebuild) — In Progress
-Plan: 1 of N — DONE (merge + glass-warm)
-Status: Phase 13 executing. Plan 01 complete. Ready for Plan 02.
-Last activity: 2026-03-27 -- Phase 13 Plan 01 complete (2 tasks, build passes)
+Plan: 2 of N — DONE (warm chat shell + EmptyState)
+Status: Phase 13 executing. Plan 02 complete. Ready for Plan 03.
+Last activity: 2026-03-27 -- Phase 13 Plan 02 complete (2 tasks, build passes, commit dddf6b3)
 
 ## Milestone v2.0 Progress
 
 - Phase 12: COMPLETE (1/1 plans done) — Glass Design System Foundation (GLASS-01 to GLASS-05)
-- Phase 13: In Progress (1/N plans done) — Chat Page Total Rebuild (CHAT-01 to CHAT-05, SRC-01 to SRC-04, CONF-01)
+- Phase 13: In Progress (2/N plans done) — Chat Page Total Rebuild (CHAT-01 to CHAT-05, SRC-01 to SRC-04, CONF-01)
   - Plan 01: DONE — Merge Phase 12 + glass-warm @utility (commits: 85a46e6, 3ca9424, c9ccb55)
+  - Plan 02: DONE — Warm amber chat shell + EmptyState standalone component (commit: dddf6b3)
 - Phase 14: Not started — App Pages + Landing Polish (APP-01 to APP-03, LAND-01 to LAND-04)
 
 **v2.0 requirements coverage:** 22/22 mapped, 0 unmapped
@@ -62,6 +63,9 @@ Last activity: 2026-03-27 -- Phase 13 Plan 01 complete (2 tasks, build passes)
 - Phase 13-01 key decision: stash unstaged before merge; glass-warm inserted after glass-pill-success, before @supports fallback
 - Decision: @utility directive (not @layer utilities) for Tailwind v4 compatibility
 - Decision: GlassCard outer div uses overflow-clip (not overflow-hidden) to prevent Chrome backdrop-filter stacking context bug
+- Phase 13-02 key decisions: overflow-clip on chat root div; blobs placed WITHOUT blur() filter (vivid not diffuse); onSourceClick added to ChatMessage now (build requires it); GlassCard variant=subtle for EmptyState cards
+- Phase 13-02 pattern: all hover states on glass elements use Tailwind hover: classes, never JS event handlers
+- Phase 13-02 blob layout: top-right 580px + right 460px + bottom-center 380px at 0.35–0.45 opacity
 
 ## Phase 12 Entry Checklist
 
