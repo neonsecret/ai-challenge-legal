@@ -152,8 +152,17 @@ def _is_arctic_model() -> bool:
     return "arctic" in EMBEDDING_MODEL.lower()
 
 
+def _is_qwen_model() -> bool:
+    """Check if the configured embedding model is a Qwen embedding model."""
+    return "qwen" in EMBEDDING_MODEL.lower()
+
+
+# Qwen3 decoder-based embedding models require an instruction prefix for queries
+QWEN_QUERY_PREFIX = "Instruct: Retrieve the most relevant legal passage\nQuery: "
+
+
 def get_embedding_model() -> SentenceTransformer:
-    """Get embedding model (cached, thread-safe). Supports Arctic Embed and BGE."""
+    """Get embedding model (cached, thread-safe). Supports Arctic Embed, BGE, and Qwen."""
     global _embedding_model
     if _embedding_model is None:
         with _embedding_lock:
@@ -166,7 +175,7 @@ def get_embedding_model() -> SentenceTransformer:
                     else 'cpu'
                 )
                 model_kwargs = {}
-                if _is_arctic_model():
+                if _is_arctic_model() or _is_qwen_model():
                     model_kwargs["trust_remote_code"] = True
                 _embedding_model = SentenceTransformer(
                     EMBEDDING_MODEL, device=device, **model_kwargs
@@ -178,6 +187,7 @@ def embed_query(question: str) -> list[float]:
     """Embed a query for asymmetric retrieval.
 
     Arctic Embed v2.0: uses prompt_name='query' which prepends 'query: ' prefix.
+    Qwen3: prepends instruction prefix (decoder-based model requires this for retrieval).
     BGE-large-en-v1.5: uses manual BGE_QUERY_PREFIX prepend.
     """
     model = get_embedding_model()
@@ -185,6 +195,9 @@ def embed_query(question: str) -> list[float]:
         if _is_arctic_model():
             # Arctic Embed uses prompt_name for query/document distinction
             embedding = model.encode(question, prompt_name='query', normalize_embeddings=True)
+        elif _is_qwen_model():
+            # Qwen3 decoder-based models need an explicit instruction prefix for queries
+            embedding = model.encode(QWEN_QUERY_PREFIX + question, normalize_embeddings=True)
         else:
             # BGE uses explicit prefix string
             embedding = model.encode(BGE_QUERY_PREFIX + question, normalize_embeddings=True)

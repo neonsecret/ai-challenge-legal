@@ -1,100 +1,31 @@
 # Project State
 
-## Current Status
-- Phase: 10-ui-redesign-premium-legal-saas
-- Progress: Phase 1 ✓, Phase 2 ✓, Phase 3 ✓, Phase 4 ✓, Phase 5 ✓, Phase 6 ✓, Phase 10 ✓
-- Last session: 2026-03-27
-- Stopped at: Completed 10-01-PLAN (Premium Legal SaaS UI Redesign)
+## Current Position
 
-## Completed Phases
-- Phase 1: FastAPI Core + Pipeline Integration (30 tests)
-- Phase 2: Auth + Audit Logging (45 unit + 8 CLI tests)
-- Phase 3: Document Upload + Reindex (65 tests total)
-- Phase 4: Next.js Frontend (chat UI + SSE streaming + document upload)
-- Phase 5: Production Hardening (86 total tests, all passing)
-- Phase 6: UI Polish + Demo Readiness (make demo, settings, landing, confidence badges, toasts)
-- Phase 10: Premium Legal SaaS UI Redesign (light mode, Playfair, gold accent, markdown rendering)
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for milestone v2.0
+Last activity: 2026-03-27 — Milestone v2.0 Premium Frontend Overhaul started
 
-## Phase 5 Summary
-- 8 new files created, 3 modified
-- 21 new tests (86 total, all passing)
-- JSONErrorMiddleware — JSON 500s instead of HTML for unhandled exceptions
-- RequestIDMiddleware — UUID per request, X-Request-ID header, request logging
-- TimeoutMiddleware — 504 JSON on REQUEST_TIMEOUT_SECONDS (default 30s)
-- logging_config.py — JSON (production) / human (dev) structured logging
-- startup_validation.py — fail-fast check for data/ dir + required index files
-- /health enhanced with uptime, request_count, avg_latency_ms, last_error_ts
-- /health/live + /health/ready added (liveness + readiness probes)
-- scripts/serve.sh — starts uvicorn + Next.js + Tailscale Funnel, graceful shutdown
-- Commit: a20eec3
+## Milestone v2.0 Progress
+- Phase 12: Not started — Glass Design System
+- Phase 13: Not started — Chat Page Rebuild
+- Phase 14: Not started — Landing Page Unification
+- Phase 15: Not started — App Pages Polish
 
-## Decisions Made
-- JSONErrorMiddleware (BaseHTTPMiddleware) instead of @app.exception_handler(Exception)
-  because Starlette routes unhandled exceptions to ServerErrorMiddleware (HTML), bypassing
-  the app exception_handler registry
-- stdlib logging only (no structlog) — keeps dependency surface minimal
-- Timeout exempt for /health/* — liveness must always respond
-- RequestIDMiddleware tracks metrics in neolex.main globals — correct for single-process uvicorn
+## Completed Phases (Previous Milestones)
+- Phase 1-7: Core product (FastAPI + Auth + Upload + Frontend + Hardening + Demo + SOC2)
+- Phase 8: Cancelled (using Qwen3-8B as-is, no fine-tuning)
+- Phase 9: SOTA research complete (GaRAGe 0.826 beats SOTA 0.607)
+- Phase 10: Premium UI redesign (light mode, Playfair serif, warm palette, marketing landing)
+- Phase 11: Qwen3-4B integration + benchmark COMPLETE (2026-03-27) — 26947-vector FAISS index built, R@10 0.15→0.63 (+4.2x vs Snowflake Arctic)
 
-## Decisions Made (all phases)
-- Reindex worker stub-with-interface: tries arlc indexer, falls back to manifest-only stub
-- Documents tracked in both SQLite (queries) and sidecar .meta files (filesystem discovery)
-- asyncio.create_task for non-blocking reindex, to_thread for CPU/IO
-- Per-client isolation enforced from API key client_slug, never from request body
+## Tests: 129 passed, 0 failed (1 integration test pre-existing failure, unrelated to Phase 11)
 
-## Key Files Added (Phase 5)
-- neolex/middleware/error_handler.py — JSONErrorMiddleware
-- neolex/middleware/request_id.py — RequestIDMiddleware
-- neolex/middleware/timeout.py — TimeoutMiddleware
-- neolex/logging_config.py — JSON/human structured logging
-- neolex/startup_validation.py — fail-fast startup checks
-- scripts/serve.sh — Tailscale Funnel launch script
-- tests/neolex/test_production_hardening.py — 21 tests
-
-## Known Stubs
-- arlc indexer integration: writes manifest.json stub, deferred to future phase
-
-## Phase 6 Summary
-- 9 files created, 8 modified
-- 86 tests still pass (added aiosqlite + python-multipart to pyproject.toml)
-- make demo, make dev, make serve, make logs, make demo-stop targets
-- DEMO_MODE=true: auto-seeds demo API key, frontend auto-fills it
-- GET /api/v1/demo/config: serves demo mode flag, key, sample questions
-- Route groups (app)/(auth): landing has no sidebar, app pages have sidebar
-- Settings page: API key, backend URL, theme toggle, about section
-- Landing/login page: auto-fills API key in demo mode, redirects if key exists
-- Toast system: ToastProvider + useToast(), slide-in notifications
-- chat-message.tsx: copy-to-clipboard, High/Medium/Low confidence badge
-- chat/page.tsx: tab title updates while streaming, Cmd+K shortcut, sample Qs empty state
-- app-sidebar.tsx: Demo Mode badge, Sign out button
-- DEMO_QUESTIONS.md: 10 sales-ready DIFC questions with rationale
-- Commits: 92a65fb, f628f21, 3a7c8fa, 15805a1, 20866ea
-
-## Decisions Made (Phase 6)
-- Route groups (app)/(auth) — landing page needs no sidebar; app pages share sidebar layout
-- Lightweight custom toast vs shadcn Sonner — avoids extra npm dependency
-- Demo key written to .demo_key file — SQLite doesn't store plaintext; file is gitignored
-- Confidence thresholds: >=0.7 High, >=0.4 Medium, <0.4 Low — reasonable defaults, easily tuned
-
-## Phase 10 Summary
-- 7 files modified, 2 deleted (conflicting duplicates), 4 packages installed
-- Build: 0 errors, 0 TypeScript errors
-- Light mode default, Playfair Display serif, warm gold accent #C9A84C
-- Landing page: full marketing layout with hero, trust bar, features grid
-- Chat: ReactMarkdown prose rendering, streaming status messages, follow-up suggestions
-- Sidebar: Playfair brand, warm parchment bg, recent queries section
-- Commit: cff8b89
-
-## Decisions Made (Phase 10)
-- Playfair Display (Google Fonts) for headings: serif conveys legal authority
-- Gold accent #C9A84C (not #D4AF37): more refined, less saturated, closer to Harvey AI tone
-- ReactMarkdown + @tailwindcss/typography over simple whitespace-pre-wrap: proper formatting
-- Skipped MagicUI registry components: compatibility risk with React 19 + Next 16.2.1
-- Deleted conflicting /chat and /documents root pages: pre-existing route conflict
-
-## Performance Metrics
-| Phase | Duration | Tasks | Files | Tests |
-|---|---|---|---|---|
-| 05-01 | ~7.5 min | 6 | 11 | 21 new / 86 total |
-| 06-01 | ~45 min | 7 | 17 | 86 pass (bug fix) |
-| 10-01 | ~5 min | 8 | 9 modified / 2 deleted | build clean |
+## Accumulated Context
+- Frontend: Next.js 16, Tailwind v4, shadcn/ui, motion/react (Framer Motion)
+- Design palette: navy #0F1623 / #0A1120 / #060C16, gold #C9A84C, serif heading font
+- Key issue: glassmorphism was surface-level (blur over near-black = invisible). Need vivid color orbs behind glass.
+- Chat reference: Perplexity layout + numbered source cards
+- Glassmorphism reference: semi-transparent bg + blur + rounded corners + soft shadow + good contrast
+- Remote GPU: ssh neon@100.98.171.97, RTX 3070, ~/.conda/envs/torch313/bin/python3
