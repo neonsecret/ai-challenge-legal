@@ -353,6 +353,15 @@
   border-radius: 9999px;
 }
 
+/* ── Warm palette glass — chat page (Arrakis/Dune amber) ── */
+@utility glass-warm {
+  background: rgba(255,240,215,0.15);
+  backdrop-filter: blur(36px) saturate(140%);
+  -webkit-backdrop-filter: blur(36px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.50);
+  box-shadow: 0 12px 40px rgba(100,50,0,0.28), inset 0 1.5px 0 rgba(255,255,255,0.60);
+}
+
 /* Backdrop-filter fallback for ~5% of users */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass-sm, .glass-md, .glass-lg, .glass-heavy, .glass-gold, .glass-nav, .glass-input {
@@ -419,8 +428,11 @@
   to { background-color: rgba(201, 168, 76, 0.30); }
 }
 
-/* How-it-works progress bar */
-@keyframes progress-fill {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
+@keyframes float-down {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(4px); opacity: 1; }
+}
+
+.animate-float-down {
+  animation: float-down 1.4s ease-in-out infinite;
 }
