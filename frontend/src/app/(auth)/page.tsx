@@ -70,8 +70,10 @@ export default function LandingPage() {
     setApiError(null);
     // Validate the key against the backend before accepting it
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const res = await fetch(`${apiUrl}/api/v1/query/stream?question=ping&answer_type=free_text&api_key=${encodeURIComponent(key)}`, { method: "HEAD" });
+      // Validate via dedicated endpoint using Authorization header (key never in URL)
+      const res = await fetch(`/api/v1/auth/verify`, {
+        headers: { "Authorization": `Bearer ${key}` }
+      });
       if (res.status === 401 || res.status === 403) {
         setApiError("Invalid API key. Please check and try again.");
         setSubmitting(false);

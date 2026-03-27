@@ -150,3 +150,17 @@ async def query_stream(
         yield {"event": "done", "data": ""}
 
     return EventSourceResponse(event_generator(), ping=15)
+
+
+@router.get("/auth/verify")
+async def verify_key(
+    key_row: Annotated[dict, Depends(get_api_key)],
+):
+    """Lightweight key verification endpoint.
+
+    Returns 200 if the key is valid, 401 if not.
+    Use this to validate a key without triggering any pipeline or SSE logic.
+    The key is passed via Authorization: Bearer header (not query param),
+    so it never appears in URL logs.
+    """
+    return {"valid": True, "scope": key_row.get("scope"), "client": key_row.get("client_slug")}

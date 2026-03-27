@@ -51,11 +51,7 @@ export function AppSidebar() {
   const [recentQueries, setRecentQueries] = useState<string[]>([]);
 
   useEffect(() => {
-    const apiUrl =
-      (typeof window !== "undefined"
-        ? localStorage.getItem("neolex_backend_url")
-        : null) ?? "http://localhost:8000";
-    fetch(`${apiUrl}/api/v1/demo/config`).catch(() => {});
+    fetch(`/api/v1/demo/config`).catch(() => {});
   }, []);
 
   useEffect(() => {

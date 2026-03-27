@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
 
 /** Returns the stored API key, or null if absent/empty. Never returns "". */
 function getStoredApiKey(): string | null {
