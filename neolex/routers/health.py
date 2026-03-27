@@ -55,12 +55,6 @@ async def health_check(request: Request):
     return {
         "status": "ready",
         "pipeline_ready": True,
-        "workers": workers,
-        "version": "0.1.0",
-        "uptime_seconds": round(uptime_s, 1),
-        "request_count": request_count,
-        "avg_latency_ms": avg_latency_ms,
-        "last_error_ts": last_error_ts,
     }
 
 

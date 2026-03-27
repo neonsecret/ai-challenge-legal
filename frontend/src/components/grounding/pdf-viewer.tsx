@@ -13,7 +13,7 @@ interface PdfViewerProps {
 
 function getApiKey(): string {
   if (typeof window === "undefined") return ""
-  return localStorage.getItem("api_key") ?? (process.env.NEXT_PUBLIC_API_KEY ?? "dev-test-key")
+  return localStorage.getItem("neolex_api_key") ?? ""
 }
 
 export function PdfViewer({ docId, page = 1, className }: PdfViewerProps) {
