@@ -49,7 +49,10 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Settings</h1>
+        <p className="text-[11px] uppercase tracking-widest font-semibold mb-1" style={{ color: "rgba(201,168,76,0.7)" }}>
+          Configuration
+        </p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Configure your NeoLex connection and preferences
         </p>

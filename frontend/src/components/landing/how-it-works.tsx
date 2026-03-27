@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 
-const AUTO_ADVANCE_MS = 3000;
+const AUTO_ADVANCE_MS = 5000;
 
 const steps = [
   {
@@ -156,18 +156,27 @@ const VISUALS = [TypingVisual, ScanningVisual, HighlightVisual];
 
 export function HowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  // timerKey increments reset both the interval timer and the progress bar animation
   const [timerKey, setTimerKey] = useState(0);
 
   useEffect(() => {
+    if (isHovered) return;
     const id = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length);
+      setTimerKey((k) => k + 1);
     }, AUTO_ADVANCE_MS);
     return () => clearInterval(id);
-  }, [timerKey]);
+  }, [isHovered, timerKey]);
 
   const handleStepClick = (i: number) => {
     setActiveStep(i);
     setTimerKey((k) => k + 1);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setTimerKey((k) => k + 1); // reset timer and bar when user stops hovering
   };
 
   const Visual = VISUALS[activeStep];
@@ -210,7 +219,7 @@ export function HowItWorks() {
           transition={{ duration: 0.5, delay: 0.18 }}
         >
           {/* Step selector tabs */}
-          <div className="flex justify-center gap-2 mb-8">
+          <div className="flex justify-center gap-2 mb-8 flex-wrap">
             {steps.map((s, i) => (
               <button
                 key={s.number}
@@ -239,68 +248,97 @@ export function HowItWorks() {
             ))}
           </div>
 
-          {/* Step content */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeStep}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.3 }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center rounded-2xl p-8"
-              style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.07)",
-              }}
-            >
-              {/* Left: text */}
-              <div>
-                <div
-                  className="inline-flex items-center justify-center size-10 rounded-full font-mono text-[11px] font-bold mb-4"
-                  style={{
-                    background: "rgba(201,168,76,0.12)",
-                    border: "1px solid rgba(201,168,76,0.3)",
-                    color: "#C9A84C",
-                  }}
-                >
-                  {steps[activeStep].number}
-                </div>
-                <h3
-                  className="text-xl font-semibold mb-2"
-                  style={{ color: "rgba(255,255,255,0.92)" }}
-                >
-                  {steps[activeStep].title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed mb-5"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
-                >
-                  {steps[activeStep].body}
-                </p>
+          {/* Step content — hover pauses auto-advance */}
+          <div
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={handleMouseLeave}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeStep}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3 }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center rounded-2xl p-8"
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                {/* Left: text */}
+                <div>
+                  <div
+                    className="inline-flex items-center justify-center size-10 rounded-full font-mono text-[11px] font-bold mb-4"
+                    style={{
+                      background: "rgba(201,168,76,0.12)",
+                      border: "1px solid rgba(201,168,76,0.3)",
+                      color: "#C9A84C",
+                    }}
+                  >
+                    {steps[activeStep].number}
+                  </div>
+                  <h3
+                    className="text-xl font-semibold mb-2"
+                    style={{ color: "rgba(255,255,255,0.92)" }}
+                  >
+                    {steps[activeStep].title}
+                  </h3>
+                  <p
+                    className="text-sm leading-relaxed mb-5"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
+                    {steps[activeStep].body}
+                  </p>
 
-                {/* Progress dots */}
-                <div className="flex items-center gap-1.5">
-                  {steps.map((_, i) => (
-                    <motion.div
-                      key={i}
-                      className="h-1 rounded-full"
-                      style={{ backgroundColor: "#C9A84C" }}
-                      animate={{
-                        width: i === activeStep ? 28 : 8,
-                        opacity: i === activeStep ? 1 : 0.25,
+                  {/* Step progress dots */}
+                  <div className="flex items-center gap-1.5 mb-4">
+                    {steps.map((_, i) => (
+                      <motion.div
+                        key={i}
+                        className="h-1 rounded-full cursor-pointer"
+                        style={{ backgroundColor: "#C9A84C" }}
+                        animate={{
+                          width: i === activeStep ? 28 : 8,
+                          opacity: i === activeStep ? 1 : 0.25,
+                        }}
+                        transition={{ duration: 0.3 }}
+                        onClick={() => handleStepClick(i)}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Progress bar — auto-advance countdown */}
+                  <div
+                    className="relative h-0.5 overflow-hidden rounded-full"
+                    style={{ background: "rgba(255,255,255,0.08)" }}
+                  >
+                    <div
+                      key={timerKey}
+                      className="absolute inset-0 origin-left rounded-full"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, #C9A84C, rgba(201,168,76,0.6))",
+                        animation: `progress-fill ${AUTO_ADVANCE_MS}ms linear forwards`,
+                        animationPlayState: isHovered ? "paused" : "running",
                       }}
-                      transition={{ duration: 0.3 }}
                     />
-                  ))}
+                  </div>
+                  <p
+                    className="text-[10px] mt-1.5"
+                    style={{ color: "rgba(255,255,255,0.2)" }}
+                  >
+                    {isHovered ? "paused" : "auto-advancing · hover to pause"}
+                  </p>
                 </div>
-              </div>
 
-              {/* Right: animated visual */}
-              <div>
-                <Visual />
-              </div>
-            </motion.div>
-          </AnimatePresence>
+                {/* Right: animated visual */}
+                <div>
+                  <Visual />
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
     </section>

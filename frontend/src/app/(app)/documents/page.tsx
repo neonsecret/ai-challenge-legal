@@ -28,7 +28,10 @@ export default function DocumentsPage() {
     <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Documents</h1>
+        <p className="text-[11px] uppercase tracking-widest font-semibold mb-1" style={{ color: "rgba(201,168,76,0.7)" }}>
+          Document Library
+        </p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Documents</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Manage the PDF documents used for legal research
         </p>

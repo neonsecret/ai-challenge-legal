@@ -215,22 +215,51 @@ function EmptyState({
   onSelectQuestion: (q: string) => void
 }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-      <div className="flex items-center justify-center size-16 rounded-2xl bg-[#C9A84C]/10 ring-1 ring-[#C9A84C]/20 mb-5">
-        <Scale className="size-8 text-[#C9A84C]" />
+    <div className="flex flex-col items-center justify-center min-h-[55vh] text-center px-4">
+      {/* Brand mark */}
+      <div
+        className="flex items-center justify-center size-16 rounded-2xl mb-5"
+        style={{
+          background: "rgba(201,168,76,0.10)",
+          border: "1px solid rgba(201,168,76,0.22)",
+          boxShadow: "0 0 32px rgba(201,168,76,0.08)",
+        }}
+      >
+        <Scale className="size-7" style={{ color: "#C9A84C" }} />
       </div>
-      <h2 className="font-heading text-2xl font-bold text-primary mb-2">
+
+      <h2
+        className="font-heading text-2xl font-bold mb-2"
+        style={{ color: "rgba(255,255,255,0.92)" }}
+      >
         Legal Research Assistant
       </h2>
-      <p className="text-muted-foreground text-sm max-w-sm mb-7">
+      <p className="text-sm max-w-sm mb-8" style={{ color: "rgba(255,255,255,0.38)" }}>
         Ask a question about your legal documents or try one of these examples:
       </p>
-      <div className="flex flex-col gap-2 w-full max-w-md">
+
+      {/* Suggested questions */}
+      <div className="flex flex-col gap-2 w-full max-w-lg">
         {DEMO_QUESTIONS.map((q) => (
           <button
             key={q}
             onClick={() => onSelectQuestion(q)}
-            className="rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground hover:border-[#C9A84C]/40 hover:text-foreground hover:bg-muted/30 transition-all"
+            className="rounded-xl px-4 py-3 text-left text-sm transition-all group"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "rgba(255,255,255,0.55)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "rgba(201,168,76,0.35)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.85)";
+              e.currentTarget.style.background = "rgba(201,168,76,0.05)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.55)";
+              e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+            }}
           >
             {q}
           </button>

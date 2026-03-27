@@ -212,3 +212,9 @@
   from { background-color: transparent; }
   to { background-color: rgba(201, 168, 76, 0.30); }
 }
+
+/* How-it-works progress bar */
+@keyframes progress-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}

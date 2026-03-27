@@ -32,9 +32,11 @@ export default function LandingPage() {
           setDemoKey(data.api_key);
         }
         setLoading(false);
+        window.scrollTo(0, 0);
       })
       .catch(() => {
         setLoading(false);
+        window.scrollTo(0, 0);
       });
   }, [router]);
 
