@@ -338,7 +338,7 @@ export function DemoPanel() {
         WebkitBackdropFilter: "blur(24px)",
         border: "1px solid rgba(255,255,255,0.10)",
         boxShadow:
-          "0 32px 64px rgba(0,0,0,0.4), 0 0 0 1px rgba(201,168,76,0.08)",
+          "0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,255,255,0.08)",
       }}
     >
       {/* Window chrome + jurisdiction tabs */}
@@ -559,6 +559,31 @@ export function DemoPanel() {
           <div ref={chatBottomRef} />
         </div>
 
+        {/* Mobile: source badge strip */}
+        <div
+          className="md:hidden px-5 py-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <p
+            className="text-[10px] uppercase tracking-widest font-semibold mb-2"
+            style={{ color: "rgba(201,168,76,0.7)" }}
+          >
+            Source Document
+          </p>
+          <div
+            className="inline-flex items-center gap-2 rounded-lg px-3 py-2"
+            style={{
+              background: "rgba(201,168,76,0.10)",
+              border: "1px solid rgba(201,168,76,0.25)",
+            }}
+          >
+            <div className="size-1.5 rounded-full bg-[#C9A84C] shrink-0" />
+            <span className="text-[11px] font-mono" style={{ color: "#C9A84C" }}>
+              {scenario.sourceBadge}
+            </span>
+          </div>
+        </div>
+
         {/* RIGHT: Fake PDF — hidden on mobile */}
         <div className="hidden md:block p-5">
           <p
@@ -568,7 +593,7 @@ export function DemoPanel() {
             Source Document
           </p>
           <div className="h-[360px]">
-            <FakePdf showHighlights={showHighlights} />
+            <FakePdf scenario={scenario} showHighlights={showHighlights} />
           </div>
         </div>
       </div>
