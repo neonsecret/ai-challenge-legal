@@ -201,7 +201,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
         query_np = np.array([query_emb], dtype='float32')
         import faiss
         faiss.normalize_L2(query_np)
-        k_vec = min(200, index.ntotal)
+        k_vec = min(500, index.ntotal)
         D, I = index.search(query_np, k_vec)
         rank = 0
         for j in range(k_vec):
@@ -288,7 +288,9 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
         if pid in bm25_rank:
             score += 1.0 / (RRF_K + bm25_rank[pid])   # rank-based, ~0.006–0.016
         if pid in hyde_rank:
-            score += 1.0 / (RRF_K + hyde_rank[pid])
+            # HyDE is document-to-document (same embedding space as index) so
+            # it deserves higher weight than a query-to-document BM25 match.
+            score += 2.0 / (RRF_K + hyde_rank[pid])
         rrf_scores[pid] = score
 
     # --- Cross-encoder reranking on top 100 by RRF ---
