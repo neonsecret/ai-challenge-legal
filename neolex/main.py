@@ -55,6 +55,13 @@ async def lifespan(app: FastAPI):
         app.state.retrieve_fn = retrieve_fn
         app.state.answer_fn = answer_fn
 
+        # Activate the embedding adapter for non-default backends.
+        # For llama-server (default): no-op since retriever.py handles it natively.
+        # For qwen3-* PyTorch backends: monkey-patches arlc.retriever with Qwen3Embedder
+        # (correct last-token pooling) instead of the default SentenceTransformer path.
+        from neolex.embeddings.adapter import activate as _activate_embedder
+        _activate_embedder()
+
         # Pre-warm retriever singletons.
         # CRITICAL: must happen before any request is served.
         # If singletons are not pre-warmed, concurrent cold-start requests race
