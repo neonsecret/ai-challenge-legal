@@ -117,7 +117,6 @@ export function TrustSection({
                   placeholder="nxk_..."
                   className="font-mono text-sm bg-white text-[#111827] border-[#E5E2DD]"
                   autoComplete="off"
-                  autoFocus={!demoMode}
                 />
                 {error && (
                   <p className="text-xs text-red-500 mt-0.5">{error}</p>

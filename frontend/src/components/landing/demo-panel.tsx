@@ -420,11 +420,11 @@ export function DemoPanel() {
       </div>
 
       {/* Split pane */}
-      <div className="grid grid-cols-1 md:grid-cols-2 min-h-[360px] md:min-h-[420px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 md:min-h-[420px]">
         {/* LEFT: Chat — overflow-y-auto scoped so scrollIntoView stays here */}
         <div
           ref={chatScrollRef}
-          className="flex flex-col p-5 gap-4 overflow-y-auto max-h-[360px] md:max-h-[420px]"
+          className="flex flex-col p-5 gap-4 overflow-y-auto max-h-[420px]"
           style={{ borderRight: "1px solid rgba(255,255,255,0.08)" }}
         >
           <p
@@ -559,7 +559,7 @@ export function DemoPanel() {
           <div ref={chatBottomRef} />
         </div>
 
-        {/* RIGHT: Fake PDF — hidden on mobile to keep panel compact */}
+        {/* RIGHT: Fake PDF — hidden on mobile */}
         <div className="hidden md:block p-5">
           <p
             className="text-[10px] uppercase tracking-widest font-semibold mb-3"
