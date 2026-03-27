@@ -103,7 +103,7 @@ export function AppSidebar() {
             fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
             letterSpacing: "-0.01em",
           }}>
-            NeoLex
+            Vitreon Legal
           </span>
         </div>
       </SidebarHeader>

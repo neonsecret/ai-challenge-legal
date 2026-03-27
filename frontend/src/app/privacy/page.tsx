@@ -2,9 +2,9 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — NeoLex",
+  title: "Privacy Policy — Vitreon Legal",
   description:
-    "How NeoLex collects, uses, and protects your data when you use our AI-powered legal research platform.",
+    "How Vitreon Legal collects, uses, and protects your data when you use our AI-powered legal research platform.",
 };
 
 const LAST_UPDATED = "March 27, 2026";
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
               className="font-heading text-lg font-bold tracking-tight group-hover:opacity-80 transition-opacity"
               style={{ color: "rgba(255,255,255,0.95)" }}
             >
-              NeoLex
+              Vitreon Legal
             </span>
           </Link>
 
@@ -91,10 +91,10 @@ export default function PrivacyPage() {
         {/* Intro */}
         <Section>
           <p style={{ color: "rgba(255,255,255,0.62)", lineHeight: 1.75 }}>
-            NeoLex (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) is committed to
+            Vitreon Legal (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) is committed to
             protecting the privacy of our users. This Privacy Policy explains what data we collect,
             why we collect it, how we use it, and the rights you have over your information when you
-            use the NeoLex AI legal research platform (&ldquo;Service&rdquo;).
+            use the Vitreon Legal AI legal research platform (&ldquo;Service&rdquo;).
           </p>
           <p className="mt-4" style={{ color: "rgba(255,255,255,0.62)", lineHeight: 1.75 }}>
             By using the Service you agree to the practices described in this policy. If you do not
@@ -110,9 +110,9 @@ export default function PrivacyPage() {
 
           <SubHeading>Information you provide</SubHeading>
           <BodyText>
-            When you configure NeoLex, you provide your Anthropic API key to authenticate requests
+            When you configure Vitreon Legal, you provide your Anthropic API key to authenticate requests
             to the Claude API. This key is stored exclusively in your browser&apos;s
-            <code style={codeStyle}>localStorage</code> and is never transmitted to NeoLex servers.
+            <code style={codeStyle}>localStorage</code> and is never transmitted to Vitreon Legal servers.
           </BodyText>
 
           <SubHeading>Documents you upload</SubHeading>
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
             connect to (typically running on your own infrastructure). We do not copy, cache, or
             retain the raw text of your documents beyond the duration of a single analysis session.
             Documents are stored locally on client-controlled infrastructure and are not transferred
-            to NeoLex or any third-party storage service.
+            to Vitreon Legal or any third-party storage service.
           </BodyText>
 
           <SubHeading>Usage and audit logs</SubHeading>
@@ -169,7 +169,7 @@ export default function PrivacyPage() {
         <Section>
           <SectionTitle index="3">Anthropic API and Data Handling</SectionTitle>
           <BodyText>
-            NeoLex uses the Anthropic Claude API to generate legal research answers. When you submit
+            Vitreon Legal uses the Anthropic Claude API to generate legal research answers. When you submit
             a query, the relevant document excerpts and your question are sent to Anthropic&apos;s
             infrastructure for inference. This data handling is governed by{" "}
             <a
@@ -216,8 +216,8 @@ export default function PrivacyPage() {
           <BodyText>
             You may request deletion of audit log entries associated with your organisation by
             contacting{" "}
-            <a href="mailto:privacy@neolex.ai" style={{ color: "#C9A84C" }} className="hover:underline">
-              privacy@neolex.ai
+            <a href="mailto:privacy@vitreon.app" style={{ color: "#C9A84C" }} className="hover:underline">
+              privacy@vitreon.app
             </a>
             . Deletion requests are processed within 30 days subject to applicable legal retention
             obligations.
@@ -245,8 +245,8 @@ export default function PrivacyPage() {
           />
           <BodyText>
             To exercise any of these rights, email{" "}
-            <a href="mailto:privacy@neolex.ai" style={{ color: "#C9A84C" }} className="hover:underline">
-              privacy@neolex.ai
+            <a href="mailto:privacy@vitreon.app" style={{ color: "#C9A84C" }} className="hover:underline">
+              privacy@vitreon.app
             </a>{" "}
             with the subject line &ldquo;Data Subject Request&rdquo;. We will respond within 30 days.
           </BodyText>
@@ -258,7 +258,7 @@ export default function PrivacyPage() {
         <Section>
           <SectionTitle index="6">Security</SectionTitle>
           <BodyText>
-            NeoLex is designed with security-first principles:
+            Vitreon Legal is designed with security-first principles:
           </BodyText>
           <BulletList
             items={[
@@ -271,8 +271,8 @@ export default function PrivacyPage() {
           />
           <BodyText>
             If you discover a security vulnerability, please disclose it responsibly to{" "}
-            <a href="mailto:security@neolex.ai" style={{ color: "#C9A84C" }} className="hover:underline">
-              security@neolex.ai
+            <a href="mailto:security@vitreon.app" style={{ color: "#C9A84C" }} className="hover:underline">
+              security@vitreon.app
             </a>
             .
           </BodyText>
@@ -284,7 +284,7 @@ export default function PrivacyPage() {
         <Section>
           <SectionTitle index="7">Cookies and Local Storage</SectionTitle>
           <BodyText>
-            NeoLex does not use tracking cookies or third-party analytics cookies. We use
+            Vitreon Legal does not use tracking cookies or third-party analytics cookies. We use
             browser <code style={codeStyle}>localStorage</code> solely to persist your API key and
             application preferences (such as backend URL) between sessions. No data stored in
             localStorage is transmitted to any third party.
@@ -308,12 +308,12 @@ export default function PrivacyPage() {
             }}
           >
             <p className="font-heading font-semibold text-base mb-1" style={{ color: "rgba(255,255,255,0.9)" }}>
-              NeoLex — Privacy Team
+              Vitreon Legal — Privacy Team
             </p>
             <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
               Email:{" "}
-              <a href="mailto:privacy@neolex.ai" style={{ color: "#C9A84C" }} className="hover:underline">
-                privacy@neolex.ai
+              <a href="mailto:privacy@vitreon.app" style={{ color: "#C9A84C" }} className="hover:underline">
+                privacy@vitreon.app
               </a>
             </p>
           </div>
@@ -327,7 +327,7 @@ export default function PrivacyPage() {
             color: "rgba(255,255,255,0.28)",
           }}
         >
-          <span>2026 NeoLex</span>
+          <span>2026 Vitreon Legal</span>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-white/60 transition-colors" style={{ color: "#C9A84C" }}>
               Privacy Policy

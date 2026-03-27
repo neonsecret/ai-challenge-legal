@@ -212,7 +212,7 @@ export function TrustSection({
           >
             {demoMode
               ? "Demo key pre-filled — click Continue to explore."
-              : "Enter your NeoLex API key to get started."}
+              : "Enter your Vitreon Legal API key to get started."}
           </p>
 
           {demoMode && (
@@ -298,7 +298,7 @@ export function TrustSection({
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <>
-                  Continue to NeoLex
+                  Continue to Vitreon Legal
                   <ArrowRight className="size-4" />
                 </>
               )}
@@ -309,7 +309,7 @@ export function TrustSection({
             className="text-[11px] text-center mt-5"
             style={{ color: "rgba(255,255,255,0.22)" }}
           >
-            Need a key? Contact your NeoLex administrator.
+            Need a key? Contact your Vitreon Legal administrator.
           </p>
         </motion.div>
       </div>

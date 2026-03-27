@@ -196,7 +196,7 @@ export default function SettingsPage() {
             marginTop: "4px",
           }}
         >
-          Configure your NeoLex connection and preferences
+          Configure your Vitreon Legal connection and preferences
         </p>
       </div>
 
@@ -220,7 +220,7 @@ export default function SettingsPage() {
                     type={showKey ? "text" : "password"}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your NeoLex API key"
+                    placeholder="Enter your Vitreon Legal API key"
                     autoComplete="off"
                     style={{
                       ...inputStyleBase,
@@ -271,7 +271,7 @@ export default function SettingsPage() {
                   onBlur={handleInputBlur}
                 />
                 <p style={mutedTextDyn}>
-                  NeoLex FastAPI server address. Use Tailscale URL for remote access.
+                  Vitreon Legal FastAPI server address. Use Tailscale URL for remote access.
                 </p>
               </div>
 
@@ -363,7 +363,7 @@ export default function SettingsPage() {
                     fontFamily: fontStack,
                   }}
                 >
-                  NeoLex
+                  Vitreon Legal
                 </span>
               </div>
               <div style={aboutRow}>

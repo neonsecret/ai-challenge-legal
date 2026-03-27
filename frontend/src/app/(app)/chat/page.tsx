@@ -151,7 +151,7 @@ export default function ChatPage() {
       const lastQ = messages.filter(m => m.role === "user").at(-1)?.content
       if (lastQ) { document.title = lastQ.length > 50 ? lastQ.slice(0, 50) + "…" : lastQ; return }
     }
-    document.title = "NeoLex — Your AI Legal Counsel"
+    document.title = "Vitreon Legal — Your AI Legal Counsel"
   }, [isStreaming, messages])
 
   useEffect(() => {
@@ -233,7 +233,7 @@ export default function ChatPage() {
           </div>
           <span style={{ fontWeight: 700, fontSize: "15px", color: isDark ? "rgba(255,255,255,0.90)" : "#1a0e04",
             fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "-0.04em", flex: 1 }}>
-            NeoLex
+            Vitreon Legal
           </span>
           {/* New chat button — only when there are messages */}
           {messages.length > 0 && (

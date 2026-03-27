@@ -54,7 +54,7 @@ export default function LandingPage() {
   useEffect(() => {
     const existing = localStorage.getItem("neolex_api_key");
     if (existing) { router.replace("/chat"); return; }
-    const apiUrl = localStorage.getItem("neolex_backend_url") ?? "http://localhost:8000";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? localStorage.getItem("neolex_backend_url") ?? "http://localhost:8000";
     fetch(`${apiUrl}/api/v1/demo/config`)
       .then(r => r.json())
       .then(data => {
@@ -107,7 +107,7 @@ export default function LandingPage() {
                     <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#C9A84C" strokeWidth="1.2" strokeLinejoin="round" fill="rgba(201,168,76,0.15)" />
                   </svg>
                 </div>
-                <span className="font-heading text-lg font-bold tracking-tight" style={{ color: "rgba(255,255,255,0.95)" }}>NeoLex</span>
+                <span className="font-heading text-lg font-bold tracking-tight" style={{ color: "rgba(255,255,255,0.95)" }}>Vitreon Legal</span>
               </div>
               <a href="#access" className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all" style={{ background: "rgba(201,168,76,0.12)", border: "1px solid rgba(201,168,76,0.3)", color: "#C9A84C" }}>
                 Request Access
@@ -154,10 +154,10 @@ export default function LandingPage() {
               <div className="flex items-center justify-center size-5 rounded" style={{ background: "rgba(201,168,76,0.12)" }}>
                 <svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#C9A84C" strokeWidth="1.2" strokeLinejoin="round" /></svg>
               </div>
-              <span className="font-heading text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>NeoLex</span>
+              <span className="font-heading text-sm font-semibold" style={{ color: "rgba(255,255,255,0.6)" }}>Vitreon Legal</span>
             </div>
             <p className="text-[11px]" style={{ color: "rgba(255,255,255,0.28)" }}>
-              {new Date().getFullYear()} NeoLex
+              {new Date().getFullYear()} Vitreon Legal
               <span className="mx-2" style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
               <a href="/privacy" className="hover:text-white/50 transition-colors">Privacy</a>
               <span className="mx-2" style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
@@ -189,7 +189,7 @@ export default function LandingPage() {
               <div style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(196,124,0,0.18)", border: "0.5px solid rgba(196,124,0,0.38)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65)" }}>
                 <span style={{ fontSize: 15, fontWeight: 700, color: "#7a4a00", fontFamily: "Georgia, serif", lineHeight: 1 }}>N</span>
               </div>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#1a0e04", fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "-0.04em" }}>NeoLex</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "#1a0e04", fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "-0.04em" }}>Vitreon Legal</span>
             </div>
             <a href="#access" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 16px", borderRadius: "9999px", fontSize: 13, fontWeight: 600, color: "#fff8ee", background: "#5c2e08", textDecoration: "none", boxShadow: "0 2px 10px rgba(92,46,8,0.28)" }}>
               Request Access <ArrowRight size={12} strokeWidth={2.5} />
@@ -229,7 +229,7 @@ export default function LandingPage() {
           <div style={{ position: "absolute", width: 600, height: 600, top: -100, right: "5%", background: "radial-gradient(circle, rgba(175,130,20,0.30) 0%, transparent 65%)" }} />
         </div>
         <div style={{ maxWidth: 1000, margin: "0 auto", position: "relative" }}>
-          <motion.p initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.5 }} style={{ textAlign: "center", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600, color: "rgba(46,31,8,0.45)", marginBottom: 10 }}>Why NeoLex</motion.p>
+          <motion.p initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.5 }} style={{ textAlign: "center", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600, color: "rgba(46,31,8,0.45)", marginBottom: 10 }}>Why Vitreon Legal</motion.p>
           <motion.h2 initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ duration: 0.5, delay: 0.08 }} style={{ textAlign: "center", fontFamily: "Georgia, serif", fontSize: "clamp(1.8rem,3vw,2.6rem)", fontWeight: 700, letterSpacing: "-0.03em", color: "#1a0e04", marginBottom: 52 }}>Built for legal precision</motion.h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
             {lightPillars.map(({ stat, statLabel, title, body, icon: Icon }, i) => (
@@ -315,8 +315,8 @@ export default function LandingPage() {
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6, delay: 0.2 }} style={{ ...warmGlass, borderRadius: 24, overflow: "clip" }}>
             <div style={{ padding: "20px 24px", borderBottom: "0.5px solid rgba(255,255,255,0.30)", background: "rgba(255,255,255,0.06)" }}>
-              <h3 style={{ fontFamily: "Georgia, serif", fontSize: "1.15rem", fontWeight: 700, color: "#1a0e04", margin: "0 0 4px" }}>{demoMode ? "Try NeoLex now" : "Already have access?"}</h3>
-              <p style={{ fontSize: 13, color: "rgba(46,31,8,0.50)", margin: 0 }}>{demoMode ? "Demo key pre-filled — click Continue to explore." : "Enter your NeoLex API key to get started."}</p>
+              <h3 style={{ fontFamily: "Georgia, serif", fontSize: "1.15rem", fontWeight: 700, color: "#1a0e04", margin: "0 0 4px" }}>{demoMode ? "Try Vitreon Legal now" : "Already have access?"}</h3>
+              <p style={{ fontSize: 13, color: "rgba(46,31,8,0.50)", margin: 0 }}>{demoMode ? "Demo key pre-filled — click Continue to explore." : "Enter your Vitreon Legal API key to get started."}</p>
             </div>
             <div style={{ padding: "20px 24px 24px" }}>
               <form onSubmit={handleLightSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -328,7 +328,7 @@ export default function LandingPage() {
                   {apiError && <p style={{ fontSize: 12, color: "#8b3520", marginTop: 4 }}>{apiError}</p>}
                 </div>
                 <button type="submit" disabled={submitting} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px", borderRadius: 12, fontSize: 13, fontWeight: 600, background: submitting ? "rgba(92,46,8,0.50)" : "#5c2e08", color: "#fff8ee", border: "none", cursor: submitting ? "default" : "pointer", boxShadow: submitting ? "none" : "0 2px 12px rgba(92,46,8,0.28)" }}>
-                  {submitting ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <><span>Continue to NeoLex</span><ArrowRight size={14} /></>}
+                  {submitting ? <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> : <><span>Continue to Vitreon Legal</span><ArrowRight size={14} /></>}
                 </button>
               </form>
               <p style={{ fontSize: 11, textAlign: "center", color: "rgba(46,31,8,0.35)", marginTop: 14 }}>Stored only in your browser · Never sent to third parties</p>
@@ -340,9 +340,9 @@ export default function LandingPage() {
       {/* ── FOOTER ── */}
       <footer style={{ padding: "20px 24px", background: "rgba(255,248,232,0.55)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", borderTop: "0.5px solid rgba(255,255,255,0.45)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(46,31,8,0.55)", fontFamily: "Georgia, serif", letterSpacing: "-0.03em" }}>NeoLex</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(46,31,8,0.55)", fontFamily: "Georgia, serif", letterSpacing: "-0.03em" }}>Vitreon Legal</span>
           <p style={{ fontSize: 11, color: "rgba(46,31,8,0.35)", margin: 0 }}>
-            {new Date().getFullYear()} NeoLex
+            {new Date().getFullYear()} Vitreon Legal
             <span style={{ margin: "0 8px", color: "rgba(46,31,8,0.20)" }}>·</span>
             <a href="/privacy" style={{ color: "rgba(46,31,8,0.40)", textDecoration: "none" }}>Privacy</a>
             <span style={{ margin: "0 8px", color: "rgba(46,31,8,0.20)" }}>·</span>

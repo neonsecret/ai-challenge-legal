@@ -18,7 +18,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "NeoLex — Your AI Legal Counsel",
+  title: "Vitreon Legal — Your AI Legal Counsel",
   description: "AI-powered legal research and document analysis",
 };
 

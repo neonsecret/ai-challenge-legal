@@ -70,7 +70,7 @@ export function ValuePillars() {
           className="text-center text-[11px] uppercase tracking-widest font-semibold mb-3"
           style={{ color: "rgba(201,168,76,0.7)" }}
         >
-          Why NeoLex
+          Why Vitreon Legal
         </motion.p>
         <motion.h2
           initial={{ opacity: 0, y: 12 }}

@@ -357,7 +357,7 @@ export function DemoPanel() {
             className="flex-1 text-center text-[11px] font-mono"
             style={{ color: "rgba(255,255,255,0.25)" }}
           >
-            neolex.ai — Research Assistant
+            vitreon.app — Research Assistant
           </div>
         </div>
 

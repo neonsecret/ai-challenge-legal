@@ -63,7 +63,7 @@ export default function ShowcasePage() {
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: "8px" }}>
           <span style={{ display: "inline-block", padding: "3px 12px", borderRadius: "9999px", fontSize: "11px", fontWeight: 600, background: "rgba(255,255,255,0.35)", border: "1px solid rgba(255,255,255,0.55)", color: "#5a3e08", marginBottom: "14px", letterSpacing: "0.04em" }}>
-            NeoLex v2.0 Preview
+            Vitreon Legal v2.0 Preview
           </span>
           <h1 style={{ fontSize: "clamp(1.8rem,3vw,2.4rem)", fontWeight: 700, letterSpacing: "-0.03em", margin: "0 0 6px", color: "#2a1a06" }}>
             AI Legal Counsel
@@ -84,7 +84,7 @@ export default function ShowcasePage() {
               </svg>
             </div>
             <div style={{ flex: 1 }}>
-              <p style={{ fontWeight: 700, fontSize: "14px", margin: 0, color: "#2a1a06" }}>NeoLex</p>
+              <p style={{ fontWeight: 700, fontSize: "14px", margin: 0, color: "#2a1a06" }}>Vitreon Legal</p>
               <p style={{ color: "rgba(42,26,6,0.50)", fontSize: "11px", margin: 0 }}>AI Legal Counsel</p>
             </div>
             <Chip bg={success.bg} border={success.border} color={success.text}>Online</Chip>
