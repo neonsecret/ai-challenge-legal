@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useEffect, useCallback, useState } from "react"
+import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
 import { SquarePen } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -94,6 +95,7 @@ function saveRecentQuery(question: string) {
 }
 
 export default function ChatPage() {
+  const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[] }>({ answer: "", sources: [] })
@@ -101,6 +103,14 @@ export default function ChatPage() {
   const [recentQueries, setRecentQueries] = useState<string[]>([])
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
+
+  // Fix 1: redirect to landing if no API key on mount
+  useEffect(() => {
+    const key = localStorage.getItem("neolex_api_key")
+    if (!key || key.trim() === "") {
+      router.replace("/")
+    }
+  }, [router])
 
   useEffect(() => {
     const load = () => {
@@ -114,7 +124,7 @@ export default function ChatPage() {
     return () => window.removeEventListener("storage", load)
   }, [])
 
-  const { answer, sources, confidence, isStreaming, streamingStatus, error, sendQuery } = useQueryStream()
+  const { answer, sources, confidence, isStreaming, streamingStatus, error, sendQuery, clearError } = useQueryStream()
   const activeAssistantId = useRef<string | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputFocusRef = useRef<(() => void) | null>(null)
@@ -333,8 +343,28 @@ export default function ChatPage() {
               borderRadius: "12px", padding: "12px 16px",
               color: isDark ? "#ff8c7a" : "#8b3520",
               background: isDark ? "rgba(255,100,80,0.10)" : "rgba(139,53,32,0.10)",
-              border: isDark ? "1px solid rgba(255,100,80,0.22)" : "1px solid rgba(139,53,32,0.22)" }}>
-              {error}
+              border: isDark ? "1px solid rgba(255,100,80,0.22)" : "1px solid rgba(139,53,32,0.22)",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
+              flexWrap: "wrap",
+            }}>
+              <span>{error}</span>
+              <button
+                onClick={() => {
+                  localStorage.removeItem("neolex_api_key")
+                  clearError()
+                  router.replace("/")
+                }}
+                style={{
+                  fontSize: "12px", fontWeight: 600, padding: "5px 12px",
+                  borderRadius: "8px", cursor: "pointer",
+                  background: isDark ? "rgba(255,100,80,0.20)" : "rgba(139,53,32,0.14)",
+                  border: isDark ? "1px solid rgba(255,100,80,0.40)" : "1px solid rgba(139,53,32,0.35)",
+                  color: isDark ? "#ff8c7a" : "#8b3520",
+                  fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                }}
+              >
+                Re-enter API key
+              </button>
             </div>
           )}
         </div>
