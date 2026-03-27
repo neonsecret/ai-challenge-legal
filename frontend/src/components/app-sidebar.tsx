@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { MessageSquare, FileText, Settings, LogOut } from "lucide-react";
+import { MessageSquare, FileText, Settings, LogOut, Clock } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -11,6 +11,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
@@ -21,12 +23,15 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+const RECENT_QUERIES_KEY = "neolex_recent_queries";
+const MAX_RECENT = 5;
+
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [demoMode, setDemoMode] = useState(false);
+  const [recentQueries, setRecentQueries] = useState<string[]>([]);
 
-  // Check demo mode from backend on mount
   useEffect(() => {
     const apiUrl =
       (typeof window !== "undefined"
@@ -39,6 +44,16 @@ export function AppSidebar() {
         if (data.demo_mode) setDemoMode(true);
       })
       .catch(() => {});
+
+    // Load recent queries from localStorage
+    try {
+      const stored = localStorage.getItem(RECENT_QUERIES_KEY);
+      if (stored) {
+        setRecentQueries(JSON.parse(stored).slice(0, MAX_RECENT));
+      }
+    } catch {
+      // ignore
+    }
   }, []);
 
   const handleLogout = () => {
@@ -48,16 +63,17 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
+      {/* Header — NeoLex brand in Playfair */}
       <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tight text-[#d4af37]">
+            <span className="font-heading text-xl font-bold tracking-tight text-[#C9A84C]">
               NeoLex
             </span>
             {demoMode && (
               <Badge
                 variant="outline"
-                className="text-[10px] px-1.5 py-0 h-4 border-[#d4af37]/40 text-[#d4af37] bg-[#d4af37]/10"
+                className="text-[10px] px-1.5 py-0 h-4 border-[#C9A84C]/40 text-[#C9A84C] bg-[#C9A84C]/10"
               >
                 Demo
               </Badge>
@@ -68,7 +84,9 @@ export function AppSidebar() {
           </p>
         </div>
       </SidebarHeader>
+
       <SidebarContent className="pt-4">
+        {/* Main navigation */}
         <SidebarMenu>
           {navItems.map(({ href, label, icon: Icon }) => (
             <SidebarMenuItem key={href}>
@@ -84,7 +102,43 @@ export function AppSidebar() {
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
+
+        {/* Recent queries */}
+        {recentQueries.length > 0 && (
+          <SidebarGroup className="mt-6">
+            <SidebarGroupLabel className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50 px-3 mb-1">
+              <Clock className="size-3" />
+              Recent Queries
+            </SidebarGroupLabel>
+            <div className="px-2 flex flex-col gap-0.5">
+              {recentQueries.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => router.push("/chat")}
+                  className="w-full text-left text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground px-3 py-2 rounded-md hover:bg-sidebar-accent transition-colors truncate"
+                  title={q}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </SidebarGroup>
+        )}
+
+        {/* Placeholder when no recent queries */}
+        {recentQueries.length === 0 && (
+          <SidebarGroup className="mt-6">
+            <SidebarGroupLabel className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50 px-3 mb-1">
+              <Clock className="size-3" />
+              Recent Queries
+            </SidebarGroupLabel>
+            <p className="px-5 text-xs text-sidebar-foreground/40 italic">
+              Your queries will appear here
+            </p>
+          </SidebarGroup>
+        )}
       </SidebarContent>
+
       <SidebarFooter className="border-t border-sidebar-border px-2 py-2">
         <button
           onClick={handleLogout}

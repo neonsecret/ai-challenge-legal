@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -9,7 +10,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-heading);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -48,41 +49,62 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ============================================================
+   LIGHT MODE — Premium Legal SaaS palette
+   Warm off-white · Deep navy · Refined gold
+   ============================================================ */
 :root {
-  --background: oklch(0.98 0.002 240);
-  --foreground: oklch(0.18 0.02 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.02 240);
-  --primary: oklch(0.24 0.06 240);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.95 0.005 240);
-  --secondary-foreground: oklch(0.24 0.06 240);
-  --muted: oklch(0.95 0.005 240);
-  --muted-foreground: oklch(0.50 0.02 240);
-  --accent: oklch(0.75 0.12 75);
-  --accent-foreground: oklch(0.18 0.02 240);
+  /* Surfaces */
+  --background: #FAFAF9;
+  --foreground: #111827;
+  --card: #FFFFFF;
+  --card-foreground: #111827;
+  --popover: #FFFFFF;
+  --popover-foreground: #111827;
+
+  /* Brand */
+  --primary: #1B2B4B;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary / muted */
+  --secondary: #F4F2EE;
+  --secondary-foreground: #1B2B4B;
+  --muted: #F4F2EE;
+  --muted-foreground: #6B7280;
+
+  /* Accent — refined gold */
+  --accent: #C9A84C;
+  --accent-foreground: #FFFFFF;
+
+  /* Functional */
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.90 0.005 240);
-  --input: oklch(0.90 0.005 240);
-  --ring: oklch(0.75 0.12 75);
-  --chart-1: oklch(0.75 0.12 75);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --border: #E5E2DD;
+  --input: #E5E2DD;
+  --ring: #C9A84C;
+
+  /* Chart colours */
+  --chart-1: #C9A84C;
+  --chart-2: #1B2B4B;
+  --chart-3: #6B7280;
+  --chart-4: #E5E2DD;
+  --chart-5: #F4F2EE;
+
   --radius: 0.625rem;
-  --sidebar: oklch(0.18 0.04 240);
-  --sidebar-foreground: oklch(0.92 0.005 240);
-  --sidebar-primary: oklch(0.75 0.12 75);
-  --sidebar-primary-foreground: oklch(0.18 0.02 240);
-  --sidebar-accent: oklch(0.25 0.05 240);
-  --sidebar-accent-foreground: oklch(0.92 0.005 240);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.75 0.12 75);
+
+  /* Sidebar — warm parchment in light mode */
+  --sidebar: #F4F2EE;
+  --sidebar-foreground: #1B2B4B;
+  --sidebar-primary: #C9A84C;
+  --sidebar-primary-foreground: #1B2B4B;
+  --sidebar-accent: #E5E2DD;
+  --sidebar-accent-foreground: #1B2B4B;
+  --sidebar-border: #E5E2DD;
+  --sidebar-ring: #C9A84C;
 }
 
+/* ============================================================
+   DARK MODE — Refined navy (available, not default)
+   ============================================================ */
 .dark {
   --background: oklch(0.12 0.03 240);
   --foreground: oklch(0.92 0.005 240);
@@ -90,31 +112,31 @@
   --card-foreground: oklch(0.92 0.005 240);
   --popover: oklch(0.16 0.04 240);
   --popover-foreground: oklch(0.92 0.005 240);
-  --primary: oklch(0.75 0.12 75);
+  --primary: #C9A84C;
   --primary-foreground: oklch(0.18 0.02 240);
   --secondary: oklch(0.22 0.05 240);
   --secondary-foreground: oklch(0.92 0.005 240);
   --muted: oklch(0.22 0.05 240);
   --muted-foreground: oklch(0.65 0.02 240);
-  --accent: oklch(0.75 0.12 75);
+  --accent: #C9A84C;
   --accent-foreground: oklch(0.18 0.02 240);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.75 0.12 75);
-  --chart-1: oklch(0.75 0.12 75);
+  --ring: #C9A84C;
+  --chart-1: #C9A84C;
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --sidebar: oklch(0.14 0.04 240);
   --sidebar-foreground: oklch(0.92 0.005 240);
-  --sidebar-primary: oklch(0.75 0.12 75);
+  --sidebar-primary: #C9A84C;
   --sidebar-primary-foreground: oklch(0.18 0.02 240);
   --sidebar-accent: oklch(0.20 0.05 240);
   --sidebar-accent-foreground: oklch(0.92 0.005 240);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.75 0.12 75);
+  --sidebar-ring: #C9A84C;
 }
 
 @layer base {
@@ -127,4 +149,44 @@
   html {
     @apply font-sans;
   }
+  h1, h2, h3, .font-heading {
+    font-family: var(--font-heading), Georgia, serif;
+  }
+}
+
+/* ============================================================
+   Motion / animation utilities
+   ============================================================ */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.35s ease-out forwards;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-text {
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    #e8cc7a 40%,
+    var(--accent) 80%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s linear infinite;
 }

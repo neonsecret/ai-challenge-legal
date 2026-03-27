@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastProvider } from "@/components/ui/toast";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const playfair = Playfair_Display({
   subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -29,12 +31,12 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${playfair.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="h-full bg-background text-foreground">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >
