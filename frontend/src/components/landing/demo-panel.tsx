@@ -568,7 +568,7 @@ export function DemoPanel() {
             Source Document
           </p>
           <div className="h-[360px]">
-            <FakePdf scenario={scenario} showHighlights={showHighlights} />
+            <FakePdf showHighlights={showHighlights} />
           </div>
         </div>
       </div>
