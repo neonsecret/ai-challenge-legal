@@ -1,92 +1,121 @@
 "use client"
 
-import { GlassCard } from "@/components/ui/glass-card"
+import { useState } from "react"
 
-const DEMO_QUESTIONS = [
-  "What is the limitation period under DIFC Law No. 5 of 2005?",
-  "What are the grounds for terminating an employment contract under DIFC Employment Law?",
-  "What fiduciary duties does a company director owe under DIFC Companies Law?",
-  "How is arbitration initiated under the DIFC Arbitration Law?",
+export const EMPTY_STATE_QUESTIONS = [
+  {
+    before: "What is the limitation period under ",
+    law: "DIFC Law No. 5 of 2005",
+    after: "?",
+    full: "What is the limitation period under DIFC Law No. 5 of 2005?",
+  },
+  {
+    before: "What are the grounds for termination under ",
+    law: "DIFC Employment Law",
+    after: "?",
+    full: "What are the grounds for termination under DIFC Employment Law?",
+  },
 ]
 
 interface EmptyStateProps {
   onSelectQuestion: (q: string) => void
+  onPreviewQuestion: (index: number | null) => void
+  previewIndex: number | null
+  isDark?: boolean
 }
 
-export function EmptyState({ onSelectQuestion }: EmptyStateProps) {
+export function EmptyState({ onSelectQuestion, onPreviewQuestion, previewIndex, isDark = false }: EmptyStateProps) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+  const headingColor = isDark ? "rgba(255,255,255,0.90)" : "#1a0e04"
+  const lawColor = isDark ? "#C9A84C" : "#c47c00"
+  const textColor = isDark ? "rgba(255,255,255,0.75)" : "rgba(46,31,8,0.72)"
+  const activeTextColor = isDark ? "rgba(255,255,255,0.95)" : "#1a0e04"
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[65vh] text-center px-2">
-
-      {/* Shield logo glow — 80x80px */}
-      <div
-        className="flex items-center justify-center size-20 rounded-3xl mb-6"
-        style={{
-          background: "rgba(201,162,48,0.12)",
-          backdropFilter: "blur(24px)",
-          WebkitBackdropFilter: "blur(24px)",
-          border: "1px solid rgba(201,162,48,0.28)",
-          boxShadow:
-            "0 0 60px rgba(201,162,48,0.18), 0 0 120px rgba(201,162,48,0.08), inset 0 1px 0 rgba(255,255,255,0.30)",
-        }}
-      >
-        <svg width="34" height="34" viewBox="0 0 14 14" fill="none">
-          <path
-            d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z"
-            stroke="#c9a230"
-            strokeWidth="1.2"
-            strokeLinejoin="round"
-            fill="rgba(201,162,48,0.22)"
-          />
-        </svg>
-      </div>
-
-      <h2
-        className="font-heading text-3xl font-bold mb-3"
-        style={{ color: "#1e1208", letterSpacing: "-0.03em" }}
-      >
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      padding: "40px 4px 24px",
+      textAlign: "center",
+    }}>
+      <h2 style={{
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        fontSize: "1.5rem",
+        fontWeight: 700,
+        color: headingColor,
+        letterSpacing: "-0.03em",
+        margin: "0 0 24px",
+        transition: "color 0.3s ease",
+      }}>
         What can I help you research?
       </h2>
-      <p className="text-sm mb-12 max-w-sm" style={{ color: "#7a5a20" }}>
-        Precise answers from your legal documents. Every response cites the exact page and clause.
-      </p>
 
-      {/* Suggestion grid — GlassCard with CSS-only hover */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
-        {DEMO_QUESTIONS.map((q, i) => (
-          <button
-            key={q}
-            onClick={() => onSelectQuestion(q)}
-            className="text-left transition-all group"
-            style={{ background: "none", border: "none", padding: 0 }}
-          >
-            <GlassCard
-              variant="subtle"
-              className="rounded-2xl px-5 py-4 text-sm cursor-pointer
-                         hover:border-[rgba(201,162,48,0.40)]
-                         hover:[background:rgba(255,240,215,0.25)]
-                         transition-all duration-150"
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        width: "100%",
+        maxWidth: "520px",
+      }} className="px-2 sm:px-0">
+        {EMPTY_STATE_QUESTIONS.map((q, i) => {
+          const isHovered = hoveredIndex === i
+          const isOpen = previewIndex === i
+          const active = isOpen || isHovered
+
+          const btnBg = active
+            ? isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.42)"
+            : isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)"
+          const btnBorder = active
+            ? isDark ? "0.5px solid rgba(255,255,255,0.28)" : "0.5px solid rgba(255,255,255,0.70)"
+            : isDark ? "0.5px solid rgba(255,255,255,0.16)" : "0.5px solid rgba(255,255,255,0.55)"
+
+          return (
+            <button
+              key={i}
+              onClick={() => onPreviewQuestion(isOpen ? null : i)}
+              onMouseEnter={() => setHoveredIndex(i)}
+              onMouseLeave={() => setHoveredIndex(null)}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "13px 16px",
+                borderRadius: "14px",
+                background: btnBg,
+                borderTop: btnBorder,
+                borderRight: btnBorder,
+                borderBottom: btnBorder,
+                borderLeft: btnBorder,
+                cursor: "pointer",
+                transition: "all 0.16s ease",
+                boxShadow: isDark
+                  ? active ? "inset 0 1px 0 rgba(255,255,255,0.15)" : "none"
+                  : active ? "inset 0 1px 0 rgba(255,255,255,0.80)" : "inset 0 1px 0 rgba(255,255,255,0.55)",
+              }}
             >
-              <div className="flex items-start gap-3">
-                <span
-                  className="shrink-0 mt-0.5 text-[10px] font-bold font-mono rounded-md px-1.5 py-0.5"
-                  style={{
-                    background: "rgba(201,162,48,0.14)",
-                    border: "1px solid rgba(201,162,48,0.28)",
-                    color: "#7a5a20",
-                  }}
-                >
-                  0{i + 1}
+              <p style={{
+                fontSize: "13px",
+                lineHeight: 1.5,
+                color: active ? activeTextColor : textColor,
+                margin: 0,
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+                transition: "color 0.16s ease",
+              }}>
+                {q.before}
+                <span style={{
+                  color: lawColor,
+                  textDecoration: active ? "underline" : "none",
+                  textUnderlineOffset: "2px",
+                  fontWeight: 500,
+                }}>
+                  {q.law}
                 </span>
-                <span
-                  className="line-clamp-2 leading-relaxed group-hover:text-[#2e1f08] transition-colors"
-                  style={{ color: "#7a5a20" }}
-                >
-                  {q}
-                </span>
-              </div>
-            </GlassCard>
-          </button>
-        ))}
+                {q.after}
+              </p>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { FileText, Trash2, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { FileText, Trash2 } from "lucide-react";
+import { useTheme } from "next-themes";
 import type { Document } from "./use-documents";
 
 function formatSize(bytes: number): string {
@@ -30,6 +30,13 @@ interface DocumentListProps {
 export function DocumentList({ documents, loading, onDelete }: DocumentListProps) {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+  const [hoveredDeleteId, setHoveredDeleteId] = useState<string | null>(null);
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted && resolvedTheme === "dark";
 
   const handleDeleteClick = (documentId: string) => {
     setConfirmingId(documentId);
@@ -42,11 +49,24 @@ export function DocumentList({ documents, loading, onDelete }: DocumentListProps
     setDeletingId(null);
   };
 
+  const font: React.CSSProperties = {
+    fontFamily:
+      "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+  };
+
   if (loading) {
     return (
-      <div className="space-y-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", ...font }}>
         {[...Array(3)].map((_, i) => (
-          <div key={i} className="h-12 rounded-lg bg-muted/50 animate-pulse" />
+          <div
+            key={i}
+            style={{
+              height: "48px",
+              borderRadius: "8px",
+              background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.20)",
+              animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
+            }}
+          />
         ))}
       </div>
     );
@@ -54,10 +74,44 @@ export function DocumentList({ documents, loading, onDelete }: DocumentListProps
 
   if (documents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-12 text-center">
-        <FileText className="size-8 text-muted-foreground/50 mb-3" />
-        <p className="text-sm text-muted-foreground">No documents uploaded yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          border: isDark
+            ? "1.5px dashed rgba(255,255,255,0.14)"
+            : "1.5px dashed rgba(255,255,255,0.35)",
+          borderRadius: "14px",
+          padding: "48px 24px",
+          textAlign: "center",
+          ...font,
+        }}
+      >
+        <FileText
+          size={32}
+          style={{
+            color: isDark ? "rgba(255,255,255,0.25)" : "rgba(46,31,8,0.25)",
+            marginBottom: "12px",
+          }}
+        />
+        <p
+          style={{
+            fontSize: "13px",
+            color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.45)",
+            margin: 0,
+          }}
+        >
+          No documents uploaded yet
+        </p>
+        <p
+          style={{
+            fontSize: "11px",
+            color: isDark ? "rgba(255,255,255,0.25)" : "rgba(46,31,8,0.35)",
+            marginTop: "4px",
+          }}
+        >
           Upload a PDF above to get started
         </p>
       </div>
@@ -65,66 +119,206 @@ export function DocumentList({ documents, loading, onDelete }: DocumentListProps
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div
+      style={{
+        borderRadius: "14px",
+        border: isDark
+          ? "0.5px solid rgba(255,255,255,0.12)"
+          : "0.5px solid rgba(255,255,255,0.35)",
+        overflow: "hidden",
+        ...font,
+      }}
+    >
       {/* Header row */}
-      <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 border-b border-border bg-muted/30 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0,1fr) auto",
+          gap: "16px",
+          background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
+          borderBottom: isDark
+            ? "0.5px solid rgba(255,255,255,0.10)"
+            : "0.5px solid rgba(255,255,255,0.30)",
+          padding: "8px 16px",
+          fontSize: "10px",
+          fontWeight: 500,
+          color: isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.45)",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+        }}
+      >
         <span>Filename</span>
-        <span className="w-20 text-right">Size</span>
-        <span className="w-36 text-right">Uploaded</span>
-        <span className="w-16 text-right">Actions</span>
+        <span className="hidden sm:block" style={{ width: "80px", textAlign: "right" }}>Size</span>
+        <span className="hidden sm:block" style={{ width: "144px", textAlign: "right" }}>Uploaded</span>
+        <span style={{ width: "64px", textAlign: "right" }}>Actions</span>
       </div>
 
       {/* Document rows */}
-      {documents.map((doc) => (
+      {documents.map((doc, index) => (
         <div
           key={doc.document_id}
-          className="grid grid-cols-[1fr_auto_auto_auto] gap-4 items-center border-b border-border last:border-0 px-4 py-3 hover:bg-muted/20 transition-colors"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0,1fr) auto",
+            gap: "16px",
+            alignItems: "center",
+            padding: "12px 16px",
+            borderBottom:
+              index < documents.length - 1
+                ? isDark
+                  ? "0.5px solid rgba(255,255,255,0.08)"
+                  : "0.5px solid rgba(255,255,255,0.20)"
+                : "none",
+            background:
+              hoveredRowId === doc.document_id
+                ? isDark
+                  ? "rgba(255,255,255,0.05)"
+                  : "rgba(255,255,255,0.12)"
+                : "transparent",
+            transition: "background 0.12s",
+          }}
+          onMouseEnter={() => setHoveredRowId(doc.document_id)}
+          onMouseLeave={() => setHoveredRowId(null)}
         >
-          <div className="flex items-center gap-2 min-w-0">
-            <FileText className="size-4 shrink-0 text-[#d4af37]" />
-            <span className="truncate text-sm font-medium text-foreground" title={doc.filename}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              minWidth: 0,
+            }}
+          >
+            <FileText
+              size={16}
+              style={{ flexShrink: 0, color: "#c47c00" }}
+            />
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                fontSize: "13px",
+                fontWeight: 500,
+                color: isDark ? "rgba(255,255,255,0.80)" : "#2e1f08",
+              }}
+              title={doc.filename}
+            >
               {doc.filename}
             </span>
           </div>
 
-          <span className="w-20 text-right text-xs text-muted-foreground tabular-nums">
+          <span
+            className="hidden sm:block"
+            style={{
+              width: "80px",
+              textAlign: "right",
+              fontSize: "12px",
+              color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
             {formatSize(doc.size_bytes)}
           </span>
 
-          <span className="w-36 text-right text-xs text-muted-foreground tabular-nums">
+          <span
+            className="hidden sm:block"
+            style={{
+              width: "144px",
+              textAlign: "right",
+              fontSize: "12px",
+              color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
             {formatDate(doc.uploaded_at)}
           </span>
 
-          <div className="w-16 flex justify-end">
+          <div
+            style={{
+              width: "64px",
+              display: "flex",
+              justifyContent: "flex-end",
+            }}
+          >
             {confirmingId === doc.document_id ? (
-              <div className="flex items-center gap-1">
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
                 <button
-                  className="rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10 transition-colors"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "2px 6px",
+                    fontSize: "11px",
+                    color: isDark ? "#ff8c7a" : "#8b3520",
+                    cursor: "pointer",
+                  }}
                   onClick={() => handleConfirmDelete(doc.document_id)}
                 >
                   Yes
                 </button>
                 <button
-                  className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "2px 6px",
+                    fontSize: "11px",
+                    color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.50)",
+                    cursor: "pointer",
+                  }}
                   onClick={() => setConfirmingId(null)}
                 >
                   No
                 </button>
               </div>
             ) : (
-              <Button
-                variant="ghost"
-                size="icon-sm"
+              <button
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px",
+                  borderRadius: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color:
+                    hoveredDeleteId === doc.document_id
+                      ? isDark
+                        ? "#ff8c7a"
+                        : "#8b3520"
+                      : isDark
+                        ? "rgba(255,255,255,0.35)"
+                        : "rgba(46,31,8,0.40)",
+                  transition: "color 0.12s",
+                }}
                 disabled={deletingId === doc.document_id}
                 onClick={() => handleDeleteClick(doc.document_id)}
-                className="text-muted-foreground hover:text-destructive"
+                onMouseEnter={() => setHoveredDeleteId(doc.document_id)}
+                onMouseLeave={() => setHoveredDeleteId(null)}
               >
                 {deletingId === doc.document_id ? (
-                  <span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  <span
+                    style={{
+                      display: "inline-block",
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      border: "2px solid currentColor",
+                      borderTopColor: "transparent",
+                      animation: "spin 0.6s linear infinite",
+                    }}
+                  />
                 ) : (
-                  <Trash2 className="size-3.5" />
+                  <Trash2 size={14} />
                 )}
-              </Button>
+              </button>
             )}
           </div>
         </div>

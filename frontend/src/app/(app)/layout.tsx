@@ -1,5 +1,5 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
+import { AppBackground } from "@/components/app-background";
+import { BottomNav } from "@/components/bottom-nav";
 
 export default function AppLayout({
   children,
@@ -7,23 +7,17 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <div className="flex h-full w-full">
-        <AppSidebar />
-        <div className="flex flex-col flex-1 min-w-0">
-          {/* Mobile top bar — only visible when sidebar is hidden */}
-          <div
-            className="md:hidden flex items-center gap-3 h-12 px-4 shrink-0"
-            style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
-          >
-            <SidebarTrigger />
-            <span className="font-heading text-sm font-bold text-[#C9A84C]">
-              NeoLex
-            </span>
-          </div>
-          <main className="flex-1 overflow-auto">{children}</main>
-        </div>
-      </div>
-    </SidebarProvider>
+    <AppBackground>
+      {/* Main content */}
+      <main
+        className="flex-1 overflow-auto min-w-0"
+        style={{ position: "relative", zIndex: 1, paddingBottom: "96px" }}
+      >
+        {children}
+      </main>
+
+      {/* Bottom nav pill */}
+      <BottomNav />
+    </AppBackground>
   );
 }

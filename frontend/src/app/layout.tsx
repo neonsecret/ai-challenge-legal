@@ -36,9 +36,8 @@ export default function RootLayout({
       <body className="h-full bg-background text-foreground">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
-          disableTransitionOnChange
         >
           <TooltipProvider>
             <ToastProvider>

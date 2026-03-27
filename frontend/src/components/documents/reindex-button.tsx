@@ -1,8 +1,6 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import type { ReindexJob } from "./use-documents";
 
 interface ReindexButtonProps {
@@ -17,14 +15,27 @@ const STATUS_LABEL: Record<ReindexJob["status"], string> = {
   failed: "Failed",
 };
 
-const STATUS_VARIANT: Record<
-  ReindexJob["status"],
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  queued: "secondary",
-  processing: "default",
-  complete: "outline",
-  failed: "destructive",
+const STATUS_STYLE: Record<ReindexJob["status"], React.CSSProperties> = {
+  queued: {
+    background: "rgba(196,124,0,0.15)",
+    color: "#7a4a00",
+    border: "0.5px solid rgba(196,124,0,0.30)",
+  },
+  processing: {
+    background: "rgba(53,118,174,0.14)",
+    color: "#1a3f6e",
+    border: "0.5px solid rgba(53,118,174,0.30)",
+  },
+  complete: {
+    background: "rgba(46,31,8,0.08)",
+    color: "rgba(46,31,8,0.60)",
+    border: "0.5px solid rgba(46,31,8,0.15)",
+  },
+  failed: {
+    background: "rgba(139,53,32,0.12)",
+    color: "#8b3520",
+    border: "0.5px solid rgba(139,53,32,0.25)",
+  },
 };
 
 const isActive = (status: ReindexJob["status"]) =>
@@ -34,28 +45,83 @@ export function ReindexButton({ onReindex, job }: ReindexButtonProps) {
   const running = job ? isActive(job.status) : false;
 
   return (
-    <div className="flex items-center gap-2">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        fontFamily:
+          "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+      }}
+    >
       {job && (
-        <Badge variant={STATUS_VARIANT[job.status]} className="gap-1">
+        <span
+          style={{
+            ...STATUS_STYLE[job.status],
+            borderRadius: "9999px",
+            padding: "3px 10px",
+            fontSize: "11px",
+            fontWeight: 600,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            whiteSpace: "nowrap",
+          }}
+        >
           {isActive(job.status) && (
-            <span className="size-2 rounded-full border border-current border-t-transparent animate-spin inline-block" />
+            <span
+              style={{
+                display: "inline-block",
+                width: "8px",
+                height: "8px",
+                borderRadius: "50%",
+                border: "1.5px solid currentColor",
+                borderTopColor: "transparent",
+                animation: "spin 0.6s linear infinite",
+              }}
+            />
           )}
           {STATUS_LABEL[job.status]}
           {job.status === "processing" && job.progress != null && (
-            <span className="ml-0.5 tabular-nums">{job.progress}%</span>
+            <span
+              style={{
+                marginLeft: "2px",
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {job.progress}%
+            </span>
           )}
-        </Badge>
+        </span>
       )}
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        style={{
+          background: "rgba(255,255,255,0.25)",
+          border: "0.5px solid rgba(255,255,255,0.45)",
+          borderRadius: "10px",
+          padding: "7px 14px",
+          fontSize: "12.5px",
+          color: "rgba(46,31,8,0.70)",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          cursor: running ? "default" : "pointer",
+          opacity: running ? 0.5 : 1,
+          fontFamily: "inherit",
+          fontWeight: 500,
+          transition: "opacity 0.12s",
+        }}
         disabled={running}
         onClick={onReindex}
-        className="gap-1.5"
       >
-        <RefreshCw className={running ? "animate-spin" : ""} />
+        <RefreshCw
+          size={14}
+          style={{
+            animation: running ? "spin 1s linear infinite" : "none",
+          }}
+        />
         Reindex
-      </Button>
+      </button>
     </div>
   );
 }

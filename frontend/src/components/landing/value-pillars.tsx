@@ -99,10 +99,10 @@ export function ValuePillars() {
               className="group relative rounded-2xl p-6 flex flex-col gap-0 cursor-default"
               style={{
                 background:
-                  "linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
-                backdropFilter: "blur(24px)",
-                WebkitBackdropFilter: "blur(24px)",
-                border: "1px solid rgba(255,255,255,0.09)",
+                  "linear-gradient(145deg, rgba(255,255,255,0.11) 0%, rgba(255,255,255,0.06) 100%)",
+                backdropFilter: "blur(48px) saturate(160%)",
+                WebkitBackdropFilter: "blur(48px) saturate(160%)",
+                border: "1px solid rgba(255,255,255,0.14)",
                 borderTop: "2px solid rgba(201,168,76,0.45)",
                 boxShadow:
                   "0 8px 32px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06)",
@@ -112,7 +112,15 @@ export function ValuePillars() {
               <div
                 className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 style={{
-                  boxShadow: "0 0 40px rgba(201,168,76,0.12)",
+                  boxShadow: "0 0 60px rgba(201,168,76,0.18), inset 0 0 20px rgba(201,168,76,0.05)",
+                }}
+              />
+
+              {/* Shimmer overlay */}
+              <div
+                className="pointer-events-none absolute inset-0 rounded-2xl"
+                style={{
+                  background: "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%, rgba(255,255,255,0.02) 100%)",
                 }}
               />
 

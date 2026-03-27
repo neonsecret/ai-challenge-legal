@@ -157,7 +157,6 @@ const VISUALS = [TypingVisual, ScanningVisual, HighlightVisual];
 export function HowItWorks() {
   const [activeStep, setActiveStep] = useState(0);
   const [userInteracted, setUserInteracted] = useState(false);
-  const [timerKey, setTimerKey] = useState(0);
 
   // Auto-advance only until the user takes control
   useEffect(() => {
@@ -166,12 +165,11 @@ export function HowItWorks() {
       setActiveStep((prev) => (prev + 1) % steps.length);
     }, AUTO_ADVANCE_MS);
     return () => clearInterval(id);
-  }, [userInteracted, timerKey]);
+  }, [userInteracted]);
 
   const goTo = (i: number) => {
     setActiveStep(i);
     setUserInteracted(true);
-    setTimerKey((k) => k + 1);
   };
 
   const goPrev = () => goTo((activeStep - 1 + steps.length) % steps.length);
