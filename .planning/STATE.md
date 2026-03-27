@@ -1,10 +1,10 @@
 # Project State
 
 ## Current Status
-- Phase: 06-ui-polish-demo-readiness
-- Progress: Phase 1 ✓, Phase 2 ✓, Phase 3 ✓, Phase 4 ✓, Phase 5 ✓, Phase 6 ✓
-- Last session: 2026-03-26
-- Stopped at: Completed 06-PLAN (UI polish + demo readiness)
+- Phase: 10-ui-redesign-premium-legal-saas
+- Progress: Phase 1 ✓, Phase 2 ✓, Phase 3 ✓, Phase 4 ✓, Phase 5 ✓, Phase 6 ✓, Phase 10 ✓
+- Last session: 2026-03-27
+- Stopped at: Completed 10-01-PLAN (Premium Legal SaaS UI Redesign)
 
 ## Completed Phases
 - Phase 1: FastAPI Core + Pipeline Integration (30 tests)
@@ -13,6 +13,7 @@
 - Phase 4: Next.js Frontend (chat UI + SSE streaming + document upload)
 - Phase 5: Production Hardening (86 total tests, all passing)
 - Phase 6: UI Polish + Demo Readiness (make demo, settings, landing, confidence badges, toasts)
+- Phase 10: Premium Legal SaaS UI Redesign (light mode, Playfair, gold accent, markdown rendering)
 
 ## Phase 5 Summary
 - 8 new files created, 3 modified
@@ -75,8 +76,25 @@
 - Demo key written to .demo_key file — SQLite doesn't store plaintext; file is gitignored
 - Confidence thresholds: >=0.7 High, >=0.4 Medium, <0.4 Low — reasonable defaults, easily tuned
 
+## Phase 10 Summary
+- 7 files modified, 2 deleted (conflicting duplicates), 4 packages installed
+- Build: 0 errors, 0 TypeScript errors
+- Light mode default, Playfair Display serif, warm gold accent #C9A84C
+- Landing page: full marketing layout with hero, trust bar, features grid
+- Chat: ReactMarkdown prose rendering, streaming status messages, follow-up suggestions
+- Sidebar: Playfair brand, warm parchment bg, recent queries section
+- Commit: cff8b89
+
+## Decisions Made (Phase 10)
+- Playfair Display (Google Fonts) for headings: serif conveys legal authority
+- Gold accent #C9A84C (not #D4AF37): more refined, less saturated, closer to Harvey AI tone
+- ReactMarkdown + @tailwindcss/typography over simple whitespace-pre-wrap: proper formatting
+- Skipped MagicUI registry components: compatibility risk with React 19 + Next 16.2.1
+- Deleted conflicting /chat and /documents root pages: pre-existing route conflict
+
 ## Performance Metrics
 | Phase | Duration | Tasks | Files | Tests |
 |---|---|---|---|---|
 | 05-01 | ~7.5 min | 6 | 11 | 21 new / 86 total |
 | 06-01 | ~45 min | 7 | 17 | 86 pass (bug fix) |
+| 10-01 | ~5 min | 8 | 9 modified / 2 deleted | build clean |
