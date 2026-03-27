@@ -192,30 +192,16 @@ def _is_arctic_model() -> bool:
     return "arctic" in EMBEDDING_MODEL.lower()
 
 
-def _is_qwen_model() -> bool:
-    """Check if the configured embedding model is a Qwen embedding model."""
-    return "qwen" in EMBEDDING_MODEL.lower()
-
-
 def _is_llama_server() -> bool:
-    """Check if llama-server HTTP backend is configured."""
+    """Check if llama-server HTTP backend is configured (default)."""
     return EMBEDDING_MODEL.lower() == "llama-server"
-
-
-# Qwen3 decoder-based embedding models require an instruction prefix for queries.
-# Must match the task description used when building the FAISS index (Qwen3Embedder default).
-QWEN_QUERY_PREFIX = "Instruct: Given a legal document query, retrieve the most relevant passages\nQuery: "
-
-# Qwen3 native dim is larger than the Matryoshka-truncated dim used during indexing.
-# Must match EMBEDDING_DIM used in neolex/embeddings/build_index.py (default 1024).
-QWEN_EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
 
 
 def get_embedding_model():
     """Get embedding model (cached, thread-safe).
 
-    Returns a SentenceTransformer for Arctic/BGE/Qwen, or a LlamaServerEmbedder
-    when EMBEDDING_MODEL=llama-server.  All backends expose a compatible .encode() API.
+    Returns LlamaServerEmbedder for llama-server (default),
+    or SentenceTransformer for snowflake (fallback).
     """
     global _embedding_model
     if _embedding_model is None:
@@ -226,18 +212,12 @@ def get_embedding_model():
                     _embedding_model = LlamaServerEmbedder()
                 else:
                     import torch
-                    # Auto-detect device: MPS (Apple Silicon) > CUDA > CPU
                     device = (
                         'mps' if torch.backends.mps.is_available()
                         else 'cuda' if torch.cuda.is_available()
                         else 'cpu'
                     )
-                    model_kwargs = {}
-                    if _is_arctic_model() or _is_qwen_model():
-                        model_kwargs["trust_remote_code"] = True
-                    if _is_qwen_model():
-                        # Truncate to match the Matryoshka dim used during indexing
-                        model_kwargs["truncate_dim"] = QWEN_EMBEDDING_DIM
+                    model_kwargs = {"trust_remote_code": True} if _is_arctic_model() else {}
                     _embedding_model = SentenceTransformer(
                         EMBEDDING_MODEL, device=device, **model_kwargs
                     )
@@ -247,19 +227,14 @@ def get_embedding_model():
 def embed_query(question: str) -> list[float]:
     """Embed a query for asymmetric retrieval.
 
-    llama-server:  LlamaServerEmbedder.encode() handles the instruction prefix.
-    Arctic:        uses prompt_name='query' which prepends 'query: ' prefix.
-    Qwen3 (torch): prepends instruction prefix manually.
-    BGE:           prepends BGE_QUERY_PREFIX manually.
+    llama-server: LlamaServerEmbedder.encode(prompt_name='query') applies instruction prefix.
+    Arctic:       prompt_name='query' prepends the Arctic 'query: ' prefix.
+    BGE fallback: manual BGE_QUERY_PREFIX prepend.
     """
     model = get_embedding_model()
     with _embedding_lock:  # tokenizer is not thread-safe
-        if _is_llama_server():
+        if _is_llama_server() or _is_arctic_model():
             embedding = model.encode(question, prompt_name='query', normalize_embeddings=True)
-        elif _is_arctic_model():
-            embedding = model.encode(question, prompt_name='query', normalize_embeddings=True)
-        elif _is_qwen_model():
-            embedding = model.encode(QWEN_QUERY_PREFIX + question, normalize_embeddings=True)
         else:
             embedding = model.encode(BGE_QUERY_PREFIX + question, normalize_embeddings=True)
     return embedding.tolist()

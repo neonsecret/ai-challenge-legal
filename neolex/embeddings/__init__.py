@@ -1,20 +1,18 @@
-"""NeoLex embedding layer — pluggable embedder backends.
+"""NeoLex embedding layer.
 
-Recommended setup
------------------
-1. Download the GGUF model:
-       huggingface-cli download Qwen/Qwen3-Embedding-8B-GGUF \\
-           Qwen3-Embedding-8B-Q4_K_M.gguf --local-dir models/
+Default backend: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
 
-2. Start llama-server (keep it running in the background):
-       llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \\
-           --embedding --pooling last -ngl 99 -c 4096 --port 8088
+Setup:
+    1. Download the model (~4.3 GB):
+           huggingface-cli download Qwen/Qwen3-Embedding-8B-GGUF \\
+               Qwen3-Embedding-8B-Q4_K_M.gguf --local-dir models/
 
-3. Set EMBEDDING_MODEL=llama-server in your .env.
+    2. Start llama-server (keep running in background):
+           llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \\
+               --embedding --pooling last -ngl 99 -c 4096 --port 8088
 
-4. Call `neolex.embeddings.adapter.activate()` before loading the arlc
-   pipeline — this pre-sets the singleton so arlc.retriever never tries to
-   load a SentenceTransformer.
+    3. Set EMBEDDING_MODEL=llama-server in your .env (already the default).
 
-For "snowflake" (default) no setup is needed and activate() is a no-op.
+Fallback: set EMBEDDING_MODEL=snowflake for Snowflake Arctic Embed L v2.0
+(no server required, lower quality).
 """

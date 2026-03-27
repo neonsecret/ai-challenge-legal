@@ -34,26 +34,13 @@ DATA_DIR = BENCH_DIR / "data"
 BM25_CACHE_DIR = DATA_DIR / "bm25_cache"
 BM25_IDS_PATH = BM25_CACHE_DIR / "corpus_ids.json"
 
-# Embedding backend selection: "snowflake" (default) | "qwen3-4b" | "qwen3-8b" | "qwen3-0.6b"
-# Also accepts full HuggingFace model IDs (e.g. "Qwen/Qwen3-Embedding-4B" → "qwen3-4b").
-_HF_TO_BACKEND = {
-    "qwen/qwen3-embedding-8b": "qwen3-8b",
-    "qwen/qwen3-embedding-4b": "qwen3-4b",
-    "qwen/qwen3-embedding-0.6b": "qwen3-0.6b",
-}
-_EMBEDDING_BACKEND = os.environ.get("EMBEDDING_MODEL", "snowflake").lower()
-_EMBEDDING_BACKEND = _HF_TO_BACKEND.get(_EMBEDDING_BACKEND, _EMBEDDING_BACKEND)
-# Index filenames mirror what build_qwen3_index.py produces:
-#   faiss_<backend><dim_suffix>.bin — qwen3-* and llama-server backends
-#   faiss_index.bin                 — snowflake (default)
-_bench_dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
-_bench_dim_suffix = "" if _bench_dim_env == "1024" else f"_dim{_bench_dim_env}"
+# Embedding backend: "llama-server" (default) | "snowflake" (fallback, no server needed)
+_EMBEDDING_BACKEND = os.environ.get("EMBEDDING_MODEL", "llama-server").lower()
 
-if _EMBEDDING_BACKEND in ("llama-server",) or _EMBEDDING_BACKEND.startswith("qwen3"):
-    _idx_stem = _EMBEDDING_BACKEND.replace("/", "-")
-    FAISS_INDEX_PATH = DATA_DIR / f"faiss_{_idx_stem}{_bench_dim_suffix}.bin"
-    FAISS_METADATA_PATH = DATA_DIR / f"faiss_{_idx_stem}{_bench_dim_suffix}.json"
-    RESULTS_PATH = BENCH_DIR / f"results_{_idx_stem}{_bench_dim_suffix}.json"
+if _EMBEDDING_BACKEND == "llama-server":
+    FAISS_INDEX_PATH = DATA_DIR / "faiss_llama-server.bin"
+    FAISS_METADATA_PATH = DATA_DIR / "faiss_llama-server.json"
+    RESULTS_PATH = BENCH_DIR / "results_llama-server.json"
 else:
     FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
     FAISS_METADATA_PATH = DATA_DIR / "faiss_metadata.json"
@@ -126,19 +113,12 @@ def _load_bm25():
 
 
 def _get_embedding_model():
-    """Get embedding model (cached). Supports Snowflake (default) and Qwen3 family."""
+    """Get embedding model (cached). llama-server (default) or snowflake (fallback)."""
     global _embedding_model
     if _embedding_model is None:
         if _EMBEDDING_BACKEND == "llama-server":
             from neolex.embeddings.llama_embedder import LlamaServerEmbedder
             _embedding_model = LlamaServerEmbedder()
-        elif _EMBEDDING_BACKEND.startswith("qwen3"):
-            from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
-            # EMBEDDING_DIM must match the dim used in build_qwen3_index.py.
-            # "full" → 8192 sentinel (Qwen3Embedder skips truncation, outputs native dim).
-            _dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
-            _embed_dim = 8192 if _dim_env == "full" else int(_dim_env)
-            _embedding_model = load_qwen3_embedder(backend=_EMBEDDING_BACKEND, dim=_embed_dim)
         else:
             from sentence_transformers import SentenceTransformer
             import torch

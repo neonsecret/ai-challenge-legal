@@ -1,37 +1,29 @@
-"""Build a FAISS index from document chunks.
+"""Build a FAISS index from document chunks using llama-server embeddings.
 
 Usage:
-    # Recommended: llama-server backend (start server first on port 8088)
-    EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \
-        --corpus data/chunks/ \
+    # Start llama-server first (port 8088), then:
+    EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \\
+        --corpus data/chunks/ \\
         --output data/faiss_llama-server.bin
-
-    # Legacy: PyTorch Qwen3 backend
-    EMBEDDING_MODEL=qwen3-8b python3 -m neolex.embeddings.build_index \
-        --corpus data/chunks/ \
-        --output data/faiss_qwen3_8b.bin
 
 The metadata JSON is written alongside the .bin file with the same stem and
 a .json extension.
 
 Corpus format: directory of .json files, each a list of chunk dicts with
-keys {"text": str, "doc_id": str, "page": int, ...}.  This matches the
-format produced by arlc's indexing pipeline.
+keys {"text": str, "doc_id": str, "page": int, ...}.
 """
 from __future__ import annotations
 
 import argparse
 import json
 import logging
-import os
 import pathlib
 import sys
 
 import faiss
 import numpy as np
 
-from neolex.embeddings.config import EMBEDDING_BACKEND, EMBEDDING_DIM
-from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
+from neolex.embeddings.config import EMBEDDING_BACKEND
 
 logging.basicConfig(
     level=logging.INFO,
@@ -39,14 +31,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-MAX_LENGTH = 512  # token budget; DIFC legal chunks avg ~130 tokens — 512 is ample
-
-# GPU forward-pass batch size.
-# qwen3-4b float16 fills all 8.6 GB VRAM → batch_size=1 required to avoid OOM.
-# qwen3-8b 8-bit also fills 8.6 GB → batch_size=1 for stability.
-# qwen3-0.6b leaves ~7 GB free → can use larger batches.
-_SMALL_BATCH_BACKENDS = {"qwen3-8b", "qwen3-4b"}
-BATCH_SIZE = 1 if EMBEDDING_BACKEND in _SMALL_BATCH_BACKENDS else 32
+BATCH_SIZE = 64  # llama-server handles GPU batching internally
 
 
 def load_chunks(corpus_dir: str) -> list[dict]:
@@ -70,67 +55,47 @@ def load_chunks(corpus_dir: str) -> list[dict]:
 
 def build_index(corpus_dir: str, output_path: str) -> None:
     """Embed all chunks and write FAISS flat index + metadata JSON."""
-    if EMBEDDING_BACKEND == "snowflake":
+    if EMBEDDING_BACKEND != "llama-server":
         logger.error(
-            "EMBEDDING_MODEL is 'snowflake' — set EMBEDDING_MODEL=llama-server "
-            "(recommended) or qwen3-8b before running this script."
+            "EMBEDDING_MODEL=%r is not supported. Set EMBEDDING_MODEL=llama-server "
+            "and start llama-server before running this script.", EMBEDDING_BACKEND
         )
         sys.exit(1)
 
+    from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+    embedder = LlamaServerEmbedder(batch_size=BATCH_SIZE)
+    logger.info("Using llama-server backend at %s", embedder.url)
+
     chunks = load_chunks(corpus_dir)
     texts = [c.get("text", "") for c in chunks]
-
-    if EMBEDDING_BACKEND == "llama-server":
-        from neolex.embeddings.llama_embedder import LlamaServerEmbedder
-        embedder = LlamaServerEmbedder(batch_size=64)
-        logger.info("Using llama-server backend at %s", embedder.url)
-    else:
-        embedder = load_qwen3_embedder(backend=EMBEDDING_BACKEND, dim=EMBEDDING_DIM)
-        import torch
-        if torch.cuda.is_available():
-            vram_used = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.mem_get_info()[0]) / 1e9
-            logger.info("Post-load VRAM used: %.2f GB", vram_used)
-
-    logger.info(
-        "Embedding %d chunks with %s (batch_size=%d)...",
-        len(texts),
-        EMBEDDING_BACKEND,
-        BATCH_SIZE if EMBEDDING_BACKEND != "llama-server" else 64,
-    )
+    logger.info("Embedding %d chunks (batch_size=%d)...", len(texts), BATCH_SIZE)
 
     all_embeddings: list[np.ndarray] = []
     for start in range(0, len(texts), BATCH_SIZE):
-        batch = texts[start : start + BATCH_SIZE]
-        embs = embedder.embed_texts(batch, max_length=MAX_LENGTH, batch_size=BATCH_SIZE)
+        batch = texts[start: start + BATCH_SIZE]
+        embs = embedder.embed_texts(batch)
         all_embeddings.append(embs)
-        # Log every 100 chunks (independent of batch size)
-        if start % 100 == 0 or start == 0:
-            logger.info(
-                "  %d / %d chunks embedded...", min(start + BATCH_SIZE, len(texts)), len(texts)
-            )
+        if start % 500 == 0 or start == 0:
+            logger.info("  %d / %d chunks embedded...", min(start + BATCH_SIZE, len(texts)), len(texts))
 
     matrix = np.concatenate(all_embeddings, axis=0).astype(np.float32)
     actual_dim = matrix.shape[1]
-    logger.info("Embedding matrix shape: %s (dim=%d)", matrix.shape, actual_dim)
+    logger.info("Embedding matrix: %s (dim=%d)", matrix.shape, actual_dim)
 
-    # Use actual_dim from embeddings (not EMBEDDING_DIM sentinel) so llama-server
-    # and "full" Matryoshka builds produce correctly-sized indexes.
     index = faiss.IndexFlatIP(actual_dim)
     index.add(matrix)
-    logger.info("FAISS index built: %d vectors.", index.ntotal)
+    logger.info("FAISS index: %d vectors", index.ntotal)
 
     output_path_obj = pathlib.Path(output_path)
     output_path_obj.parent.mkdir(parents=True, exist_ok=True)
-
     faiss.write_index(index, str(output_path_obj))
     logger.info("FAISS index written to %s", output_path_obj)
 
-    # Write metadata (doc_id, page) alongside the index
     metadata = [
         {
             "doc_id": c.get("doc_id", ""),
             "page": c.get("page", c.get("metadata", {}).get("page", 1)),
-            "text": c.get("text", "")[:200],  # truncated preview
+            "text": c.get("text", "")[:200],
         }
         for c in chunks
     ]
@@ -141,18 +106,10 @@ def build_index(corpus_dir: str, output_path: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Build a FAISS index from document chunks using Qwen3 embeddings."
+        description="Build a FAISS index from document chunks using llama-server embeddings."
     )
-    parser.add_argument(
-        "--corpus",
-        required=True,
-        help="Directory containing chunk JSON files.",
-    )
-    parser.add_argument(
-        "--output",
-        required=True,
-        help="Output path for the FAISS .bin index file.",
-    )
+    parser.add_argument("--corpus", required=True, help="Directory containing chunk JSON files.")
+    parser.add_argument("--output", required=True, help="Output path for the FAISS .bin index file.")
     args = parser.parse_args()
     build_index(args.corpus, args.output)
 
