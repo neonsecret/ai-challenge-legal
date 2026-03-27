@@ -74,6 +74,12 @@ CREATE TABLE IF NOT EXISTS events (
     ip          TEXT,
     user_agent  TEXT
 );
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+    bucket       TEXT PRIMARY KEY,
+    window_start REAL NOT NULL,
+    request_count INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -289,19 +295,125 @@ class AuditDB:
         )
         return cur.rowcount  # type: ignore[return-value]
 
+    # --- Rate limiting (SQLite-backed, WAL-safe) ---
+
+    async def check_and_increment_rate(
+        self,
+        bucket: str,
+        window_seconds: float,
+        limit: int,
+        now: float,
+    ) -> tuple[int, bool]:
+        """Upsert a rate-limit counter for *bucket* and return (new_count, exceeded).
+
+        The bucket key is arbitrary — callers use "key:<key_hash>" for
+        per-key rate limits and "ip:<ip_address>" for IP-based limits.
+
+        This method is concurrency-safe via SQLite's WAL journal mode and
+        the UPSERT statement.  Each call is a single atomic write.
+
+        Returns:
+            (new_count, exceeded) where exceeded is True when new_count > limit.
+        """
+        import time as _time
+        cur = await self._conn.execute(
+            """
+            INSERT INTO rate_limits (bucket, window_start, request_count)
+            VALUES (?, ?, 1)
+            ON CONFLICT(bucket) DO UPDATE SET
+                request_count = CASE
+                    WHEN (? - window_start) >= ? THEN 1
+                    ELSE request_count + 1
+                END,
+                window_start = CASE
+                    WHEN (? - window_start) >= ? THEN ?
+                    ELSE window_start
+                END
+            RETURNING request_count
+            """,
+            (bucket, now, now, window_seconds, now, window_seconds, now),
+        )
+        row = await cur.fetchone()
+        new_count: int = row[0] if row else 1
+        return new_count, new_count > limit
+
     # --- Audit log reads (admin use) ---
 
-    async def get_queries(self, limit: int = 50, offset: int = 0) -> list[aiosqlite.Row]:
-        """Return paginated query log entries, newest first."""
+    async def get_queries(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        client_slug: str | None = None,
+    ) -> list[aiosqlite.Row]:
+        """Return paginated query log entries, newest first.
+
+        Args:
+            limit: maximum rows to return.
+            offset: number of rows to skip.
+            client_slug: when provided, restricts results to queries whose
+                key_hash belongs to that client.  Pass None only for
+                superadmin access (all clients).
+
+        The queries table does not store client_slug directly; we join via
+        api_keys so each admin only sees their own client's queries.
+        """
+        if client_slug is None:
+            # Superadmin: return all rows across all clients.
+            async with self._conn.execute(
+                "SELECT q.* FROM queries q ORDER BY q.id DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ) as cur:
+                return await cur.fetchall()
+
+        # Regular admin: restrict to rows whose key_hash belongs to this client.
         async with self._conn.execute(
-            "SELECT * FROM queries ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset)
+            """
+            SELECT q.*
+            FROM queries q
+            INNER JOIN api_keys k ON k.key_hash = q.key_hash
+            WHERE k.client_slug = ?
+            ORDER BY q.id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (client_slug, limit, offset),
         ) as cur:
             return await cur.fetchall()
 
-    async def get_events(self, limit: int = 50, offset: int = 0) -> list[aiosqlite.Row]:
-        """Return paginated event log entries, newest first."""
+    async def get_events(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        client_slug: str | None = None,
+    ) -> list[aiosqlite.Row]:
+        """Return paginated event log entries, newest first.
+
+        Args:
+            limit: maximum rows to return.
+            offset: number of rows to skip.
+            client_slug: when provided, restricts results to events whose
+                key_hash belongs to that client (unauthenticated failures
+                where key_hash IS NULL are excluded for non-superadmins).
+                Pass None for superadmin access.
+        """
+        if client_slug is None:
+            # Superadmin: return all rows including null-key events.
+            async with self._conn.execute(
+                "SELECT e.* FROM events e ORDER BY e.id DESC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ) as cur:
+                return await cur.fetchall()
+
+        # Regular admin: include only events tied to this client's keys.
         async with self._conn.execute(
-            "SELECT * FROM events ORDER BY id DESC LIMIT ? OFFSET ?", (limit, offset)
+            """
+            SELECT e.*
+            FROM events e
+            INNER JOIN api_keys k ON k.key_hash = e.key_hash
+            WHERE k.client_slug = ?
+            ORDER BY e.id DESC
+            LIMIT ? OFFSET ?
+            """,
+            (client_slug, limit, offset),
         ) as cur:
             return await cur.fetchall()
 
