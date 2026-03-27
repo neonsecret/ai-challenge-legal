@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "motion/react";
+import { motion } from "motion/react";
 
 const pillars = [
   {
@@ -41,19 +40,13 @@ const pillars = [
 ];
 
 export function ValuePillars() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
-
   return (
-    <section
-      ref={ref}
-      className="py-24 px-6"
-      style={{ background: "#0A1120" }}
-    >
+    <section className="py-24 px-6" style={{ background: "#0A1120" }}>
       <div className="max-w-5xl mx-auto">
         <motion.p
           initial={{ opacity: 0, y: 12 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5 }}
           className="text-center text-[11px] uppercase tracking-widest font-semibold mb-3"
           style={{ color: "rgba(201,168,76,0.7)" }}
@@ -62,7 +55,8 @@ export function ValuePillars() {
         </motion.p>
         <motion.h2
           initial={{ opacity: 0, y: 12 }}
-          animate={inView ? { opacity: 1, y: 0 } : {}}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
           transition={{ duration: 0.5, delay: 0.08 }}
           className="font-heading text-center text-3xl md:text-4xl font-bold mb-14"
           style={{
@@ -79,8 +73,9 @@ export function ValuePillars() {
             <motion.div
               key={p.title}
               initial={{ opacity: 0, y: 24 }}
-              animate={inView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.15 + i * 0.12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.5, delay: i * 0.12 }}
               className="rounded-2xl p-6 flex flex-col gap-4"
               style={{
                 background: "rgba(255,255,255,0.04)",
@@ -100,7 +95,7 @@ export function ValuePillars() {
               </div>
               <div>
                 <h3
-                  className="font-heading text-base font-semibold mb-1.5"
+                  className="text-base font-semibold mb-1.5"
                   style={{ color: "rgba(255,255,255,0.92)" }}
                 >
                   {p.title}
