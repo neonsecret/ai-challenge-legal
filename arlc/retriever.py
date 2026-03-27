@@ -238,7 +238,29 @@ def _load_faiss():
                 _faiss_index = faiss.read_index(FAISS_INDEX_PATH)
                 with open(FAISS_METADATA_PATH) as f:
                     _faiss_metadata = json.load(f)
-                print(f"FAISS index loaded: {_faiss_index.ntotal} vectors")
+                print(f"FAISS index loaded: {_faiss_index.ntotal} vectors, dim={_faiss_index.d}")
+
+                # Validate dimension matches query embedder to catch mismatches early.
+                # Probe with a dummy query — this is cheaper than a silent FAISS crash later.
+                try:
+                    probe = embed_query("dimension check")
+                    if len(probe) != _faiss_index.d:
+                        raise RuntimeError(
+                            f"FAISS index dim ({_faiss_index.d}) != "
+                            f"query embedding dim ({len(probe)}) for "
+                            f"EMBEDDING_MODEL={EMBEDDING_MODEL!r}. "
+                            f"Rebuild the index with the same backend:\n"
+                            f"  EMBEDDING_MODEL={EMBEDDING_MODEL} python3 -m neolex.embeddings.build_index "
+                            f"--corpus data/chunks/ --output {FAISS_INDEX_PATH}"
+                        )
+                except Exception as e:
+                    if "dim" in str(e).lower() or "FAISS index dim" in str(e):
+                        raise
+                    # embed_query errors (e.g. server not running) surface here — re-raise clearly
+                    raise RuntimeError(
+                        f"Embedding backend check failed for EMBEDDING_MODEL={EMBEDDING_MODEL!r}: {e}"
+                    ) from e
+
     return _faiss_index, _faiss_metadata
 
 

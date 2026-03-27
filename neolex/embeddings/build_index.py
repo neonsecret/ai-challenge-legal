@@ -1,6 +1,12 @@
-"""Build a FAISS index using Qwen3 embeddings.
+"""Build a FAISS index from document chunks.
 
 Usage:
+    # Recommended: llama-server backend (start server first on port 8088)
+    EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \
+        --corpus data/chunks/ \
+        --output data/faiss_llama-server.bin
+
+    # Legacy: PyTorch Qwen3 backend
     EMBEDDING_MODEL=qwen3-8b python3 -m neolex.embeddings.build_index \
         --corpus data/chunks/ \
         --output data/faiss_qwen3_8b.bin
@@ -66,29 +72,30 @@ def build_index(corpus_dir: str, output_path: str) -> None:
     """Embed all chunks and write FAISS flat index + metadata JSON."""
     if EMBEDDING_BACKEND == "snowflake":
         logger.error(
-            "EMBEDDING_MODEL is 'snowflake' — set EMBEDDING_MODEL=qwen3-8b or qwen3-0.6b "
-            "before running this script."
+            "EMBEDDING_MODEL is 'snowflake' — set EMBEDDING_MODEL=llama-server "
+            "(recommended) or qwen3-8b before running this script."
         )
         sys.exit(1)
 
     chunks = load_chunks(corpus_dir)
     texts = [c.get("text", "") for c in chunks]
 
-    embedder = load_qwen3_embedder(backend=EMBEDDING_BACKEND, dim=EMBEDDING_DIM)
-
-    # Report VRAM usage immediately after model load for debugging
-    import torch
-    if torch.cuda.is_available():
-        vram_used = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.mem_get_info()[0]) / 1e9
-        vram_alloc = torch.cuda.memory_allocated() / 1e9
-        logger.info("Post-load VRAM: %.2f GB used (system), %.2f GB allocated (process)", vram_used, vram_alloc)
+    if EMBEDDING_BACKEND == "llama-server":
+        from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+        embedder = LlamaServerEmbedder(batch_size=64)
+        logger.info("Using llama-server backend at %s", embedder.url)
+    else:
+        embedder = load_qwen3_embedder(backend=EMBEDDING_BACKEND, dim=EMBEDDING_DIM)
+        import torch
+        if torch.cuda.is_available():
+            vram_used = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.mem_get_info()[0]) / 1e9
+            logger.info("Post-load VRAM used: %.2f GB", vram_used)
 
     logger.info(
-        "Embedding %d chunks with %s (dim=%d, batch_size=%d)...",
+        "Embedding %d chunks with %s (batch_size=%d)...",
         len(texts),
         EMBEDDING_BACKEND,
-        EMBEDDING_DIM,
-        BATCH_SIZE,
+        BATCH_SIZE if EMBEDDING_BACKEND != "llama-server" else 64,
     )
 
     all_embeddings: list[np.ndarray] = []
@@ -103,10 +110,12 @@ def build_index(corpus_dir: str, output_path: str) -> None:
             )
 
     matrix = np.concatenate(all_embeddings, axis=0).astype(np.float32)
-    logger.info("Embedding matrix shape: %s", matrix.shape)
+    actual_dim = matrix.shape[1]
+    logger.info("Embedding matrix shape: %s (dim=%d)", matrix.shape, actual_dim)
 
-    # Build flat L2 index (inner-product on normalised vectors == cosine similarity)
-    index = faiss.IndexFlatIP(EMBEDDING_DIM)
+    # Use actual_dim from embeddings (not EMBEDDING_DIM sentinel) so llama-server
+    # and "full" Matryoshka builds produce correctly-sized indexes.
+    index = faiss.IndexFlatIP(actual_dim)
     index.add(matrix)
     logger.info("FAISS index built: %d vectors.", index.ntotal)
 
