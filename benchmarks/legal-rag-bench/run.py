@@ -43,15 +43,17 @@ _HF_TO_BACKEND = {
 }
 _EMBEDDING_BACKEND = os.environ.get("EMBEDDING_MODEL", "snowflake").lower()
 _EMBEDDING_BACKEND = _HF_TO_BACKEND.get(_EMBEDDING_BACKEND, _EMBEDDING_BACKEND)
-if _EMBEDDING_BACKEND.startswith("qwen3"):
-    # Use model-specific FAISS index file so results are comparable.
-    # Filename encodes dimension: faiss_qwen3-4b.bin (1024) or faiss_qwen3-4b_dimfull.bin (full native).
-    _idx_stem = _EMBEDDING_BACKEND.replace("/", "-")  # e.g. "qwen3-4b"
-    _bench_dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
-    _bench_dim_suffix = "" if _bench_dim_env == "1024" else f"_dim{_bench_dim_env}"
+# Index filenames mirror what build_qwen3_index.py produces:
+#   faiss_<backend><dim_suffix>.bin — qwen3-* and llama-server backends
+#   faiss_index.bin                 — snowflake (default)
+_bench_dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
+_bench_dim_suffix = "" if _bench_dim_env == "1024" else f"_dim{_bench_dim_env}"
+
+if _EMBEDDING_BACKEND in ("llama-server",) or _EMBEDDING_BACKEND.startswith("qwen3"):
+    _idx_stem = _EMBEDDING_BACKEND.replace("/", "-")
     FAISS_INDEX_PATH = DATA_DIR / f"faiss_{_idx_stem}{_bench_dim_suffix}.bin"
     FAISS_METADATA_PATH = DATA_DIR / f"faiss_{_idx_stem}{_bench_dim_suffix}.json"
-    RESULTS_PATH = BENCH_DIR / f"results_{_idx_stem}{_bench_dim_suffix}_full.json"
+    RESULTS_PATH = BENCH_DIR / f"results_{_idx_stem}{_bench_dim_suffix}.json"
 else:
     FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
     FAISS_METADATA_PATH = DATA_DIR / "faiss_metadata.json"

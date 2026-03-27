@@ -59,8 +59,13 @@ _dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
 EMBED_DIM = 8192 if _dim_env == "full" else int(_dim_env)
 _dim_label = "full" if _dim_env == "full" else str(EMBED_DIM)
 
-# Batch size: auto-detect from device, or override with BATCH_SIZE env var.
+# Batch size: number of texts per embedding call.
+# llama-server: client batch_size = HTTP request size; server manages GPU batching
+#   internally, so large batches (64+) are efficient regardless of device.
+# PyTorch Qwen3Embedder: CUDA RTX 3070 fills at batch_size>1 for 4B/8B float16.
 def _auto_batch_size() -> int:
+    if _MODEL_BACKEND == "llama-server":
+        return 64
     if torch.backends.mps.is_available():
         return 8
     if torch.cuda.is_available():
