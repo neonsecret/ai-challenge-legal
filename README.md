@@ -189,11 +189,11 @@ Thank you to all participants who shared their approaches — the open exchange 
 
 ### External Benchmarks
 
-| Benchmark | Metric | Our Score | SOTA | Dataset Size |
-|-----------|--------|-----------|------|-------------|
-| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 (Nova Pro) | 2,366 questions |
-| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | 0.875 / 0.855 (fine-tuned BERT) | 2,091 pairs (123 NDAs) |
-| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | Retrieval Acc | **0.690** | ~0.80 ([Kanon 2](https://huggingface.co/blog/isaacus/kanon-2-embedder)) | 100 questions |
+| Benchmark | Metric | Our Score | SOTA | Delta | Date |
+|-----------|--------|-----------|------|-------|------|
+| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 (Nova Pro) | +0.219 | 2026-03-24 |
+| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | 0.875 / 0.855 (fine-tuned BERT) | -0.112 / -0.130 | 2026-03-27 |
+| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | Retrieval Acc | **0.690** | ~0.80 ([Kanon 2](https://huggingface.co/blog/isaacus/kanon-2-embedder)) | ~-0.110 | 2026-03-25 |
 
 **GaRAGe** — Full-dataset evaluation on all 2,366 items. RAF (Retrieval-Augmented Factuality) measures combined answer eligibility, citation attribution, and deflection quality. Our pipeline scores **0.826 vs. SOTA 0.607** (Nova Pro, [GaRAGe paper](https://arxiv.org/abs/2506.07671) Table 3). No other published system exceeds 0.607. See [`benchmarks/garage/`](benchmarks/garage/) for reproduction steps.
 
