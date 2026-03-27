@@ -34,7 +34,8 @@ _REQUIRED_DATA_FILES = [
 # ---------------------------------------------------------------------------
 
 _RECOMMENDED_ENV_VARS = [
-    ("ANTHROPIC_API_KEY", "LLM requests will fail without an Anthropic key"),
+    ("VERTEX_PROJECT_ID", "LLM requests via Vertex AI will fail without a GCP project ID"),
+    ("GOOGLE_APPLICATION_CREDENTIALS", "Vertex AI auth will fail without service account credentials"),
 ]
 
 
@@ -61,6 +62,33 @@ def validate_startup(data_dir: str) -> None:
             fpath = os.path.join(data_dir, fname)
             if not os.path.isfile(fpath):
                 errors.append(f"Required index file missing: {fpath}")
+
+        # Check FAISS index exists at the configured path
+        faiss_path = os.environ.get("FAISS_INDEX_PATH", "data/faiss_llama-server.bin")
+        if not os.path.isabs(faiss_path):
+            faiss_path = os.path.join(os.getcwd(), faiss_path)
+        if not os.path.isfile(faiss_path):
+            errors.append(
+                f"FAISS index not found: {faiss_path}. "
+                f"Build it with: EMBEDDING_MODEL=llama-server python3 -m "
+                f"neolex.embeddings.build_index --corpus data/chunks/ "
+                f"--output {os.environ.get('FAISS_INDEX_PATH', 'data/faiss_llama-server.bin')}"
+            )
+
+    # --- Check llama-server if embedding backend requires it ---
+    if os.environ.get("EMBEDDING_MODEL", "llama-server") == "llama-server":
+        llama_url = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")
+        try:
+            import urllib.request
+            with urllib.request.urlopen(f"{llama_url}/health", timeout=3) as resp:
+                if resp.status != 200:
+                    errors.append(f"llama-server at {llama_url} returned status {resp.status}.")
+        except Exception as exc:
+            errors.append(
+                f"llama-server not reachable at {llama_url}: {exc}. "
+                f"Start it with: llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf "
+                f"--embedding --pooling last -ngl 99 -c 4096 --port 8088"
+            )
 
     # --- Check recommended env vars ---
     for var, reason in _RECOMMENDED_ENV_VARS:
