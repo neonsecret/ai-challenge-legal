@@ -18,6 +18,7 @@ import torch
 from neolex.embeddings.config import (
     EMBEDDING_DIM,
     QWEN3_06B_MODEL_ID,
+    QWEN3_4B_MODEL_ID,
     QWEN3_8B_MODEL_ID,
 )
 
@@ -57,7 +58,7 @@ def _last_token_pool(
 
 
 class Qwen3Embedder:
-    """Wraps Qwen3-Embedding with optional 4-bit quantization and Matryoshka truncation.
+    """Wraps Qwen3-Embedding with optional quantization and Matryoshka truncation.
 
     Parameters
     ----------
@@ -69,6 +70,13 @@ class Qwen3Embedder:
         Torch device string.  Auto-detected (CUDA > MPS > CPU) if None.
     use_4bit:
         Enable bitsandbytes 4-bit NF4 quantization (CUDA only).
+        Note: 4-bit is NOT compatible with CUDA 13.0 (torch 2.9+).  When
+        CUDA ≥ 13.0 is detected at runtime, the embedder automatically
+        upgrades to 8-bit quantization which works on all CUDA versions.
+    use_8bit:
+        Enable bitsandbytes 8-bit quantization (CUDA only).
+        Preferred for large models (8B) on GPUs with 8 GB VRAM when 4-bit
+        is unavailable (e.g. CUDA 13.0 incompatibility).
     """
 
     def __init__(
@@ -77,6 +85,7 @@ class Qwen3Embedder:
         dim: int = EMBEDDING_DIM,
         device: Optional[str] = None,
         use_4bit: bool = True,
+        use_8bit: bool = False,
     ) -> None:
         self.dim = dim
         self.model_name = model_name
@@ -91,11 +100,26 @@ class Qwen3Embedder:
             )
         self.device = device
 
+        # Detect CUDA 13.0+ where bitsandbytes 4-bit kernels are not supported.
+        # In that case, fall back to 8-bit which works on all CUDA versions.
+        _cuda_major = 0
+        if device == "cuda" and torch.cuda.is_available():
+            _cuda_major = int((torch.version.cuda or "0.0").split(".")[0])
+        if use_4bit and device == "cuda" and _cuda_major >= 13:
+            logger.warning(
+                "CUDA %s detected: bitsandbytes 4-bit NF4 is not supported on CUDA ≥ 13.0. "
+                "Upgrading to 8-bit quantization.",
+                torch.version.cuda,
+            )
+            use_4bit = False
+            use_8bit = True
+
+        quant_str = "4-bit" if use_4bit else ("8-bit" if use_8bit else "none")
         logger.info(
-            "Loading Qwen3 embedder %s on %s (4-bit=%s, dim=%d)",
+            "Loading Qwen3 embedder %s on %s (quant=%s, dim=%d)",
             model_name,
             device,
-            use_4bit and device == "cuda",
+            quant_str,
             dim,
         )
 
@@ -110,21 +134,24 @@ class Qwen3Embedder:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        if use_4bit and device == "cuda":
+        if (use_4bit or use_8bit) and device == "cuda":
             from transformers import BitsAndBytesConfig
 
-            bnb_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.float16,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type="nf4",
-            )
+            if use_4bit:
+                bnb_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=torch.float16,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                )
+            else:
+                bnb_config = BitsAndBytesConfig(load_in_8bit=True)
+
             self.model = AutoModel.from_pretrained(
                 model_name,
                 trust_remote_code=True,
                 quantization_config=bnb_config,
-                device_map="auto",
-                torch_dtype=torch.float16,
+                device_map="cuda:0",
             )
         else:
             self.model = AutoModel.from_pretrained(
@@ -134,7 +161,15 @@ class Qwen3Embedder:
             ).to(device)
 
         self.model.eval()
-        logger.info("Qwen3 embedder loaded.")
+        # Log actual device placement for debugging
+        try:
+            first_param = next(self.model.parameters())
+            logger.info(
+                "Qwen3 embedder loaded. First param device: %s",
+                first_param.device,
+            )
+        except Exception:
+            logger.info("Qwen3 embedder loaded.")
 
     # ------------------------------------------------------------------
     # Core encode
@@ -158,10 +193,10 @@ class Qwen3Embedder:
                 max_length=max_length,
                 return_tensors="pt",
             )
-            # Move to device.  For 4-bit models loaded with device_map="auto"
-            # the model itself handles device placement, so we fall back to
-            # self.device (which is "cuda" in that case).
-            encoded = {k: v.to(self.device) for k, v in encoded.items()}
+            # Move to device.  For quantized models loaded with device_map="cuda:0",
+            # inputs must go to "cuda:0" explicitly.
+            target_device = "cuda:0" if self.device == "cuda" else self.device
+            encoded = {k: v.to(target_device) for k, v in encoded.items()}
 
             with torch.no_grad():
                 outputs = self.model(**encoded)
@@ -188,12 +223,21 @@ class Qwen3Embedder:
         self,
         texts: list[str],
         task: str = "retrieval.passage",
+        max_length: int = 8192,
+        batch_size: int = 32,
     ) -> np.ndarray:
         """Embed document passages without an instruction prefix.
 
         Returns (N, dim) float32 numpy array, L2-normalised.
+
+        Parameters
+        ----------
+        batch_size:
+            GPU forward-pass batch size.  Default 32 works well for short legal
+            texts (~130 tokens) on an 8 GB GPU with 4-bit quantization.
+            Reduce to 8 if you encounter OOM errors on long documents.
         """
-        return self._encode_batch(texts)
+        return self._encode_batch(texts, max_length=max_length, batch_size=batch_size)
 
     def embed_query(
         self,
@@ -253,9 +297,7 @@ def load_qwen3_embedder(
     dim:
         Output dimension (Matryoshka truncation).
     """
-    use_8b = backend == "qwen3-8b"
-
-    if use_8b:
+    if backend == "qwen3-8b":
         vram = _available_vram_gb()
         if vram < _QWEN3_8B_VRAM_GB:
             logger.warning(
@@ -267,7 +309,17 @@ def load_qwen3_embedder(
             model_name = QWEN3_06B_MODEL_ID
         else:
             model_name = QWEN3_8B_MODEL_ID
-    else:
-        model_name = QWEN3_06B_MODEL_ID
+        return Qwen3Embedder(model_name=model_name, dim=dim)
 
-    return Qwen3Embedder(model_name=model_name, dim=dim)
+    if backend == "qwen3-4b":
+        # Qwen3-4B in float16 fills ~8.4 GB VRAM on RTX 3070.
+        # 4-bit/8-bit quantization not needed but batch_size must be 1 to avoid OOM.
+        # The Qwen3Embedder will use use_4bit=False (default) and no quantization.
+        logger.info(
+            "qwen3-4b backend: loading in float16 (no quantization). "
+            "Use batch_size=1 in embed_texts() to avoid VRAM OOM."
+        )
+        return Qwen3Embedder(model_name=QWEN3_4B_MODEL_ID, dim=dim, use_4bit=False)
+
+    # qwen3-0.6b (and any other fallback)
+    return Qwen3Embedder(model_name=QWEN3_06B_MODEL_ID, dim=dim)

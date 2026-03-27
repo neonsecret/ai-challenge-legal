@@ -30,12 +30,22 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
-RESULTS_PATH = BENCH_DIR / "results.json"
 DATA_DIR = BENCH_DIR / "data"
-FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
-FAISS_METADATA_PATH = DATA_DIR / "faiss_metadata.json"
 BM25_CACHE_DIR = DATA_DIR / "bm25_cache"
 BM25_IDS_PATH = BM25_CACHE_DIR / "corpus_ids.json"
+
+# Embedding backend selection: "snowflake" (default) | "qwen3-4b" | "qwen3-8b" | "qwen3-0.6b"
+_EMBEDDING_BACKEND = os.environ.get("EMBEDDING_MODEL", "snowflake").lower()
+if _EMBEDDING_BACKEND.startswith("qwen3"):
+    # Use model-specific FAISS index file so results are comparable
+    _idx_stem = _EMBEDDING_BACKEND.replace("/", "-")  # e.g. "qwen3-4b"
+    FAISS_INDEX_PATH = DATA_DIR / f"faiss_{_idx_stem}.bin"
+    FAISS_METADATA_PATH = DATA_DIR / f"faiss_{_idx_stem}.json"
+    RESULTS_PATH = BENCH_DIR / f"results_{_idx_stem}_full.json"
+else:
+    FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
+    FAISS_METADATA_PATH = DATA_DIR / "faiss_metadata.json"
+    RESULTS_PATH = BENCH_DIR / "results.json"
 
 # Module-level caches
 _faiss_index = None
@@ -104,21 +114,25 @@ def _load_bm25():
 
 
 def _get_embedding_model():
-    """Get embedding model (cached)."""
+    """Get embedding model (cached). Supports Snowflake (default) and Qwen3 family."""
     global _embedding_model
     if _embedding_model is None:
-        from sentence_transformers import SentenceTransformer
-        import torch
-        device = (
-            'mps' if torch.backends.mps.is_available()
-            else 'cuda' if torch.cuda.is_available()
-            else 'cpu'
-        )
-        _embedding_model = SentenceTransformer(
-            "Snowflake/snowflake-arctic-embed-l-v2.0",
-            device=device,
-            trust_remote_code=True,
-        )
+        if _EMBEDDING_BACKEND.startswith("qwen3"):
+            from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
+            _embedding_model = load_qwen3_embedder(backend=_EMBEDDING_BACKEND, dim=1024)
+        else:
+            from sentence_transformers import SentenceTransformer
+            import torch
+            device = (
+                'mps' if torch.backends.mps.is_available()
+                else 'cuda' if torch.cuda.is_available()
+                else 'cpu'
+            )
+            _embedding_model = SentenceTransformer(
+                "Snowflake/snowflake-arctic-embed-l-v2.0",
+                device=device,
+                trust_remote_code=True,
+            )
     return _embedding_model
 
 

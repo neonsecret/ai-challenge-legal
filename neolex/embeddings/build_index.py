@@ -33,7 +33,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 32  # chunks per forward pass
+MAX_LENGTH = 512  # token budget; DIFC legal chunks avg ~130 tokens — 512 is ample
+
+# GPU forward-pass batch size.
+# qwen3-4b float16 fills all 8.6 GB VRAM → batch_size=1 required to avoid OOM.
+# qwen3-8b 8-bit also fills 8.6 GB → batch_size=1 for stability.
+# qwen3-0.6b leaves ~7 GB free → can use larger batches.
+_SMALL_BATCH_BACKENDS = {"qwen3-8b", "qwen3-4b"}
+BATCH_SIZE = 1 if EMBEDDING_BACKEND in _SMALL_BATCH_BACKENDS else 32
 
 
 def load_chunks(corpus_dir: str) -> list[dict]:
@@ -69,6 +76,13 @@ def build_index(corpus_dir: str, output_path: str) -> None:
 
     embedder = load_qwen3_embedder(backend=EMBEDDING_BACKEND, dim=EMBEDDING_DIM)
 
+    # Report VRAM usage immediately after model load for debugging
+    import torch
+    if torch.cuda.is_available():
+        vram_used = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.mem_get_info()[0]) / 1e9
+        vram_alloc = torch.cuda.memory_allocated() / 1e9
+        logger.info("Post-load VRAM: %.2f GB used (system), %.2f GB allocated (process)", vram_used, vram_alloc)
+
     logger.info(
         "Embedding %d chunks with %s (dim=%d, batch_size=%d)...",
         len(texts),
@@ -80,9 +94,10 @@ def build_index(corpus_dir: str, output_path: str) -> None:
     all_embeddings: list[np.ndarray] = []
     for start in range(0, len(texts), BATCH_SIZE):
         batch = texts[start : start + BATCH_SIZE]
-        embs = embedder.embed_texts(batch)
+        embs = embedder.embed_texts(batch, max_length=MAX_LENGTH, batch_size=BATCH_SIZE)
         all_embeddings.append(embs)
-        if (start // BATCH_SIZE) % 10 == 0:
+        # Log every 100 chunks (independent of batch size)
+        if start % 100 == 0 or start == 0:
             logger.info(
                 "  %d / %d chunks embedded...", min(start + BATCH_SIZE, len(texts)), len(texts)
             )
