@@ -33,6 +33,16 @@ def _get_anthropic_client() -> anthropic.Anthropic:
 
 CHROMA_DIR = "data/chroma_db"  # Fallback ChromaDB path
 DOCUMENTS_DIR = "data/documents"
+# Reranker model. Default: Qwen3-Reranker-0.6B (instruction-aware, ~2GB VRAM).
+# Fallback: BAAI/bge-reranker-v2-m3 (general-purpose, no instruction support).
+RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "Qwen/Qwen3-Reranker-0.6B")
+# Instruction passed to Qwen3-Reranker. Kept intentionally general so it works
+# for any customer's legal documents — not domain- or jurisdiction-specific.
+RERANKER_INSTRUCTION = os.environ.get(
+    "RERANKER_INSTRUCTION",
+    "Given a legal question, retrieve the most relevant passage that directly answers it.",
+)
+
 # Embedding backend. Default: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
 # Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
 # Fallback: set EMBEDDING_MODEL=snowflake to use Snowflake Arctic Embed L v2.0 (no server needed).
@@ -118,8 +128,25 @@ class PageResult:
     text: str
 
 
+def _is_qwen_reranker() -> bool:
+    return "qwen" in RERANKER_MODEL.lower()
+
+
+def _format_reranker_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Prepend instruction to query for Qwen3-Reranker; passthrough for others."""
+    if not _is_qwen_reranker():
+        return pairs
+    prefix = f"Instruct: {RERANKER_INSTRUCTION}\nQuery: "
+    return [(prefix + q, doc) for q, doc in pairs]
+
+
 def get_reranker() -> CrossEncoder:
-    """Get CrossEncoder reranker (cached, thread-safe)."""
+    """Get CrossEncoder reranker (cached, thread-safe).
+
+    Model is controlled by RERANKER_MODEL env var (default: Qwen/Qwen3-Reranker-0.6B).
+    Use _format_reranker_pairs() before calling ranker.predict() to apply the
+    instruction prefix for Qwen3-Reranker models.
+    """
     global _reranker
     if _reranker is None:
         with _reranker_lock:
@@ -130,7 +157,18 @@ def get_reranker() -> CrossEncoder:
                     else 'mps' if torch.backends.mps.is_available()
                     else 'cpu'
                 )
-                _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=1024, device=device)
+                model_kwargs: dict = {}
+                tokenizer_kwargs: dict = {}
+                if _is_qwen_reranker():
+                    model_kwargs["torch_dtype"] = torch.float16
+                    tokenizer_kwargs["padding_side"] = "left"
+                _reranker = CrossEncoder(
+                    RERANKER_MODEL,
+                    max_length=2048,
+                    device=device,
+                    model_kwargs=model_kwargs or None,
+                    tokenizer_kwargs=tokenizer_kwargs or None,
+                )
     return _reranker
 
 
@@ -142,7 +180,7 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15) -> list[di
     # 2000 chars ≈ 500-700 tokens — within CrossEncoder's max_length=1024 token budget.
     # SAC adds ~150-char [DOCUMENT: ...] prefix to each chunk. Legal provisions can span
     # multiple sub-clauses; 2000 chars captures full articles for better ranking precision.
-    pairs = [(question, chunk["text"][:2000]) for chunk in chunks]
+    pairs = _format_reranker_pairs([(question, chunk["text"][:2000]) for chunk in chunks])
     with _reranker_lock:  # tokenizer is not thread-safe
         scores = ranker.predict(pairs)
     indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
@@ -2000,7 +2038,7 @@ def _retrieve_pages_targeted(
             # V5: Raised from 20 to 50 — larger pre-filter improves CE recall
             # (not 100 — our BGE reranker-v2-m3 is heavier than benchmark's lighter CE)
             top_chunks = [c for _, c in chunk_dense[:50]]
-            pairs = [(_ce_query, chunk["text"][:2000]) for chunk in top_chunks]
+            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in top_chunks])
             with _reranker_lock:
                 ce_scores = ranker.predict(pairs)
             # Merge: use cross-encoder scores for the top candidates
@@ -2014,7 +2052,7 @@ def _retrieve_pages_targeted(
             # Original: Score all chunks against the question using cross-encoder
             # Use 2000 chars to capture more legal context than the default 1000
             # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
-            pairs = [(_ce_query, chunk["text"][:2000]) for chunk in doc_chunks]
+            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in doc_chunks])
             with _reranker_lock:  # tokenizer is not thread-safe
                 scores = ranker.predict(pairs)
             page_scores: dict[int, float] = {}

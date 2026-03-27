@@ -155,14 +155,42 @@ def _get_embedding_model():
     return _embedding_model
 
 
+_RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "Qwen/Qwen3-Reranker-0.6B")
+_RERANKER_INSTRUCTION = os.environ.get(
+    "RERANKER_INSTRUCTION",
+    "Given a legal question, retrieve the most relevant passage that directly answers it.",
+)
+
+
+def _is_qwen_reranker() -> bool:
+    return "qwen" in _RERANKER_MODEL.lower()
+
+
+def _format_reranker_pairs(question: str, candidates: list[dict]) -> list[tuple[str, str]]:
+    """Build (query, doc) pairs with Qwen3 instruction prefix when applicable."""
+    query = (f"Instruct: {_RERANKER_INSTRUCTION}\nQuery: {question}"
+             if _is_qwen_reranker() else question)
+    return [(query, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
+
+
 def _get_reranker():
-    """Get cross-encoder reranker (cached)."""
+    """Get cross-encoder reranker (cached). Model set via RERANKER_MODEL env var."""
     global _reranker
     if _reranker is None:
         from sentence_transformers import CrossEncoder
         import torch
-        _reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=2048)
-        if torch.backends.mps.is_available():
+        model_kwargs: dict = {}
+        tokenizer_kwargs: dict = {}
+        if _is_qwen_reranker():
+            model_kwargs["torch_dtype"] = torch.float16
+            tokenizer_kwargs["padding_side"] = "left"
+        _reranker = CrossEncoder(
+            _RERANKER_MODEL,
+            max_length=2048,
+            model_kwargs=model_kwargs or None,
+            tokenizer_kwargs=tokenizer_kwargs or None,
+        )
+        if not _is_qwen_reranker() and torch.backends.mps.is_available():
             _reranker.model.to('mps')
     return _reranker
 
@@ -303,7 +331,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
 
     if len(candidate_list) > top_k:
         reranker = _get_reranker()
-        pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidate_list]
+        pairs = _format_reranker_pairs(question, candidate_list)
         with _reranker_lock:
             rerank_scores = reranker.predict(pairs)
 
