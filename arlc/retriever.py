@@ -37,8 +37,8 @@ DOCUMENTS_DIR = "data/documents"
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Snowflake/snowflake-arctic-embed-l-v2.0")
 # FAISS: pure vector math, no SQLite overhead — faster search, lower memory than ChromaDB
 # Credit: FAISS backend choice inspired by IAS Partners (guy4)
-FAISS_INDEX_PATH = "data/faiss_index.bin"
-FAISS_METADATA_PATH = "data/faiss_metadata.json"
+FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "data/faiss_index.bin")
+FAISS_METADATA_PATH = os.environ.get("FAISS_METADATA_PATH", "data/faiss_metadata.json")
 # VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
 VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
 # Embedding prefixes: Arctic uses "query: " for queries, "" for documents
