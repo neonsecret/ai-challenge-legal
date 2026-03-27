@@ -18,6 +18,7 @@ speed_agent/page_cache.json
 # Environment & secrets
 .env
 .env.local
+.demo_key
 
 # IDE
 .idea/

@@ -1,43 +1,55 @@
 """Demo configuration endpoint.
 
-Returns demo mode status and, when DEMO_MODE=true, a pre-created demo API key
-stored in a well-known file (.demo_key) so the frontend can auto-fill it.
+Returns demo mode status and sample questions for the frontend.
+
+The demo API key is no longer served through this endpoint.  It is printed
+once to stdout at server startup (see demo_setup.py / ensure_demo_key) and
+stored only as a SHA-256 hash in SQLite — never in a plaintext file on disk.
 
 This endpoint is intentionally unauthenticated — it only returns information
 that the demo operator has already chosen to expose publicly.
 """
-import os
-from pathlib import Path
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from neolex.config import settings
 
 router = APIRouter(prefix="/api/v1/demo", tags=["demo"])
 
-# The demo key is written to .demo_key by demo_setup.py / Makefile.
-_DEMO_KEY_FILE = Path(".demo_key")
+# In-process per-IP rate limit for the unauthenticated /config endpoint.
+# Stored as { ip: (count, window_start_monotonic) }.
+import time as _time
+_demo_config_rate: dict[str, tuple[int, float]] = {}
+_DEMO_CONFIG_LIMIT = 10   # requests
+_DEMO_CONFIG_WINDOW = 60  # seconds
 
 
 @router.get("/config")
-async def demo_config() -> JSONResponse:
+async def demo_config(request: Request) -> JSONResponse:
     """Return demo mode configuration for the frontend.
 
     Response:
         demo_mode: bool — whether the server was started with DEMO_MODE=true
-        api_key: str | null — the demo API key (only present in demo mode)
+        api_key: null — key is no longer served over HTTP; printed once at startup
         sample_questions: list[str] — suggested questions for the demo
     """
+    # Simple per-IP rate limiting (max 10 req/min) to prevent enumeration abuse.
+    ip = getattr(request.client, "host", "unknown") or "unknown"
+    now = _time.monotonic()
+    count, window_start = _demo_config_rate.get(ip, (0, now))
+    if now - window_start >= _DEMO_CONFIG_WINDOW:
+        count, window_start = 0, now
+    count += 1
+    _demo_config_rate[ip] = (count, window_start)
+    if count > _DEMO_CONFIG_LIMIT:
+        return JSONResponse(
+            {"error": "Too many requests"},
+            status_code=429,
+            headers={"Retry-After": str(_DEMO_CONFIG_WINDOW)},
+        )
+
     if not settings.demo_mode:
         return JSONResponse({"demo_mode": False, "api_key": None, "sample_questions": []})
-
-    # Read the demo key from file if it was written by demo_setup.py
-    api_key: str | None = None
-    if _DEMO_KEY_FILE.exists():
-        raw = _DEMO_KEY_FILE.read_text().strip()
-        if raw:
-            api_key = raw
 
     sample_questions = [
         "What is the limitation period under DIFC Law No. 5 of 2005?",
@@ -54,6 +66,8 @@ async def demo_config() -> JSONResponse:
 
     return JSONResponse({
         "demo_mode": True,
-        "api_key": api_key,
+        # Key is intentionally null — it was printed once to stdout at startup.
+        # Serving the plaintext key over HTTP would expose it in server logs.
+        "api_key": None,
         "sample_questions": sample_questions,
     })
