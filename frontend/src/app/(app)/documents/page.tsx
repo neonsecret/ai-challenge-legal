@@ -6,6 +6,7 @@ import { UploadZone } from "@/components/documents/upload-zone";
 import { FolderView } from "@/components/documents/folder-view";
 import { ReindexButton } from "@/components/documents/reindex-button";
 import { IndexInfoPanel } from "@/components/documents/index-info-panel";
+import { LegalIndexLibrary } from "@/components/documents/legal-index-library";
 import { useDocuments } from "@/components/documents/use-documents";
 
 export default function DocumentsPage() {
@@ -91,7 +92,7 @@ export default function DocumentsPage() {
             marginTop: "4px",
           }}
         >
-          Manage the PDF documents used for legal research
+          Upload your own PDFs or use a pre-built legal index
         </p>
       </div>
 
@@ -114,39 +115,26 @@ export default function DocumentsPage() {
       {/* Index info panel */}
       <IndexInfoPanel />
 
-      {/* Upload section */}
-      <div style={glassCard}>
-        <div style={{ ...cardHeaderSep, padding: "16px 20px" }}>
-          <h2
-            style={{
-              fontSize: "14px",
-              fontWeight: 600,
-              color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-              margin: 0,
-              fontFamily: fontStack,
-            }}
-          >
-            Upload Document
-          </h2>
-        </div>
-        <div style={{ padding: "16px 20px" }}>
-          <UploadZone onUpload={uploadDocument} uploadProgress={uploadProgress} />
-        </div>
-      </div>
-
-      {/* Collections / folder view */}
-      <div style={glassCard}>
-        <div
+      {/* Section divider: Your Documents */}
+      <div>
+        <h2
           style={{
-            ...cardHeaderSep,
-            padding: "16px 20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            fontSize: "11px",
+            fontWeight: 600,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.08em",
+            color: isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)",
+            margin: "0 0 12px",
+            fontFamily: fontStack,
           }}
         >
-          <div>
-            <h2
+          Your Documents
+        </h2>
+
+        {/* Upload section */}
+        <div style={{ ...glassCard, marginBottom: "16px" }}>
+          <div style={{ ...cardHeaderSep, padding: "16px 20px" }}>
+            <h3
               style={{
                 fontSize: "14px",
                 fontWeight: 600,
@@ -155,40 +143,88 @@ export default function DocumentsPage() {
                 fontFamily: fontStack,
               }}
             >
-              Collections
-              {documents.length > 0 && (
-                <span
-                  style={{
-                    marginLeft: "8px",
-                    fontSize: "13px",
-                    fontWeight: 400,
-                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                  }}
-                >
-                  ({documents.length} {documents.length === 1 ? "document" : "documents"})
-                </span>
-              )}
-            </h2>
-            <p
-              style={{
-                fontSize: "11px",
-                color: isDark ? "rgba(255,255,255,0.35)" : "rgba(46,31,8,0.45)",
-                margin: "3px 0 0",
-                fontFamily: fontStack,
-              }}
-            >
-              Documents grouped by name prefix
-            </p>
+              Upload Document
+            </h3>
           </div>
-          <ReindexButton onReindex={triggerReindex} job={reindexJob} />
+          <div style={{ padding: "16px 20px" }}>
+            <UploadZone onUpload={uploadDocument} uploadProgress={uploadProgress} />
+          </div>
         </div>
-        <div style={{ padding: "16px 20px" }}>
-          <FolderView
-            documents={documents}
-            loading={loading}
-            onDelete={deleteDocument}
-          />
+
+        {/* Collections / folder view */}
+        <div style={glassCard}>
+          <div
+            style={{
+              ...cardHeaderSep,
+              padding: "16px 20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <h3
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+                  margin: 0,
+                  fontFamily: fontStack,
+                }}
+              >
+                Collections
+                {documents.length > 0 && (
+                  <span
+                    style={{
+                      marginLeft: "8px",
+                      fontSize: "13px",
+                      fontWeight: 400,
+                      color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
+                    }}
+                  >
+                    ({documents.length} {documents.length === 1 ? "document" : "documents"})
+                  </span>
+                )}
+              </h3>
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: isDark ? "rgba(255,255,255,0.35)" : "rgba(46,31,8,0.45)",
+                  margin: "3px 0 0",
+                  fontFamily: fontStack,
+                }}
+              >
+                Documents grouped by name prefix
+              </p>
+            </div>
+            <ReindexButton onReindex={triggerReindex} job={reindexJob} />
+          </div>
+          <div style={{ padding: "16px 20px" }}>
+            <FolderView
+              documents={documents}
+              loading={loading}
+              onDelete={deleteDocument}
+            />
+          </div>
         </div>
+      </div>
+
+      {/* Section divider: Legal Index Library */}
+      <div>
+        <h2
+          style={{
+            fontSize: "11px",
+            fontWeight: 600,
+            textTransform: "uppercase" as const,
+            letterSpacing: "0.08em",
+            color: isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)",
+            margin: "0 0 12px",
+            fontFamily: fontStack,
+          }}
+        >
+          Legal Index Library
+        </h2>
+        <LegalIndexLibrary isDark={isDark} />
       </div>
     </div>
   );

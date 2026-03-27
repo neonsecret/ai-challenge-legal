@@ -36,6 +36,14 @@ _REQUIRED_DATA_FILES = [
 _RECOMMENDED_ENV_VARS = [
     ("VERTEX_PROJECT_ID", "LLM requests via Vertex AI will fail without a GCP project ID"),
     ("GOOGLE_APPLICATION_CREDENTIALS", "Vertex AI auth will fail without service account credentials"),
+    # RERANKER_MODEL not checked here because it has a safe default (Qwen/Qwen3-Reranker-0.6B),
+    # but we log it so operators know which model will be downloaded on first warm-up.
+]
+
+# Info-level log: which reranker will be loaded (model download can take 1-2 min on first run).
+_RERANKER_INFO_VARS = [
+    ("RERANKER_MODEL", "Qwen/Qwen3-Reranker-0.6B"),
+    ("RERANKER_INSTRUCTION", "Given a legal question, retrieve the most relevant passage that directly answers it."),
 ]
 
 
@@ -94,6 +102,11 @@ def validate_startup(data_dir: str) -> None:
     for var, reason in _RECOMMENDED_ENV_VARS:
         if not os.environ.get(var):
             warnings.append(f"  {var} not set — {reason}")
+
+    # --- Log effective reranker config (model download can take 1-2 min on first boot) ---
+    for var, default in _RERANKER_INFO_VARS:
+        effective = os.environ.get(var, default)
+        logger.info("Reranker config: %s=%s%s", var, effective, " (default)" if var not in os.environ else "")
 
     # --- Emit warnings ---
     if warnings:

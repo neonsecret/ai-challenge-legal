@@ -12,7 +12,11 @@ import bm25s
 from arlc.indexing.legal_tokenizer import legal_tokenize_corpus, legal_tokenize_queries
 import pymupdf
 from dotenv import load_dotenv
-from sentence_transformers import CrossEncoder, SentenceTransformer
+# SentenceTransformer is used by the snowflake embedding backend.
+# CrossEncoder is used only when RERANKER_MODEL is not a Qwen model (non-default).
+# Both are imported lazily inside their respective factory functions so that the
+# default Qwen3-Reranker + llama-server path has no hard sentence_transformers dependency.
+from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
@@ -163,6 +167,7 @@ def get_reranker():
                     )
                 else:
                     import torch
+                    from sentence_transformers import CrossEncoder
                     device = (
                         'cuda' if torch.cuda.is_available()
                         else 'mps' if torch.backends.mps.is_available()
