@@ -45,8 +45,13 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-# Task description shared with Qwen3Embedder so query prefixes are identical
-QWEN_QUERY_TASK = "Given a legal document query, retrieve the most relevant passages"
+# Task description for query instruction prefix.
+# Domain-specific instructions significantly outperform generic ones on legal retrieval.
+# Override via LLAMA_QUERY_TASK env var for different domains.
+QWEN_QUERY_TASK = os.environ.get(
+    "LLAMA_QUERY_TASK",
+    "Given a criminal law question from Australia, find the relevant legal rule or jury direction",
+)
 QWEN_QUERY_PREFIX = f"Instruct: {QWEN_QUERY_TASK}\nQuery: "
 
 _DEFAULT_URL = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")

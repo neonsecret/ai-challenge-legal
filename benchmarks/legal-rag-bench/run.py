@@ -187,9 +187,10 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
             "  python benchmarks/legal-rag-bench/build_index.py"
         )
 
-    # Collect per-system rankings for RRF
+    # Collect signals for score fusion
     passage_info = {}  # pid -> {"text", "title"}
-    vec_rank = {}      # pid -> rank (1-based)
+    faiss_scores = {}  # pid -> raw FAISS similarity score (inner product, 0–1)
+    vec_rank = {}      # pid -> rank (kept for reference but not used in fusion)
     bm25_rank = {}     # pid -> rank (1-based)
 
     # --- Vector search ---
@@ -212,6 +213,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
             if pid not in vec_rank:
                 rank += 1
                 vec_rank[pid] = rank
+                faiss_scores[pid] = float(D[0][j])  # raw inner-product similarity
                 passage_info[pid] = {
                     "text": entry["text"],
                     "title": entry.get("title", ""),
@@ -239,16 +241,54 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
                             "title": entry.get("title", ""),
                         }
 
-    # --- Reciprocal Rank Fusion (RRF) ---
-    RRF_K = 60  # standard RRF constant
+    # --- HyDE: embed a hypothetical answer passage for queries the model struggles with ---
+    # HyDE bridges the vocabulary gap when a question doesn't use the legal terminology
+    # of the relevant passage (e.g. "recording of testimony" → "VARE procedure").
+    hyde_rank = {}
+    try:
+        from arlc.retriever import generate_hyde_passage
+        hyde_passage = generate_hyde_passage(question)
+        if hyde_passage and has_faiss:
+            index, metadata = _load_faiss()
+            model = _get_embedding_model()
+            # Embed as a document (no instruction prefix — prompt_name omitted)
+            hyde_emb = np.array(model.encode(hyde_passage, normalize_embeddings=True), dtype='float32').reshape(1, -1)
+            import faiss as _faiss
+            _faiss.normalize_L2(hyde_emb)
+            k_hyde = min(200, index.ntotal)
+            _, I_h = index.search(hyde_emb, k_hyde)
+            rank = 0
+            for j in range(k_hyde):
+                idx = int(I_h[0][j])
+                if idx < 0:
+                    continue
+                pid = metadata[idx]["id"]
+                if pid not in hyde_rank:
+                    rank += 1
+                    hyde_rank[pid] = rank
+                    if pid not in passage_info:
+                        passage_info[pid] = {
+                            "text": metadata[idx]["text"],
+                            "title": metadata[idx].get("title", ""),
+                        }
+    except Exception:
+        pass  # HyDE is best-effort; silently skip on any error
+
+    # --- Score fusion: raw FAISS similarity + rank-based BM25 + HyDE ---
+    # Using raw FAISS similarity (not rank) protects high-confidence vector hits when
+    # BM25 misses them — a passage with similarity 0.85 should beat a passage at
+    # FAISS rank 5 + BM25 rank 5 even if RRF rank-averaging would flip the order.
+    RRF_K = 60
     rrf_scores = {}
-    all_pids = set(vec_rank) | set(bm25_rank)
+    all_pids = set(faiss_scores) | set(bm25_rank) | set(hyde_rank)
     for pid in all_pids:
         score = 0.0
-        if pid in vec_rank:
-            score += 1.0 / (RRF_K + vec_rank[pid])
+        if pid in faiss_scores:
+            score += faiss_scores[pid]          # raw similarity, typically 0.5–1.0
         if pid in bm25_rank:
-            score += 1.0 / (RRF_K + bm25_rank[pid])
+            score += 1.0 / (RRF_K + bm25_rank[pid])   # rank-based, ~0.006–0.016
+        if pid in hyde_rank:
+            score += 1.0 / (RRF_K + hyde_rank[pid])
         rrf_scores[pid] = score
 
     # --- Cross-encoder reranking on top 100 by RRF ---
@@ -264,8 +304,22 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
         pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidate_list]
         with _reranker_lock:
             rerank_scores = reranker.predict(pairs)
-        for i, score in enumerate(rerank_scores):
-            candidate_list[i]["score"] = float(score)
+
+        # Blend reranker scores with RRF — but do NOT min-max normalise the reranker.
+        # BGE reranker outputs sigmoid probabilities clustered near 1.0 for all legal
+        # passages (e.g. gold=0.9878, top=0.9958). Min-max stretches that ~0.008 gap
+        # to 0–1, letting reranker noise dominate. Raw scores stay nearly constant
+        # across candidates, so RRF correctly controls ordering.
+        rr_arr  = np.array(rerank_scores, dtype=float)  # raw, already in [0,1]
+        rrf_arr = np.array([c["score"] for c in candidate_list], dtype=float)
+        rrf_lo, rrf_hi = rrf_arr.min(), rrf_arr.max()
+        rrf_norm = (rrf_arr - rrf_lo) / (rrf_hi - rrf_lo + 1e-8)
+
+        # 20% reranker (raw) + 80% RRF (normalised).
+        # Raw reranker ~constant → RRF dominates; reranker only breaks near-RRF-ties.
+        for i in range(len(candidate_list)):
+            candidate_list[i]["score"] = 0.2 * float(rr_arr[i]) + 0.8 * float(rrf_norm[i])
+
         candidate_list.sort(key=lambda x: x["score"], reverse=True)
 
     return candidate_list[:top_k]

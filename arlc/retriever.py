@@ -1029,7 +1029,11 @@ def generate_hyde_passage(question: str) -> str | None:
     """Generate a hypothetical document passage that would answer the question (HyDE).
 
     Embeds this passage instead of the raw question for better semantic alignment with
-    the document corpus (especially for fact-lookup questions).
+    the document corpus (especially for fact-lookup questions where the question uses
+    everyday language but the answer uses specific legal terminology).
+
+    Uses the configured LLM backend (litellm/vertex/anthropic) via arlc.llm.router.
+    Returns None silently on any error so HyDE is always best-effort.
     """
     try:
         client = _get_anthropic_client()
@@ -1038,8 +1042,8 @@ def generate_hyde_passage(question: str) -> str | None:
             messages=[{
                 "role": "user",
                 "content": (
-                    f"Write a single concise paragraph (3-4 sentences) from a DIFC legal document "
-                    f"that directly answers this question: {question}\n"
+                    f"Write a single concise paragraph (3-4 sentences) from a Victorian "
+                    f"criminal law document that directly answers this question: {question}\n"
                     f"Write only the document text, no preamble."
                 ),
             }],
