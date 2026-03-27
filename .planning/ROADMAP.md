@@ -19,7 +19,7 @@
 | 10 | Premium UI Redesign | Light mode, Playfair serif, warm palette, marketing landing | Complete |
 | 11 | Qwen3-8B Integration + Full Benchmark | Build FAISS index with Qwen3-8B on RTX 3070, integrate into hybrid pipeline, re-benchmark GaRAGe + ContractNLI + Legal RAG Bench, update README | Pending |
 | 12 | Glass Design System Foundation | CSS infrastructure (tokens, aurora, glass components) that all pages depend on | Complete |
-| 13 | 3/5 | In Progress|  |
+| 13 | 4/5 | In Progress|  |
 | 14 | App Pages + Landing Unification | Every authenticated page and the landing page share the same aurora + glass visual language | Not started |
 
 ---
@@ -339,13 +339,13 @@ Plans:
 4. During streaming, a glass status pill cycles through descriptive labels ("Searching documents...", "Analyzing sources...", "Synthesizing answer...") — the RAG pipeline stages are visible to the user
 5. The chat page aurora is obviously vivid — opening the page on a 15-inch laptop in a conference room, the colored orb glow is perceptible from 2 meters away; the glass input bar shows visible frosted blur over the background
 
-**Plans:** 3/5 plans executed
+**Plans:** 4/5 plans executed
 
 Plans:
 - [x] 13-01-PLAN.md — Phase 12 merge + glass-warm utility
 - [x] 13-02-PLAN.md — Chat page shell + EmptyState rebuild
 - [x] 13-03-PLAN.md — ChatMessage + SourcesPanel + StreamingStatus + ConfidenceBadge
-- [ ] 13-04-PLAN.md — ChatInput re-skin + grounding drawer wire
+- [x] 13-04-PLAN.md — ChatInput re-skin + grounding drawer wire
 - [ ] 13-05-PLAN.md — Visual verification checkpoint
 **UI hint**: yes
 

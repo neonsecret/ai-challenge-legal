@@ -213,7 +213,7 @@ Which phases cover which requirements.
 ### CHAT-LAYOUT — Chat Page Total Rebuild
 
 - [x] **CHAT-01**: Chat page has dramatic aurora background — `AuroraBackground preset="chat"` with three vivid orbs (gold `0.45`, deep violet `0.40`, teal `0.35`)
-- [ ] **CHAT-02**: Chat input is a large prominent glass bar — full-width glass input container (`backdrop-filter: blur(32px)`), gold glow on send button when text present, sticky at bottom with frosted glass overlay
+- [x] **CHAT-02**: Chat input is a large prominent glass bar — full-width glass input container (`backdrop-filter: blur(32px)`), gold glow on send button when text present, sticky at bottom with frosted glass overlay
 - [x] **CHAT-03**: User questions display as section headings — user message rendered as bold `font-heading` heading above the assistant response block, replacing right-aligned chat bubble
 - [x] **CHAT-04**: Assistant responses sit in a glass content panel — response rendered in `GlassCard`, prose typography, clean Perplexity-style answer flow
 - [ ] **CHAT-05**: Empty state uses glassmorphism suggestion cards — large centered layout with shield logo glow, numbered `GlassCard` suggestion buttons with gold hover
@@ -222,7 +222,7 @@ Which phases cover which requirements.
 
 - [x] **SRC-01**: Sources panel appears before the answer — labeled "Sources" section with numbered `GlassPill` source cards displayed ABOVE the prose answer (Perplexity pattern)
 - [x] **SRC-02**: Each source card shows document name and page — chip displays `doc_id` (truncated), page number in gold, numbered badge
-- [ ] **SRC-03**: Clicking a source card opens the grounding drawer — wires existing `grounding-drawer.tsx` + `GroundingView` split pane to the selected source
+- [x] **SRC-03**: Clicking a source card opens the grounding drawer — wires existing `grounding-drawer.tsx` + `GroundingView` split pane to the selected source
 - [x] **SRC-04**: Streaming shows descriptive RAG status labels — `streamingStatus` prop drives: "Searching documents…", "Analyzing sources…", "Synthesizing answer…" in a glass status pill
 
 ### CONF — Confidence Display
@@ -256,13 +256,13 @@ Which phases cover which requirements.
 | GLASS-04 | Phase 12 | Complete |
 | GLASS-05 | Phase 12 | Complete |
 | CHAT-01 | Phase 13 | Complete |
-| CHAT-02 | Phase 13 | Pending |
+| CHAT-02 | Phase 13 | Complete |
 | CHAT-03 | Phase 13 | Complete |
 | CHAT-04 | Phase 13 | Complete |
 | CHAT-05 | Phase 13 | Pending |
 | SRC-01 | Phase 13 | Complete |
 | SRC-02 | Phase 13 | Complete |
-| SRC-03 | Phase 13 | Pending |
+| SRC-03 | Phase 13 | Complete |
 | SRC-04 | Phase 13 | Complete |
 | CONF-01 | Phase 13 | Complete |
 | APP-01 | Phase 14 | Pending |
