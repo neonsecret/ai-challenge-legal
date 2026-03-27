@@ -127,7 +127,10 @@ def _get_embedding_model():
     """Get embedding model (cached). Supports Snowflake (default) and Qwen3 family."""
     global _embedding_model
     if _embedding_model is None:
-        if _EMBEDDING_BACKEND.startswith("qwen3"):
+        if _EMBEDDING_BACKEND == "llama-server":
+            from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+            _embedding_model = LlamaServerEmbedder()
+        elif _EMBEDDING_BACKEND.startswith("qwen3"):
             from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
             # EMBEDDING_DIM must match the dim used in build_qwen3_index.py.
             # "full" → 8192 sentinel (Qwen3Embedder skips truncation, outputs native dim).

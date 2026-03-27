@@ -41,7 +41,7 @@ _HF_TO_BACKEND = {
 }
 EMBEDDING_BACKEND = _HF_TO_BACKEND.get(EMBEDDING_BACKEND, EMBEDDING_BACKEND)
 
-VALID_BACKENDS = {"snowflake", "qwen3-8b", "qwen3-4b", "qwen3-0.6b"}
+VALID_BACKENDS = {"snowflake", "qwen3-8b", "qwen3-4b", "qwen3-0.6b", "llama-server"}
 
 if EMBEDDING_BACKEND not in VALID_BACKENDS:
     raise ValueError(

@@ -114,8 +114,12 @@ def main():
         # Step 3: Load embedder
         print(f"[build_qwen3_index] Loading {_MODEL_BACKEND} embedder "
               f"(dim={_dim_label}, batch_size={BATCH_SIZE})...")
-        from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
-        embedder = load_qwen3_embedder(backend=_MODEL_BACKEND, dim=EMBED_DIM)
+        if _MODEL_BACKEND == "llama-server":
+            from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+            embedder = LlamaServerEmbedder(batch_size=BATCH_SIZE)
+        else:
+            from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
+            embedder = load_qwen3_embedder(backend=_MODEL_BACKEND, dim=EMBED_DIM)
 
         # Step 4: Embed remaining passages
         remaining = len(texts) - start_from
