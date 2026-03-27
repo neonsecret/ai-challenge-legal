@@ -62,11 +62,24 @@ export default function LandingPage() {
     return () => clearInterval(id);
   }, []);
 
-  const handleLightSubmit = (e: React.FormEvent) => {
+  const handleLightSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const key = apiKey.trim();
     if (!key) { setApiError("Please enter your API key."); return; }
     setSubmitting(true);
+    setApiError(null);
+    // Validate the key against the backend before accepting it
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/v1/query/stream?question=ping&answer_type=free_text&api_key=${encodeURIComponent(key)}`, { method: "HEAD" });
+      if (res.status === 401 || res.status === 403) {
+        setApiError("Invalid API key. Please check and try again.");
+        setSubmitting(false);
+        return;
+      }
+    } catch {
+      // Network error — allow through and let the chat page handle it
+    }
     localStorage.setItem("neolex_api_key", key);
     router.push("/chat");
   };
