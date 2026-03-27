@@ -64,7 +64,7 @@ def validate_startup(data_dir: str) -> None:
                 errors.append(f"Required index file missing: {fpath}")
 
         # Check FAISS index exists at the configured path
-        faiss_path = os.environ.get("FAISS_INDEX_PATH", "data/faiss_index.bin")
+        faiss_path = os.environ.get("FAISS_INDEX_PATH", "data/faiss_llama-server.bin")
         if not os.path.isabs(faiss_path):
             faiss_path = os.path.join(os.getcwd(), faiss_path)
         if not os.path.isfile(faiss_path):
