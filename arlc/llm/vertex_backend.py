@@ -44,9 +44,11 @@ def call_llm(
 
     if system_blocks is not None:
         system_param = system_blocks
-    else:
+    elif system_prompt:
         system_param = [{"type": "text", "text": system_prompt,
                          "cache_control": {"type": "ephemeral"}}]
+    else:
+        system_param = []  # Vertex rejects cache_control on empty text blocks
 
     with client.messages.stream(
         model=model,
