@@ -32,11 +32,9 @@ export default function LandingPage() {
           setDemoKey(data.api_key);
         }
         setLoading(false);
-        window.scrollTo(0, 0);
       })
       .catch(() => {
         setLoading(false);
-        window.scrollTo(0, 0);
       });
   }, [router]);
 
@@ -307,13 +305,13 @@ export default function LandingPage() {
             <span className="mx-2" style={{ color: "rgba(255,255,255,0.15)" }}>
               ·
             </span>
-            <a href="#" className="hover:text-white/50 transition-colors">
+            <a href="/privacy" className="hover:text-white/50 transition-colors">
               Privacy
             </a>
             <span className="mx-2" style={{ color: "rgba(255,255,255,0.15)" }}>
               ·
             </span>
-            <a href="#" className="hover:text-white/50 transition-colors">
+            <a href="/terms" className="hover:text-white/50 transition-colors">
               Terms
             </a>
           </p>
