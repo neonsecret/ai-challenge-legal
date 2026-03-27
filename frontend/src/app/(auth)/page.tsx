@@ -54,7 +54,7 @@ export default function LandingPage() {
   useEffect(() => {
     const existing = localStorage.getItem("neolex_api_key");
     if (existing) { router.replace("/chat"); return; }
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? localStorage.getItem("neolex_backend_url") ?? "http://localhost:8000";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
     fetch(`${apiUrl}/api/v1/demo/config`)
       .then(r => r.json())
       .then(data => {

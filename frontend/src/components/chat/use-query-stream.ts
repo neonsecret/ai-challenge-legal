@@ -3,8 +3,10 @@
 import { useState, useCallback, useRef } from "react"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
-// API key from env or localStorage; hardcoded fallback for dev
-const DEV_API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? "dev-test-key"
+// API key from localStorage only — no hardcoded fallback
+const DEV_API_KEY = typeof window !== "undefined"
+  ? localStorage.getItem("neolex_api_key") ?? ""
+  : ""
 
 // Streaming status messages shown while waiting for the answer
 const STREAMING_STATUS_SEQUENCE = [

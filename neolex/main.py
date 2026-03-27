@@ -106,10 +106,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="NeoLex",
+    title="Vitreon Legal API",
     version="0.1.0",
     description="Legal QA API backed by the ARLC pipeline.",
     lifespan=lifespan,
+    # Disable public API docs in production
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # ---------------------------------------------------------------------------
