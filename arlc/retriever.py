@@ -1036,21 +1036,18 @@ def generate_hyde_passage(question: str) -> str | None:
     Returns None silently on any error so HyDE is always best-effort.
     """
     try:
-        client = _get_anthropic_client()
-        response = client.messages.create(
-            model=_HAIKU_MODEL,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Write a single concise paragraph (3-4 sentences) from a Victorian "
-                    f"criminal law document that directly answers this question: {question}\n"
-                    f"Write only the document text, no preamble."
-                ),
-            }],
+        from arlc.llm.router import _call_backend
+        text, *_ = _call_backend(
+            system_prompt="You are a legal document writer. Write only document text, no preamble.",
+            user_message=(
+                f"Write a single concise paragraph (3-4 sentences) from a Victorian "
+                f"criminal law document that directly answers this question: {question}"
+            ),
             max_tokens=150,
-            temperature=0.0,
+            model="claude-sonnet-4-6",  # haiku not available on this GCP project
+            system_blocks=None,
         )
-        return response.content[0].text.strip() if response.content else None
+        return text.strip() if text else None
     except Exception:
         return None
 
