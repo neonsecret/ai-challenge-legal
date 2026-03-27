@@ -7,6 +7,7 @@ export interface Document {
   filename: string;
   size_bytes: number;
   uploaded_at: string;
+  indexed?: boolean;
 }
 
 export interface ReindexJob {
