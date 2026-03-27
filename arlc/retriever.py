@@ -16,7 +16,7 @@ from sentence_transformers import CrossEncoder, SentenceTransformer
 
 load_dotenv()
 
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+_HAIKU_MODEL = "claude-haiku-4-5"  # short ID required for direct Vertex AI (no date suffix)
 
 # Anthropic client (lazy singleton for HyDE / query variants)
 _anthropic_client: anthropic.Anthropic | None = None
@@ -1044,7 +1044,7 @@ def generate_hyde_passage(question: str) -> str | None:
                 f"criminal law document that directly answers this question: {question}"
             ),
             max_tokens=150,
-            model="claude-sonnet-4-6",  # haiku not available on this GCP project
+            model=_HAIKU_MODEL,
             system_blocks=None,
         )
         return text.strip() if text else None

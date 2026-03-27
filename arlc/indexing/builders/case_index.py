@@ -65,7 +65,7 @@ def extract_metadata(doc_id: str) -> dict | None:
 
     try:
         resp = client.messages.create(
-            model='claude-haiku-4-5-20251001',
+            model='claude-haiku-4-5',
             max_tokens=1000,
             messages=[{'role': 'user', 'content': EXTRACT_PROMPT.format(pages=pages_text)}]
         )

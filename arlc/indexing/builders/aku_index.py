@@ -9,7 +9,7 @@ Output: data/aku_index.json
 Usage:
     python build_aku_index.py                         # extract all (uses Haiku)
     python build_aku_index.py --doc-id abc123         # extract one doc
-    python build_aku_index.py --model claude-haiku-4-5-20251001  # specify model
+    python build_aku_index.py --model claude-haiku-4-5  # specify model
     python build_aku_index.py --dry-run               # show what would be processed
     python build_aku_index.py --max-docs 5            # process first N docs only
 """
@@ -32,7 +32,7 @@ DOCUMENTS_DIR = Path("data/documents")
 DOCUMENTS_MD_DIR = Path("data/documents_md")
 AKU_INDEX_PATH = Path("data/aku_index.json")
 
-DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+DEFAULT_MODEL = "claude-haiku-4-5"
 
 SYSTEM_PROMPT = """You are a legal document analyst. Extract all factual claims from the given legal document page as question-answer pairs.
 

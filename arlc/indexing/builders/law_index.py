@@ -31,7 +31,7 @@ def get_law_name_and_year(doc_id: str) -> tuple[str, int] | None:
 
     # Extract law name via Haiku
     resp = client.messages.create(
-        model='claude-haiku-4-5-20251001',
+        model='claude-haiku-4-5',
         max_tokens=100,
         messages=[{
             'role': 'user',
