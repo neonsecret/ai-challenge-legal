@@ -19,7 +19,7 @@ const CONFIDENCE_CONFIG: Record<ConfidenceLevel, {
   label: string
 }> = {
   high: {
-    color: "#1a3f6e",
+    color: "#3576ae", // Fremen blue — success/high-confidence
     bg: "rgba(53,118,174,0.14)",
     border: "rgba(53,118,174,0.32)",
     Icon: ShieldCheck,
