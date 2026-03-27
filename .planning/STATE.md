@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: — Premium Frontend Overhaul
 status: executing
-last_updated: "2026-03-27T14:50:00Z"
-last_activity: 2026-03-27 -- Phase 13 Plan 02 COMPLETE (warm chat shell + EmptyState component)
+last_updated: "2026-03-27T14:35:24Z"
+last_activity: 2026-03-27 -- Phase 13 Plan 03 complete (2 tasks, build passes, commits 1a8d268+291482f)
 progress:
   total_phases: 7
   completed_phases: 1
@@ -17,16 +17,17 @@ progress:
 ## Current Position
 
 Phase: 13 (Chat Page Total Rebuild) — In Progress
-Plan: 2 of N — DONE (warm chat shell + EmptyState)
-Status: Phase 13 executing. Plan 02 complete. Ready for Plan 03.
-Last activity: 2026-03-27 -- Phase 13 Plan 02 complete (2 tasks, build passes, commit dddf6b3)
+Plan: 3 of N — DONE (chat-message sub-components + Perplexity layout)
+Status: Phase 13 executing. Plans 01+02+03 complete. Ready for Plan 04.
+Last activity: 2026-03-27 -- Phase 13 Plan 03 complete (2 tasks, build passes, commits 1a8d268+291482f)
 
 ## Milestone v2.0 Progress
 
 - Phase 12: COMPLETE (1/1 plans done) — Glass Design System Foundation (GLASS-01 to GLASS-05)
-- Phase 13: In Progress (2/N plans done) — Chat Page Total Rebuild (CHAT-01 to CHAT-05, SRC-01 to SRC-04, CONF-01)
+- Phase 13: In Progress (3/N plans done) — Chat Page Total Rebuild (CHAT-01 to CHAT-05, SRC-01 to SRC-04, CONF-01)
   - Plan 01: DONE — Merge Phase 12 + glass-warm @utility (commits: 85a46e6, 3ca9424, c9ccb55)
   - Plan 02: DONE — Warm amber chat shell + EmptyState standalone component (commit: dddf6b3)
+  - Plan 03: DONE — ChatMessage sub-components (SourcesPanel, StreamingStatus, ConfidenceBadge) + Perplexity layout (commits: 1a8d268, 291482f)
 - Phase 14: Not started — App Pages + Landing Polish (APP-01 to APP-03, LAND-01 to LAND-04)
 
 **v2.0 requirements coverage:** 22/22 mapped, 0 unmapped
@@ -66,6 +67,8 @@ Last activity: 2026-03-27 -- Phase 13 Plan 02 complete (2 tasks, build passes, c
 - Phase 13-02 key decisions: overflow-clip on chat root div; blobs placed WITHOUT blur() filter (vivid not diffuse); onSourceClick added to ChatMessage now (build requires it); GlassCard variant=subtle for EmptyState cards
 - Phase 13-02 pattern: all hover states on glass elements use Tailwind hover: classes, never JS event handlers
 - Phase 13-02 blob layout: top-right 580px + right 460px + bottom-center 380px at 0.35–0.45 opacity
+- Phase 13-03 key decisions: SourcesPanel above GlassCard (SRC-01); user messages as h2 headings not bubbles (CHAT-03); Fremen blue #3576ae for high-confidence badge (CONF-01); Source re-exported from chat-message.tsx for page.tsx compat
+- Phase 13-03 pattern: sub-components extracted to separate files (sources-panel.tsx, streaming-status.tsx, confidence-badge.tsx); all warm palette prose classes use espresso #2e1f08 not white-alpha
 
 ## Phase 12 Entry Checklist
 
