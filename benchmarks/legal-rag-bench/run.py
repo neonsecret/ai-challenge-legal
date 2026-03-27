@@ -174,24 +174,25 @@ def _format_reranker_pairs(question: str, candidates: list[dict]) -> list[tuple[
 
 
 def _get_reranker():
-    """Get cross-encoder reranker (cached). Model set via RERANKER_MODEL env var."""
+    """Get reranker (cached). Model set via RERANKER_MODEL env var.
+
+    Returns Qwen3Reranker (causal LM, yes/no prob) for Qwen models,
+    or CrossEncoder for standard classification rerankers.
+    """
     global _reranker
     if _reranker is None:
-        from sentence_transformers import CrossEncoder
-        import torch
-        model_kwargs: dict = {}
-        tokenizer_kwargs: dict = {}
         if _is_qwen_reranker():
-            model_kwargs["torch_dtype"] = torch.float16
-            tokenizer_kwargs["padding_side"] = "left"
-        _reranker = CrossEncoder(
-            _RERANKER_MODEL,
-            max_length=2048,
-            model_kwargs=model_kwargs or None,
-            tokenizer_kwargs=tokenizer_kwargs or None,
-        )
-        if not _is_qwen_reranker() and torch.backends.mps.is_available():
-            _reranker.model.to('mps')
+            from arlc.qwen3_reranker import Qwen3Reranker
+            _reranker = Qwen3Reranker(
+                model_name=_RERANKER_MODEL,
+                instruction=_RERANKER_INSTRUCTION,
+            )
+        else:
+            from sentence_transformers import CrossEncoder
+            import torch
+            _reranker = CrossEncoder(_RERANKER_MODEL, max_length=2048)
+            if torch.backends.mps.is_available():
+                _reranker.model.to('mps')
     return _reranker
 
 

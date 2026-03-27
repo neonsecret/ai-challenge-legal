@@ -140,35 +140,32 @@ def _format_reranker_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]
     return [(prefix + q, doc) for q, doc in pairs]
 
 
-def get_reranker() -> CrossEncoder:
-    """Get CrossEncoder reranker (cached, thread-safe).
+def get_reranker():
+    """Get reranker (cached, thread-safe).
 
     Model is controlled by RERANKER_MODEL env var (default: Qwen/Qwen3-Reranker-0.6B).
-    Use _format_reranker_pairs() before calling ranker.predict() to apply the
-    instruction prefix for Qwen3-Reranker models.
+    Returns Qwen3Reranker for Qwen models (correct causal-LM inference via yes/no
+    token probabilities) or CrossEncoder for standard models (BGE, MiniLM, etc.).
+    Both expose the same predict() interface.
     """
     global _reranker
     if _reranker is None:
         with _reranker_lock:
             if _reranker is None:
-                import torch
-                device = (
-                    'cuda' if torch.cuda.is_available()
-                    else 'mps' if torch.backends.mps.is_available()
-                    else 'cpu'
-                )
-                model_kwargs: dict = {}
-                tokenizer_kwargs: dict = {}
                 if _is_qwen_reranker():
-                    model_kwargs["torch_dtype"] = torch.float16
-                    tokenizer_kwargs["padding_side"] = "left"
-                _reranker = CrossEncoder(
-                    RERANKER_MODEL,
-                    max_length=2048,
-                    device=device,
-                    model_kwargs=model_kwargs or None,
-                    tokenizer_kwargs=tokenizer_kwargs or None,
-                )
+                    from arlc.qwen3_reranker import Qwen3Reranker
+                    _reranker = Qwen3Reranker(
+                        model_name=RERANKER_MODEL,
+                        instruction=RERANKER_INSTRUCTION,
+                    )
+                else:
+                    import torch
+                    device = (
+                        'cuda' if torch.cuda.is_available()
+                        else 'mps' if torch.backends.mps.is_available()
+                        else 'cpu'
+                    )
+                    _reranker = CrossEncoder(RERANKER_MODEL, max_length=1024, device=device)
     return _reranker
 
 
