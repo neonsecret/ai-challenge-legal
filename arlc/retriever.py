@@ -157,8 +157,13 @@ def _is_qwen_model() -> bool:
     return "qwen" in EMBEDDING_MODEL.lower()
 
 
-# Qwen3 decoder-based embedding models require an instruction prefix for queries
-QWEN_QUERY_PREFIX = "Instruct: Retrieve the most relevant legal passage\nQuery: "
+# Qwen3 decoder-based embedding models require an instruction prefix for queries.
+# Must match the task description used when building the FAISS index (Qwen3Embedder default).
+QWEN_QUERY_PREFIX = "Instruct: Given a legal document query, retrieve the most relevant passages\nQuery: "
+
+# Qwen3 native dim is larger than the Matryoshka-truncated dim used during indexing.
+# Must match EMBEDDING_DIM used in neolex/embeddings/build_index.py (default 1024).
+QWEN_EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1024"))
 
 
 def get_embedding_model() -> SentenceTransformer:
@@ -177,6 +182,9 @@ def get_embedding_model() -> SentenceTransformer:
                 model_kwargs = {}
                 if _is_arctic_model() or _is_qwen_model():
                     model_kwargs["trust_remote_code"] = True
+                if _is_qwen_model():
+                    # Truncate to match the Matryoshka dim used during indexing
+                    model_kwargs["truncate_dim"] = QWEN_EMBEDDING_DIM
                 _embedding_model = SentenceTransformer(
                     EMBEDDING_MODEL, device=device, **model_kwargs
                 )

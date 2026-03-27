@@ -35,13 +35,23 @@ BM25_CACHE_DIR = DATA_DIR / "bm25_cache"
 BM25_IDS_PATH = BM25_CACHE_DIR / "corpus_ids.json"
 
 # Embedding backend selection: "snowflake" (default) | "qwen3-4b" | "qwen3-8b" | "qwen3-0.6b"
+# Also accepts full HuggingFace model IDs (e.g. "Qwen/Qwen3-Embedding-4B" → "qwen3-4b").
+_HF_TO_BACKEND = {
+    "qwen/qwen3-embedding-8b": "qwen3-8b",
+    "qwen/qwen3-embedding-4b": "qwen3-4b",
+    "qwen/qwen3-embedding-0.6b": "qwen3-0.6b",
+}
 _EMBEDDING_BACKEND = os.environ.get("EMBEDDING_MODEL", "snowflake").lower()
+_EMBEDDING_BACKEND = _HF_TO_BACKEND.get(_EMBEDDING_BACKEND, _EMBEDDING_BACKEND)
 if _EMBEDDING_BACKEND.startswith("qwen3"):
-    # Use model-specific FAISS index file so results are comparable
+    # Use model-specific FAISS index file so results are comparable.
+    # Filename encodes dimension: faiss_qwen3-4b.bin (1024) or faiss_qwen3-4b_dimfull.bin (full native).
     _idx_stem = _EMBEDDING_BACKEND.replace("/", "-")  # e.g. "qwen3-4b"
-    FAISS_INDEX_PATH = DATA_DIR / f"faiss_{_idx_stem}.bin"
-    FAISS_METADATA_PATH = DATA_DIR / f"faiss_{_idx_stem}.json"
-    RESULTS_PATH = BENCH_DIR / f"results_{_idx_stem}_full.json"
+    _bench_dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
+    _bench_dim_suffix = "" if _bench_dim_env == "1024" else f"_dim{_bench_dim_env}"
+    FAISS_INDEX_PATH = DATA_DIR / f"faiss_{_idx_stem}{_bench_dim_suffix}.bin"
+    FAISS_METADATA_PATH = DATA_DIR / f"faiss_{_idx_stem}{_bench_dim_suffix}.json"
+    RESULTS_PATH = BENCH_DIR / f"results_{_idx_stem}{_bench_dim_suffix}_full.json"
 else:
     FAISS_INDEX_PATH = DATA_DIR / "faiss_index.bin"
     FAISS_METADATA_PATH = DATA_DIR / "faiss_metadata.json"
@@ -119,7 +129,11 @@ def _get_embedding_model():
     if _embedding_model is None:
         if _EMBEDDING_BACKEND.startswith("qwen3"):
             from neolex.embeddings.qwen3_embedder import load_qwen3_embedder
-            _embedding_model = load_qwen3_embedder(backend=_EMBEDDING_BACKEND, dim=1024)
+            # EMBEDDING_DIM must match the dim used in build_qwen3_index.py.
+            # "full" → 8192 sentinel (Qwen3Embedder skips truncation, outputs native dim).
+            _dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
+            _embed_dim = 8192 if _dim_env == "full" else int(_dim_env)
+            _embedding_model = load_qwen3_embedder(backend=_EMBEDDING_BACKEND, dim=_embed_dim)
         else:
             from sentence_transformers import SentenceTransformer
             import torch
