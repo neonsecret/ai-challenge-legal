@@ -20,8 +20,47 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 import time
+
+
+# ---------------------------------------------------------------------------
+# Security: scrub api_key query param from access logs
+# ---------------------------------------------------------------------------
+
+_API_KEY_RE = re.compile(r'(api_key=)[^&\s"\']+')
+
+
+class ScrubApiKeyFilter(logging.Filter):
+    """Logging filter that redacts api_key= values from uvicorn access log lines.
+
+    Uvicorn formats access log records with the raw URL (including query
+    string) in record.args, e.g. ("GET /api/v1/query/stream?api_key=sk-...",).
+    This filter replaces any api_key= value with *** before the record is
+    emitted so the plaintext key never reaches log storage.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:  # noqa: A003
+        # Scrub string args (uvicorn uses %-style formatting with a tuple).
+        if record.args:
+            if isinstance(record.args, tuple):
+                record.args = tuple(
+                    _API_KEY_RE.sub(r'\1***', a) if isinstance(a, str) else a
+                    for a in record.args
+                )
+            elif isinstance(record.args, dict):
+                record.args = {
+                    k: _API_KEY_RE.sub(r'\1***', v) if isinstance(v, str) else v
+                    for k, v in record.args.items()
+                }
+        # Scrub the rendered message if it was pre-formatted (e.g. by other handlers).
+        if hasattr(record, 'message'):
+            record.message = _API_KEY_RE.sub(r'\1***', record.message)
+        # Scrub the raw msg string too (used when args is falsy).
+        if isinstance(record.msg, str):
+            record.msg = _API_KEY_RE.sub(r'\1***', record.msg)
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -149,3 +188,10 @@ def configure_logging(level: str | None = None) -> None:
     if log_level != "DEBUG":
         for name in _noisy:
             logging.getLogger(name).setLevel(logging.WARNING)
+
+    # Security: attach the api_key scrubber to the uvicorn access logger so
+    # that ?api_key=<value> query params are never written to log storage.
+    # The filter is idempotent — we check by class before adding.
+    access_logger = logging.getLogger("uvicorn.access")
+    if not any(isinstance(f, ScrubApiKeyFilter) for f in access_logger.filters):
+        access_logger.addFilter(ScrubApiKeyFilter())
