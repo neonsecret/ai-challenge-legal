@@ -431,14 +431,29 @@ class Router:
         for match in DIFC_LAW_NO_PATTERN.finditer(question):
             law_no = int(match.group(1))
             year = int(match.group(2))
-            # Map known DIFC law numbers to names
+            # Check law_name_index first — it is the authoritative source and avoids
+            # mismatches between the hardcoded map and the actual corpus metadata.
+            # E.g. "DIFC Law No. 5 of 2005" = Law of Obligations, not Personal Property Law.
+            _index_matched = False
+            for candidate_key in [
+                f"difc law no. {law_no} of {year}",
+                f"law no. {law_no} of {year}",
+            ]:
+                if candidate_key in self._law_name_index:
+                    if candidate_key not in found:
+                        found.append(candidate_key)
+                    _index_matched = True
+                    break
+            if _index_matched:
+                continue
+            # Fallback: hardcoded map for laws not yet in law_name_index
             difc_law_map = {
                 (3, 2018): "foundations law",
                 (4, 2004): "general partnership law",
                 (1, 2019): "employment law",
                 (2, 2019): "employment regulations",  # DIFC Employment Law No. 2 of 2019 = Employment Regulations
                 (4, 2018): "trust law",
-                (5, 2005): "personal property law",
+                (5, 2005): "law of obligations",  # DIFC Law No. 5 of 2005 = Law of Obligations (NOT Personal Property)
                 (7, 2018): "operating law",
                 (5, 2004): "limited liability partnership law",
                 (2, 2018): "common reporting standard law",
