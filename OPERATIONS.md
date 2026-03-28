@@ -1,13 +1,39 @@
 # Vitreon Legal — Operations Guide
 
-## Quick Start (all three services)
+## Services (launchd — auto-restart, auto-start on login)
+
+All three processes run as macOS launchd services:
+
+```bash
+# Restart a service
+launchctl stop app.vitreon.backend && launchctl start app.vitreon.backend
+launchctl stop app.vitreon.frontend && launchctl start app.vitreon.frontend
+launchctl stop app.vitreon.tunnel && launchctl start app.vitreon.tunnel
+
+# Check status
+launchctl list | grep vitreon
+
+# View logs
+tail -f /tmp/vitreon-backend.log
+tail -f /tmp/vitreon-frontend.log
+tail -f /tmp/vitreon-tunnel.log
+
+# Full restart after code changes
+launchctl stop app.vitreon.frontend
+launchctl stop app.vitreon.backend
+cd /Users/viacheslavivannikov/projects/ai-challenge-legal/frontend && npx next build
+launchctl start app.vitreon.backend
+sleep 12
+launchctl start app.vitreon.frontend
+```
+
+## Manual Start (if launchd not set up)
 
 ```bash
 cd /Users/viacheslavivannikov/projects/ai-challenge-legal
 
 # 1. Backend (FastAPI) — must start from project root
 python3 -m uvicorn neolex.main:app --host 0.0.0.0 --port 8000 &
-# Wait for "Vitreon Legal startup complete" (~12s)
 
 # 2. Frontend (Next.js)
 cd frontend && npm run start -- -p 3000 &
