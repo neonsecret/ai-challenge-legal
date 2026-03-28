@@ -24,27 +24,49 @@ async def run_single_question(
 ) -> dict:
     """Route one HTTP question through the arlc pipeline.
 
-    If user_id and conversation_id are provided, loads conversation history from
-    PostgreSQL (scoped to that user) and rewrites follow-up questions as standalone
-    queries before routing. This keeps arlc/ stateless.
+    Multi-turn support (when user_id + conversation_id are provided):
+    - Loads conversation history from PostgreSQL scoped to this user
+    - Enriches the query with condensed previous answers for the router + embedder
+      (previous answers contain law names/article numbers that help routing)
+    - Wraps answer_fn so Claude receives proper multi-turn messages (original
+      question + history), not the enriched query string
 
     on_status: optional callable(stage: str) emitted at each pipeline stage.
-    Called from the event loop (between awaits), so asyncio.Queue.put_nowait is safe.
-
     _process_question is already async def — await it directly.
-    Do NOT wrap it in asyncio.to_thread() (it would create a nested event loop).
-    Do NOT call asyncio.run() here (event loop is already running in FastAPI).
     """
     from arlc.pipeline import _process_question
 
-    # Rewrite follow-up questions as standalone queries for correct routing
     effective_question = question
+    answer_fn_to_use = answer_fn
+
     if user_id and conversation_id:
         from neolex.services.conversation import load_history
-        from neolex.services.context_rewriter import rewrite_for_retrieval
         history = await load_history(user_id, conversation_id)
         if history:
-            effective_question = await rewrite_for_retrieval(question, history)
+            # Enrich query for routing + retrieval: append condensed previous answers
+            # so the regex router and FAISS embedder find document references from
+            # prior turns (e.g. "DIFC Law No. 5", "Article 118").
+            prev_answers = [t["content"][:300] for t in history if t["role"] == "assistant"][-2:]
+            if prev_answers:
+                effective_question = f"{question}\n\n[Previous discussion: {' | '.join(prev_answers)}]"
+
+            # Wrap answer_fn to pass (a) the original question for the LLM prompt
+            # and (b) history as proper multi-turn messages — Claude handles context naturally.
+            _orig_question = question
+            _history = history
+            _orig_answer_fn = answer_fn
+
+            async def _answer_with_context(
+                enriched_q, at, pages, qid="",
+                metadata_answer=None, on_token=None, web_mode=False,
+            ):
+                return await _orig_answer_fn(
+                    _orig_question, at, pages, qid,
+                    metadata_answer=metadata_answer, on_token=on_token, web_mode=web_mode,
+                    conversation_history=_history,
+                )
+
+            answer_fn_to_use = _answer_with_context
 
     question_data = {
         "id": str(uuid.uuid4()),
@@ -52,7 +74,7 @@ async def run_single_question(
         "answer_type": answer_type,
     }
     return await _process_question(
-        question_data, route_fn, retrieve_fn, answer_fn, semaphore,
+        question_data, route_fn, retrieve_fn, answer_fn_to_use, semaphore,
         on_status=on_status,
         on_token=on_token,
         corpus=corpus,

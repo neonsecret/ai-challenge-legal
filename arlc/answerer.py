@@ -64,6 +64,7 @@ if os.path.exists(_appeal_path):
     with open(_appeal_path) as _f:
         _APPEAL_INDEX = json.load(_f)
 
+
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
@@ -390,7 +391,7 @@ def _judge_as_list(judge_val) -> list[dict]:
 
 
 def _lookup_oracle(
-    question: str, answer_type: str, source_pages: list[dict]
+        question: str, answer_type: str, source_pages: list[dict]
 ) -> AnswerResult | None:
     """Try to answer from pre-computed case metadata.
 
@@ -472,7 +473,8 @@ def _lookup_oracle(
                         # Use actual judge page from metadata (judge dict has 'page' field)
                         case_m = _find_case_data(cid) or {}
                         judge_info = case_m.get("judge", {})
-                        judge_page = judge_info[0].get("page", 1) if isinstance(judge_info, list) and judge_info else (judge_info.get("page", 1) if isinstance(judge_info, dict) else 1)
+                        judge_page = judge_info[0].get("page", 1) if isinstance(judge_info, list) and judge_info else (
+                            judge_info.get("page", 1) if isinstance(judge_info, dict) else 1)
                         pages.append({"doc_id": did, "page_numbers": [judge_page]})
                 logger.info(f"[Oracle] Judge compare: {judges1} vs {judges2} -> {answer}")
                 return AnswerResult(answer=answer, chunk_pages=pages)
@@ -530,7 +532,8 @@ def _lookup_oracle(
         if any(k in q_lower for k in change_keywords) and any(k in q_lower for k in judge_keywords):
             def _norm_judge_name(name: str) -> str:
                 name = normalize_text(name)
-                cleaned = re.sub(r"\b(H\.E\.|Justice|Chief|Deputy|Sir|Dr\.?|KC|Judicial|Officer)\b", "", name, flags=re.I)
+                cleaned = re.sub(r"\b(H\.E\.|Justice|Chief|Deputy|Sir|Dr\.?|KC|Judicial|Officer)\b", "", name,
+                                 flags=re.I)
                 return re.sub(r"\s+", " ", cleaned).strip().lower()
 
             info = _find_case_info(all_case_ids[0])
@@ -580,17 +583,21 @@ def _lookup_oracle(
                         did = _get_doc_id(cid)
                         if did:
                             pages.append({"doc_id": did, "page_numbers": [1]})
-                    logger.info(f"[Oracle] Date comparison: {all_case_ids[0]}={d1} vs {all_case_ids[1]}={d2} -> {winner}")
+                    logger.info(
+                        f"[Oracle] Date comparison: {all_case_ids[0]}={d1} vs {all_case_ids[1]}={d2} -> {winner}")
                     return AnswerResult(answer=winner, chunk_pages=pages)
 
             # Claim amount comparison: "higher claim", "larger amount", "more claimed"
-            if any(k in q_lower for k in ["higher claim", "larger claim", "more claimed", "greater amount", "higher amount", "larger amount", "bigger"]):
+            if any(k in q_lower for k in
+                   ["higher claim", "larger claim", "more claimed", "greater amount", "higher amount", "larger amount",
+                    "bigger"]):
                 def _get_claim(m):
                     for key in ["claim_value_aed", "claim_value"]:
                         cv = m.get(key, {})
                         if isinstance(cv, dict) and cv.get("value"):
                             return cv["value"]
                     return None
+
                 v1, v2 = _get_claim(case1_meta), _get_claim(case2_meta)
                 if v1 is not None and v2 is not None:
                     winner = all_case_ids[0] if float(v1) > float(v2) else all_case_ids[1]
@@ -599,12 +606,14 @@ def _lookup_oracle(
                         did = _get_doc_id(cid)
                         if did:
                             pages.append({"doc_id": did, "page_numbers": [1]})
-                    logger.info(f"[Oracle] Claim comparison: {all_case_ids[0]}={v1} vs {all_case_ids[1]}={v2} -> {winner}")
+                    logger.info(
+                        f"[Oracle] Claim comparison: {all_case_ids[0]}={v1} vs {all_case_ids[1]}={v2} -> {winner}")
                     return AnswerResult(answer=winner, chunk_pages=pages)
 
             # Party count comparison: "more defendants", "more claimants"
             if any(k in q_lower for k in ["more defendant", "more claimant", "fewer defendant", "fewer claimant"]):
                 role = "defendant" if "defendant" in q_lower else "claimant"
+
                 def _count_parties(m):
                     p = m.get(role, [])
                     if isinstance(p, list):
@@ -612,6 +621,7 @@ def _lookup_oracle(
                     elif isinstance(p, dict) and p.get("names"):
                         return len(p["names"])
                     return 1 if p else 0
+
                 c1, c2 = _count_parties(case1_meta), _count_parties(case2_meta)
                 if "fewer" in q_lower:
                     winner = all_case_ids[0] if c1 < c2 else all_case_ids[1]
@@ -622,7 +632,8 @@ def _lookup_oracle(
                     did = _get_doc_id(cid)
                     if did:
                         pages.append({"doc_id": did, "page_numbers": [1]})
-                logger.info(f"[Oracle] Party count comparison: {all_case_ids[0]}={c1} vs {all_case_ids[1]}={c2} -> {winner}")
+                logger.info(
+                    f"[Oracle] Party count comparison: {all_case_ids[0]}={c1} vs {all_case_ids[1]}={c2} -> {winner}")
                 return AnswerResult(answer=winner, chunk_pages=pages)
 
     # Single-case lookups
@@ -650,7 +661,8 @@ def _lookup_oracle(
                 )
 
     # Date of issue — only trigger when question actually asks about the document's issue date
-    date_keywords = ["date of issue", "issued date", "issue date", "date of order", "date of judgment", "date of the order", "when was the order", "when was the judgment"]
+    date_keywords = ["date of issue", "issued date", "issue date", "date of order", "date of judgment",
+                     "date of the order", "when was the order", "when was the judgment"]
     if answer_type == "date" and any(k in q_lower for k in date_keywords):
         doi = meta.get("date_of_issue", {})
         if isinstance(doi, dict) and doi.get("value"):
@@ -663,7 +675,8 @@ def _lookup_oracle(
 
     # Judge name — skip oracle if asking about original/first instance judge (oracle may have appeal judge)
     appeal_keywords = ["original judgment", "original judge", "first instance", "trial judge", "lower court"]
-    if answer_type in ("name", "names") and any(k in q_lower for k in ["judge", "presided", "presiding"]) and not any(k in q_lower for k in appeal_keywords):
+    if answer_type in ("name", "names") and any(k in q_lower for k in ["judge", "presided", "presiding"]) and not any(
+            k in q_lower for k in appeal_keywords):
         judges = _judge_as_list(meta.get("judge"))
         if judges:
             if answer_type == "name":
@@ -701,10 +714,13 @@ def _lookup_oracle(
         # claimant" — the answer is a case ID, not a party name; using all_case_ids[0]'s claimant
         # would be wrong). Single-case guard: only trigger when exactly 1 case ID is in the question.
         counsel_keywords = ["counsel", "lawyer", "attorney", "representative", "solicitor", "barrister", "advocate"]
-        comparison_keywords = ["which case", "between", "larger", "smaller", "higher", "lower", "more than", "less than", "compared", "comparison"]
+        comparison_keywords = ["which case", "between", "larger", "smaller", "higher", "lower", "more than",
+                               "less than", "compared", "comparison"]
         _is_single_case = len(all_case_ids) == 1
         _is_comparison = any(k in q_lower for k in comparison_keywords)
-        if _is_single_case and not _is_comparison and any(k in q_lower for k in ["claimant", "plaintiff", "applicant"]) and not any(k in q_lower for k in counsel_keywords):
+        if _is_single_case and not _is_comparison and any(
+                k in q_lower for k in ["claimant", "plaintiff", "applicant"]) and not any(
+                k in q_lower for k in counsel_keywords):
             result = _extract_party_answer(meta.get("claimant"), answer_type)
             if result:
                 answer, page = result
@@ -713,7 +729,8 @@ def _lookup_oracle(
                     answer=answer,
                     chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
                 )
-        if _is_single_case and not _is_comparison and any(k in q_lower for k in ["defendant", "respondent"]) and not any(k in q_lower for k in counsel_keywords):
+        if _is_single_case and not _is_comparison and any(
+                k in q_lower for k in ["defendant", "respondent"]) and not any(k in q_lower for k in counsel_keywords):
             result = _extract_party_answer(meta.get("defendant"), answer_type)
             if result:
                 answer, page = result
@@ -840,8 +857,43 @@ def _is_value_compare(question: str) -> bool:
     )
 
 
-def _get_system_prompt(question: str, answer_type: str) -> str:
-    """Select the best system prompt for the question type."""
+def _apply_web_mode(prompt: str) -> str:
+    """Replace competition formatting rules with web-friendly markdown + source links.
+
+    NOTE: Only affects _SYSTEM_FREE_TEXT_LAW — the "500-650 characters" target string
+    and the calibration example only exist in that prompt. Case and trick prompts pass
+    through unchanged (case has "500-700", trick has no formatting rules).
+    """
+    # Replace rule 8: competition char limit -> markdown formatting instructions
+    prompt = prompt.replace(
+        "8. 500-650 characters for the <answer> section, no markdown",
+        "8. FORMAT the <answer> section with markdown:\n"
+        "   - **Bold** every article/section number and law name (MANDATORY)\n"
+        "   - Bullet points (- ) for multiple conditions/exceptions\n"
+        "   - > blockquotes for verbatim legal quotes\n"
+        "   - No character limit — be thorough\n"
+        "   - After each citation, add [[source:DOC_ID:PAGE]] with the actual doc_id and page from the source\n"
+        "   EXAMPLE <answer>:\n"
+        "   **Article 9(1)** of **DIFC Law No. 5 of 2005** [[source:abc123:12]] states that:\n"
+        "   > \"Notwithstanding Article 38, where a cause of action arises as a result of fraud, there is no time limit.\"\n"
+        "   Key conditions:\n"
+        "   - The limitation period is **six years** for contract claims\n"
+        "   - For tort claims, the period is **three years**"
+    )
+    # Replace plain-text calibration example with markdown version
+    prompt = prompt.replace(
+        'Fully grounded with gap: "According to the Rules of the Dubai International Financial Centre Courts 2014, specifically Rule 9.57, the deadline',
+        'Fully grounded with gap: "According to **Rule 9.57** of the **DIFC Courts Rules 2014** [[source:RULES2014:15]], the deadline',
+    )
+    return prompt
+
+
+def _get_system_prompt(question: str, answer_type: str, web_mode: bool = False) -> str:
+    """Select the best system prompt for the question type.
+
+    web_mode only affects free_text prompts (markdown formatting, no char limit).
+    Non-free_text types (boolean/number/name/names/date) are unaffected.
+    """
     if answer_type == "boolean":
         return _SYSTEM_BOOLEAN
     if answer_type == "number":
@@ -856,12 +908,16 @@ def _get_system_prompt(question: str, answer_type: str) -> str:
         return _SYSTEM_NAMES
     if answer_type == "date":
         return _SYSTEM_DATE
+
     # free_text: choose between law, case, and trick prompts
     if _is_trick_question(question):
-        return _SYSTEM_FREE_TEXT_TRICK
-    if _is_case_question(question):
-        return _SYSTEM_FREE_TEXT_CASE
-    return _SYSTEM_FREE_TEXT_LAW
+        base = _SYSTEM_FREE_TEXT_TRICK
+    elif _is_case_question(question):
+        base = _SYSTEM_FREE_TEXT_CASE
+    else:
+        base = _SYSTEM_FREE_TEXT_LAW
+
+    return _apply_web_mode(base) if web_mode else base
 
 
 def _get_max_tokens(answer_type: str) -> int:
@@ -1053,12 +1109,23 @@ def _is_rate_limit_error(exc: Exception) -> bool:
     return False
 
 
+def _build_messages(user_message: str, conversation_history: "list[dict] | None") -> list:
+    """Build Anthropic messages list, prepending multi-turn history if provided."""
+    if not conversation_history:
+        return [{"role": "user", "content": user_message}]
+    messages = [{"role": t["role"], "content": t["content"]} for t in conversation_history]
+    messages.append({"role": "user", "content": user_message})
+    return messages
+
+
 def _call_llm(
-    system_prompt: str,
-    user_message: str,
-    max_tokens: int = 512,
-    model: str = MODEL,
-    system_blocks: list[dict] | None = None,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 512,
+        model: str = MODEL,
+        system_blocks: list[dict] | None = None,
+        on_token=None,
+        conversation_history: "list[dict] | None" = None,
 ) -> tuple[str, float, float, float, int, int]:
     """Call Claude via Anthropic SDK with streaming.
 
@@ -1082,32 +1149,38 @@ def _call_llm(
         if attempt > 0:
             time.sleep(RETRY_DELAYS[attempt - 1])
         try:
-            return _call_llm_once(system_prompt, user_message, max_tokens, model=model, system_blocks=system_blocks)
+            return _call_llm_once(system_prompt, user_message, max_tokens, model=model, system_blocks=system_blocks,
+                                  on_token=on_token, conversation_history=conversation_history)
         except Exception as exc:
             last_exc = exc
             logger.warning(f"[LLM] Attempt {attempt + 1} failed: {exc}")
             err_msg = str(exc).lower()
-                        # On rate limit / overloaded, switch to longer backoff schedule
+            # On rate limit / overloaded, switch to longer backoff schedule
             if _is_rate_limit_error(exc):
                 logger.warning(f"[LLM] Rate limit detected, switching to extended backoff")
                 for rl_attempt in range(MAX_RETRIES_RATE_LIMIT):
                     time.sleep(RETRY_DELAYS_RATE_LIMIT[rl_attempt])
                     try:
-                        return _call_llm_once(system_prompt, user_message, max_tokens, model=model, system_blocks=system_blocks)
+                        return _call_llm_once(system_prompt, user_message, max_tokens, model=model,
+                                              system_blocks=system_blocks, on_token=on_token,
+                                              conversation_history=conversation_history)
                     except Exception as rl_exc:
                         last_exc = rl_exc
-                        logger.warning(f"[LLM] Rate-limit retry {rl_attempt + 1}/{MAX_RETRIES_RATE_LIMIT} failed: {rl_exc}")
+                        logger.warning(
+                            f"[LLM] Rate-limit retry {rl_attempt + 1}/{MAX_RETRIES_RATE_LIMIT} failed: {rl_exc}")
                 raise last_exc
     # All retries exhausted
     raise last_exc
 
 
 def _call_llm_once(
-    system_prompt: str,
-    user_message: str,
-    max_tokens: int = 512,
-    model: str = MODEL,
-    system_blocks: list[dict] | None = None,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 512,
+        model: str = MODEL,
+        system_blocks: list[dict] | None = None,
+        on_token=None,
+        conversation_history: "list[dict] | None" = None,
 ) -> tuple[str, float, float, float, int, int]:
     """Single streaming LLM call.
 
@@ -1116,13 +1189,15 @@ def _call_llm_once(
             When provided, the first block (law context) has cache_control so it
             can be cached independently of the type-specific prompt that follows.
             This enables cache hits across different answer types for the same law.
+        conversation_history: Optional prior Q&A turns for multi-turn context.
+            Prepended as proper Anthropic multi-turn messages before the final user turn.
     """
     # LiteLLM proxy path — uses OpenAI-compatible streaming
     if _USE_LITELLM:
         from arlc.llm import litellm_backend
         return litellm_backend.call_llm(
             system_prompt, user_message, max_tokens,
-            model=model, system_blocks=system_blocks,
+            model=model, system_blocks=system_blocks, on_token=on_token,
         )
 
     client = _get_client()
@@ -1140,16 +1215,18 @@ def _call_llm_once(
         system_param = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
 
     with client.messages.stream(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=0.0,
-        system=system_param,
-        messages=[{"role": "user", "content": user_message}],
+            model=model,
+            max_tokens=max_tokens,
+            temperature=0.0,
+            system=system_param,
+            messages=_build_messages(user_message, conversation_history),
     ) as stream:
         for text in stream.text_stream:
             if ttft_ms is None:
                 ttft_ms = (time.perf_counter() - start) * 1000
             chunks.append(text)
+            if on_token is not None:
+                on_token(text)
 
         # Get final message for token counts
         final = stream.get_final_message()
@@ -1202,11 +1279,13 @@ _SUBMIT_ANSWER_TOOL = {
 
 
 def _call_llm_structured(
-    system_prompt: str,
-    user_message: str,
-    max_tokens: int = 512,
-    model: str = MODEL,
-    system_blocks: list[dict] | None = None,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 512,
+        model: str = MODEL,
+        system_blocks: list[dict] | None = None,
+        on_token=None,
+        conversation_history: "list[dict] | None" = None,
 ) -> tuple[str, list[int], float, float, float, int, int]:
     """LLM call with forced tool_use for structured answer + page citations.
 
@@ -1218,7 +1297,9 @@ def _call_llm_structured(
     if _ANTHROPIC_CREDITS_EXHAUSTED:
         raw, ttft, total, tpot, in_tok, out_tok = _call_llm(
             system_prompt, user_message, max_tokens, model=model,
-            system_blocks=system_blocks,
+            system_blocks=system_blocks, on_token=on_token,
+            conversation_history=conversation_history,
+            conversation_history=conversation_history,
         )
         pages = _extract_pages_used(raw)
         return raw, pages, ttft, total, tpot, in_tok, out_tok
@@ -1240,7 +1321,7 @@ def _call_llm_structured(
             max_tokens=max_tokens,
             temperature=0.0,
             system=system_param,
-            messages=[{"role": "user", "content": user_message}],
+            messages=_build_messages(user_message, conversation_history),
             tools=[_SUBMIT_ANSWER_TOOL],
             tool_choice={"type": "tool", "name": "submit_answer"},
         )
@@ -1279,14 +1360,11 @@ def _call_llm_structured(
 
         raw, ttft, total, tpot, in_tok, out_tok = _call_llm(
             system_prompt, user_message, max_tokens, model=model,
-            system_blocks=system_blocks,
+            system_blocks=system_blocks, on_token=on_token,
+            conversation_history=conversation_history,
         )
         pages = _extract_pages_used(raw)
         return raw, pages, ttft, total, tpot, in_tok, out_tok
-
-
-
-
 
 
 # ---------------------------------------------------------------------------
@@ -1300,7 +1378,9 @@ def _self_critique_free_text(question: str, answer: str, source_text: str) -> st
     Returns the original answer unchanged if all criteria pass, otherwise
     returns the rewritten answer. Uses Opus for evaluation quality.
     """
-    is_case = any(kw in question.lower() for kw in ["case cfi", "case sct", "case arb", "case enf", "case ca ", "case dec", "arbitration case", "cfi ", "sct ", "arb ", " ca "])
+    is_case = any(kw in question.lower() for kw in
+                  ["case cfi", "case sct", "case arb", "case enf", "case ca ", "case dec", "arbitration case", "cfi ",
+                   "sct ", "arb ", " ca "])
     char_target = "500-700 characters (STRICT MAXIMUM: 700)" if is_case else "500-650 characters (STRICT MAXIMUM: 700)"
     char_count = len(answer)
 
@@ -1430,7 +1510,7 @@ def _extract_grounding(response: str) -> list[dict]:
     return grounding
 
 
-def _parse_answer(text: str, answer_type: str) -> object:
+def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object:
     """Convert raw LLM text to the correct Python type.
 
     Applies NFKC normalization and Cyrillic homoglyph cleanup on string answers
@@ -1452,7 +1532,8 @@ def _parse_answer(text: str, answer_type: str) -> object:
         text = re.sub(r'\s*GROUNDING:\s*\n.*', '', text, flags=re.DOTALL).strip()
         # Detect leaked numbered CoT format (e.g. "1. QUESTION PARSE:..." / "1. OUTCOME:...")
         # This happens when max_tokens truncates before <answer> tags and no <analysis> tags present
-        if re.match(r'^\d+\.\s*(?:QUESTION PARSE|KEY PROVISIONS|CONDITIONS CHECK|GAPS|DRAFT|OUTCOME|ORDER|RULING)', text):
+        if re.match(r'^\d+\.\s*(?:QUESTION PARSE|KEY PROVISIONS|CONDITIONS CHECK|GAPS|DRAFT|OUTCOME|ORDER|RULING)',
+                    text):
             # Try to extract the DRAFT or OUTCOME section content (the actual answer)
             draft_match = re.search(
                 r'(?:5\.\s*DRAFT|OUTCOME|ORDER|RULING)[:\s]*\n?(.*?)(?:\n\d+\.\s*[A-Z]|\Z)',
@@ -1468,12 +1549,13 @@ def _parse_answer(text: str, answer_type: str) -> object:
         clean = text.strip()
         if clean.lower() in ("null", "none", "n/a", "not available"):
             return "The information is not available in the provided documents."
-        # Strip markdown formatting
-        clean = re.sub(r"\*\*(.+?)\*\*", r"\1", clean)
-        clean = re.sub(r"\*(.+?)\*", r"\1", clean)
-        # Safety cap at 705 chars (last resort for case answers)
-        if len(clean) > 705:
-            clean = _truncate_free_text(clean, limit=705)
+        # Competition mode: strip markdown and enforce char limit.
+        # Web mode: preserve markdown formatting and allow unlimited length.
+        if not web_mode:
+            clean = re.sub(r"\*\*(.+?)\*\*", r"\1", clean)
+            clean = re.sub(r"\*(.+?)\*", r"\1", clean)
+            if len(clean) > 705:
+                clean = _truncate_free_text(clean, limit=705)
         return clean
 
     stripped = text.strip().rstrip(".")
@@ -1531,12 +1613,13 @@ def _parse_answer(text: str, answer_type: str) -> object:
         # of a clean names list. Try to extract actual names from the full text,
         # or fall back to None.
         _PROSE_MARKERS = ["based on", "document", "the court", "according to"]
+
         def _is_malformed(part: str) -> bool:
             p_lower = part.lower()
             return (
-                any(m in p_lower for m in _PROSE_MARKERS)
-                or "**" in part
-                or len(part) > 100
+                    any(m in p_lower for m in _PROSE_MARKERS)
+                    or "**" in part
+                    or len(part) > 100
             )
 
         if any(_is_malformed(p) for p in parts):
@@ -1746,7 +1829,7 @@ def _get_law_context(pdf_id: str) -> str:
                 parts.append(f"[PAGE {page_num}]\n{result.strip()}\n")
 
         _LAW_CONTEXTS[pdf_id] = "\n".join(parts)
-        logger.info(f"[LawCtx] Loaded {pdf_id[:16]}: {page_count} pages, {len(parts)-1} after cleaning")
+        logger.info(f"[LawCtx] Loaded {pdf_id[:16]}: {page_count} pages, {len(parts) - 1} after cleaning")
     except Exception as e:
         logger.warning(f"[LawCtx] Failed {pdf_id[:16]}: {e}")
         _LAW_CONTEXTS[pdf_id] = ""
@@ -1786,8 +1869,8 @@ _LAW_PAGE_CAP = 15
 
 
 def _get_retriever_windowed_context(
-    law_pdf_ids: list[str],
-    source_pages: list[dict],
+        law_pdf_ids: list[str],
+        source_pages: list[dict],
 ) -> str:
     """Build law context using retriever-guided windowing.
 
@@ -1955,7 +2038,8 @@ def _identify_law_from_question(question: str) -> str | None:
         "operating": ["operating law", "difc law no. 7", "operating law 2018"],
         "crs": ["common reporting standard", "crs law", "crs", "difc law no. 2 of 2018"],
         "general partnership": ["general partnership law", "general partnership", "gp law", "difc law no. 11"],
-        "limited liability partnership": ["limited liability partnership law", "limited liability partnership", "llp law", "difc law no. 5 of 2004"],
+        "limited liability partnership": ["limited liability partnership law", "limited liability partnership",
+                                          "llp law", "difc law no. 5 of 2004"],
         "civil": ["civil and commercial laws", "application of civil", "civil and commercial"],
     }
     for key, patterns in law_patterns.items():
@@ -1990,12 +2074,15 @@ def _is_pure_law_question(question: str) -> bool:
 
 
 async def generate_answer(
-    question: str,
-    answer_type: str,
-    source_pages: list[dict],
-    question_id: str = "",
-    metadata_answer: object = None,
-    force_model: str | None = None,
+        question: str,
+        answer_type: str,
+        source_pages: list[dict],
+        question_id: str = "",
+        metadata_answer: object = None,
+        force_model: str | None = None,
+        on_token=None,
+        web_mode: bool = False,
+        conversation_history: "list[dict] | None" = None,
 ) -> AnswerResult:
     """Generate an answer for a DIFC legal question.
 
@@ -2004,6 +2091,13 @@ async def generate_answer(
         answer_type: One of boolean, number, name, names, date, free_text.
         source_pages: Pre-selected pages [{"doc_id": "...", "page_number": N, "text": "..."}].
         question_id: Optional question ID for logging.
+        metadata_answer: Pre-computed answer from router (skips LLM for non-free_text).
+        force_model: Override the default LLM model.
+        on_token: Streaming callback for token-by-token output (web mode).
+        web_mode: When True, preserves markdown formatting in free_text answers
+            and removes the character limit. Affects _get_system_prompt (adds markdown
+            instructions) and _parse_answer (skips ** stripping and 705-char cap).
+            Only meaningful for free_text answer_type.
 
     Returns:
         AnswerResult with answer, citations, and performance metrics.
@@ -2089,7 +2183,7 @@ async def generate_answer(
                     ctx for pid in law_pdf_ids if (ctx := _get_law_context(pid))
                 )
             if law_context:
-                system = _get_system_prompt(question, answer_type)
+                system = _get_system_prompt(question, answer_type, web_mode=web_mode)
                 max_tok = _get_max_tokens(answer_type)
 
                 # Build user message with law context instead of source pages
@@ -2154,7 +2248,7 @@ async def generate_answer(
                         system_blocks=system_blocks,
                     )
 
-                    parsed = _parse_answer(raw, answer_type)
+                    parsed = _parse_answer(raw, answer_type, web_mode=web_mode)
 
                     # Build chunk_pages: prefer LLM-identified pages (the model
                     # knows which [PAGE N] sections it actually referenced).
@@ -2208,19 +2302,28 @@ async def generate_answer(
         logger.warning(f"[{qid_short}] No context available")
         return AnswerResult(
             answer=None if answer_type != "free_text" else "The information is not available in the provided documents.",
-            chunk_pages=[{"doc_id": p["doc_id"], "page_numbers": [p["page_number"]]} for p in source_pages] if source_pages else [],
+            chunk_pages=[{"doc_id": p["doc_id"], "page_numbers": [p["page_number"]], "text": p.get("text")} for p in
+                         source_pages] if source_pages else [],
         )
 
-    system = _get_system_prompt(question, answer_type)
+    system = _get_system_prompt(question, answer_type, web_mode=web_mode)
     max_tok = _get_max_tokens(answer_type)
     user_msg = _build_user_message(question, context, answer_type, sub_questions=_sub_questions)
 
     ft_model = force_model or (MODEL_FREE_TEXT if answer_type == "free_text" else MODEL)
-    raw, llm_pages, ttft, total, tpot, in_tok, out_tok = _call_llm_structured(
-        system, user_msg, max_tok, model=ft_model,
-    )
+    if on_token is not None:
+        import asyncio as _asyncio
+        raw, llm_pages, ttft, total, tpot, in_tok, out_tok = await _asyncio.to_thread(
+            _call_llm_structured, system, user_msg, max_tok, model=ft_model, on_token=on_token,
+            conversation_history=conversation_history,
+        )
+    else:
+        raw, llm_pages, ttft, total, tpot, in_tok, out_tok = _call_llm_structured(
+            system, user_msg, max_tok, model=ft_model,
+            conversation_history=conversation_history,
+        )
 
-    parsed = _parse_answer(raw, answer_type)
+    parsed = _parse_answer(raw, answer_type, web_mode=web_mode)
     grounding = _extract_grounding(raw) if answer_type == "free_text" else []
 
     # Build chunk_pages: prefer LLM-identified pages for RAG path.
