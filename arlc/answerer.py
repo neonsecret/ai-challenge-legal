@@ -1299,7 +1299,6 @@ def _call_llm_structured(
             system_prompt, user_message, max_tokens, model=model,
             system_blocks=system_blocks, on_token=on_token,
             conversation_history=conversation_history,
-            conversation_history=conversation_history,
         )
         pages = _extract_pages_used(raw)
         return raw, pages, ttft, total, tpot, in_tok, out_tok
