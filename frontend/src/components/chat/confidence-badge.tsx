@@ -5,7 +5,12 @@ import { cn } from "@/lib/utils"
 
 type ConfidenceLevel = "high" | "medium" | "low"
 
-function getConfidenceLevel(score: number): ConfidenceLevel {
+function getConfidenceLevel(score: number | string): ConfidenceLevel {
+  if (typeof score === "string") {
+    if (score === "high") return "high"
+    if (score === "degraded") return "medium"
+    return "low"
+  }
   if (score >= 0.7) return "high"
   if (score >= 0.4) return "medium"
   return "low"
@@ -42,7 +47,7 @@ const CONFIDENCE_CONFIG: Record<ConfidenceLevel, {
 }
 
 interface ConfidenceBadgeProps {
-  confidence: number
+  confidence: number | string
   className?: string
 }
 
