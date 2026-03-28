@@ -1,0 +1,410 @@
+{
+  "aggregate": {
+    "num_queries": 20,
+    "retrieval_accuracy": 0.8,
+    "avg_rouge_l": 0.12551713262392789,
+    "avg_groundedness": 0.5803571428571428
+  },
+  "per_query": [
+    {
+      "question": "Bob and Ted are close friends. Ted is on trial for drug offences, and Bob has been selected as a juror in Ted\u2019s case. Is the judge required to excuse Bob from serving on the jury?",
+      "gold_passage_id": "1.2-c2-s2",
+      "retrieved_ids": [
+        "1.2-c2-s2",
+        "1.2.1-c3-s1",
+        "1.2-c2-s3",
+        "1.2.1-c1-s1",
+        "1.5-c2-s1",
+        "1.11-c8-s1",
+        "1.5.1-c5-s1",
+        "1.4-c2-s3",
+        "1.2-c1-s1",
+        "1.2-c2-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.2603550295857988,
+      "groundedness": 1.0,
+      "answer_preview": "The judge is not strictly required to excuse Bob but has discretionary power to do so. Under the Juries Act 2000 s 32(3), the court \"may excuse a potential juror if it is satisfied that the person wil"
+    },
+    {
+      "question": "Harry is serving as a juror in a burglary trial. He is also a professional locksmith. During the proceedings, Harry is shown a lock which, in his expert view, is too damaged to have been lockpicked in the manner described in court. Why might Harry's expert knowledge of lockpicking be irrelevant when assessing the physical evidence?",
+      "gold_passage_id": "1.5-c5-s1",
+      "retrieved_ids": [
+        "4.13.1-c5-s5",
+        "4.13.1-c5-s3",
+        "4.13.1-c5-s2",
+        "4.13.1-c5-s6",
+        "4.13.1.1-c1-s1",
+        "4.13.1-c5-s4",
+        "1.5-c1-s1",
+        "4.13.1.2-c1-s1",
+        "4.13.2-c4-s2",
+        "4.13.1-c4-s1"
+      ],
+      "retrieval_hit": 0.0,
+      "rouge_l": 0.125,
+      "groundedness": 0.25,
+      "answer_preview": "The provided source document, DIFC Courts Order No. 1 of 2019 in Respect of Issuing and Conducting Proceedings, Rights of Audience and Registration in Part I and Part II of the DIFC Courts' Register o"
+    },
+    {
+      "question": "Isaac is on trial for statutory murder of an emergency worker. You are his barrister. Should you notify the jury that, according to the Crimes Act 1958, the standard sentence for this offence is 30 years imprisonment?",
+      "gold_passage_id": "1.5-c6-s1",
+      "retrieved_ids": [
+        "1.5-c6-s1",
+        "3.10-c2-s9",
+        "3.10-c2-s7",
+        "3.1-c3-s1",
+        "3.1-c1-s1",
+        "7.2.1A-c1-s1",
+        "4.1-c2-s1",
+        "7.2.1A.1-c1-s1",
+        "4.10-c3-s3",
+        "4.11-c8-s3"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.09523809523809522,
+      "groundedness": 0.5,
+      "answer_preview": "The concepts of statutory murder charges, criminal trials, jury notifications, barristers acting in criminal defence, and standard criminal sentences do not exist in the DIFC legal framework. The DIFC"
+    },
+    {
+      "question": "Should jurors be excused if they have encountered news stories about the accused prior to the trial commencing?",
+      "gold_passage_id": "1.5-c7-s2",
+      "retrieved_ids": [
+        "1.5-c7-s2",
+        "1.2.1-c1-s1",
+        "1.2-c2-s2",
+        "1.2-c1-s1",
+        "1.2-c2-s3",
+        "1.5-c2-s1",
+        "1.5-c8-s1",
+        "1.11-c8-s1",
+        "1.5.1-c5-s1",
+        "1.11-c7-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.2236842105263158,
+      "groundedness": 1.0,
+      "answer_preview": "Jurors should not automatically be excused simply because they have encountered news stories about the accused prior to trial. The sources indicate that in most cases, potential prejudice from pre-tri"
+    },
+    {
+      "question": "Frank and Joe are jurors in an arson trial. Over the weekend, Joe finds photos of the accused holding a petrol canister and texts them to Frank. Having received this new information, what should Frank do?",
+      "gold_passage_id": "1.5-c8-s1",
+      "retrieved_ids": [
+        "1.5-c8-s1",
+        "1.5.1-c3-s2",
+        "1.11-c6-s2",
+        "1.5-c2-s1",
+        "1.5-c1-s4",
+        "1.11-c7-s1",
+        "1.11-c8-s1",
+        "1.5.1-c4-s1",
+        "1.10-c2-s5",
+        "1.5.1-c5-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.08403361344537814,
+      "groundedness": 0.2,
+      "answer_preview": "The provided source document does not address juror conduct, arson trials, or the handling of extraneous evidence by jurors. The document is Annex G of DIFCA Consultation Paper No. 4 of 2023, which is"
+    },
+    {
+      "question": "Does the standard of proof of \u201cbeyond reasonable doubt\u201d imply that the jury must be fully convinced of every claim the prosecution has made?",
+      "gold_passage_id": "1.7-c3-s2",
+      "retrieved_ids": [
+        "1.7-c3-s5",
+        "1.7-c3-s2",
+        "3.7.1-c1-s1",
+        "1.7-c4-s2",
+        "3.6-c4-s3",
+        "4.13.2-c3-s1",
+        "3.16-c8-s1",
+        "11.1-c12-s1",
+        "1.7-c4-s19",
+        "1.7-c4-s16"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.05555555555555556,
+      "groundedness": 0.5,
+      "answer_preview": "The standard of proof of \"beyond reasonable doubt\" and the concept of jury trials do not exist in DIFC law. The DIFC Courts, established under DIFC Law No. 10 of 2004 (the Judicial Authority Law) and "
+    },
+    {
+      "question": "Sally is accused of cultivating narcotic plants in her backyard. One of the elements of this charge is that \u201cthe accused intentionally cultivated or attempted to cultivate a particular substance.\u201d To establish whether this is the case, the judge believes it would be valuable to visit Sally\u2019s backyard and have the jury examine it for themselves. What is the name of the legal procedure whereby the court travels to a location relevant to the charge?",
+      "gold_passage_id": "2.1-c1-s1",
+      "retrieved_ids": [
+        "2.1-c1-s1",
+        "2.1.1-c1-s1",
+        "2.1-c2-s1",
+        "2.1-c5-s1",
+        "2.1-c4-s1",
+        "1.5-c4-s1",
+        "2.1-c2-s2",
+        "2.1-c3-s1",
+        "1.5-c5-s1",
+        "2.1-c6-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.1794871794871795,
+      "groundedness": 0.6,
+      "answer_preview": "The provided source document does not address the legal procedure described in the question. The source text is DIFC Courts Rules of Court Order No. 1 of 2015, which deals exclusively with the jurisdi"
+    },
+    {
+      "question": "Josh is 21 years old. He witnessed a murder that was clearly perpetrated by the accused. The prosecution, however, needs to determine whether the accused committed the acts voluntarily, thus satisfying the elements of intentional or reckless murder. In court, the judge plays a recording of Josh giving his eyewitness testimony. What is this evidentiary process called?",
+      "gold_passage_id": "2.3.3-c2-s1",
+      "retrieved_ids": [
+        "2.3.3-c2-s3",
+        "2.3.3-c1-s1",
+        "7.4.15-c2-s1",
+        "2.3.3.1-c1-s1",
+        "7.2.1-c4-s1",
+        "2.4.1-c1-s1",
+        "7.1.1-c8-s4",
+        "2.4-c1-s2",
+        "7.1.1-c8-s2",
+        "4.12-c4-s1"
+      ],
+      "retrieval_hit": 0.0,
+      "rouge_l": 0.112,
+      "groundedness": 0.6,
+      "answer_preview": "The provided source document does not address the evidentiary process described in the question. The document is DIFC Courts Rules of Court Order No. 1 of 2015, which deals exclusively with the jurisd"
+    },
+    {
+      "question": "Olivia illegally bought cannabis from a tobacconist. As she left, she saw a man firebomb the store. She is now a witness in the arson trial. What legal privilege should she consider when giving her evidence?",
+      "gold_passage_id": "2.5-c1-s1",
+      "retrieved_ids": [
+        "2.5-c1-s1",
+        "2.5-c1-s2",
+        "2.5.1-c1-s1",
+        "2.5.2-c1-s1",
+        "4.22.1-c2-s3",
+        "4.1-c5-s1",
+        "4.22-c2-s7",
+        "4.22-c2-s1",
+        "4.21-c2-s6",
+        "4.1-c2-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.1276595744680851,
+      "groundedness": 0.5714285714285714,
+      "answer_preview": "The provided document does not address the legal privilege Olivia should consider when giving evidence in an arson trial. The DIFC Courts Rules of Court Order No. 1 of 2017 deals exclusively with lega"
+    },
+    {
+      "question": "Emma is found in possession of someone else\u2019s phone but has no documentation of how she obtained it. Emma\u2019s counsel argues that possession of the phone is circumstantial evidence and thus completely inadmissible to establish guilt. Is Emma\u2019s counsel correct?",
+      "gold_passage_id": "3.6-c2-s1",
+      "retrieved_ids": [
+        "7.5.11-c7-s3",
+        "7.5.11-c4-s3",
+        "3.6-c2-s1",
+        "7.5.11-c1-s1",
+        "7.5.11-c7-s4",
+        "3.6-c1-s1",
+        "7.5.11-c7-s2",
+        "7.5.11-c5-s1",
+        "7.5.11-c4-s2",
+        "7.5.11-c4-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.07633587786259542,
+      "groundedness": 0.6,
+      "answer_preview": "The provided source document does not address the question of whether circumstantial evidence such as possession of stolen property is admissible to establish guilt. The document is a consultation pap"
+    },
+    {
+      "question": "John is on trial for an unnamed offence. John testifies that he could not have committed the offence because he was at an arcade 10 miles away when the offence took place. Earlier, the jury accepted arcade tickets as evidence of John's alibi. John\u2019s counsel now argues that, given this plausible alibi, John could not have committed the crime. What type of reasoning is this an example of?",
+      "gold_passage_id": "3.6-c1-s1",
+      "retrieved_ids": [
+        "4.25.1-c1-s1",
+        "4.25-c2-s2",
+        "4.25-c2-s3",
+        "4.25-c2-s1",
+        "3.6-c3-s3",
+        "3.6-c3-s7",
+        "3.6-c3-s4",
+        "3.6-c3-s1",
+        "3.6-c3-s12",
+        "3.6-c3-s14"
+      ],
+      "retrieval_hit": 0.0,
+      "rouge_l": 0.10975609756097561,
+      "groundedness": 0.0,
+      "answer_preview": "The provided source documents do not address the question asked. The documents consist of a DIFCA Consultation Paper No. 2 of 2017 comment form (Annex C) relating to the DIFC Laws Amendment Law, DIFC "
+    },
+    {
+      "question": "Does Victoria have a law/laws protecting against double jeopardy?",
+      "gold_passage_id": "3.12-c1-s1",
+      "retrieved_ids": [
+        "4.24-c1-s1",
+        "7.6.1-c9-s2",
+        "7.8.3-c1-s1",
+        "7.2.1-c8-s1",
+        "3.12-c1-s1",
+        "7.3.1.2-c2-s2",
+        "8.11-c1-s2",
+        "7.4.12-c7-s1",
+        "7.3.27-c7-s1",
+        "7.3.3-c8-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.0759493670886076,
+      "groundedness": 0.2857142857142857,
+      "answer_preview": "Double jeopardy protections do not exist in DIFC law. The DIFC operates exclusively as a civil and commercial jurisdiction, not a criminal one, established under DIFC Law No. 10 of 2004 (the Judicial "
+    },
+    {
+      "question": "Sophie and Hazel are two of twelve jurors in a trial. Both are uncertain of their verdict, while the remaining ten jurors believe the accused is guilty. The jury is becoming frustrated with Sophie and Hazel's indecision, but the judge instructs the jury to continue deliberating. What is this instruction called?",
+      "gold_passage_id": "3.13-c2-s1",
+      "retrieved_ids": [
+        "3.13-c2-s1",
+        "3.13-c3-s3",
+        "3.13-c3-s5",
+        "3.13-c1-s1",
+        "3.13.1-c1-s1",
+        "3.13-c3-s2",
+        "3.13.2-c1-s1",
+        "3.16-c1-s1",
+        "2.2-c5-s1",
+        "3.2.1-c1-s1"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.039603960396039604,
+      "groundedness": 0.6,
+      "answer_preview": "The provided source document does not address or contain any information about jury trials, jury deliberations, jury instructions, or the concept described in the question. The document is a consultat"
+    },
+    {
+      "question": "Tim is on trial for aggravated burglary. Before Tim gives evidence, his counsel calls another witness to testify first. Why might this be a bad idea for the defence?",
+      "gold_passage_id": "4.1-c1-s1",
+      "retrieved_ids": [
+        "4.1-c1-s1",
+        "1.10-c1-s3",
+        "4.11-c8-s3",
+        "4.10-c3-s4",
+        "4.10-c3-s1",
+        "4.1-c2-s1",
+        "4.1-c5-s1",
+        "4.1-c6-s1",
+        "4.1-c3-s1",
+        "4.11-c9-s6"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.09589041095890412,
+      "groundedness": 1.0,
+      "answer_preview": "The provided source document does not address this question. The document is a DIFCA Consultation Paper No. 2 of 2017 comment form relating to proposed amendments to the DIFC Court Law, Data Protectio"
+    },
+    {
+      "question": "Paul is 12 years old. He is a witness in a trial related to a common law riot. You are counsel for the accused. Should you argue that Paul\u2019s is fundamentally untrustworthy because of his age?",
+      "gold_passage_id": "4.2-c3-s1",
+      "retrieved_ids": [
+        "4.2-c3-s1",
+        "4.2-c4-s1",
+        "4.2-c4-s3",
+        "4.2-c4-s4",
+        "4.2-c1-s1",
+        "4.21-c5-s8",
+        "4.21-c2-s12",
+        "4.2.1-c1-s1",
+        "4.21-c1-s1",
+        "4.8.3-c3-s7"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.13513513513513511,
+      "groundedness": 0.6,
+      "answer_preview": "The provided DIFC Trust Law (DIFC Law No. 4 of 2018) does not address the question of whether a 12-year-old witness's testimony in a criminal trial related to common law riot should be considered fund"
+    },
+    {
+      "question": "Can the defence use good character evidence to argue the accused is innocent?",
+      "gold_passage_id": "4.3-c2-s2",
+      "retrieved_ids": [
+        "4.3-c2-s3",
+        "4.3-c2-s2",
+        "4.3-c2-s9",
+        "4.3.1-c1-s1",
+        "4.3-c2-s8",
+        "4.3-c2-s1",
+        "4.3.2-c1-s1",
+        "4.3-c3-s2",
+        "4.3-c3-s1",
+        "4.3.1-c1-s2"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.3,
+      "groundedness": 1.0,
+      "answer_preview": "Yes, the defence may use good character evidence to argue the accused is innocent, though it cannot provide a defence in itself. Section 110(1) of the Evidence Act 2008 permits the defence to adduce e"
+    },
+    {
+      "question": "Can the prosecution freely use bad character evidence to argue the accused is guilty?",
+      "gold_passage_id": "4.3-c3-s1",
+      "retrieved_ids": [
+        "4.3-c3-s2",
+        "4.3-c3-s1",
+        "4.3.3-c1-s1",
+        "4.3.2-c1-s3",
+        "4.3.1-c1-s1",
+        "4.3.1-c1-s2",
+        "4.3-c2-s10",
+        "4.3-c2-s8",
+        "4.3.2-c1-s1",
+        "4.3-c2-s2"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.07407407407407406,
+      "groundedness": 1.0,
+      "answer_preview": "No, the prosecution cannot freely use bad character evidence to argue the accused is guilty. Evidence of bad character is generally inadmissible as unfairly prejudicial, per Melbourne v R (1999) 198 C"
+    },
+    {
+      "question": "Sam is on trial for murdering her neighbour. The prosecution presents a text from Sam to a friend saying, \u201cI murdered my neighbour today.\u201d What must be established for this text to be treated as an admission?",
+      "gold_passage_id": "4.5-c5-s1",
+      "retrieved_ids": [
+        "4.5-c5-s2",
+        "4.5.1-c1-s1",
+        "4.5.1-c2-s1",
+        "4.5-c2-s1",
+        "4.5-c5-s7",
+        "4.5-c5-s1",
+        "4.16-c3-s1",
+        "4.5-c5-s6",
+        "4.6-c3-s5",
+        "4.5-c5-s8"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.11214953271028037,
+      "groundedness": 0.4,
+      "answer_preview": "The provided document does not address the requirements for establishing a text message as an admission in a murder trial. The source text is a consultation paper comment form (Annex C) related to DIF"
+    },
+    {
+      "question": "Omar is charged with intentionally causing serious injury. In a recorded interview, he admits being at the scene and pushing the complainant but denies using a weapon or intending serious harm. At trial, the prosecution asks the jury to accept the incriminating parts of the interview but treat his denial of using a weapon as lies. Does this necessarily involve \u2018consciousness of guilt\u2019 reasoning?",
+      "gold_passage_id": "4.6-c3-s5",
+      "retrieved_ids": [
+        "7.5.11-c4-s7",
+        "4.6-c3-s5",
+        "4.15-c3-s6",
+        "4.6-c1-s2",
+        "4.6-c1-s1",
+        "4.6.1-c3-s1",
+        "4.16-c4-s6",
+        "4.6-c6-s2",
+        "4.6-c3-s3",
+        "4.16-c4-s4"
+      ],
+      "retrieval_hit": 1.0,
+      "rouge_l": 0.11834319526627218,
+      "groundedness": 0.5,
+      "answer_preview": "The provided document, DIFC Order No. 1 of 2009 in respect of Parts 43 and 53 of the Rules of the DIFC Courts, does not address the question of whether selective reliance on parts of a recorded interv"
+    },
+    {
+      "question": "Liam is on trial for arson. His sister gives evidence that, at a family dinner, she said, \u201cThe police think you set fire to Dad\u2019s shed. You didn\u2019t do it, did you?\u201d Liam, who had been speaking normally, then went silent and looked down. Can this be used as evidence probative of guilt?",
+      "gold_passage_id": "4.6-c4-s1",
+      "retrieved_ids": [
+        "4.16-c3-s1",
+        "4.6-c4-s9",
+        "4.16-c4-s1",
+        "4.16-c4-s4",
+        "4.6-c4-s8",
+        "4.16-c4-s6",
+        "4.16-c4-s5",
+        "4.16-c2-s1",
+        "4.15-c7-s2",
+        "4.16.1-c1-s3"
+      ],
+      "retrieval_hit": 0.0,
+      "rouge_l": 0.11009174311926606,
+      "groundedness": 0.4,
+      "answer_preview": "The provided document does not address this question. The source text is Annex D, a Table of Comments on Consultation Paper No. 5 of 2019 concerning DIFC Family Office Regulations. It deals exclusivel"
+    }
+  ]
+}
