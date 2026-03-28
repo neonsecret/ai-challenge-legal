@@ -7,9 +7,12 @@ Usage:
     python -m neolex.admin keys-revoke <prefix>
     python -m neolex.admin show-log [--table queries|events] [--limit N]
 
-The CLI reads NEOLEX_DB_PATH (defaults to neolex.db in CWD).
-It does NOT require the FastAPI server to be running.
+Reads DATABASE_URL from .env (PostgreSQL on RTX 3070).
+Does NOT require the FastAPI server to be running.
 """
+from dotenv import load_dotenv as _load_dotenv
+_load_dotenv(override=False)
+
 import argparse
 import asyncio
 import sys
@@ -132,12 +135,6 @@ def build_parser() -> argparse.ArgumentParser:
         prog="python -m neolex.admin",
         description="Vitreon Legal admin CLI — manage API keys and view audit log.",
     )
-    parser.add_argument(
-        "--db",
-        help=f"Path to SQLite DB (default: {settings.db_path})",
-        default=None,
-    )
-
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
     sub.required = True
 
@@ -174,10 +171,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
-
-    # Allow --db flag to override settings.db_path for this CLI session
-    if args.db:
-        settings.db_path = args.db
 
     dispatch = {
         "keys-create": cmd_keys_create,
