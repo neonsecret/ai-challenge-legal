@@ -3,11 +3,9 @@
 import { useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 
-// SSE (EventSource) needs a direct connection — can't go through Next.js rewrite proxy.
+// SSE (EventSource) goes direct to backend — CORS configured via ALLOWED_ORIGINS.
 // Regular fetch calls use "" (relative, proxied by Next.js rewrites).
-// SSE calls use the direct backend URL.
-const SSE_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? ""
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
+const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
 /** Map backend stage codes to user-friendly labels. Supports "answering:N" format. */
 function formatStatus(raw: string): string {
@@ -98,7 +96,7 @@ export function useQueryStream(): UseQueryStreamReturn {
       })
 
       // Fix: relative URLs require a base when using new URL()
-      const url = new URL(`${SSE_BASE}/api/v1/query/stream`, window.location.origin)
+      const url = new URL(`${API_BASE}/api/v1/query/stream`, window.location.origin)
       url.searchParams.set("question", question)
       url.searchParams.set("answer_type", "free_text")
       // EventSource cannot send custom headers; pass key as query param

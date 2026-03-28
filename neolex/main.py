@@ -4,6 +4,10 @@ Entry point for the Vitreon Legal API. The lifespan context manager pre-warms
 all ML model singletons before serving requests — this prevents cross-encoder
 deadlocks under concurrent cold-start load (see arlc/pipeline.py lines 1491-1493).
 """
+# Load .env BEFORE any other imports — Settings reads os.environ at class definition time.
+from dotenv import load_dotenv as _load_dotenv
+_load_dotenv(override=False)
+
 import asyncio
 import logging
 import time
