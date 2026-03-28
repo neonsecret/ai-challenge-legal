@@ -81,13 +81,16 @@ async def query_stream(
 ):
     """Stream a legal query response as Server-Sent Events.
 
-    Events emitted in order:
-    1. status  {"status": "processing"}         -- immediately on connection
-    2. answer  {QueryResponse JSON}              -- when pipeline completes
-    3. done    {}                                -- signals end of stream
+    Events emitted in real time as the pipeline progresses:
+    1. status  {"status": "routing"}            -- document routing started
+    2. status  {"status": "retrieving"}         -- hybrid retrieval started
+    3. status  {"status": "answering:N"}        -- LLM generation started (N source pages)
+    4. answer  {QueryResponse JSON}             -- pipeline completed
+    5. done    {}                               -- signals end of stream
 
     Use with EventSource JS API:
         const es = new EventSource('/api/v1/query/stream?question=...')
+        es.addEventListener('status', e => console.log(JSON.parse(e.data)))
         es.addEventListener('answer', e => console.log(JSON.parse(e.data)))
         es.addEventListener('done', () => es.close())
     """
@@ -100,26 +103,71 @@ async def query_stream(
     state = request.app.state
 
     async def event_generator():
-        # Emit status immediately so the client knows the connection is open
-        # and the server received the request. This prevents client-side timeout
-        # during the 3-15 second pipeline execution.
-        yield {"event": "status", "data": json.dumps({"status": "processing"})}
+        # Queue-based real-time status: pipeline pushes stage transitions,
+        # SSE generator yields them as they arrive.
+        status_queue: asyncio.Queue = asyncio.Queue()
 
-        # asyncio.sleep(0) is a cancellation checkpoint — yields control back to
-        # the event loop so the SSE framework can flush the status event to the
-        # client before we block on the pipeline call.
+        def on_status(stage: str):
+            """Called from the event loop between awaits in _process_question."""
+            status_queue.put_nowait(("status", stage))
+
+        # Emit initial connection status
+        yield {"event": "status", "data": json.dumps({"status": "processing"})}
         await asyncio.sleep(0)
 
+        # Run pipeline as a concurrent task so we can yield status events while it runs
+        pipeline_result: dict = {}
+        pipeline_error: BaseException | None = None
+
+        async def _run_pipeline():
+            nonlocal pipeline_result, pipeline_error
+            try:
+                pipeline_result = await run_single_question(
+                    question=question,
+                    answer_type=answer_type,
+                    semaphore=state.semaphore,
+                    route_fn=state.route_fn,
+                    retrieve_fn=state.retrieve_fn,
+                    answer_fn=state.answer_fn,
+                    on_status=on_status,
+                )
+            except BaseException as exc:
+                pipeline_error = exc
+            finally:
+                # Signal completion to the SSE loop
+                status_queue.put_nowait(("done", None))
+
+        task = asyncio.create_task(_run_pipeline())
+
         try:
-            result = await run_single_question(
-                question=question,
-                answer_type=answer_type,
-                semaphore=state.semaphore,
-                route_fn=state.route_fn,
-                retrieve_fn=state.retrieve_fn,
-                answer_fn=state.answer_fn,
-            )
-            response = pipeline_dict_to_response(result)
+            # Yield status events in real time as pipeline progresses
+            while True:
+                event_type, data = await status_queue.get()
+                if event_type == "status":
+                    yield {"event": "status", "data": json.dumps({"status": data})}
+                    await asyncio.sleep(0)  # flush
+                elif event_type == "done":
+                    break
+        except asyncio.CancelledError:
+            task.cancel()
+            logger.info("SSE client disconnected during pipeline execution")
+            return
+
+        # Handle pipeline errors
+        if isinstance(pipeline_error, asyncio.CancelledError):
+            logger.info("SSE pipeline cancelled")
+            return
+        if pipeline_error is not None:
+            logger.exception("SSE pipeline error: %s", pipeline_error)
+            yield {
+                "event": "error",
+                "data": json.dumps({"error": "Pipeline failed", "detail": str(pipeline_error)}),
+            }
+            return
+
+        # Emit answer + audit log
+        try:
+            response = pipeline_dict_to_response(pipeline_result)
             sources_json = json.dumps([s.model_dump() for s in response.sources])
             async with get_audit_db() as db:
                 await db.log_query(
@@ -127,23 +175,17 @@ async def query_stream(
                     question=question,
                     answer_text=response.answer,
                     sources_json=sources_json,
-                    latency_ms=result.get("total_time_ms", 0),
+                    latency_ms=pipeline_result.get("total_time_ms", 0),
                     model_name=response.model_name,
                     ip=getattr(request.client, "host", None),
                     user_agent=request.headers.get("user-agent"),
                 )
             yield {"event": "answer", "data": response.model_dump_json()}
-        except asyncio.CancelledError:
-            # Client disconnected — generator is cancelled. Just return;
-            # do not yield anything further. The pipeline coroutine is already
-            # cancelled because run_single_question propagates cancellation.
-            logger.info("SSE client disconnected during pipeline execution")
-            return
         except Exception as exc:
-            logger.exception("SSE pipeline error: %s", exc)
+            logger.exception("SSE post-processing error: %s", exc)
             yield {
                 "event": "error",
-                "data": json.dumps({"error": "Pipeline failed", "detail": str(exc)}),
+                "data": json.dumps({"error": "Failed to format response", "detail": str(exc)}),
             }
             return
 

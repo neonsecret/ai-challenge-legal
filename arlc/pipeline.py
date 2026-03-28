@@ -488,15 +488,24 @@ async def _process_question(
     retrieve_fn,
     answer_fn,
     semaphore: asyncio.Semaphore,
+    on_status=None,
 ) -> dict:
-    """Process a single question through the pipeline."""
+    """Process a single question through the pipeline.
+
+    on_status: optional async or sync callback(stage: str) called at each stage transition.
+    """
     question = question_data["question"]
     answer_type = question_data["answer_type"]
     question_id = question_data["id"]
 
+    def _emit(stage: str):
+        if on_status is not None:
+            on_status(stage)
+
     async with semaphore:
         # Route first (fast, deterministic, no LLM) — outside timeout so we
         # always have doc IDs available for fallback citations if retrieval hangs.
+        _emit("routing")
         route_result = await asyncio.to_thread(route_fn, question, answer_type)
         if hasattr(route_result, "target_doc_ids"):
             _fallback_docs = route_result.target_doc_ids or []
@@ -518,6 +527,7 @@ async def _process_question(
                         question, answer_type, question_id,
                         route_result, retrieve_fn, answer_fn,
                         _retrieval_cache=_retrieval_cache,
+                        on_status=on_status,
                     ),
                     timeout=600,  # 10 min max per question (allows for rate limit retries)
                 )
@@ -615,6 +625,7 @@ async def _process_question_inner(
     retrieve_fn,
     answer_fn,
     _retrieval_cache: dict | None = None,
+    on_status=None,
 ) -> dict:
     """Inner pipeline logic (retrieval + answering), wrapped in timeout by caller.
     route_result is pre-computed by the caller so doc IDs survive a timeout.
@@ -730,6 +741,8 @@ async def _process_question_inner(
         }
 
     # Step 2b: Retrieve pages from target documents (normal path)
+    if on_status is not None:
+        on_status("retrieving")
     is_free_text = (answer_type == "free_text")
     # Adaptive max_per_doc by answer type (verified against gold distribution):
     # - free_text: 33% need 2+ pages from same doc → mpd=2
@@ -806,6 +819,9 @@ async def _process_question_inner(
 
     # Step 3: Generate answer using source page text (300s inner timeout)
     # 300s allows for rate-limit retries (10s+30s+60s=100s backoff + actual LLM time)
+    if on_status is not None:
+        n_pages = len(source_pages) if source_pages else 0
+        on_status(f"answering:{n_pages}")
     try:
         if asyncio.iscoroutinefunction(answer_fn):
             answer_result = await asyncio.wait_for(

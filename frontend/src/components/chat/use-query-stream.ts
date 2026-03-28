@@ -5,13 +5,19 @@ import { useRouter } from "next/navigation"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
 
-// Human-readable labels for backend status codes
-const STATUS_LABELS: Record<string, string> = {
-  processing: "Processing your question...",
-  routing: "Routing to relevant documents...",
-  retrieving: "Retrieving relevant passages...",
-  reranking: "Re-ranking results...",
-  answering: "Composing answer...",
+/** Map backend stage codes to user-friendly labels. Supports "answering:N" format. */
+function formatStatus(raw: string): string {
+  const LABELS: Record<string, string> = {
+    processing: "Processing your question...",
+    routing: "Routing to relevant documents...",
+    retrieving: "Searching DIFC Law corpus...",
+    reranking: "Re-ranking with cross-encoder...",
+  }
+  if (raw.startsWith("answering")) {
+    const n = raw.split(":")[1]
+    return n && n !== "0" ? `Composing answer from ${n} passages...` : "Composing answer..."
+  }
+  return LABELS[raw] ?? raw
 }
 
 /** Returns the stored API key, or null if absent/empty. Never returns "". */
@@ -116,25 +122,47 @@ export function useQueryStream(): UseQueryStreamReturn {
       es.addEventListener("done", () => {
         es.close()
         esRef.current = null
-        setState((prev) => ({ ...prev, isStreaming: false, streamingStatus: null }))
+        setState((prev) => ({
+          ...prev,
+          isStreaming: false,
+          streamingStatus: null,
+          // Show error if stream completed but no answer was received
+          error: prev.answer ? null : "No answer received. Please try again.",
+        }))
       })
 
-      // Forward real SSE "status" events — backend sends {"status": "processing"}
+      // Forward real SSE "status" events — backend sends {"status": "routing"}, etc.
       es.addEventListener("status", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data)
           const raw = data.status || data.message
           if (raw) {
-            const label = STATUS_LABELS[raw as string] ?? raw
-            setState((prev) => ({ ...prev, streamingStatus: label }))
+            setState((prev) => ({ ...prev, streamingStatus: formatStatus(raw) }))
           }
         } catch {
           // ignore
         }
       })
 
-      // Handle auth errors — SSE errors don't carry HTTP status, so probe the
-      // REST endpoint to distinguish 401 from network issues
+      // Handle SSE "error" events from the backend (pipeline failure, timeout, etc.)
+      es.addEventListener("error", (e: MessageEvent) => {
+        try {
+          const data = JSON.parse((e as MessageEvent).data)
+          es.close()
+          esRef.current = null
+          setState((prev) => ({
+            ...prev,
+            isStreaming: false,
+            streamingStatus: null,
+            error: data.detail || data.error || "Query failed. Please try again.",
+          }))
+        } catch {
+          // Not a JSON error event — fall through to onerror
+        }
+      })
+
+      // Handle connection-level errors — SSE errors don't carry HTTP status, so probe
+      // the REST endpoint to distinguish 401 from network issues
       es.onerror = () => {
         es.close()
         esRef.current = null
