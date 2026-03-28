@@ -1,0 +1,195 @@
+"""SQLAlchemy ORM models for auth and billing tables.
+
+Tables: users, sessions, auth_tokens, subscriptions, invoices.
+Operational tables (api_keys, queries, etc.) are in operational_models.py.
+"""
+import uuid
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import TIMESTAMP
+
+from neolex.db.postgres import Base
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    name: Mapped[str | None] = mapped_column(String)
+    avatar_url: Mapped[str | None] = mapped_column(String)
+
+    # Email/password auth (NULL if Google-only)
+    password_hash: Mapped[str | None] = mapped_column(String)
+    email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    # Google OAuth (NULL if email/password only)
+    google_id: Mapped[str | None] = mapped_column(String, unique=True)
+
+    # Subscription state
+    subscription_status: Mapped[str] = mapped_column(
+        String, default="trial", nullable=False
+    )  # trial | active | past_due | canceled
+    trial_ends_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    stripe_customer_id: Mapped[str | None] = mapped_column(String, unique=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+    last_login: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
+    sessions: Mapped[list["Session"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    auth_tokens: Mapped[list["AuthToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    subscriptions: Mapped[list["Subscription"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    invoices: Mapped[list["Invoice"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Session(Base):
+    __tablename__ = "sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    ip: Mapped[str | None] = mapped_column(String)
+    user_agent: Mapped[str | None] = mapped_column(String)
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
+
+
+class AuthToken(Base):
+    __tablename__ = "auth_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    token_type: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # email_verify | password_reset
+    expires_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    used_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="auth_tokens")
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    stripe_subscription_id: Mapped[str] = mapped_column(
+        String, unique=True, nullable=False
+    )
+    stripe_price_id: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # active | past_due | canceled | trialing
+    current_period_start: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    current_period_end: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    cancel_at_period_end: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="subscriptions")
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    stripe_invoice_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    currency: Mapped[str] = mapped_column(String, default="usd", nullable=False)
+    status: Mapped[str] = mapped_column(
+        String, nullable=False
+    )  # paid | open | void | uncollectible
+    invoice_pdf: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+
+    user: Mapped["User"] = relationship(back_populates="invoices")
+
+
+class ConversationMessage(Base):
+    """Per-user conversation history for multi-turn query context.
+
+    Ownership is enforced via user_id FK — one user can never read
+    another user's conversation history.
+    """
+
+    __tablename__ = "conversation_messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" | "assistant"
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        # Fast lookup: load history for a user+conversation ordered by time
+        Index("ix_convmsg_user_conv_time", "user_id", "conversation_id", "created_at"),
+    )

@@ -1,450 +1,397 @@
-"""Append-only SQLite audit log with WAL mode.
+"""Append-only PostgreSQL audit log using SQLAlchemy async.
 
-AuditDB is the single interface for all database operations.
+AuditDB is the single interface for all operational database operations.
 It is accessed through the get_audit_db() async context manager.
-
-APPEND-ONLY CONTRACT: AuditDB exposes NO update or delete methods for
-the queries or events tables. The api_keys table allows revoke (active=0)
-and last_used updates but never hard-deletes rows.
 """
 import datetime
 import json
 from contextlib import asynccontextmanager
 
-import aiosqlite
+from sqlalchemy import delete, func, select, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from neolex.config import settings
-
-# ---------------------------------------------------------------------------
-# Schema
-# ---------------------------------------------------------------------------
-
-_SCHEMA_SQL = """
-CREATE TABLE IF NOT EXISTS reindex_jobs (
-    job_id       TEXT PRIMARY KEY,
-    client_slug  TEXT NOT NULL,
-    status       TEXT NOT NULL DEFAULT 'pending',
-    progress     REAL NOT NULL DEFAULT 0.0,
-    started_at   TEXT NOT NULL,
-    completed_at TEXT,
-    error        TEXT,
-    doc_count    INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS documents (
-    doc_id      TEXT PRIMARY KEY,
-    client_slug TEXT NOT NULL,
-    filename    TEXT NOT NULL,
-    size_bytes  INTEGER NOT NULL,
-    upload_ts   TEXT NOT NULL,
-    indexed     INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS api_keys (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT NOT NULL,
-    key_hash    TEXT NOT NULL UNIQUE,
-    key_prefix  TEXT NOT NULL,
-    client_slug TEXT NOT NULL,
-    scope       TEXT NOT NULL DEFAULT 'query',
-    active      INTEGER NOT NULL DEFAULT 1,
-    created_at  TEXT NOT NULL,
-    last_used   TEXT
-);
-
-CREATE TABLE IF NOT EXISTS queries (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts           TEXT NOT NULL,
-    key_hash     TEXT NOT NULL,
-    question     TEXT NOT NULL,
-    answer_text  TEXT NOT NULL,
-    sources_json TEXT NOT NULL,
-    latency_ms   INTEGER NOT NULL,
-    model_name   TEXT NOT NULL,
-    ip           TEXT,
-    user_agent   TEXT
-);
-
-CREATE TABLE IF NOT EXISTS events (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts          TEXT NOT NULL,
-    key_hash    TEXT,
-    event_type  TEXT NOT NULL,
-    detail_json TEXT NOT NULL,
-    ip          TEXT,
-    user_agent  TEXT
-);
-
-CREATE TABLE IF NOT EXISTS rate_limits (
-    bucket       TEXT PRIMARY KEY,
-    window_start REAL NOT NULL,
-    request_count INTEGER NOT NULL DEFAULT 0
-);
-"""
+from neolex.db.operational_models import (
+    ApiKey,
+    Document,
+    Event,
+    Query,
+    RateLimit,
+    ReindexJob,
+)
+from neolex.db.postgres import AsyncSessionLocal
 
 
-# ---------------------------------------------------------------------------
-# AuditDB
-# ---------------------------------------------------------------------------
+def _to_dict(obj) -> dict:
+    """Convert a SQLAlchemy model instance to a plain dict."""
+    return {col.name: getattr(obj, col.name) for col in obj.__table__.columns}
+
 
 class AuditDB:
-    """Wrapper around an open aiosqlite connection.
+    """Wrapper around an async SQLAlchemy session.
 
     Never instantiate directly — use get_audit_db() context manager.
     """
 
-    def __init__(self, conn: aiosqlite.Connection) -> None:
-        self._conn = conn
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
-    # --- Schema ---
+    # --- Schema (no-op — tables created by init_db()) ---
 
     async def init_schema(self) -> None:
-        """Create tables if they do not exist. Idempotent."""
-        await self._conn.executescript(_SCHEMA_SQL)
-        await self._conn.commit()
+        """No-op for PostgreSQL. Tables are created by init_db() at startup."""
+        pass
 
     # --- Key management ---
 
     async def create_key(
-        self,
-        *,
-        name: str,
-        key_hash: str,
-        key_prefix: str,
-        client_slug: str,
-        scope: str = "query",
+            self,
+            *,
+            name: str,
+            key_hash: str,
+            key_prefix: str,
+            client_slug: str,
+            scope: str = "query",
     ) -> int:
-        """Insert a new API key row. Returns the new row id."""
         ts = datetime.datetime.utcnow().isoformat()
-        cur = await self._conn.execute(
-            "INSERT INTO api_keys (name, key_hash, key_prefix, client_slug, scope, active, created_at) "
-            "VALUES (?, ?, ?, ?, ?, 1, ?)",
-            (name, key_hash, key_prefix, client_slug, scope, ts),
+        key = ApiKey(
+            name=name,
+            key_hash=key_hash,
+            key_prefix=key_prefix,
+            client_slug=client_slug,
+            scope=scope,
+            active=True,
+            created_at=ts,
         )
-        return cur.lastrowid  # type: ignore[return-value]
+        self._session.add(key)
+        await self._session.flush()
+        return key.id
 
-    async def get_key_by_hash(self, key_hash: str) -> aiosqlite.Row | None:
-        """Return the api_keys row matching key_hash, or None."""
-        async with self._conn.execute(
-            "SELECT * FROM api_keys WHERE key_hash = ?", (key_hash,)
-        ) as cur:
-            return await cur.fetchone()
+    async def get_key_by_hash(self, key_hash: str) -> dict | None:
+        result = await self._session.execute(
+            select(ApiKey).where(ApiKey.key_hash == key_hash)
+        )
+        row = result.scalar_one_or_none()
+        return _to_dict(row) if row else None
 
-    async def list_keys(self) -> list[aiosqlite.Row]:
-        """Return all rows from api_keys."""
-        async with self._conn.execute("SELECT * FROM api_keys ORDER BY id") as cur:
-            return await cur.fetchall()
+    async def list_keys(self) -> list[dict]:
+        result = await self._session.execute(select(ApiKey).order_by(ApiKey.id))
+        return [_to_dict(r) for r in result.scalars()]
 
     async def revoke_key(self, prefix: str) -> int:
-        """Mark key(s) with matching key_prefix as inactive. Returns affected rows."""
-        cur = await self._conn.execute(
-            "UPDATE api_keys SET active = 0 WHERE key_prefix = ? AND active = 1", (prefix,)
+        result = await self._session.execute(
+            select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.active == True)  # noqa: E712
         )
-        return cur.rowcount  # type: ignore[return-value]
+        rows = result.scalars().all()
+        for row in rows:
+            row.active = False
+        return len(rows)
 
     async def update_last_used(self, key_id: int) -> None:
-        """Update last_used timestamp for a key row. Called on every successful auth."""
-        await self._conn.execute(
-            "UPDATE api_keys SET last_used = ? WHERE id = ?",
-            (datetime.datetime.utcnow().isoformat(), key_id),
+        result = await self._session.execute(
+            select(ApiKey).where(ApiKey.id == key_id)
         )
+        key = result.scalar_one_or_none()
+        if key:
+            key.last_used = datetime.datetime.utcnow().isoformat()
 
     # --- Audit log writes (append-only) ---
 
     async def log_query(
-        self,
-        *,
-        key_hash: str,
-        question: str,
-        answer_text: str,
-        sources_json: str,
-        latency_ms: int,
-        model_name: str,
-        ip: str | None,
-        user_agent: str | None,
+            self,
+            *,
+            key_hash: str,
+            question: str,
+            answer_text: str,
+            sources_json: str,
+            latency_ms: int,
+            model_name: str,
+            ip: str | None,
+            user_agent: str | None,
     ) -> None:
-        """Append a query log entry. No update or delete counterpart exists."""
-        await self._conn.execute(
-            "INSERT INTO queries "
-            "(ts, key_hash, question, answer_text, sources_json, latency_ms, model_name, ip, user_agent) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                datetime.datetime.utcnow().isoformat(),
-                key_hash,
-                question,
-                answer_text,
-                sources_json,
-                latency_ms,
-                model_name,
-                ip,
-                user_agent,
-            ),
+        self._session.add(
+            Query(
+                ts=datetime.datetime.utcnow().isoformat(),
+                key_hash=key_hash,
+                question=question,
+                answer_text=answer_text,
+                sources_json=sources_json,
+                latency_ms=latency_ms,
+                model_name=model_name,
+                ip=ip,
+                user_agent=user_agent,
+            )
         )
 
     async def log_event(
-        self,
-        *,
-        key_hash: str | None,
-        event_type: str,
-        detail: dict,
-        ip: str | None,
-        user_agent: str | None,
+            self,
+            *,
+            key_hash: str | None,
+            event_type: str,
+            detail: dict,
+            ip: str | None,
+            user_agent: str | None,
     ) -> None:
-        """Append a generic event log entry (auth failures, uploads, etc.).
-
-        key_hash may be None for unauthenticated failures where no key was provided.
-        event_type: 'auth_failure' | 'upload' | 'delete' | 'reindex' | ...
-        """
-        await self._conn.execute(
-            "INSERT INTO events (ts, key_hash, event_type, detail_json, ip, user_agent) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                datetime.datetime.utcnow().isoformat(),
-                key_hash,
-                event_type,
-                json.dumps(detail),
-                ip,
-                user_agent,
-            ),
+        self._session.add(
+            Event(
+                ts=datetime.datetime.utcnow().isoformat(),
+                key_hash=key_hash,
+                event_type=event_type,
+                detail_json=json.dumps(detail),
+                ip=ip,
+                user_agent=user_agent,
+            )
         )
 
     # --- Reindex job management ---
 
     async def create_reindex_job(
-        self,
-        *,
-        job_id: str,
-        client_slug: str,
-        started_at: str,
+            self,
+            *,
+            job_id: str,
+            client_slug: str,
+            started_at: str,
     ) -> None:
-        """Insert a new reindex job row with status='pending'."""
-        await self._conn.execute(
-            "INSERT INTO reindex_jobs (job_id, client_slug, status, progress, started_at) "
-            "VALUES (?, ?, 'pending', 0.0, ?)",
-            (job_id, client_slug, started_at),
+        self._session.add(
+            ReindexJob(
+                job_id=job_id,
+                client_slug=client_slug,
+                status="pending",
+                progress=0.0,
+                started_at=started_at,
+            )
         )
 
-    async def get_reindex_job(self, job_id: str) -> aiosqlite.Row | None:
-        """Return reindex_jobs row or None."""
-        async with self._conn.execute(
-            "SELECT * FROM reindex_jobs WHERE job_id = ?", (job_id,)
-        ) as cur:
-            return await cur.fetchone()
+    async def get_reindex_job(self, job_id: str) -> dict | None:
+        result = await self._session.execute(
+            select(ReindexJob).where(ReindexJob.job_id == job_id)
+        )
+        row = result.scalar_one_or_none()
+        return _to_dict(row) if row else None
 
     async def update_reindex_job(
-        self,
-        job_id: str,
-        *,
-        status: str,
-        progress: float = 0.0,
-        completed_at: str | None = None,
-        error: str | None = None,
-        doc_count: int = 0,
+            self,
+            job_id: str,
+            *,
+            status: str,
+            progress: float = 0.0,
+            completed_at: str | None = None,
+            error: str | None = None,
+            doc_count: int = 0,
     ) -> None:
-        """Update status, progress, and completion fields for a job."""
-        await self._conn.execute(
-            "UPDATE reindex_jobs SET status=?, progress=?, completed_at=?, error=?, doc_count=? "
-            "WHERE job_id=?",
-            (status, progress, completed_at, error, doc_count, job_id),
+        result = await self._session.execute(
+            select(ReindexJob).where(ReindexJob.job_id == job_id)
         )
+        job = result.scalar_one_or_none()
+        if job:
+            job.status = status
+            job.progress = progress
+            job.completed_at = completed_at
+            job.error = error
+            job.doc_count = doc_count
 
     # --- Document registry ---
 
     async def register_document(
-        self,
-        *,
-        doc_id: str,
-        client_slug: str,
-        filename: str,
-        size_bytes: int,
-        upload_ts: str,
+            self,
+            *,
+            doc_id: str,
+            client_slug: str,
+            filename: str,
+            size_bytes: int,
+            upload_ts: str,
     ) -> None:
-        """Insert a document row into the registry (idempotent on conflict)."""
-        await self._conn.execute(
-            "INSERT OR IGNORE INTO documents (doc_id, client_slug, filename, size_bytes, upload_ts, indexed) "
-            "VALUES (?, ?, ?, ?, ?, 0)",
-            (doc_id, client_slug, filename, size_bytes, upload_ts),
+        existing = await self._session.execute(
+            select(Document).where(
+                Document.doc_id == doc_id, Document.client_slug == client_slug
+            )
         )
+        if existing.scalar_one_or_none() is None:
+            self._session.add(
+                Document(
+                    doc_id=doc_id,
+                    client_slug=client_slug,
+                    filename=filename,
+                    size_bytes=size_bytes,
+                    upload_ts=upload_ts,
+                    indexed=False,
+                )
+            )
 
-    async def get_document(self, doc_id: str, client_slug: str) -> aiosqlite.Row | None:
-        """Return documents row for a specific client's document."""
-        async with self._conn.execute(
-            "SELECT * FROM documents WHERE doc_id=? AND client_slug=?", (doc_id, client_slug)
-        ) as cur:
-            return await cur.fetchone()
+    async def get_document(self, doc_id: str, client_slug: str) -> dict | None:
+        result = await self._session.execute(
+            select(Document).where(
+                Document.doc_id == doc_id, Document.client_slug == client_slug
+            )
+        )
+        row = result.scalar_one_or_none()
+        return _to_dict(row) if row else None
 
-    async def list_documents(self, client_slug: str) -> list[aiosqlite.Row]:
-        """Return all documents for a client, newest first."""
-        async with self._conn.execute(
-            "SELECT * FROM documents WHERE client_slug=? ORDER BY upload_ts DESC", (client_slug,)
-        ) as cur:
-            return await cur.fetchall()
+    async def list_documents(self, client_slug: str) -> list[dict]:
+        result = await self._session.execute(
+            select(Document)
+            .where(Document.client_slug == client_slug)
+            .order_by(Document.upload_ts.desc())
+        )
+        return [_to_dict(r) for r in result.scalars()]
 
     async def mark_document_indexed(self, doc_id: str, client_slug: str) -> None:
-        """Set indexed=1 for a document."""
-        await self._conn.execute(
-            "UPDATE documents SET indexed=1 WHERE doc_id=? AND client_slug=?",
-            (doc_id, client_slug),
+        result = await self._session.execute(
+            select(Document).where(
+                Document.doc_id == doc_id, Document.client_slug == client_slug
+            )
         )
+        doc = result.scalar_one_or_none()
+        if doc:
+            doc.indexed = True
 
     async def delete_document(self, doc_id: str, client_slug: str) -> int:
-        """Delete a document row. Returns number of rows deleted."""
-        cur = await self._conn.execute(
-            "DELETE FROM documents WHERE doc_id=? AND client_slug=?",
-            (doc_id, client_slug),
+        result = await self._session.execute(
+            select(Document).where(
+                Document.doc_id == doc_id, Document.client_slug == client_slug
+            )
         )
-        return cur.rowcount  # type: ignore[return-value]
+        doc = result.scalar_one_or_none()
+        if doc:
+            await self._session.delete(doc)
+            return 1
+        return 0
 
-    # --- Rate limiting (SQLite-backed, WAL-safe) ---
+    # --- Rate limiting ---
 
     async def check_and_increment_rate(
-        self,
-        bucket: str,
-        window_seconds: float,
-        limit: int,
-        now: float,
+            self,
+            bucket: str,
+            window_seconds: float,
+            limit: int,
+            now: float,
     ) -> tuple[int, bool]:
-        """Upsert a rate-limit counter for *bucket* and return (new_count, exceeded).
-
-        The bucket key is arbitrary — callers use "key:<key_hash>" for
-        per-key rate limits and "ip:<ip_address>" for IP-based limits.
-
-        This method is concurrency-safe via SQLite's WAL journal mode and
-        the UPSERT statement.  Each call is a single atomic write.
-
-        Returns:
-            (new_count, exceeded) where exceeded is True when new_count > limit.
-        """
-        import time as _time
-        cur = await self._conn.execute(
-            """
-            INSERT INTO rate_limits (bucket, window_start, request_count)
-            VALUES (?, ?, 1)
-            ON CONFLICT(bucket) DO UPDATE SET
-                request_count = CASE
-                    WHEN (? - window_start) >= ? THEN 1
-                    ELSE request_count + 1
-                END,
-                window_start = CASE
-                    WHEN (? - window_start) >= ? THEN ?
-                    ELSE window_start
-                END
-            RETURNING request_count
-            """,
-            (bucket, now, now, window_seconds, now, window_seconds, now),
+        result = await self._session.execute(
+            select(RateLimit).where(RateLimit.bucket == bucket)
         )
-        row = await cur.fetchone()
-        new_count: int = row[0] if row else 1
-        return new_count, new_count > limit
+        rl = result.scalar_one_or_none()
+
+        if rl is None:
+            self._session.add(
+                RateLimit(bucket=bucket, window_start=now, request_count=1)
+            )
+            return 1, 1 > limit
+
+        if (now - rl.window_start) >= window_seconds:
+            rl.window_start = now
+            rl.request_count = 1
+            return 1, 1 > limit
+
+        rl.request_count += 1
+        return rl.request_count, rl.request_count > limit
+
+    async def get_ip_failure_count(self, bucket: str) -> tuple[int, float] | None:
+        """Return (request_count, window_start) or None."""
+        result = await self._session.execute(
+            select(RateLimit).where(RateLimit.bucket == bucket)
+        )
+        rl = result.scalar_one_or_none()
+        if rl is None:
+            return None
+        return (rl.request_count, rl.window_start)
 
     # --- Audit log reads (admin use) ---
 
     async def get_queries(
-        self,
-        limit: int = 50,
-        offset: int = 0,
-        client_slug: str | None = None,
-    ) -> list[aiosqlite.Row]:
-        """Return paginated query log entries, newest first.
-
-        Args:
-            limit: maximum rows to return.
-            offset: number of rows to skip.
-            client_slug: when provided, restricts results to queries whose
-                key_hash belongs to that client.  Pass None only for
-                superadmin access (all clients).
-
-        The queries table does not store client_slug directly; we join via
-        api_keys so each admin only sees their own client's queries.
-        """
+            self,
+            limit: int = 50,
+            offset: int = 0,
+            client_slug: str | None = None,
+    ) -> list[dict]:
         if client_slug is None:
-            # Superadmin: return all rows across all clients.
-            async with self._conn.execute(
-                "SELECT q.* FROM queries q ORDER BY q.id DESC LIMIT ? OFFSET ?",
-                (limit, offset),
-            ) as cur:
-                return await cur.fetchall()
-
-        # Regular admin: restrict to rows whose key_hash belongs to this client.
-        async with self._conn.execute(
-            """
-            SELECT q.*
-            FROM queries q
-            INNER JOIN api_keys k ON k.key_hash = q.key_hash
-            WHERE k.client_slug = ?
-            ORDER BY q.id DESC
-            LIMIT ? OFFSET ?
-            """,
-            (client_slug, limit, offset),
-        ) as cur:
-            return await cur.fetchall()
+            result = await self._session.execute(
+                select(Query).order_by(Query.id.desc()).limit(limit).offset(offset)
+            )
+        else:
+            result = await self._session.execute(
+                select(Query)
+                .join(ApiKey, ApiKey.key_hash == Query.key_hash)
+                .where(ApiKey.client_slug == client_slug)
+                .order_by(Query.id.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+        return [_to_dict(r) for r in result.scalars()]
 
     async def get_events(
-        self,
-        limit: int = 50,
-        offset: int = 0,
-        client_slug: str | None = None,
-    ) -> list[aiosqlite.Row]:
-        """Return paginated event log entries, newest first.
-
-        Args:
-            limit: maximum rows to return.
-            offset: number of rows to skip.
-            client_slug: when provided, restricts results to events whose
-                key_hash belongs to that client (unauthenticated failures
-                where key_hash IS NULL are excluded for non-superadmins).
-                Pass None for superadmin access.
-        """
+            self,
+            limit: int = 50,
+            offset: int = 0,
+            client_slug: str | None = None,
+    ) -> list[dict]:
         if client_slug is None:
-            # Superadmin: return all rows including null-key events.
-            async with self._conn.execute(
-                "SELECT e.* FROM events e ORDER BY e.id DESC LIMIT ? OFFSET ?",
-                (limit, offset),
-            ) as cur:
-                return await cur.fetchall()
+            result = await self._session.execute(
+                select(Event).order_by(Event.id.desc()).limit(limit).offset(offset)
+            )
+        else:
+            result = await self._session.execute(
+                select(Event)
+                .join(ApiKey, ApiKey.key_hash == Event.key_hash)
+                .where(ApiKey.client_slug == client_slug)
+                .order_by(Event.id.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+        return [_to_dict(r) for r in result.scalars()]
 
-        # Regular admin: include only events tied to this client's keys.
-        async with self._conn.execute(
-            """
-            SELECT e.*
-            FROM events e
-            INNER JOIN api_keys k ON k.key_hash = e.key_hash
-            WHERE k.client_slug = ?
-            ORDER BY e.id DESC
-            LIMIT ? OFFSET ?
-            """,
-            (client_slug, limit, offset),
-        ) as cur:
-            return await cur.fetchall()
+    # --- Health check ---
+
+    async def ping(self) -> None:
+        """Verify DB connectivity with a lightweight query."""
+        await self._session.execute(text("SELECT 1"))
+
+    # --- Retention support ---
+
+    async def count_purgeable(self, table: str, cutoff_iso: str) -> int:
+        if table == "conversation_messages":
+            from neolex.db.models import ConversationMessage
+            result = await self._session.execute(
+                select(func.count()).select_from(ConversationMessage).where(
+                    ConversationMessage.created_at < cutoff_iso
+                )
+            )
+            return result.scalar() or 0
+        model = Query if table == "queries" else Event
+        result = await self._session.execute(
+            select(func.count()).select_from(model).where(model.ts < cutoff_iso)
+        )
+        return result.scalar() or 0
+
+    async def purge_table(self, table: str, cutoff_iso: str) -> int:
+        if table == "conversation_messages":
+            from neolex.db.models import ConversationMessage
+            result = await self._session.execute(
+                delete(ConversationMessage).where(
+                    ConversationMessage.created_at < cutoff_iso
+                )
+            )
+            return result.rowcount
+        model = Query if table == "queries" else Event
+        result = await self._session.execute(
+            delete(model).where(model.ts < cutoff_iso)
+        )
+        return result.rowcount
 
 
 # ---------------------------------------------------------------------------
 # Context manager
 # ---------------------------------------------------------------------------
 
+
 @asynccontextmanager
-async def get_audit_db(db_path: str | None = None):
+async def get_audit_db():
     """Async context manager that yields an AuditDB instance.
 
-    Opens a fresh aiosqlite connection with WAL mode enabled.
     Commits on clean exit, rolls back on exception.
-    Closes connection in all cases.
-
-    Usage:
-        async with get_audit_db() as db:
-            row = await db.get_key_by_hash(h)
     """
-    path = db_path or settings.db_path
-    conn = await aiosqlite.connect(path)
-    try:
-        await conn.execute("PRAGMA journal_mode=WAL")
-        await conn.execute("PRAGMA foreign_keys=ON")
-        conn.row_factory = aiosqlite.Row
-        db = AuditDB(conn)
-        yield db
-        await conn.commit()
-    except Exception:
-        await conn.rollback()
-        raise
-    finally:
-        await conn.close()
+    async with AsyncSessionLocal() as session:
+        try:
+            yield AuditDB(session)
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise

@@ -1,200 +1,229 @@
 "use client"
 
-import { useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
+import {useState, useCallback, useRef} from "react"
+import {useRouter} from "next/navigation"
+import {fetchEventSource} from "@microsoft/fetch-event-source"
 
-// SSE (EventSource) goes direct to backend — CORS configured via ALLOWED_ORIGINS.
-// Regular fetch calls use "" (relative, proxied by Next.js rewrites).
+// SSE goes direct to backend — CORS configured via ALLOWED_ORIGINS.
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
-/** Map backend stage codes to user-friendly labels. Supports "answering:N" format. */
+/** Map backend stage codes to user-friendly labels. */
 function formatStatus(raw: string): string {
-  const LABELS: Record<string, string> = {
-    processing: "Processing your question...",
-    routing: "Routing to relevant documents...",
-    retrieving: "Searching DIFC Law corpus...",
-    reranking: "Re-ranking with cross-encoder...",
-  }
-  if (raw.startsWith("answering")) {
-    const n = raw.split(":")[1]
-    return n && n !== "0" ? `Composing answer from ${n} passages...` : "Composing answer..."
-  }
-  return LABELS[raw] ?? raw
+    const LABELS: Record<string, string> = {
+        processing: "Processing your question...",
+        routing: "Routing to relevant documents...",
+        retrieving: "Searching legal corpus...",
+        reranking: "Re-ranking with cross-encoder...",
+    }
+    if (raw.startsWith("answering")) {
+        const n = raw.split(":")[1]
+        return n && n !== "0" ? `Composing answer from ${n} passages...` : "Composing answer..."
+    }
+    // Real-time retrieval sub-steps: "retrieving:vector search (50 candidates)" etc.
+    if (raw.startsWith("retrieving:")) {
+        const detail = raw.slice("retrieving:".length)
+        return detail.charAt(0).toUpperCase() + detail.slice(1) + "..."
+    }
+    return LABELS[raw] ?? raw
 }
 
-/** Returns the stored API key, or null if absent/empty. Never returns "". */
-function getStoredApiKey(): string | null {
-  if (typeof window === "undefined") return null
-  const key = localStorage.getItem("neolex_api_key")
-  return key && key.trim() !== "" ? key.trim() : null
+/**
+ * Extracts visible answer text from raw LLM output that may contain
+ * <analysis>...</analysis> and <answer>...</answer> tags.
+ * Returns null if <answer> hasn't appeared yet.
+ */
+function extractAnswerContent(raw: string): string | null {
+    const answerStart = raw.indexOf("<answer>")
+    if (answerStart === -1) return null
+    const contentStart = answerStart + "<answer>".length
+    const answerEnd = raw.indexOf("</answer>", contentStart)
+    const content = answerEnd >= 0
+        ? raw.slice(contentStart, answerEnd)
+        : raw.slice(contentStart)
+    return content.trim() || null
 }
 
-function clearApiKeyAndRedirect(router: ReturnType<typeof useRouter>) {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("neolex_api_key")
-  }
-  router.replace("/")
+function clearSessionAndRedirect(router: ReturnType<typeof useRouter>) {
+    const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+    fetch(`${API}/auth/logout`, {method: "POST", credentials: "include"}).catch(() => {
+    })
+    router.replace("/")
 }
 
 export interface Source {
-  doc_id: string
-  page_numbers: number[]
+    doc_id: string
+    page_numbers: number[]
+    text?: string | null  // source text for non-PDF corpora (Czech)
 }
 
 interface StreamState {
-  answer: string | null
-  sources: Source[]
-  confidence: number | null
-  isStreaming: boolean
-  streamingStatus: string | null
-  error: string | null
+    answer: string | null
+    sources: Source[]
+    confidence: number | null
+    isStreaming: boolean
+    streamingStatus: string | null
+    error: string | null
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-  sendQuery: (question: string, corpus?: string) => void
-  clearError: () => void
+    sendQuery: (question: string, corpus?: string, conversationId?: string) => void
+    clearError: () => void
 }
 
 export function useQueryStream(): UseQueryStreamReturn {
-  const router = useRouter()
-  const [state, setState] = useState<StreamState>({
-    answer: null,
-    sources: [],
-    confidence: null,
-    isStreaming: false,
-    streamingStatus: null,
-    error: null,
-  })
-  const esRef = useRef<EventSource | null>(null)
-
-  const clearError = useCallback(() => {
-    setState((prev) => ({ ...prev, error: null }))
-  }, [])
-
-  const sendQuery = useCallback(
-    (question: string, corpus?: string) => {
-      // Close any existing SSE connection
-      if (esRef.current) {
-        esRef.current.close()
-        esRef.current = null
-      }
-
-      const apiKey = getStoredApiKey()
-
-      if (!apiKey) {
-        clearApiKeyAndRedirect(router)
-        return
-      }
-
-      setState({
+    const router = useRouter()
+    const [state, setState] = useState<StreamState>({
         answer: null,
         sources: [],
         confidence: null,
-        isStreaming: true,
-        streamingStatus: "Connecting...",
+        isStreaming: false,
+        streamingStatus: null,
         error: null,
-      })
+    })
+    const abortRef = useRef<AbortController | null>(null)
+    const tokenBufRef = useRef<string>("")
 
-      // Fix: relative URLs require a base when using new URL()
-      const url = new URL(`${API_BASE}/api/v1/query/stream`, window.location.origin)
-      url.searchParams.set("question", question)
-      url.searchParams.set("answer_type", "free_text")
-      // EventSource cannot send custom headers; pass key as query param
-      url.searchParams.set("api_key", apiKey)
-      if (corpus) url.searchParams.set("corpus", corpus)
+    const clearError = useCallback(() => {
+        setState((prev) => ({...prev, error: null}))
+    }, [])
 
-      const es = new EventSource(url.toString())
-      esRef.current = es
-
-      es.addEventListener("answer", (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data)
-          setState((prev) => ({
-            ...prev,
-            answer: data.answer ?? null,
-            sources: data.sources ?? [],
-            confidence: data.confidence ?? null,
-            streamingStatus: null,
-          }))
-        } catch {
-          // ignore JSON parse errors
-        }
-      })
-
-      es.addEventListener("done", () => {
-        es.close()
-        esRef.current = null
-        setState((prev) => ({
-          ...prev,
-          isStreaming: false,
-          streamingStatus: null,
-          // Show error if stream completed but no answer was received
-          error: prev.answer ? null : "No answer received. Please try again.",
-        }))
-      })
-
-      // Forward real SSE "status" events — backend sends {"status": "routing"}, etc.
-      es.addEventListener("status", (e: MessageEvent) => {
-        try {
-          const data = JSON.parse(e.data)
-          const raw = data.status || data.message
-          if (raw) {
-            setState((prev) => ({ ...prev, streamingStatus: formatStatus(raw) }))
-          }
-        } catch {
-          // ignore
-        }
-      })
-
-      // Handle SSE "error" events from the backend (pipeline failure, timeout, etc.)
-      es.addEventListener("error", (e: MessageEvent) => {
-        try {
-          const data = JSON.parse((e as MessageEvent).data)
-          es.close()
-          esRef.current = null
-          setState((prev) => ({
-            ...prev,
-            isStreaming: false,
-            streamingStatus: null,
-            error: data.detail || data.error || "Query failed. Please try again.",
-          }))
-        } catch {
-          // Not a JSON error event — fall through to onerror
-        }
-      })
-
-      // Handle connection-level errors — SSE errors don't carry HTTP status, so probe
-      // the REST endpoint to distinguish 401 from network issues
-      es.onerror = () => {
-        es.close()
-        esRef.current = null
-
-        const probeUrl = `${API_BASE}/api/v1/query/stream?question=ping&answer_type=free_text&api_key=${encodeURIComponent(apiKey)}`
-        fetch(probeUrl, { method: "HEAD" })
-          .then((res) => {
-            if (res.status === 401 || res.status === 403) {
-              clearApiKeyAndRedirect(router)
-            } else {
-              setState((prev) => ({
-                ...prev,
-                isStreaming: false,
-                streamingStatus: null,
-                error: prev.answer ? null : "Connection error. Please try again.",
-              }))
+    const sendQuery = useCallback(
+        (question: string, corpus?: string, conversationId?: string) => {
+            // Abort any existing SSE connection
+            if (abortRef.current) {
+                abortRef.current.abort()
+                abortRef.current = null
             }
-          })
-          .catch(() => {
-            setState((prev) => ({
-              ...prev,
-              isStreaming: false,
-              streamingStatus: null,
-              error: prev.answer ? null : "Connection error. Please try again.",
-            }))
-          })
-      }
-    },
-    [router]
-  )
 
-  return { ...state, sendQuery, clearError }
+            tokenBufRef.current = ""
+
+            setState({
+                answer: null,
+                sources: [],
+                confidence: null,
+                isStreaming: true,
+                streamingStatus: "Connecting...",
+                error: null,
+            })
+
+            const ctrl = new AbortController()
+            abortRef.current = ctrl
+
+            fetchEventSource(`${API_BASE}/api/v1/query/stream`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    question,
+                    answer_type: "free_text",
+                    corpus: corpus ?? "difc",
+                    // Opaque session pointer — server loads history from DB.
+                    // History content never travels in the request body.
+                    conversation_id: conversationId ?? null,
+                }),
+                credentials: "include",  // sends HttpOnly cookie automatically
+                signal: ctrl.signal,
+
+                onopen: async (response) => {
+                    if (response.status === 401 || response.status === 403) {
+                        clearSessionAndRedirect(router)
+                        throw new Error("auth")
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`)
+                    }
+                },
+
+                onmessage: (ev) => {
+                    try {
+                        if (ev.event === "token") {
+                            const data = JSON.parse(ev.data)
+                            if (typeof data.text === "string") {
+                                tokenBufRef.current += data.text
+                                const visible = extractAnswerContent(tokenBufRef.current)
+                                if (visible !== null) {
+                                    setState((prev) => ({...prev, answer: visible, streamingStatus: null}))
+                                }
+                            }
+                        } else if (ev.event === "answer") {
+                            const data = JSON.parse(ev.data)
+                            setState((prev) => ({
+                                ...prev,
+                                answer: data.answer ?? prev.answer,
+                                sources: data.sources ?? [],
+                                confidence: data.confidence ?? null,
+                                streamingStatus: null,
+                            }))
+                        } else if (ev.event === "status") {
+                            const data = JSON.parse(ev.data)
+                            const raw = data.status || data.message
+                            if (raw) {
+                                setState((prev) => ({...prev, streamingStatus: formatStatus(raw)}))
+                            }
+                        } else if (ev.event === "error") {
+                            const data = JSON.parse(ev.data)
+                            ctrl.abort()
+                            abortRef.current = null
+                            setState((prev) => ({
+                                ...prev,
+                                isStreaming: false,
+                                streamingStatus: null,
+                                error: data.detail || data.error || "Query failed. Please try again.",
+                            }))
+                        } else if (ev.event === "done") {
+                            ctrl.abort()
+                            abortRef.current = null
+                            tokenBufRef.current = ""
+                            setState((prev) => ({
+                                ...prev,
+                                isStreaming: false,
+                                streamingStatus: null,
+                                error: prev.answer ? null : "No answer received. Please try again.",
+                            }))
+                        }
+                    } catch {
+                        // ignore parse errors
+                    }
+                },
+
+                onerror: (err) => {
+                    abortRef.current = null
+                    // Check if the auth cookie expired
+                    const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+                    fetch(`${API}/auth/me`, {
+                        method: "GET",
+                        credentials: "include",
+                    })
+                        .then((res) => {
+                            if (res.status === 401 || res.status === 403) {
+                                clearSessionAndRedirect(router)
+                            } else {
+                                setState((prev) => ({
+                                    ...prev,
+                                    isStreaming: false,
+                                    streamingStatus: null,
+                                    error: prev.answer ? null : "Connection error. Please try again.",
+                                }))
+                            }
+                        })
+                        .catch(() => {
+                            setState((prev) => ({
+                                ...prev,
+                                isStreaming: false,
+                                streamingStatus: null,
+                                error: prev.answer ? null : "Connection error. Please try again.",
+                            }))
+                        })
+                    // Don't auto-retry — let the user decide
+                    throw err
+                },
+
+                openWhenHidden: true,  // keep streaming when tab is in background
+            }).catch(() => {
+                // fetchEventSource throws when aborted or on fatal error — already handled above
+            })
+        },
+        [router]
+    )
+
+    return {...state, sendQuery, clearError}
 }

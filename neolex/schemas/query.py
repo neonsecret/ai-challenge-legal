@@ -11,11 +11,19 @@ class QueryRequest(BaseModel):
         default="free_text",
         pattern=r"^(boolean|number|name|names|date|free_text)$",
     )
+    corpus: str = Field(default="difc", pattern=r"^(difc|czech)$")
+    # Opaque session pointer — server loads history from DB using user_id+conversation_id.
+    # Client never sends history content; only this UUID-like key.
+    conversation_id: str | None = Field(
+        default=None,
+        pattern=r"^[a-zA-Z0-9_-]{1,64}$",
+    )
 
 
 class SourceCitation(BaseModel):
     doc_id: str
     page_numbers: list[int]
+    text: str | None = None  # source text for non-PDF corpora (Czech)
 
 
 class QueryResponse(BaseModel):
@@ -44,6 +52,7 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
         SourceCitation(
             doc_id=cp["doc_id"],
             page_numbers=cp.get("page_numbers", []),
+            text=cp.get("text"),
         )
         for cp in result.get("chunk_pages", [])
     ]

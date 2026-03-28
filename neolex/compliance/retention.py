@@ -48,7 +48,7 @@ DEFAULT_RETENTION_DAYS = 365
 
 # Tables subject to retention purging (append-only audit tables only).
 # The `api_keys` and `documents` tables are NOT purged by this policy.
-_PURGEABLE_TABLES = ("queries", "events")
+_PURGEABLE_TABLES = ("queries", "events", "conversation_messages")
 
 
 # ---------------------------------------------------------------------------
@@ -109,15 +109,11 @@ class RetentionPolicy:
         cutoff_iso = self.cutoff_date.isoformat()
         counts: dict[str, int] = {}
         for table in _PURGEABLE_TABLES:
-            async with db._conn.execute(
-                f"SELECT COUNT(*) FROM {table} WHERE ts < ?", (cutoff_iso,)
-            ) as cur:
-                row = await cur.fetchone()
-                counts[table] = row[0] if row else 0
+            counts[table] = await db.count_purgeable(table, cutoff_iso)
         return counts
 
     async def purge_old_entries(
-        self, db: "AuditDB", *, dry_run: bool = False
+            self, db: "AuditDB", *, dry_run: bool = False
     ) -> dict[str, int]:
         """Delete audit log entries older than the retention cutoff.
 
@@ -145,11 +141,7 @@ class RetentionPolicy:
 
         for table in _PURGEABLE_TABLES:
             if dry_run:
-                async with db._conn.execute(
-                    f"SELECT COUNT(*) FROM {table} WHERE ts < ?", (cutoff_iso,)
-                ) as cur:
-                    row = await cur.fetchone()
-                    deleted[table] = row[0] if row else 0
+                deleted[table] = await db.count_purgeable(table, cutoff_iso)
                 logger.info(
                     "[DRY RUN] Would delete %d rows from %s older than %s",
                     deleted[table],
@@ -157,10 +149,7 @@ class RetentionPolicy:
                     cutoff_iso,
                 )
             else:
-                cur = await db._conn.execute(
-                    f"DELETE FROM {table} WHERE ts < ?", (cutoff_iso,)
-                )
-                deleted[table] = cur.rowcount
+                deleted[table] = await db.purge_table(table, cutoff_iso)
                 logger.info(
                     "Purged %d rows from %s older than %s",
                     deleted[table],
@@ -177,11 +166,11 @@ class RetentionPolicy:
 
 
 async def record_retention_run(
-    db: "AuditDB",
-    *,
-    dry_run: bool,
-    deleted: dict[str, int],
-    policy: RetentionPolicy,
+        db: "AuditDB",
+        *,
+        dry_run: bool,
+        deleted: dict[str, int],
+        policy: RetentionPolicy,
 ) -> None:
     """Append a retention_run event to the events table for audit trail.
 
