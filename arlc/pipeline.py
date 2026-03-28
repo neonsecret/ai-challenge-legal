@@ -1481,8 +1481,10 @@ async def run_pipeline(
     if answer_fn is None:
         answer_fn = _fallback_generate_answer
 
-    # Validate API key before doing any work
-    if not os.environ.get("ANTHROPIC_API_KEY"):
+    # Validate LLM credentials before doing any work.
+    # Skip if using vertex or litellm backends (they have their own auth).
+    _backend = os.environ.get("LLM_BACKEND", "litellm")
+    if _backend not in ("vertex", "litellm", "auto") and not os.environ.get("ANTHROPIC_API_KEY"):
         print("ERROR: ANTHROPIC_API_KEY environment variable not set. Pipeline cannot call LLM.", file=sys.stderr)
         sys.exit(1)
 
