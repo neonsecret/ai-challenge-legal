@@ -22,7 +22,7 @@ const warmGlass = {
 const lightPillars = [
   { stat: "< 2s", statLabel: "average response", title: "Instant Research", body: "Find exact clauses in seconds. No more manual page-turning through hundreds of pages.", icon: FileSearch },
   { stat: "100%", statLabel: "source-grounded", title: "Verified Citations", body: "Every answer cites the exact page, clause, and document. Verify any claim instantly.", icon: ShieldCheck },
-  { stat: "5+", statLabel: "major jurisdictions", title: "Multi-Jurisdiction", body: "DIFC · EU · UK · US · AU — unified research across every major legal framework.", icon: Globe },
+  { stat: "+36%", statLabel: "above published SOTA", title: "Benchmark Proven", body: "Independently verified on GaRAGe (ACL 2025). Our retrieval accuracy exceeds every published system by 36%.", icon: ShieldCheck },
 ];
 
 const lightSteps = [

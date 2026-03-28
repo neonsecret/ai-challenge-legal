@@ -20,6 +20,7 @@ interface Message {
   content: string | null
   sources?: Source[]
   confidence?: number | null
+  trace?: string[]
 }
 
 const FOLLOWUP_SUGGESTIONS = [
@@ -101,6 +102,7 @@ export default function ChatPage() {
   const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[] }>({ answer: "", sources: [] })
   const [previewIndex, setPreviewIndex] = useState<number | null>(null)
   const [recentQueries, setRecentQueries] = useState<string[]>([])
+  const [selectedCorpus, setSelectedCorpus] = useState("DIFC Law")
   const { resolvedTheme } = useTheme()
   const isDark = resolvedTheme === "dark"
 
@@ -128,6 +130,8 @@ export default function ChatPage() {
   const activeAssistantId = useRef<string | null>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const inputFocusRef = useRef<(() => void) | null>(null)
+  const traceRef = useRef<string[]>([])
+  const wasStreamingRef = useRef(false)
 
   const handleSourceClick = useCallback((answer: string, sources: Source[]) => {
     setDrawerData({ answer, sources })
@@ -136,6 +140,7 @@ export default function ChatPage() {
 
   const handleSend = useCallback((question: string) => {
     setPreviewIndex(null)
+    traceRef.current = []
     const userId = `user-${Date.now()}`
     const assistantId = `assistant-${Date.now()}`
     activeAssistantId.current = assistantId
@@ -145,8 +150,8 @@ export default function ChatPage() {
       { id: assistantId, role: "assistant", content: null, sources: [], confidence: null },
     ])
     saveRecentQuery(question)
-    sendQuery(question)
-  }, [sendQuery])
+    sendQuery(question, selectedCorpus)
+  }, [sendQuery, selectedCorpus])
 
   useEffect(() => {
     const id = activeAssistantId.current
@@ -155,6 +160,26 @@ export default function ChatPage() {
       m.id === id ? { ...m, content: answer, sources: sources ?? [], confidence: confidence ?? null } : m
     ))
   }, [answer, sources, confidence])
+
+  // Collect unique status messages into trace log during streaming
+  useEffect(() => {
+    if (isStreaming && streamingStatus && !traceRef.current.includes(streamingStatus)) {
+      traceRef.current = [...traceRef.current, streamingStatus]
+    }
+  }, [streamingStatus, isStreaming])
+
+  // When streaming completes, attach collected trace to the active message
+  useEffect(() => {
+    if (!isStreaming && wasStreamingRef.current) {
+      const id = activeAssistantId.current
+      const trace = traceRef.current.slice()
+      if (id && trace.length > 0) {
+        setMessages((prev) => prev.map((m) => m.id === id ? { ...m, trace } : m))
+      }
+      traceRef.current = []
+    }
+    wasStreamingRef.current = isStreaming
+  }, [isStreaming])
 
   useEffect(() => {
     if (isStreaming) {
@@ -242,9 +267,44 @@ export default function ChatPage() {
               fontFamily: "Georgia, serif" }}>N</span>
           </div>
           <span style={{ fontWeight: 700, fontSize: "15px", color: isDark ? "rgba(255,255,255,0.90)" : "#1a0e04",
-            fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "-0.04em", flex: 1 }}>
+            fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "-0.04em" }}>
             Vitreon Legal
           </span>
+          {/* Corpus selector pills */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 3, marginLeft: 12 }}>
+            {(["DIFC Law", "EU Law", "UK Law", "All Jurisdictions"] as const).map((corpus) => {
+              const isActive = selectedCorpus === corpus
+              const isDisabled = corpus !== "DIFC Law"
+              return (
+                <button
+                  key={corpus}
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && setSelectedCorpus(corpus)}
+                  title={isDisabled ? "Coming soon" : corpus}
+                  style={{
+                    fontSize: 10, fontWeight: isActive ? 700 : 500,
+                    padding: "3px 8px", borderRadius: 6,
+                    cursor: isDisabled ? "not-allowed" : "pointer",
+                    opacity: isDisabled ? 0.38 : 1,
+                    background: isActive
+                      ? isDark ? "rgba(201,168,76,0.22)" : "rgba(196,124,0,0.16)"
+                      : isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)",
+                    border: isActive
+                      ? isDark ? "0.5px solid rgba(201,168,76,0.42)" : "0.5px solid rgba(196,124,0,0.36)"
+                      : isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.32)",
+                    color: isActive
+                      ? isDark ? "rgba(201,168,76,0.90)" : "#7a4a00"
+                      : isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                    transition: "all 0.12s",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {corpus === "DIFC Law" ? "DIFC" : corpus === "EU Law" ? "EU" : corpus === "UK Law" ? "UK" : "All"}
+                </button>
+              )
+            })}
+          </div>
           {/* New chat button — only when there are messages */}
           {messages.length > 0 && (
             <button
@@ -311,6 +371,7 @@ export default function ChatPage() {
                 confidence={m.confidence}
                 isStreaming={isStreaming && m.id === activeAssistantId.current}
                 streamingStatus={isStreaming && m.id === activeAssistantId.current ? streamingStatus : null}
+                trace={m.trace}
                 onSourceClick={handleSourceClick}
                 isDark={isDark}
               />

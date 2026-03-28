@@ -42,7 +42,7 @@ interface StreamState {
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-  sendQuery: (question: string) => void
+  sendQuery: (question: string, corpus?: string) => void
   clearError: () => void
 }
 
@@ -77,7 +77,7 @@ export function useQueryStream(): UseQueryStreamReturn {
   }, [])
 
   const sendQuery = useCallback(
-    (question: string) => {
+    (question: string, corpus?: string) => {
       // Close any existing SSE connection
       if (esRef.current) {
         esRef.current.close()
@@ -113,6 +113,7 @@ export function useQueryStream(): UseQueryStreamReturn {
       url.searchParams.set("answer_type", "free_text")
       // EventSource cannot send custom headers; pass key as query param
       url.searchParams.set("api_key", apiKey)
+      if (corpus) url.searchParams.set("corpus", corpus)
 
       const es = new EventSource(url.toString())
       esRef.current = es

@@ -63,9 +63,9 @@
    ============================================================ */
 :root {
   /* Surfaces */
-  --background: #FAFAF9;
+  --background: #F8F6F1;
   --foreground: #111827;
-  --card: #FFFFFF;
+  --card: #FDFBF7;
   --card-foreground: #111827;
   --popover: #FFFFFF;
   --popover-foreground: #111827;

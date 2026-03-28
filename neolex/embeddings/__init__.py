@@ -1,4 +1,4 @@
-"""NeoLex embedding layer.
+"""Vitreon Legal embedding layer.
 
 Default backend: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
 

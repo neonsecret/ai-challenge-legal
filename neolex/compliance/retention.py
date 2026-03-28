@@ -1,4 +1,4 @@
-"""Data retention policy for NeoLex audit logs.
+"""Data retention policy for Vitreon Legal audit logs.
 
 SOC 2 / ISO 27001 requirement: audit logs must be retained for a defined
 period and must not be silently dropped or overwritten.
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     import asyncio
 
     parser = argparse.ArgumentParser(
-        description="NeoLex audit log retention purge tool"
+        description="Vitreon Legal audit log retention purge tool"
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(

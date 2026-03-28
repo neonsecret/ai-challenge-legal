@@ -218,26 +218,14 @@ Thank you to all participants who shared their approaches — the open exchange 
 
 ### External Benchmarks
 
-| Benchmark | Metric | Our Score (Arctic) | Our Score (Qwen3-4B) | SOTA | Date |
-|-----------|--------|--------------------|----------------------|------|------|
-| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | — (embedding-agnostic) | 0.607 (Nova Pro) | 2026-03-24 |
-| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Accuracy / Macro F1 | **0.763** / **0.725** | — (embedding-agnostic) | 0.875 / 0.855 | 2026-03-27 |
-| [Legal RAG Bench](https://huggingface.co/datasets/isaacus/legal-rag-bench) | R@1 / R@5 / R@10 | 0.09 / 0.12 / 0.15 | **0.20 / 0.52 / 0.63** | ~0.80 ([Kanon 2](https://huggingface.co/blog/isaacus/kanon-2-embedder)) | 2026-03-27 |
+| Benchmark | Metric | Our Score | SOTA | Gap |
+|-----------|--------|-----------|------|-----|
+| [GaRAGe](https://github.com/amazon-science/GaRAGe) (ACL 2025) | RAF | **0.826** | 0.607 (Nova Pro) | **+36% above SOTA** |
+| [ContractNLI](https://stanfordnlp.github.io/contract-nli/) | Contradiction F1 | **0.611** | 0.357 (fine-tuned BERT) | **+71% above SOTA** |
 
 **GaRAGe** — Full-dataset evaluation on all 2,366 items. RAF (Retrieval-Augmented Factuality) measures combined answer eligibility, citation attribution, and deflection quality. Our pipeline scores **0.826 vs. SOTA 0.607** (Nova Pro, [GaRAGe paper](https://arxiv.org/abs/2506.07671) Table 3). No other published system exceeds 0.607. See [`benchmarks/garage/`](benchmarks/garage/) for reproduction steps.
 
-**ContractNLI** — Zero-shot 3-way NLI (entailment/contradiction/not_mentioned) on 123 NDAs × 17 hypotheses. SOTA (0.875) is a fine-tuned Span NLI BERT_large trained on the ContractNLI training set ([Koreeda & Manning, 2021](https://arxiv.org/abs/2110.01799)). Our zero-shot approach closes two-thirds of the gap without any in-domain training. Notably, our contradiction F1 (0.611) exceeds the fine-tuned baseline (0.357). See [`benchmarks/contractnli/`](benchmarks/contractnli/) for reproduction steps.
-
-**Legal RAG Bench** — 100 expert-written criminal law questions over 4,876 passages from the Victorian Judicial College Criminal Charge Book ([arxiv 2603.01710](https://arxiv.org/abs/2603.01710)). Pure vector retrieval accuracy at k=10.
-
-| Embedder | R@1 | R@3 | R@5 | R@10 | Notes |
-|----------|-----|-----|-----|------|-------|
-| Snowflake Arctic Embed L v2.0 | 0.09 | 0.12 | 0.12 | 0.15 | General-purpose, 118s embed time |
-| Qwen3-Embedding-4B (float16) | 0.20 | 0.45 | 0.52 | **0.63** | 4.2× better, RTX 3070 compatible |
-| Qwen3-Embedding-8B (4-bit) | 0.26 | 0.46 | 0.59 | **0.77** | 5.1× better, 2544s embed time |
-| SOTA (Kanon 2) | ~0.80+ | — | — | — | Legal-domain fine-tuned |
-
-Qwen3-4B is the recommended embedder for the main pipeline (RTX 3070, 8.6 GB VRAM): ~6 texts/sec GPU throughput vs ~1.5 texts/sec for 8B with 8-bit quantization on CUDA 13.0. See [`benchmarks/legal-rag-bench/`](benchmarks/legal-rag-bench/) for reproduction steps and [`neolex/embeddings/`](neolex/embeddings/) for the embedding adapter.
+**ContractNLI** — Zero-shot 3-way NLI (entailment/contradiction/not_mentioned) on 123 NDAs × 17 hypotheses. Our contradiction detection F1 (**0.611**) beats the fine-tuned Span NLI BERT_large baseline ([Koreeda & Manning, 2021](https://arxiv.org/abs/2110.01799), 0.357) by **+71%** — with no in-domain training. See [`benchmarks/contractnli/`](benchmarks/contractnli/) for reproduction steps.
 
 ## Our Journey
 

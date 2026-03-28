@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ChevronRight } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import { cn } from "@/lib/utils"
 import { Copy, Check } from "lucide-react"
@@ -17,6 +18,7 @@ interface ChatMessageProps {
   isStreaming?: boolean
   confidence?: number | null
   streamingStatus?: string | null
+  trace?: string[]
   onSourceClick?: (answer: string, sources: import("@/components/chat/use-query-stream").Source[]) => void
   isDark?: boolean
 }
@@ -48,10 +50,12 @@ export function ChatMessage({
   isStreaming = false,
   confidence,
   streamingStatus,
+  trace,
   onSourceClick,
   isDark = false,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
+  const [traceOpen, setTraceOpen] = useState(false)
 
   const handleCopy = () => {
     if (!content) return
@@ -162,6 +166,59 @@ export function ChatMessage({
       {confidence != null && !isStreaming && (
         <div className="mt-2 animate-fade-in-up">
           <ConfidenceBadge confidence={confidence} />
+        </div>
+      )}
+
+      {trace && trace.length > 0 && !isStreaming && content && (
+        <div className="mt-2 animate-fade-in-up">
+          <button
+            onClick={() => setTraceOpen(!traceOpen)}
+            style={{
+              display: "flex", alignItems: "center", gap: 4,
+              fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: isDark ? "rgba(255,255,255,0.32)" : "rgba(46,31,8,0.36)",
+              background: "none", border: "none", cursor: "pointer", padding: "2px 0",
+              fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+              transition: "color 0.12s",
+            }}
+          >
+            <ChevronRight size={10} strokeWidth={2.5} style={{ transform: traceOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+            How we found this
+          </button>
+          {traceOpen && (
+            <div style={{
+              marginTop: 6, paddingLeft: 12,
+              borderLeft: isDark ? "1.5px solid rgba(255,255,255,0.10)" : "1.5px solid rgba(196,124,0,0.18)",
+            }}>
+              {trace.map((step, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 5 }}>
+                  <span style={{ fontSize: 9, color: isDark ? "rgba(201,168,76,0.65)" : "#c47c00", marginTop: 2, flexShrink: 0 }}>✓</span>
+                  <span style={{
+                    fontSize: 11, lineHeight: 1.45,
+                    color: isDark ? "rgba(255,255,255,0.48)" : "rgba(46,31,8,0.52)",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                  }}>{step}</span>
+                </div>
+              ))}
+              {sources.length > 0 && (
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <span style={{ fontSize: 9, color: isDark ? "rgba(201,168,76,0.65)" : "#c47c00", marginTop: 2, flexShrink: 0 }}>→</span>
+                  <span
+                    onClick={() => onSourceClick?.(content ?? "", sources)}
+                    style={{
+                      fontSize: 11, lineHeight: 1.45,
+                      color: isDark ? "rgba(201,168,76,0.72)" : "#7a4a00",
+                      fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                      cursor: "pointer", textDecoration: "underline", textDecorationStyle: "dotted",
+                    }}
+                  >
+                    {sources.length === 1 ? "1 source" : `${sources.length} sources`}: {sources.slice(0, 3).map((s) => `${s.doc_id} p.${s.page_numbers[0] ?? 1}`).join(", ")}{sources.length > 3 ? ` +${sources.length - 3} more` : ""}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

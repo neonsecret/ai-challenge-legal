@@ -1,4 +1,4 @@
-# NeoLex Demo Questions
+# Vitreon Legal Demo Questions
 
 10 questions for sales calls and demos. Each is drawn from the DIFC corpus.
 Expected answer quality: cited, authoritative, 400-650 characters.

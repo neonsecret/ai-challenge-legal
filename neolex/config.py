@@ -1,4 +1,4 @@
-"""NeoLex application settings.
+"""Vitreon Legal application settings.
 
 Reads configuration from environment variables only.
 LLM secrets (ANTHROPIC_API_KEY, proxy URLs) are NOT stored here —
@@ -17,7 +17,7 @@ import os
 
 
 class Settings:
-    app_name: str = "NeoLex"
+    app_name: str = "Vitreon Legal"
     app_version: str = "0.1.0"
     workers: int = int(os.environ.get("NEOLEX_WORKERS", "5"))
     # CORS — dev default allows Next.js dev server; locked in production via env var.

@@ -1,4 +1,4 @@
-"""NeoLex compliance module.
+"""Vitreon Legal compliance module.
 
 Contains data retention policies, GDPR/SOC 2 utilities, and audit helpers.
 """

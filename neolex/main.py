@@ -1,6 +1,6 @@
-"""NeoLex FastAPI application.
+"""Vitreon Legal FastAPI application.
 
-Entry point for the NeoLex legal QA API. The lifespan context manager pre-warms
+Entry point for the Vitreon Legal API. The lifespan context manager pre-warms
 all ML model singletons before serving requests — this prevents cross-encoder
 deadlocks under concurrent cold-start load (see arlc/pipeline.py lines 1491-1493).
 """
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     # Fail fast if data/ or required env vars are missing.
     validate_startup(settings.data_dir)
 
-    logger.info("NeoLex startup: importing pipeline modules...")
+    logger.info("Vitreon Legal startup: importing pipeline modules...")
     try:
         # Import inside lifespan so errors are caught here, not at module level.
         # _import_pipeline_modules prints status to stdout for each submodule.
@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
 
         app.state.ready = True
         app.state.startup_time = time.monotonic()
-        logger.info("NeoLex startup complete. Ready to serve requests.")
+        logger.info("Vitreon Legal startup complete. Ready to serve requests.")
 
     except Exception as exc:
         logger.exception("Startup failed: %s", exc)
@@ -101,7 +101,7 @@ async def lifespan(app: FastAPI):
     yield  # serve requests
 
     # --- SHUTDOWN ---
-    logger.info("NeoLex shutting down.")
+    logger.info("Vitreon Legal shutting down.")
     app.state.ready = False
 
 

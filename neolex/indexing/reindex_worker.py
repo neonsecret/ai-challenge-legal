@@ -147,7 +147,7 @@ def _run_arlc_indexing(
 ) -> None:
     """Attempt to call arlc/indexing/indexer.py for real vector indexing.
 
-    This is a thin wrapper that translates NeoLex concepts to arlc expectations.
+    This is a thin wrapper that translates Vitreon Legal concepts to arlc expectations.
     If arlc dependencies are not available, raises ImportError (caller stubs).
     """
     # arlc indexer is designed for the competition corpus — it has many

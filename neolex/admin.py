@@ -1,4 +1,4 @@
-"""NeoLex admin CLI.
+"""Vitreon Legal admin CLI.
 
 Usage:
     python -m neolex.admin keys-create --name "Al Tamimi POC" --client-slug al-tamimi
@@ -130,7 +130,7 @@ async def cmd_show_log(args: argparse.Namespace) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m neolex.admin",
-        description="NeoLex admin CLI — manage API keys and view audit log.",
+        description="Vitreon Legal admin CLI — manage API keys and view audit log.",
     )
     parser.add_argument(
         "--db",

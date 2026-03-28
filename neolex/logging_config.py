@@ -1,4 +1,4 @@
-"""NeoLex structured logging configuration.
+"""Vitreon Legal structured logging configuration.
 
 Uses stdlib logging only (no new dependencies).
 

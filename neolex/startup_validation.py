@@ -119,7 +119,7 @@ def validate_startup(data_dir: str) -> None:
         for err in errors:
             logger.critical("STARTUP VALIDATION FAILED: %s", err)
         sys.exit(
-            "NeoLex startup failed. Fix the above errors and restart.\n"
+            "Vitreon Legal startup failed. Fix the above errors and restart.\n"
             + "\n".join(f"  - {e}" for e in errors)
         )
 

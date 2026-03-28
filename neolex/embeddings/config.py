@@ -1,4 +1,4 @@
-"""Embedding backend configuration for NeoLex.
+"""Embedding backend configuration for Vitreon Legal.
 
 Supported backends
 ------------------
