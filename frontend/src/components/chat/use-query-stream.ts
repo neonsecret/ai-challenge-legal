@@ -5,6 +5,15 @@ import { useRouter } from "next/navigation"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
 
+// Human-readable labels for backend status codes
+const STATUS_LABELS: Record<string, string> = {
+  processing: "Processing your question...",
+  routing: "Routing to relevant documents...",
+  retrieving: "Retrieving relevant passages...",
+  reranking: "Re-ranking results...",
+  answering: "Composing answer...",
+}
+
 /** Returns the stored API key, or null if absent/empty. Never returns "". */
 function getStoredApiKey(): string | null {
   if (typeof window === "undefined") return null
@@ -18,14 +27,6 @@ function clearApiKeyAndRedirect(router: ReturnType<typeof useRouter>) {
   }
   router.replace("/")
 }
-
-// Streaming status messages shown while waiting for the answer
-const STREAMING_STATUS_SEQUENCE = [
-  "Searching legal database...",
-  "Retrieving relevant sources...",
-  "Reading sources...",
-  "Composing answer...",
-]
 
 export interface Source {
   doc_id: string
@@ -57,20 +58,6 @@ export function useQueryStream(): UseQueryStreamReturn {
     error: null,
   })
   const esRef = useRef<EventSource | null>(null)
-  const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const clearStatusTimer = () => {
-    if (statusTimerRef.current) {
-      clearTimeout(statusTimerRef.current)
-      statusTimerRef.current = null
-    }
-  }
-
-  const cycleStatus = useCallback((index: number) => {
-    const next = STREAMING_STATUS_SEQUENCE[index % STREAMING_STATUS_SEQUENCE.length]
-    setState((prev) => ({ ...prev, streamingStatus: next }))
-    statusTimerRef.current = setTimeout(() => cycleStatus(index + 1), 1800)
-  }, [])
 
   const clearError = useCallback(() => {
     setState((prev) => ({ ...prev, error: null }))
@@ -83,12 +70,9 @@ export function useQueryStream(): UseQueryStreamReturn {
         esRef.current.close()
         esRef.current = null
       }
-      clearStatusTimer()
 
-      // Fix 5: treat empty string as absent
       const apiKey = getStoredApiKey()
 
-      // Fix 1/3: if no key, redirect immediately instead of sending a bad request
       if (!apiKey) {
         clearApiKeyAndRedirect(router)
         return
@@ -99,16 +83,12 @@ export function useQueryStream(): UseQueryStreamReturn {
         sources: [],
         confidence: null,
         isStreaming: true,
-        streamingStatus: STREAMING_STATUS_SEQUENCE[0],
+        streamingStatus: "Connecting...",
         error: null,
       })
 
-      // Start cycling status messages
-      statusTimerRef.current = setTimeout(() => cycleStatus(1), 1800)
-
-      // Fix 3: also handle non-streaming POST /api/v1/query for 401
-      // The SSE path is used here; 401 detection happens in onerror via error event
-      const url = new URL(`${API_BASE}/api/v1/query/stream`)
+      // Fix: relative URLs require a base when using new URL()
+      const url = new URL(`${API_BASE}/api/v1/query/stream`, window.location.origin)
       url.searchParams.set("question", question)
       url.searchParams.set("answer_type", "free_text")
       // EventSource cannot send custom headers; pass key as query param
@@ -121,7 +101,6 @@ export function useQueryStream(): UseQueryStreamReturn {
       es.addEventListener("answer", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data)
-          clearStatusTimer()
           setState((prev) => ({
             ...prev,
             answer: data.answer ?? null,
@@ -135,51 +114,46 @@ export function useQueryStream(): UseQueryStreamReturn {
       })
 
       es.addEventListener("done", () => {
-        clearStatusTimer()
         es.close()
         esRef.current = null
         setState((prev) => ({ ...prev, isStreaming: false, streamingStatus: null }))
       })
 
-      // Forward SSE "status" events to UI
+      // Forward real SSE "status" events — backend sends {"status": "processing"}
       es.addEventListener("status", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data)
-          if (data.message) {
-            clearStatusTimer()
-            setState((prev) => ({ ...prev, streamingStatus: data.message }))
+          const raw = data.status || data.message
+          if (raw) {
+            const label = STATUS_LABELS[raw as string] ?? raw
+            setState((prev) => ({ ...prev, streamingStatus: label }))
           }
         } catch {
           // ignore
         }
       })
 
-      // Fix 2: handle auth errors — SSE errors don't carry HTTP status, so probe
-      // the REST endpoint when we get an error without an answer to distinguish 401 from network issues
+      // Handle auth errors — SSE errors don't carry HTTP status, so probe the
+      // REST endpoint to distinguish 401 from network issues
       es.onerror = () => {
-        clearStatusTimer()
         es.close()
         esRef.current = null
 
-        // Probe auth by hitting a lightweight authenticated endpoint
         const probeUrl = `${API_BASE}/api/v1/query/stream?question=ping&answer_type=free_text&api_key=${encodeURIComponent(apiKey)}`
         fetch(probeUrl, { method: "HEAD" })
           .then((res) => {
             if (res.status === 401 || res.status === 403) {
-              // Auth failure — clear key and redirect
               clearApiKeyAndRedirect(router)
             } else {
               setState((prev) => ({
                 ...prev,
                 isStreaming: false,
                 streamingStatus: null,
-                // Only show error if we never received an answer
                 error: prev.answer ? null : "Connection error. Please try again.",
               }))
             }
           })
           .catch(() => {
-            // Network is down — show generic error, do not redirect
             setState((prev) => ({
               ...prev,
               isStreaming: false,
@@ -189,7 +163,7 @@ export function useQueryStream(): UseQueryStreamReturn {
           })
       }
     },
-    [cycleStatus, router]
+    [router]
   )
 
   return { ...state, sendQuery, clearError }

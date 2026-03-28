@@ -104,7 +104,9 @@ export default function ChatPage() {
   const [recentQueries, setRecentQueries] = useState<string[]>([])
   const [selectedCorpus, setSelectedCorpus] = useState("DIFC Law")
   const { resolvedTheme } = useTheme()
-  const isDark = resolvedTheme === "dark"
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const isDark = mounted && resolvedTheme === "dark"
 
   // Fix 1: redirect to landing if no API key on mount
   useEffect(() => {

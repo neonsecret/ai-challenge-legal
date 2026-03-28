@@ -154,7 +154,7 @@ export function ChatMessage({
               </button>
             </div>
           ) : isStreaming ? (
-            <StreamingStatus status={streamingStatus} />
+            <StreamingStatus status={streamingStatus} isDark={isDark} />
           ) : (
             <p className="text-sm italic" style={{ color: isDark ? "rgba(255,255,255,0.40)" : "#7a5a20" }}>
               No response
