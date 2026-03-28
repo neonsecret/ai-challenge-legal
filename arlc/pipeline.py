@@ -71,7 +71,7 @@ _COMPARISON_RE = re.compile(
 # Architecture summary for submission
 ARCHITECTURE_SUMMARY = (
     "Simplified RAG: deterministic document routing (regex case/law extraction) "
-    "-> hybrid BM25+BGE retrieval scoped to target docs -> cross-encoder reranking "
+    "-> hybrid BM25+Qwen3 retrieval scoped to target docs -> Qwen3-Reranker reranking "
     "-> top-1 page per doc (max 3 total) -> single Sonnet 4.6 call with type-specific "
     "prompts -> Opus 4.6 extended-thinking citation page selection (post-processing). PPQ < 1.3."
 )
@@ -1501,7 +1501,7 @@ async def run_pipeline(
         import arlc.retriever as _ret_mod
         _ret_mod.get_chunks_by_doc()      # load all 3000+ ChromaDB chunks into memory
         _ret_mod.get_reranker()           # load cross-encoder model onto MPS/CPU
-        _ret_mod.get_embedding_model()    # load BGE model onto MPS/CPU
+        _ret_mod.get_embedding_model()    # connect to llama-server (Qwen3-Embedding)
         print("  Retriever warmed up (chunks, reranker, embeddings all loaded).")
     except Exception as e:
         print(f"  Warmup warning (non-fatal): {e}")

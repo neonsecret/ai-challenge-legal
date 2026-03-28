@@ -317,10 +317,10 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
             rerank_scores = reranker.predict(pairs)
 
         # Blend reranker scores with RRF — but do NOT min-max normalise the reranker.
-        # BGE reranker outputs sigmoid probabilities clustered near 1.0 for all legal
-        # passages (e.g. gold=0.9878, top=0.9958). Min-max stretches that ~0.008 gap
-        # to 0–1, letting reranker noise dominate. Raw scores stay nearly constant
-        # across candidates, so RRF correctly controls ordering.
+        # Qwen3-Reranker outputs yes/no log-prob scores clustered in a narrow band for
+        # legal passages. Min-max stretches that gap to 0–1, letting reranker noise
+        # dominate. Raw scores stay nearly constant across candidates, so RRF correctly
+        # controls ordering.
         rr_arr  = np.array(rerank_scores, dtype=float)  # raw, already in [0,1]
         rrf_arr = np.array([c["score"] for c in candidate_list], dtype=float)
         rrf_lo, rrf_hi = rrf_arr.min(), rrf_arr.max()

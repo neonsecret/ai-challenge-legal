@@ -442,6 +442,7 @@ def evaluate(
     adapter_path: str | None = None,
     merged_path: str | None = None,
     limit: int = 100,
+    output_dir: Path | None = None,
 ):
     """Quick eval: retrieval accuracy @1, @3, @5, @10 on Legal RAG Bench."""
     import numpy as np
@@ -507,6 +508,23 @@ def evaluate(
     for k in [1, 3, 5, 10]:
         print(f"  Acc@{k:2d}: {hits[k]/n:.4f} ({hits[k]}/{n})")
     print(f"{'='*50}")
+
+    results = {
+        "model": merged_path or adapter_path or base_model,
+        "n_questions": n,
+        "acc@1": hits[1] / n,
+        "acc@3": hits[3] / n,
+        "acc@5": hits[5] / n,
+        "acc@10": hits[10] / n,
+    }
+
+    if output_dir is not None:
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        results_path = output_dir / "eval_results.json"
+        with open(results_path, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"[eval] Results saved to {results_path}")
 
     return {k: hits[k] / n for k in [1, 3, 5, 10]}
 
@@ -604,6 +622,7 @@ def main():
             adapter_path=args.adapter_path or str(output_dir / "final_adapter"),
             merged_path=args.merged_path or str(output_dir / "final_merged"),
             limit=args.eval_limit,
+            output_dir=output_dir,
         )
 
 

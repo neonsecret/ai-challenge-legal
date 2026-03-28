@@ -1898,8 +1898,8 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict]) -> dict[i
     query_emb = embed_query(question)
     model = get_embedding_model()
 
-    # Embed all chunk texts for this doc
-    chunk_texts = [BGE_QUERY_PREFIX + chunk["text"][:2000] for chunk in chunks]
+    # Embed all chunk texts for this doc (no prefix — documents are indexed without one)
+    chunk_texts = [chunk["text"][:2000] for chunk in chunks]
     with _embedding_lock:
         chunk_embeddings = model.encode(chunk_texts, normalize_embeddings=True)
 
@@ -2019,7 +2019,7 @@ def _retrieve_pages_targeted(
             chunk_dense.sort(key=lambda x: x[0], reverse=True)
             # Take top 50 chunks by dense score for cross-encoder reranking
             # V5: Raised from 20 to 50 — larger pre-filter improves CE recall
-            # (not 100 — our BGE reranker-v2-m3 is heavier than benchmark's lighter CE)
+            # (not 100 — Qwen3-Reranker-0.6B is heavier than benchmark's lighter CE)
             top_chunks = [c for _, c in chunk_dense[:50]]
             pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in top_chunks])
             with _reranker_lock:

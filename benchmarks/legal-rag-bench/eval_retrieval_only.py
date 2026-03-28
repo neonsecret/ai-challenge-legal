@@ -239,14 +239,17 @@ def hybrid_retrieve(
     candidates.sort(key=lambda x: x["score"], reverse=True)
     candidates = candidates[:100]
 
-    # Cross-encoder reranking
+    # Qwen3-Reranker reranking (controlled by RERANKER_MODEL env var)
     if use_reranker and len(candidates) > top_k:
-        from sentence_transformers import CrossEncoder
-        import torch
-        reranker = CrossEncoder("BAAI/bge-reranker-v2-m3", max_length=2048)
-        if torch.backends.mps.is_available():
-            reranker.model.to('mps')
-        pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
+        reranker_model = os.environ.get("RERANKER_MODEL", "Qwen/Qwen3-Reranker-0.6B")
+        if "qwen" in reranker_model.lower():
+            from arlc.qwen3_reranker import Qwen3Reranker
+            reranker = Qwen3Reranker(model_name=reranker_model)
+            pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
+        else:
+            from sentence_transformers import CrossEncoder
+            reranker = CrossEncoder(reranker_model, max_length=2048)
+            pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
         rerank_scores = reranker.predict(pairs)
         for i, score in enumerate(rerank_scores):
             candidates[i]["score"] = float(score)
