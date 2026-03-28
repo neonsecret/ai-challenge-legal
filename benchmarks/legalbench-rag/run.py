@@ -162,11 +162,53 @@ def _get_embedding_model():
 # Retrieval adapter: map our pipeline output to character spans
 # ---------------------------------------------------------------------------
 
+def _extract_document_filter(query: str, metadata: list[dict]) -> set[int] | None:
+    """Extract a document-level filter from the query.
+
+    LegalBench-RAG queries often name the specific contract:
+      "Consider the NDA between CopAcc and ToP Mentors; ..."
+      "Consider EFCA's Non-Disclosure Agreement; ..."
+
+    When the party/company name is found, restrict retrieval to chunks from
+    that file. This eliminates the dominant failure mode where semantically
+    similar text in OTHER contracts ranks ahead of the gold document.
+
+    Returns a set of allowed chunk indices, or None to search all chunks.
+    """
+    import re
+    # Pattern: "Consider X's ..." or "Consider the ... between X and Y; ..."
+    m = re.match(
+        r"Consider (?:the .+ between (.+?) and (.+?)|(.+?)'s .+?);",
+        query, re.IGNORECASE
+    )
+    if not m:
+        return None
+
+    # Collect candidate party names
+    parties = [p.strip() for p in (m.group(1), m.group(2), m.group(3)) if p]
+    if not parties:
+        return None
+
+    # Find all chunks whose file path contains any party name (case-insensitive)
+    allowed: set[int] = set()
+    for i, entry in enumerate(metadata):
+        file_lower = entry.get("file", "").lower()
+        if any(p.lower() in file_lower for p in parties):
+            allowed.add(i)
+
+    # Only apply the filter if we found matching chunks
+    return allowed if allowed else None
+
+
 def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
     """Hybrid BM25 + vector retrieval over LegalBench-RAG corpus.
 
     Returns list of {"file": str, "start": int, "end": int, "text": str}.
     Note: No cross-encoder reranking — paper found rerankers HURT on legal text.
+
+    Document routing: when the query names a specific contract (e.g., "Consider
+    EFCA's NDA"), restrict search to chunks from that document. Without routing,
+    semantically similar text from other contracts dominates the results.
     """
     from arlc.indexing.legal_tokenizer import legal_tokenize_queries
 
@@ -179,22 +221,32 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
             "  python benchmarks/legalbench-rag/build_index.py"
         )
 
+    _, metadata = _load_faiss()
+
+    # Document-level pre-filter from party names in query
+    doc_filter = _extract_document_filter(query, metadata)
+
     # Score by chunk_id (int index into metadata)
     scores = {}  # chunk_id -> score
 
     # --- Vector search ---
     if has_faiss:
-        index, metadata = _load_faiss()
+        index, _ = _load_faiss()
         model = _get_embedding_model()
-        query_emb = model.encode(query, prompt_name='query', normalize_embeddings=True)
+        # Use only the question part after the semicolon for semantic search
+        # (party names add noise; the legal concept is what matters for ranking)
+        semantic_query = query.split(";", 1)[-1].strip() if ";" in query else query
+        query_emb = model.encode(semantic_query, prompt_name='query', normalize_embeddings=True)
         query_np = np.array([query_emb], dtype='float32')
         import faiss
         faiss.normalize_L2(query_np)
-        k_vec = min(50, index.ntotal)
+        k_vec = min(200, index.ntotal)
         D, I = index.search(query_np, k_vec)
         for j in range(k_vec):
             idx = int(I[0][j])
             if idx < 0:
+                continue
+            if doc_filter is not None and idx not in doc_filter:
                 continue
             scores[idx] = float(D[0][j])
 
@@ -202,10 +254,12 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
     if has_bm25:
         bm25, bm25_ids = _load_bm25()
         tokenized_q = legal_tokenize_queries(query)
-        results, bm25_scores = bm25.retrieve(tokenized_q, k=50)
+        results, bm25_scores = bm25.retrieve(tokenized_q, k=200)
         for j in range(len(results[0])):
             chunk_idx = int(results[0][j])
             if chunk_idx < 0:
+                continue
+            if doc_filter is not None and chunk_idx not in doc_filter:
                 continue
             bm25_score = float(bm25_scores[0][j])
             if chunk_idx in scores:
@@ -216,7 +270,6 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
     # Sort by score, take top 10 (paper uses k=10)
     ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:10]
 
-    _, metadata = _load_faiss()
     spans = []
     for chunk_idx, _ in ranked:
         if chunk_idx >= len(metadata):
