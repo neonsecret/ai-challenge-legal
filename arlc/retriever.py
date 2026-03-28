@@ -173,6 +173,9 @@ def get_reranker():
                         else 'mps' if torch.backends.mps.is_available()
                         else 'cpu'
                     )
+                    # Allow overriding via RERANKER_DEVICE to avoid GPU OOM when
+                    # llama-server shares the same GPU (e.g. RTX 3070 8GB).
+                    device = os.environ.get("RERANKER_DEVICE", device)
                     _reranker = CrossEncoder(RERANKER_MODEL, max_length=1024, device=device)
     return _reranker
 
