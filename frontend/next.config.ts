@@ -20,15 +20,17 @@ const nextConfig: NextConfig = {
 
         return [
             {
-                source: "/_next/static/:path*.js",
+                // Static assets — immutable, cache forever (filenames include content hash)
+                source: "/_next/static/:path*",
                 headers: [
-                    {key: "Content-Type", value: "application/javascript; charset=utf-8"},
+                    {key: "Cache-Control", value: "public, max-age=31536000, immutable"},
                 ],
             },
             {
-                source: "/_next/static/:path*.css",
+                // HTML pages — never cache so deploys take effect immediately
+                source: "/((?!_next/static|favicon).*)",
                 headers: [
-                    {key: "Content-Type", value: "text/css; charset=utf-8"},
+                    {key: "Cache-Control", value: "no-cache, no-store, must-revalidate"},
                 ],
             },
             {
