@@ -1,6 +1,7 @@
 from __future__ import annotations
+import re
 from typing import Any
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class QueryRequest(BaseModel):
@@ -15,6 +16,17 @@ class QueryRequest(BaseModel):
     # Optional list of Czech law prefixes to restrict retrieval to specific laws.
     # E.g. ["zakonik_prace", "obcansky_zakonik"]. Empty or None = all laws.
     laws: list[str] | None = Field(default=None)
+
+    @field_validator("laws")
+    @classmethod
+    def validate_law_ids(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        pattern = re.compile(r"^[a-z0-9_]{1,64}$")
+        for law_id in v:
+            if not pattern.match(law_id):
+                raise ValueError(f"Invalid law ID: {law_id!r}")
+        return v
     # Opaque session pointer — server loads history from DB using user_id+conversation_id.
     # Client never sends history content; only this UUID-like key.
     conversation_id: str | None = Field(
@@ -72,10 +84,14 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
     else:
         confidence = "high"
 
+    # Don't leak the real LLM model name to the frontend.
+    # Use the internal model_name only for confidence logic above.
+    public_model_name = "vitreon-legal"
+
     return QueryResponse(
         answer=answer,
         sources=sources,
         confidence=confidence,
         latency_ms=int(result.get("total_time_ms", 0)),
-        model_name=model_name,
+        model_name=public_model_name,
     )

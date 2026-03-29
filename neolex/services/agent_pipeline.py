@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def run_agent_question(
     question: str,
-    answer_type: str,
+    answer_type: str,  # noqa: ARG001 — kept for API compatibility with the SSE endpoint
     corpus: str = "difc",
     user_id: str | None = None,
     conversation_id: str | None = None,
@@ -79,5 +79,5 @@ async def run_agent_question(
         "answer": result.get("answer", ""),
         "chunk_pages": result.get("sources", []),
         "total_time_ms": elapsed_ms,
-        "model_name": "claude-sonnet-4-6",
+        "model_name": "vitreon-legal",
     }

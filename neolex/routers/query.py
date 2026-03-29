@@ -4,7 +4,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
+from fastapi import APIRouter, Depends, Path, Request, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -388,7 +388,7 @@ async def list_laws():
 
 @router.get("/conversations/{conversation_id}/last-answer")
 async def get_last_answer(
-    conversation_id: str,
+    conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
     key_row: dict = Depends(get_api_key),
 ):
     """Return the last assistant message for a conversation, if it exists.

@@ -265,7 +265,7 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=
         if local is not ranker:
             logger.warning("Primary reranker failed (%s), falling back to local", e)
             if on_status:
-                on_status("retrieving:reranking (fallback to local)")
+                on_status("retrieving:reranking passages")
             try:
                 with _reranker_lock:
                     scores = local.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
@@ -278,7 +278,7 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=
             logger.warning("Reranking failed (%s), using vector-distance ordering", e)
 
         if on_status:
-            on_status("retrieving:reranking skipped (fallback)")
+            on_status("retrieving:scoring results")
         return chunks[:top_k]
 
 
@@ -343,6 +343,12 @@ def _load_faiss(corpus: str = "difc"):
     corpus : str
         Which corpus index to load. "difc" (default) or "czech".
     """
+    import re as _re
+
+    # Validate corpus name to prevent path traversal (e.g. "../../etc/passwd")
+    if not _re.match(r"^[a-z0-9_-]+$", corpus):
+        raise ValueError(f"Invalid corpus name: {corpus!r}")
+
     global _faiss_index, _faiss_metadata, _faiss_corpus_cache
 
     # Select paths based on corpus
@@ -1921,11 +1927,11 @@ def _retrieve_pages_simple(
     """
     print(f"[retriever] simple retrieval for corpus={corpus!r}")
     if on_status:
-        on_status(f"retrieving:embedding query")
+        on_status("retrieving:searching corpus")
     query_emb = embed_query(question)
     top_k = min(50, _faiss_count(corpus=corpus))
     if on_status:
-        on_status(f"retrieving:vector search ({top_k} candidates)")
+        on_status("retrieving:searching corpus")
     vector_results = _search_faiss(query_emb, top_k=top_k, corpus=corpus)
 
     # Convert to chunk dicts for reranking
@@ -2059,7 +2065,7 @@ def retrieve_pages(
         best_score = max((r.score for r in results), default=0.0)
         if best_score < 0.4:
             if on_status:
-                on_status("retrieving:low confidence, adding fallback search")
+                on_status("retrieving:broadening search")
             print(f"[retriever] low-confidence targeted ({best_score:.3f} < 0.40), adding fallback")
             fb_results = _retrieve_pages_fallback(question, max_per_doc=1, max_total=1, answer_type=answer_type)
             seen = {}
@@ -2070,7 +2076,7 @@ def retrieve_pages(
             results = sorted(seen.values(), key=lambda p: p.score, reverse=True)[:max_total]
     else:
         if on_status:
-            on_status("retrieving:full corpus hybrid search (BM25 + vector)")
+            on_status("retrieving:searching corpus")
         results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type)
 
     if on_status and results:
@@ -2328,7 +2334,7 @@ def _retrieve_pages_targeted(
                 if local is not ranker:
                     logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
                     if on_status:
-                        on_status("retrieving:reranking (fallback to local)")
+                        on_status("retrieving:reranking passages")
                     try:
                         with _reranker_lock:
                             ce_scores = local.predict(pairs, timeout=180)
@@ -2338,7 +2344,7 @@ def _retrieve_pages_targeted(
                 else:
                     logger.warning("Targeted reranking failed for %s: %s, using dense scores only", doc_id, e)
                     if on_status:
-                        on_status("retrieving:reranking failed, using dense scores")
+                        on_status("retrieving:scoring results")
                     ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
             # Merge: use cross-encoder scores for the top candidates
             page_scores: dict[int, float] = {}
@@ -2362,7 +2368,7 @@ def _retrieve_pages_targeted(
                 if local is not ranker:
                     logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
                     if on_status:
-                        on_status("retrieving:reranking (fallback to local)")
+                        on_status("retrieving:reranking passages")
                     try:
                         with _reranker_lock:
                             scores = local.predict(pairs, timeout=180)
@@ -2372,7 +2378,7 @@ def _retrieve_pages_targeted(
                 else:
                     logger.warning("Targeted reranking failed for %s: %s, using uniform scores", doc_id, e)
                     if on_status:
-                        on_status("retrieving:reranking failed, using uniform scores")
+                        on_status("retrieving:scoring results")
                     scores = [0.5] * len(doc_chunks)
             page_scores: dict[int, float] = {}
             for chunk, score in zip(doc_chunks, scores):

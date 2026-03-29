@@ -6,13 +6,14 @@ TypedDict so it serialises cleanly through LangGraph's state channels.
 
 from __future__ import annotations
 
-from typing import Annotated, TypedDict
+from collections.abc import Callable
+from typing import Annotated, NotRequired, Required, TypedDict
 
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
 
-class SourceDocument(TypedDict):
+class SourceDocument(TypedDict, total=False):
     """A single retrieved legal document chunk.
 
     Kept intentionally flat (no nested objects) so it round-trips through
@@ -28,12 +29,17 @@ class SourceDocument(TypedDict):
         Raw chunk text (up to ~7500 chars per the project chunking strategy).
     score : float
         Relevance score from the reranker (higher is better).
+    verified : bool
+        Whether the source passed keyword-overlap relevance check against the
+        answer.  Set by ``verify_source_relevance()`` — optional, absent until
+        verification runs.
     """
 
-    doc_id: str
-    page: int
-    text: str
-    score: float
+    doc_id: Required[str]
+    page: Required[int]
+    text: Required[str]
+    score: Required[float]
+    verified: bool
 
 
 class AgentState(TypedDict):
@@ -63,6 +69,9 @@ class AgentState(TypedDict):
         For audit logging.
     conversation_id : str
         For conversation persistence / session tracking.
+    _on_status : Callable[[str], None] | None
+        Per-request status callback.  Passed through state (not a graph
+        channel) so the search_node can emit SSE status events.
     """
 
     messages: Annotated[list[BaseMessage], add_messages]
@@ -72,3 +81,4 @@ class AgentState(TypedDict):
     search_count: int
     user_id: str
     conversation_id: str
+    _on_status: NotRequired[Callable[[str], None] | None]

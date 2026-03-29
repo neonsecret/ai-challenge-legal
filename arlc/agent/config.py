@@ -17,4 +17,5 @@ MAX_HISTORY_MESSAGES: int = int(os.environ.get("AGENT_MAX_HISTORY", "10"))  # 5 
 
 # --- LLM ---
 LLM_MODEL: str = os.environ.get("AGENT_LLM_MODEL", "claude-sonnet-4-6")
+LLM_MODEL_FAST: str = os.environ.get("AGENT_LLM_MODEL_FAST", "claude-haiku-4-5-20251001")
 LLM_MAX_TOKENS: int = int(os.environ.get("AGENT_LLM_MAX_TOKENS", "4096"))

@@ -49,6 +49,7 @@ from langgraph.graph import END, StateGraph
 from arlc.agent.config import (
     LLM_MAX_TOKENS,
     LLM_MODEL,
+    LLM_MODEL_FAST,
     MAX_ACCUMULATED_DOCS,
     MAX_HISTORY_MESSAGES,
     MAX_SEARCHES_PER_TURN,
@@ -70,41 +71,83 @@ def search_legal_corpus(query: str) -> str:
     """Search the legal corpus for relevant legislation and case law.
     Write queries in the corpus language (Czech for Czech law, English for DIFC).
     Each call returns fresh documents not previously retrieved in this conversation."""
-    return ""  # Actual execution in search_node
+    raise RuntimeError("search_legal_corpus is schema-only; execution handled by search_node")
 
 
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
 
-def _build_llm():
+def _build_llm_pair():
+    """Build fast (Haiku) and full (Sonnet) LLMs for two-round strategy.
+
+    The first reason call only decides "I need to search" and writes a query —
+    perfect for Haiku (cheap, fast).  Subsequent calls generate the grounded
+    answer and need Sonnet.
+    """
     from langchain_google_vertexai.model_garden import ChatAnthropicVertex
-    return ChatAnthropicVertex(
-        model_name=LLM_MODEL,
+
+    base_kwargs = dict(
         project=os.environ["VERTEX_PROJECT_ID"],
         location=os.environ.get("VERTEX_LOCATION", "us-east5"),
-        max_tokens=LLM_MAX_TOKENS,
+    )
+
+    fast = ChatAnthropicVertex(
+        model_name=LLM_MODEL_FAST,
+        max_tokens=1024,  # First round only needs short tool calls
+        **base_kwargs,
     ).bind_tools([search_legal_corpus])
+
+    full = ChatAnthropicVertex(
+        model_name=LLM_MODEL,
+        max_tokens=LLM_MAX_TOKENS,
+        **base_kwargs,
+    ).bind_tools([search_legal_corpus])
+
+    return fast, full
+
+
+_compiled_graph = None
+
+
+def _get_agent_graph():
+    """Return the cached compiled agent graph (singleton).
+
+    The graph is stateless — per-request data (``on_status``, docs, messages)
+    flows through the ``AgentState`` dict, so a single compiled graph is safe
+    to reuse across requests.  This avoids re-building the LLM bindings and
+    compiling the StateGraph on every turn.
+    """
+    global _compiled_graph
+    if _compiled_graph is None:
+        _compiled_graph = build_agent_graph()
+    return _compiled_graph
 
 
 def build_agent_graph():
     """Build and compile the agent graph."""
-    llm = _build_llm()
+    fast_llm, full_llm = _build_llm_pair()
     graph = StateGraph(AgentState)
 
     def reason_node(state: AgentState) -> dict:
+        # First reason call (no AI messages yet) -> use fast Haiku
+        has_prior_ai = any(isinstance(m, AIMessage) for m in state["messages"])
+        llm = full_llm if has_prior_ai else fast_llm
+
         system = build_system_prompt(state)
         messages: list[BaseMessage] = [SystemMessage(content=system)] + state["messages"]
         response = llm.invoke(messages)
 
-        # Log the agent's decision
+        # Log the agent's decision including which model was used
+        model_name = LLM_MODEL if has_prior_ai else LLM_MODEL_FAST
         if hasattr(response, "tool_calls") and response.tool_calls:
             queries = [tc["args"].get("query", "") for tc in response.tool_calls]
-            logger.info("[agent] reason -> search (%d queries: %s)",
-                       len(queries), [q[:60] for q in queries])
+            logger.info("[agent] reason -> search [%s] (%d queries: %s)",
+                       model_name.split("-")[1], len(queries), [q[:60] for q in queries])
         else:
             content = response.content if isinstance(response.content, str) else str(response.content)[:100]
-            logger.info("[agent] reason -> answer (%d chars)", len(content))
+            logger.info("[agent] reason -> answer [%s] (%d chars)",
+                       model_name.split("-")[1], len(content))
 
         return {"messages": [response]}
 
@@ -128,9 +171,9 @@ def build_agent_graph():
                 ))
                 continue
 
-            # Status: show what the agent is searching for
+            # Status: user-facing, no internal details
             if on_status:
-                on_status(f"retrieving:searching \"{query[:60]}\"")
+                on_status("retrieving:searching corpus")
 
             exclude = {(d["doc_id"], d["page"]) for d in state["accumulated_docs"]}
             exclude.update((d["doc_id"], d["page"]) for d in new_docs_all)
@@ -281,11 +324,12 @@ async def run_agent_turn(
         "_on_status": on_status,  # passed through state for search_node
     }
 
-    graph = build_agent_graph()
+    graph = _get_agent_graph()
 
     # --- Streaming state ---
     final_answer_parts: list[str] = []
     final_docs: list[SourceDocument] = accumulated_docs or []
+    final_search_count = 0
     reason_count = 0
     # Track whether the current reason call has produced tool calls.
     # When it does, any text tokens streamed so far were a preamble, not
@@ -372,21 +416,15 @@ async def run_agent_turn(
             output = event.get("data", {}).get("output", {})
             if isinstance(output, dict):
                 final_docs = output.get("accumulated_docs", final_docs)
+                final_search_count = output.get("search_count", 0)
 
     # Assemble the final answer from streamed tokens
     final_answer = "".join(final_answer_parts)
 
     # Fallback: if streaming missed the answer (e.g. astream_events quirk),
     # extract it from the final graph output
-    if not final_answer and final_docs is not None:
-        # Re-run would be expensive; the graph has already completed.
-        # This fallback should rarely trigger — log a warning.
-        logger.warning("[agent] no tokens captured via streaming; "
-                       "falling back to graph output extraction")
-        # The final AIMessage is the last non-tool message in the graph output
-        # We already have the graph output from the LangGraph on_chain_end event
-        # but we need to re-extract from the event stream.  Since the graph is
-        # done, we can't re-iterate.  The final_answer stays empty.
+    if not final_answer:
+        logger.warning("[agent] turn produced no answer text")
 
     # Post-processing: verify source relevance (informational, not blocking)
     if final_answer and final_docs:
@@ -406,9 +444,8 @@ async def run_agent_turn(
     if final_answer and sources and corpus == "difc":
         sources = verify_agent_pages(question, final_answer, sources)
 
-    search_count = max(reason_count - 1, 0)
     logger.info("[agent] turn complete: %d docs, %d searches, answer=%d chars",
-               len(final_docs), search_count, len(final_answer))
+               len(final_docs), final_search_count, len(final_answer))
 
     if on_status:
         on_status("agent:done")
