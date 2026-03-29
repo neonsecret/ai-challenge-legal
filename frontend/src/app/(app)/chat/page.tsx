@@ -1170,6 +1170,13 @@ export default function ChatPage() {
                     flexShrink: 0, background: "rgba(255,255,255,0.04)"
                 }}>
                     <ChatInput onSend={onSend} disabled={isStreaming} onFocusRef={inputFocusRef}/>
+                    <p style={{
+                        fontSize: 10, textAlign: "center", margin: "6px 0 0",
+                        color: isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.25)",
+                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                    }}>
+                        For research purposes only. Not legal advice.
+                    </p>
                 </div>
             </div>
 
