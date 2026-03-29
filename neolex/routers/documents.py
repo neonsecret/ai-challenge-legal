@@ -15,6 +15,12 @@ import logging
 import re
 from pathlib import Path
 
+
+def _log_task_exception(task: asyncio.Task) -> None:
+    """Log exceptions from fire-and-forget tasks."""
+    if not task.cancelled() and task.exception():
+        logging.getLogger(__name__).error("Background task failed: %s", task.exception())
+
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
@@ -152,10 +158,11 @@ async def upload_document(
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
     job_id = await create_job(client_slug)
-    asyncio.create_task(
+    task = asyncio.create_task(
         run_reindex_job(job_id, client_slug, app=request.app),
         name=f"reindex-{job_id[:8]}",
     )
+    task.add_done_callback(_log_task_exception)
 
     # --- Audit log ---
     async with get_audit_db() as db:
@@ -260,10 +267,11 @@ async def delete_doc(
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
     job_id = await create_job(client_slug)
-    asyncio.create_task(
+    task = asyncio.create_task(
         run_reindex_job(job_id, client_slug, app=request.app),
         name=f"reindex-{job_id[:8]}",
     )
+    task.add_done_callback(_log_task_exception)
 
     # Audit log
     async with get_audit_db() as db:
@@ -314,10 +322,11 @@ async def trigger_reindex(
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
     job_id = await create_job(client_slug)
-    asyncio.create_task(
+    task = asyncio.create_task(
         run_reindex_job(job_id, client_slug, app=request.app),
         name=f"reindex-{job_id[:8]}",
     )
+    task.add_done_callback(_log_task_exception)
 
     async with get_audit_db() as db:
         await db.log_event(

@@ -28,7 +28,8 @@ stripe.api_key = settings.stripe_secret_key
 
 # Webhook idempotency — simple in-memory set (OK for single-instance;
 # use Redis for multi-instance).
-_processed_events: set[str] = set()
+from collections import OrderedDict
+_processed_events: OrderedDict[str, None] = OrderedDict()
 _MAX_PROCESSED = 10_000
 
 
@@ -220,9 +221,9 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     if event_id in _processed_events:
         logger.info("Duplicate webhook event %s, skipping", event_id)
         return JSONResponse({"status": "duplicate"})
-    _processed_events.add(event_id)
-    if len(_processed_events) > _MAX_PROCESSED:
-        _processed_events.clear()  # Simple eviction
+    _processed_events[event_id] = None
+    while len(_processed_events) > _MAX_PROCESSED:
+        _processed_events.popitem(last=False)  # LRU eviction — removes oldest
 
     etype = event["type"]
     data = event["data"]["object"]
