@@ -34,7 +34,25 @@ function _userKey(base: string): string {
 
 function loadSessions(): ChatSession[] {
     try {
-        const raw = localStorage.getItem(_userKey("neolex_chat_sessions"))
+        const key = _userKey("neolex_chat_sessions")
+        let raw = localStorage.getItem(key)
+
+        // One-time migration: move data from old unscoped key to user-scoped key
+        if (!raw && key !== "neolex_chat_sessions") {
+            const legacy = localStorage.getItem("neolex_chat_sessions")
+            if (legacy) {
+                localStorage.setItem(key, legacy)
+                localStorage.removeItem("neolex_chat_sessions")
+                // Also migrate current session pointer
+                const legacyCurrent = localStorage.getItem("neolex_current_session")
+                if (legacyCurrent) {
+                    localStorage.setItem(_userKey("neolex_current_session"), legacyCurrent)
+                    localStorage.removeItem("neolex_current_session")
+                }
+                raw = legacy
+            }
+        }
+
         if (!raw) return []
         const all: ChatSession[] = JSON.parse(raw)
         const now = Date.now()
