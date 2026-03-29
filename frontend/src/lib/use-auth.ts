@@ -58,6 +58,7 @@ export function useAuth(): {
                 });
                 if (!cancelled && res.ok) {
                     const user: User = await res.json();
+                    localStorage.setItem("neolex_uid", user.id);
                     setState({user, loading: false, error: null});
                 } else if (!cancelled) {
                     setState({user: null, loading: false, error: null});
@@ -91,6 +92,7 @@ export function useAuth(): {
             const meRes = await fetch(`${API}/auth/me`, {credentials: "include"});
             if (meRes.ok) {
                 const user: User = await meRes.json();
+                localStorage.setItem("neolex_uid", user.id);
                 setState({user, loading: false, error: null});
             } else {
                 setState((prev) => ({...prev, error: "Login succeeded but failed to load profile."}));
@@ -141,6 +143,7 @@ export function useAuth(): {
         } catch {
             // swallow — we clear local state regardless
         }
+        localStorage.removeItem("neolex_uid");
         setState({user: null, loading: false, error: null});
     }, []);
 

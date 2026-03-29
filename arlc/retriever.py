@@ -2080,7 +2080,7 @@ def retrieve_pages(
         results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type)
 
     if on_status and results:
-        on_status(f"retrieving:found {len(results)} pages, scoring {results[0].score:.0%} best match")
+        on_status(f"retrieving:found {len(results)} pages")
 
     if use_llm_rerank and len(results) > 1:
         from arlc.llm.reranker import llm_rerank_pages

@@ -23,14 +23,18 @@ export interface ChatSession {
     createdAt: number
 }
 
-const SESSIONS_KEY = "neolex_chat_sessions"
-const CURRENT_SESSION_KEY = "neolex_current_session"
 const MAX_SESSIONS = 20
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
+/** Get user-scoped localStorage key to prevent cross-account session leaks. */
+function _userKey(base: string): string {
+    const uid = typeof window !== "undefined" ? localStorage.getItem("neolex_uid") : null
+    return uid ? `${base}_${uid}` : base
+}
+
 function loadSessions(): ChatSession[] {
     try {
-        const raw = localStorage.getItem(SESSIONS_KEY)
+        const raw = localStorage.getItem(_userKey("neolex_chat_sessions"))
         if (!raw) return []
         const all: ChatSession[] = JSON.parse(raw)
         const now = Date.now()
@@ -42,8 +46,18 @@ function loadSessions(): ChatSession[] {
 
 function saveSessions(sessions: ChatSession[]) {
     try {
-        localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions.slice(0, MAX_SESSIONS)))
+        localStorage.setItem(_userKey("neolex_chat_sessions"), JSON.stringify(sessions.slice(0, MAX_SESSIONS)))
     } catch { /* ignore */ }
+}
+
+function loadCurrentSessionId(): string | null {
+    return typeof window !== "undefined" ? localStorage.getItem(_userKey("neolex_current_session")) : null
+}
+
+function saveCurrentSessionId(id: string | null) {
+    const key = _userKey("neolex_current_session")
+    if (id) localStorage.setItem(key, id)
+    else localStorage.removeItem(key)
 }
 
 function titleFromMessages(msgs: Message[]): string {
@@ -97,7 +111,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     // ── Mount: load from localStorage (client-only, runs once) ──
     useEffect(() => {
         const loaded = loadSessions()
-        const lastId = localStorage.getItem(CURRENT_SESSION_KEY)
+        const lastId = loadCurrentSessionId()
         const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
         // Mark interrupted messages across ALL sessions and recover from server
@@ -247,11 +261,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
     useEffect(() => {
         if (!hydrated) return
-        if (currentSessionId) {
-            localStorage.setItem(CURRENT_SESSION_KEY, currentSessionId)
-        } else {
-            localStorage.removeItem(CURRENT_SESSION_KEY)
-        }
+        saveCurrentSessionId(currentSessionId)
     }, [currentSessionId, hydrated])
 
     useEffect(() => {

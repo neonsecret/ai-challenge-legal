@@ -15,8 +15,10 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
     const ref = useRef<HTMLTextAreaElement>(null)
     const [hasText, setHasText] = useState(false)
     const [focused, setFocused] = useState(false)
+    const [mounted, setMounted] = useState(false)
     const {resolvedTheme} = useTheme()
-    const isDark = resolvedTheme === "dark"
+    useEffect(() => setMounted(true), [])
+    const isDark = mounted && resolvedTheme === "dark"
     const {t} = useI18n()
 
     useEffect(() => {
@@ -88,10 +90,11 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
         >
       <textarea
           ref={ref}
+          suppressHydrationWarning
           placeholder={t("chat.placeholder")}
           className="w-full bg-transparent resize-none outline-none leading-relaxed px-4 pt-3.5 pb-11 min-h-[52px] max-h-[200px]"
           style={{
-              color: isDark ? "rgba(255,255,255,0.88)" : "#2e1f08",
+              color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",
               caretColor: isDark ? "#C9A84C" : "#c9a230",
               fontSize: "14px",
               fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",

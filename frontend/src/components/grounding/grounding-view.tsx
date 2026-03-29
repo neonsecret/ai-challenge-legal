@@ -24,7 +24,7 @@ interface GroundingViewProps {
 
 // ── Legal term highlighting in grounding text ──
 const LEGAL_HIGHLIGHT_RE =
-    /\b((?:Article|Section|Art\.|Sec\.)\s+\d+(?:\(\d+\))?(?:\([a-z]\))?)\b|\b((?:Page|p\.)\s*\d+(?:\s*[-–]\s*\d+)?)\b|\b(pp\.\s*\d+\s*[-–]\s*\d+)\b|\b([A-Z][A-Z\s]{2,}(?:Law|Act|Code|Decree|Regulation|Directive|Statute))\b|§\s*\d+[a-z]?(?:\s+odst\.\s*\d+)?(?:\s+písm\.\s*[a-z]\))?/g
+    /\b((?:Article|Section|Art\.|Sec\.)\s+\d+(?:\(\d+\))?(?:\([a-z]\))?)\b|\b((?:Page|p\.)\s*\d+(?:\s*[-–]\s*\d+)?)\b|\b(pp\.\s*\d+\s*[-–]\s*\d+)\b|\b((?:DIFC|UAE|UK|EU)\s+(?:Law|Act|Code)\s+No\.\s*\d+(?:\s+of\s+\d{4})?)\b|\b((?:[A-Z][a-z]+\s+){1,4}(?:Law|Act|Code|Decree|Regulation|Directive|Statute)(?:\s+No\.\s*\d+)?)\b|§\s*\d+[a-z]?(?:\s+odst\.\s*\d+)?(?:\s+písm\.\s*[a-z]\))?/g
 
 type SegmentKind = "text" | "article" | "page" | "law"
 
@@ -42,7 +42,7 @@ function tokenizeLegalText(text: string): Segment[] {
         if (match.index > lastIndex) {
             segments.push({kind: "text", text: text.slice(lastIndex, match.index)})
         }
-        const kind: SegmentKind = match[1] ? "article" : match[2] || match[3] ? "page" : "law"
+        const kind: SegmentKind = match[1] ? "article" : match[2] || match[3] ? "page" : (match[4] || match[5]) ? "law" : "article"
         segments.push({kind, text: match[0]})
         lastIndex = match.index + match[0].length
     }
