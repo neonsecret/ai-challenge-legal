@@ -96,7 +96,7 @@ export function AppSidebar() {
 
     const handleLogout = () => {
         const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
-        fetch(`${API}/auth/logout`, {method: "POST", credentials: "include"}).catch(() => {
+        fetch(`${API}/auth/logout`, {method: "POST", credentials: "include", headers: {"X-Requested-With": "XMLHttpRequest"}}).catch(() => {
         });
         router.push("/");
     };

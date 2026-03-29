@@ -98,7 +98,7 @@ export default function BillingPage() {
       const res = await fetch(`${API}/stripe/create-checkout-session`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         body: JSON.stringify({ plan, interval }),
       });
       if (res.status === 401) {

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Health endpoints are exempt — they must always respond even if the server is
 # under load. Auth failures also return quickly; we want 401 not 504.
-_EXEMPT_PREFIXES = ("/health",)
+_EXEMPT_PREFIXES = ("/health", "/api/v1/query/stream")
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):

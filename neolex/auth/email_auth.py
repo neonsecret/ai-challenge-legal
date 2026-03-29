@@ -34,7 +34,7 @@ async def _auth_rate_check(request: Request, action: str) -> None:
     try:
         async with get_audit_db() as db:
             _, exceeded = await db.check_and_increment_rate(
-                bucket=bucket, window_seconds=300.0, limit=10, now=time.monotonic(),
+                bucket=bucket, window_seconds=300.0, limit=10, now=time.time(),
             )
         if exceeded:
             raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
@@ -177,6 +177,16 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
     result2 = await db.execute(select(User).where(User.id == auth_token.user_id))
     user = result2.scalar_one()
     user.password_hash = _pwd.hash(body.new_password)
+
+    # Invalidate all other unused reset tokens for this user
+    from sqlalchemy import update as sql_update
+    await db.execute(
+        sql_update(AuthToken).where(
+            AuthToken.user_id == user.id,
+            AuthToken.token_type == "password_reset",
+            AuthToken.used_at == None,  # noqa: E711
+        ).values(used_at=now)
+    )
 
     # Invalidate all existing sessions
     from neolex.db.models import Session as DBSession

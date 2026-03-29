@@ -45,7 +45,7 @@ function extractAnswerContent(raw: string): string | null {
 
 function clearSessionAndRedirect(router: ReturnType<typeof useRouter>) {
     const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
-    fetch(`${API}/auth/logout`, {method: "POST", credentials: "include"}).catch(() => {
+    fetch(`${API}/auth/logout`, {method: "POST", credentials: "include", headers: {"X-Requested-With": "XMLHttpRequest"}}).catch(() => {
     })
     router.replace("/")
 }
@@ -155,7 +155,7 @@ export function useQueryStream(): UseQueryStreamReturn {
 
             fetchEventSource(`${API_BASE}/api/v1/query/stream`, {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
+                headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
                 body: JSON.stringify({
                     question,
                     answer_type: "free_text",

@@ -26,6 +26,11 @@ router = APIRouter(prefix="/stripe", tags=["billing"])
 
 stripe.api_key = settings.stripe_secret_key
 
+# Webhook idempotency — simple in-memory set (OK for single-instance;
+# use Redis for multi-instance).
+_processed_events: set[str] = set()
+_MAX_PROCESSED = 10_000
+
 
 # ---------------------------------------------------------------------------
 # Price ID <-> plan name mapping
@@ -210,6 +215,15 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid Stripe signature")
 
+    # Idempotency guard — skip already-processed webhook events.
+    event_id = event.get("id", "")
+    if event_id in _processed_events:
+        logger.info("Duplicate webhook event %s, skipping", event_id)
+        return JSONResponse({"status": "duplicate"})
+    _processed_events.add(event_id)
+    if len(_processed_events) > _MAX_PROCESSED:
+        _processed_events.clear()  # Simple eviction
+
     etype = event["type"]
     data = event["data"]["object"]
 
@@ -389,8 +403,9 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
         user.subscription_status = "canceled"
         user.max_corpora = 0
         await db.commit()
-        # Fire-and-forget corpus cleanup
-        asyncio.create_task(_delete_user_corpora(user))
+        # Fire-and-forget corpus cleanup (with error logging)
+        task = asyncio.create_task(_delete_user_corpora(user))
+        task.add_done_callback(lambda t: logger.error("Corpus cleanup failed: %s", t.exception()) if not t.cancelled() and t.exception() else None)
         logger.info("User %s subscription canceled, corpora cleanup scheduled", user.id)
     elif stripe_status in ("active",):
         # Plan may have changed (upgrade/downgrade)

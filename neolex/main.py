@@ -13,10 +13,12 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from neolex.config import settings
 from neolex.logging_config import configure_logging
@@ -43,6 +45,48 @@ _request_count: int = 0
 _last_error_ts: str | None = None
 _latency_sum_ms: float = 0.0
 _latency_count: int = 0
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """Require X-Requested-With header on state-mutating requests.
+
+    Browsers don't send custom headers on cross-origin form submissions,
+    so this blocks CSRF when combined with SameSite=Lax cookies.
+    Exempt: Stripe webhooks (signature-verified), health checks, OPTIONS,
+    auth callbacks (OAuth redirects).
+    """
+
+    _EXEMPT = ("/health", "/stripe/webhook", "/auth/google/callback", "/auth/verify-email")
+    _MUTATING = ("POST", "PUT", "DELETE", "PATCH")
+
+    async def dispatch(self, request, call_next):
+        if (
+            request.method in self._MUTATING
+            and not any(request.url.path.startswith(p) for p in self._EXEMPT)
+            and request.headers.get("x-requested-with") != "XMLHttpRequest"
+        ):
+            return JSONResponse({"detail": "Missing CSRF header"}, status_code=403)
+        return await call_next(request)
+
+
+async def _cleanup_expired() -> None:
+    """Periodic cleanup of expired sessions and auth tokens."""
+    from sqlalchemy import delete as sql_delete
+
+    from neolex.db.models import AuthToken, Session
+    from neolex.db.postgres import AsyncSessionLocal
+
+    while True:
+        await asyncio.sleep(3600)  # Every hour
+        try:
+            async with AsyncSessionLocal() as db:
+                now = datetime.now(timezone.utc)
+                await db.execute(sql_delete(Session).where(Session.expires_at < now))
+                await db.execute(sql_delete(AuthToken).where(AuthToken.expires_at < now))
+                await db.commit()
+                logger.info("Cleaned up expired sessions and tokens")
+        except Exception:
+            logger.exception("Session cleanup failed")
 
 
 @asynccontextmanager
@@ -91,6 +135,9 @@ async def lifespan(app: FastAPI):
             await init_pg()
             logger.info("PostgreSQL tables initialized.")
 
+        # Start periodic cleanup of expired sessions and auth tokens.
+        app.state.cleanup_task = asyncio.create_task(_cleanup_expired())
+
         app.state.ready = True
         app.state.startup_time = time.monotonic()
         logger.info("Vitreon Legal startup complete. Ready to serve requests.")
@@ -105,6 +152,9 @@ async def lifespan(app: FastAPI):
 
     # --- SHUTDOWN ---
     logger.info("Vitreon Legal shutting down.")
+    cleanup_task = getattr(app.state, "cleanup_task", None)
+    if cleanup_task and not cleanup_task.done():
+        cleanup_task.cancel()
     app.state.ready = False
 
 
@@ -176,12 +226,17 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
+# CSRF middleware: require X-Requested-With header on state-mutating requests.
+# Must be added before CORS so it runs after CORS (Starlette processes in reverse order).
+app.add_middleware(CSRFMiddleware)
 # SessionMiddleware is required by authlib's starlette OAuth client
 # to store the CSRF state between the redirect and the callback.
 from starlette.middleware.sessions import SessionMiddleware
 
+if not settings.jwt_secret_key:
+    raise RuntimeError("JWT_SECRET_KEY environment variable must be set")
 app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret_key)
 app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
 app.add_middleware(RequestIDMiddleware)

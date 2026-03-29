@@ -75,6 +75,7 @@ export function useDocuments() {
                     xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
                     xhr.open("POST", `${API_BASE}/documents/upload`);
                     xhr.withCredentials = true;
+                    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
                     xhr.send(formData);
                 });
 
@@ -97,6 +98,7 @@ export function useDocuments() {
                 const res = await fetch(`${API_BASE}/documents/${documentId}`, {
                     method: "DELETE",
                     credentials: "include",
+                    headers: {"X-Requested-With": "XMLHttpRequest"},
                 });
                 if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
                 setDocuments((prev) => prev.filter((d) => d.document_id !== documentId));
@@ -115,6 +117,7 @@ export function useDocuments() {
             const res = await fetch(`${API_BASE}/documents/reindex`, {
                 method: "POST",
                 credentials: "include",
+                headers: {"X-Requested-With": "XMLHttpRequest"},
             });
             if (!res.ok) throw new Error(`Reindex failed: ${res.status}`);
             const job: ReindexJob = await res.json();

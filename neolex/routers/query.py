@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1")
 
 
+def _log_task_exception(task: asyncio.Task) -> None:
+    """Log exceptions from fire-and-forget background tasks."""
+    if not task.cancelled() and task.exception():
+        logger.error("Background task failed: %s", task.exception())
+
+
 # ---------------------------------------------------------------------------
 # Plan-based query rate limiting
 # ---------------------------------------------------------------------------
@@ -130,12 +136,14 @@ async def query(
     """
     # --- Enforce plan-based query limits ---
     user_id = key_row.get("user_id")
-    if user_id:
-        from sqlalchemy import select
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if user:
-            await _enforce_query_limit(user, db)
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    from sqlalchemy import select
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    await _enforce_query_limit(user, db)
 
     if not getattr(request.app.state, "ready", False):
         raise HTTPException(
@@ -208,12 +216,14 @@ async def query_stream(
     """
     # --- Enforce plan-based query limits ---
     user_id_str = key_row.get("user_id")
-    if user_id_str:
-        from sqlalchemy import select
-        result = await db.execute(select(User).where(User.id == user_id_str))
-        user = result.scalar_one_or_none()
-        if user:
-            await _enforce_query_limit(user, db)
+    if not user_id_str:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    from sqlalchemy import select as sa_select
+    result = await db.execute(sa_select(User).where(User.id == user_id_str))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    await _enforce_query_limit(user, db)
 
     if not getattr(request.app.state, "ready", False):
         raise HTTPException(
@@ -346,12 +356,13 @@ async def query_stream(
             # Persist Q&A to conversation history (non-blocking, errors are swallowed)
             if user_id and conversation_id and response.answer is not None:
                 from neolex.services.conversation import save_turn
-                asyncio.create_task(save_turn(
+                task = asyncio.create_task(save_turn(
                     user_id=user_id,
                     conversation_id=conversation_id,
                     question=body.question,
                     answer=str(response.answer),
                 ))
+                task.add_done_callback(_log_task_exception)
 
             yield {"event": "answer", "data": response.model_dump_json()}
         except Exception as exc:

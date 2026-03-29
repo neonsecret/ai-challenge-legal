@@ -79,7 +79,7 @@ export function useAuth(): {
         try {
             const res = await fetch(`${API}/auth/login`, {
                 method: "POST",
-                headers: {"Content-Type": "application/json"},
+                headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
                 credentials: "include",
                 body: JSON.stringify({email, password}),
             });
@@ -115,7 +115,7 @@ export function useAuth(): {
             try {
                 const res = await fetch(`${API}/auth/register`, {
                     method: "POST",
-                    headers: {"Content-Type": "application/json"},
+                    headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
                     credentials: "include",
                     body: JSON.stringify({email, password, name}),
                 });
@@ -139,9 +139,15 @@ export function useAuth(): {
 
     const logout = useCallback(async () => {
         try {
-            await fetch(`${API}/auth/logout`, {method: "POST", credentials: "include"});
+            await fetch(`${API}/auth/logout`, {method: "POST", credentials: "include", headers: {"X-Requested-With": "XMLHttpRequest"}});
         } catch {
             // swallow — we clear local state regardless
+        }
+        // Clear all user-scoped session data on logout
+        const uid = localStorage.getItem("neolex_uid");
+        if (uid) {
+            localStorage.removeItem(`neolex_chat_sessions_${uid}`);
+            localStorage.removeItem(`neolex_current_session_${uid}`);
         }
         localStorage.removeItem("neolex_uid");
         setState({user: null, loading: false, error: null});

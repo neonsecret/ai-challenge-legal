@@ -16,6 +16,12 @@ from typing import Callable
 logger = logging.getLogger(__name__)
 
 
+def _log_task_exception(task: asyncio.Task) -> None:
+    """Log exceptions from fire-and-forget background tasks."""
+    if not task.cancelled() and task.exception():
+        logger.error("Background task failed: %s", task.exception())
+
+
 async def run_agent_question(
     question: str,
     answer_type: str,  # noqa: ARG001 — kept for API compatibility with the SSE endpoint
@@ -71,7 +77,8 @@ async def run_agent_question(
     if user_id and conversation_id and new_docs:
         from neolex.services.conversation import save_accumulated_docs
 
-        asyncio.create_task(save_accumulated_docs(user_id, conversation_id, new_docs))
+        task = asyncio.create_task(save_accumulated_docs(user_id, conversation_id, new_docs))
+        task.add_done_callback(_log_task_exception)
 
     elapsed_ms = (time.monotonic() - t_start) * 1000
 

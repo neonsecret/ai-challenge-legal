@@ -48,7 +48,7 @@ export default function SettingsPage() {
     const handleLogout = async () => {
         setLoggingOut(true);
         try {
-            await fetch(`${API}/auth/logout`, {method: "POST", credentials: "include"});
+            await fetch(`${API}/auth/logout`, {method: "POST", credentials: "include", headers: {"X-Requested-With": "XMLHttpRequest"}});
         } catch { /* ignore */
         }
 

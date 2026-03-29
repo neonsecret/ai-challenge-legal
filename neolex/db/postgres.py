@@ -9,8 +9,12 @@ from sqlalchemy.orm import DeclarativeBase
 
 from neolex.config import settings
 
+_db_url = settings.database_url
+if not _db_url:
+    raise RuntimeError("DATABASE_URL must be set for PostgreSQL connection")
+
 engine = create_async_engine(
-    settings.database_url,
+    _db_url,
     echo=False,
     pool_pre_ping=True,
     pool_size=10,
