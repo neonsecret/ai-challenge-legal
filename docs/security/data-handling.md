@@ -16,14 +16,14 @@ law firm clients.
 
 ## Data Classification
 
-| Data Type              | Classification | Examples                                   |
-|------------------------|----------------|--------------------------------------------|
-| Client query text      | Confidential   | "What are the damages limits under..."     |
-| LLM answer text        | Confidential   | Generated answers referencing client docs  |
-| Uploaded documents     | Confidential   | Client-uploaded PDFs                       |
-| API keys (hash only)   | Restricted     | SHA-256 digest stored in DB                |
-| Audit log metadata     | Internal       | IPs, timestamps, key prefixes              |
-| Health check responses | Public         | Status strings, no client data             |
+| Data Type              | Classification | Examples                                  |
+|------------------------|----------------|-------------------------------------------|
+| Client query text      | Confidential   | "What are the damages limits under..."    |
+| LLM answer text        | Confidential   | Generated answers referencing client docs |
+| Uploaded documents     | Confidential   | Client-uploaded PDFs                      |
+| API keys (hash only)   | Restricted     | SHA-256 digest stored in DB               |
+| Audit log metadata     | Internal       | IPs, timestamps, key prefixes             |
+| Health check responses | Public         | Status strings, no client data            |
 
 ---
 
@@ -66,11 +66,11 @@ FastAPI → Audit log → Client response
 
 - **Location:** Configured via `NEOLEX_DB_PATH` (default: `neolex.db` in working directory)
 - **Tables:**
-  - `queries`: question, answer_text, sources_json, key_hash, ip, user_agent, timestamps
-  - `events`: event_type, detail_json, key_hash, ip, user_agent, timestamps
-  - `api_keys`: key_hash (SHA-256), key_prefix (8 chars), client_slug, scope, active
-  - `documents`: doc_id, filename, size_bytes, upload_ts, indexed status
-  - `reindex_jobs`: job status and progress
+    - `queries`: question, answer_text, sources_json, key_hash, ip, user_agent, timestamps
+    - `events`: event_type, detail_json, key_hash, ip, user_agent, timestamps
+    - `api_keys`: key_hash (SHA-256), key_prefix (8 chars), client_slug, scope, active
+    - `documents`: doc_id, filename, size_bytes, upload_ts, indexed status
+    - `reindex_jobs`: job status and progress
 - **WAL mode:** Enabled for concurrent read safety
 - **Encryption at rest:** Not enabled at v1 — SQLite file is protected by filesystem
   permissions. For production: encrypt the database volume or use SQLCipher.
@@ -126,6 +126,7 @@ for data retention and privacy commitments before processing regulated data.
 
 NeoLex logs to stdout in JSON or human-readable format (configurable via `LOG_FORMAT`).
 Log lines include:
+
 - Request method and path
 - Response status code and duration
 - Request ID (UUID, for correlation)

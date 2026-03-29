@@ -48,9 +48,9 @@ INDEX_FILES = {
 def _step_header(step_num: int, title: str, skip: bool = False):
     """Print a step header."""
     status = "SKIPPING" if skip else ""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Step {step_num}: {title} {status}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 # ---------------------------------------------------------------------------
@@ -357,11 +357,11 @@ async def step_smoke_test(n_questions: int = 10):
             ppq_values.append(total_pages)
 
             successes += 1
-            print(f"  [{i+1}/{len(sample)}] {q['answer_type']:10s} pages={total_pages} OK")
+            print(f"  [{i + 1}/{len(sample)}] {q['answer_type']:10s} pages={total_pages} OK")
 
         except Exception as e:
             failures += 1
-            print(f"  [{i+1}/{len(sample)}] {q['answer_type']:10s} FAILED: {e}")
+            print(f"  [{i + 1}/{len(sample)}] {q['answer_type']:10s} FAILED: {e}")
 
     avg_ppq = sum(ppq_values) / len(ppq_values) if ppq_values else 0
     print(f"\n  Results: {successes} OK, {failures} failed")
@@ -429,11 +429,11 @@ async def main():
 
     # Summary
     t_total = time.monotonic() - t_total_start
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  PREPARATION COMPLETE ({t_total:.0f}s)")
     print(f"  Documents: {n_docs} PDFs")
     print(f"  Next: uv run python finals.py --questions {QUESTIONS_PATH}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

@@ -66,7 +66,7 @@ interface StreamState {
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-    sendQuery: (question: string, corpus?: string, conversationId?: string) => void
+    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[]) => void
     clearError: () => void
 }
 
@@ -82,13 +82,56 @@ export function useQueryStream(): UseQueryStreamReturn {
     })
     const abortRef = useRef<AbortController | null>(null)
     const tokenBufRef = useRef<string>("")
+    const conversationIdRef = useRef<string | null>(null)
 
     const clearError = useCallback(() => {
         setState((prev) => ({...prev, error: null}))
     }, [])
 
+    /** Poll the backend for a completed answer after SSE connection drops.
+     *  The pipeline saves Q&A to PostgreSQL even when the SSE stream breaks,
+     *  so we can recover the answer by polling the last-answer endpoint. */
+    const pollForAnswer = useCallback(async (convId: string) => {
+        const MAX_POLLS = 36  // 36 * 5s = 3 minutes
+        for (let i = 0; i < MAX_POLLS; i++) {
+            await new Promise(r => setTimeout(r, 5000))
+            try {
+                const res = await fetch(
+                    `${API_BASE}/api/v1/conversations/${encodeURIComponent(convId)}/last-answer`,
+                    {credentials: "include"},
+                )
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.answer) {
+                        setState(prev => ({
+                            ...prev,
+                            answer: data.answer,
+                            isStreaming: false,
+                            streamingStatus: null,
+                            error: null,
+                        }))
+                        return  // recovered
+                    }
+                } else if (res.status === 401 || res.status === 403) {
+                    clearSessionAndRedirect(router)
+                    return
+                }
+                // 404 = not ready yet, keep polling
+            } catch {
+                // network error, keep trying
+            }
+        }
+        // Gave up — show error
+        setState(prev => ({
+            ...prev,
+            isStreaming: false,
+            streamingStatus: null,
+            error: prev.answer ? null : "Connection lost. Answer may still be processing — check back later.",
+        }))
+    }, [router])
+
     const sendQuery = useCallback(
-        (question: string, corpus?: string, conversationId?: string) => {
+        (question: string, corpus?: string, conversationId?: string, laws?: string[]) => {
             // Abort any existing SSE connection
             if (abortRef.current) {
                 abortRef.current.abort()
@@ -96,6 +139,7 @@ export function useQueryStream(): UseQueryStreamReturn {
             }
 
             tokenBufRef.current = ""
+            conversationIdRef.current = conversationId ?? null
 
             setState({
                 answer: null,
@@ -119,6 +163,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                     // Opaque session pointer — server loads history from DB.
                     // History content never travels in the request body.
                     conversation_id: conversationId ?? null,
+                    // Czech law corpus filter — only sent when user selects specific laws.
+                    ...(laws && laws.length > 0 ? {laws} : {}),
                 }),
                 credentials: "include",  // sends HttpOnly cookie automatically
                 signal: ctrl.signal,
@@ -187,17 +233,21 @@ export function useQueryStream(): UseQueryStreamReturn {
 
                 onerror: (err) => {
                     abortRef.current = null
-                    // Check if the auth cookie expired
-                    const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
-                    fetch(`${API}/auth/me`, {
-                        method: "GET",
-                        credentials: "include",
-                    })
+                    const convId = conversationIdRef.current
+                    // Check if auth expired first
+                    fetch(`${API_BASE}/auth/me`, {method: "GET", credentials: "include"})
                         .then((res) => {
                             if (res.status === 401 || res.status === 403) {
                                 clearSessionAndRedirect(router)
+                            } else if (convId) {
+                                // Auth OK — start polling for the completed answer
+                                setState(prev => ({
+                                    ...prev,
+                                    streamingStatus: "Reconnecting \u2014 answer still processing...",
+                                }))
+                                pollForAnswer(convId)
                             } else {
-                                setState((prev) => ({
+                                setState(prev => ({
                                     ...prev,
                                     isStreaming: false,
                                     streamingStatus: null,
@@ -206,14 +256,23 @@ export function useQueryStream(): UseQueryStreamReturn {
                             }
                         })
                         .catch(() => {
-                            setState((prev) => ({
-                                ...prev,
-                                isStreaming: false,
-                                streamingStatus: null,
-                                error: prev.answer ? null : "Connection error. Please try again.",
-                            }))
+                            // Network totally down — still try polling if we have a convId
+                            if (convId) {
+                                setState(prev => ({
+                                    ...prev,
+                                    streamingStatus: "Reconnecting \u2014 answer still processing...",
+                                }))
+                                pollForAnswer(convId)
+                            } else {
+                                setState(prev => ({
+                                    ...prev,
+                                    isStreaming: false,
+                                    streamingStatus: null,
+                                    error: prev.answer ? null : "Connection error. Please try again.",
+                                }))
+                            }
                         })
-                    // Don't auto-retry — let the user decide
+                    // Don't auto-retry — let the user decide (or polling will recover)
                     throw err
                 },
 
@@ -222,7 +281,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                 // fetchEventSource throws when aborted or on fatal error — already handled above
             })
         },
-        [router]
+        [router, pollForAnswer]
     )
 
     return {...state, sendQuery, clearError}

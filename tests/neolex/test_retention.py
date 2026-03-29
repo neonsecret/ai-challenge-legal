@@ -80,7 +80,7 @@ async def retention_db(tmp_path, monkeypatch):
         await db.init_schema()
         # Insert 3 old entries (2 years ago) — should be purged
         old_ts = (
-            datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=730)
+                datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=730)
         ).isoformat()
         for i in range(3):
             await db._conn.execute(

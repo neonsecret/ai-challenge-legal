@@ -90,7 +90,7 @@ def get_pdf_page_texts(doc_id: str) -> list[tuple[int, str]]:
 
 
 def extract_akus_from_page(
-    doc_id: str, page_num: int, text: str, model: str
+        doc_id: str, page_num: int, text: str, model: str
 ) -> list[dict]:
     """Extract AKU pairs from a single page using LLM."""
     user_message = f"Document: {doc_id}, Page: {page_num}\n\n{text[:4000]}"
@@ -201,10 +201,10 @@ def main():
     for i, doc_id in enumerate(doc_ids):
         pages = get_pdf_page_texts(doc_id)
         if not pages:
-            print(f"[{i+1}/{len(doc_ids)}] {doc_id}: no pages found, skipping", file=sys.stderr)
+            print(f"[{i + 1}/{len(doc_ids)}] {doc_id}: no pages found, skipping", file=sys.stderr)
             continue
 
-        print(f"[{i+1}/{len(doc_ids)}] {doc_id}: {len(pages)} pages", file=sys.stderr, end="", flush=True)
+        print(f"[{i + 1}/{len(doc_ids)}] {doc_id}: {len(pages)} pages", file=sys.stderr, end="", flush=True)
 
         doc_entries = []
         for page_num, text in pages:
@@ -231,7 +231,8 @@ def main():
         encoding="utf-8",
     )
 
-    print(f"\nDone. {len(all_new_entries)} new AKUs from {total_pages} pages across {len(doc_ids)} docs.", file=sys.stderr)
+    print(f"\nDone. {len(all_new_entries)} new AKUs from {total_pages} pages across {len(doc_ids)} docs.",
+          file=sys.stderr)
     print(f"Total AKUs in index: {len(combined)}", file=sys.stderr)
     print(f"Index saved to: {AKU_INDEX_PATH}", file=sys.stderr)
 

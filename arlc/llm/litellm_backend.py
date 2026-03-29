@@ -78,11 +78,12 @@ def is_configured() -> bool:
 
 
 def call_llm(
-    system_prompt: str,
-    user_message: str,
-    max_tokens: int = 512,
-    model: str = "claude-sonnet-4-6",
-    system_blocks: list[dict] | None = None,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 512,
+        model: str = "claude-sonnet-4-6",
+        system_blocks: list[dict] | None = None,
+        on_token=None,
 ) -> tuple[str, float, float, float, int, int]:
     """Call LLM via the next available proxy endpoint (round-robin).
 
@@ -131,6 +132,8 @@ def call_llm(
                     if ttft_ms is None:
                         ttft_ms = (time.perf_counter() - start) * 1000
                     chunks.append(delta.content)
+                    if on_token is not None:
+                        on_token(delta.content)
                 if hasattr(chunk, "usage") and chunk.usage:
                     input_tokens = getattr(chunk.usage, "prompt_tokens", 0) or 0
                     output_tokens = getattr(chunk.usage, "completion_tokens", 0) or 0

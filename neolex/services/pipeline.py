@@ -21,6 +21,7 @@ async def run_single_question(
         corpus: str = "difc",
         user_id: str | None = None,
         conversation_id: str | None = None,
+        laws: list[str] | None = None,
 ) -> dict:
     """Route one HTTP question through the arlc pipeline.
 
@@ -73,6 +74,8 @@ async def run_single_question(
         "question": effective_question,
         "answer_type": answer_type,
     }
+    if laws:
+        question_data["laws"] = laws
     return await _process_question(
         question_data, route_fn, retrieve_fn, answer_fn_to_use, semaphore,
         on_status=on_status,

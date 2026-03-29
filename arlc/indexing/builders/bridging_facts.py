@@ -132,7 +132,7 @@ def _build_snippet_from_pages(entity: str, doc_id: str, entity_pages: list[int],
 
 
 def generate_bridging_facts_deterministic(
-    bridge_entities: dict, graph: dict, aku_index: dict | None
+        bridge_entities: dict, graph: dict, aku_index: dict | None
 ) -> list[dict]:
     """Generate bridging facts without LLM — concatenate relevant snippets."""
     facts = []
@@ -177,7 +177,7 @@ def generate_bridging_facts_deterministic(
 
 
 def generate_bridging_facts_llm(
-    bridge_entities: dict, graph: dict, aku_index: dict | None
+        bridge_entities: dict, graph: dict, aku_index: dict | None
 ) -> list[dict]:
     """Generate bridging facts using Haiku for natural language synthesis."""
     import anthropic

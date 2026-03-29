@@ -87,7 +87,7 @@ async def doc_client(tmp_path, monkeypatch, mock_key_row):
 
     with patch("neolex.indexing.reindex_worker.run_reindex_job", new=fake_reindex_job):
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             yield client
 
@@ -118,7 +118,8 @@ async def test_upload_rejects_non_pdf_content_type(doc_client):
     """DOC-02: Non-PDF MIME type returns 415."""
     response = await doc_client.post(
         "/api/v1/documents",
-        files={"file": ("doc.docx", b"PK\x03\x04some docx content", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        files={"file": ("doc.docx", b"PK\x03\x04some docx content",
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
     )
     assert response.status_code == 415, response.text
     assert "Unsupported file type" in response.json()["detail"]
@@ -196,7 +197,7 @@ async def test_upload_requires_auth():
     from neolex.main import app
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.post(
             "/api/v1/documents",
@@ -334,7 +335,7 @@ async def test_client_isolation_delete(doc_client, tmp_path, monkeypatch):
     app.dependency_overrides[get_api_key] = evil_key
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=app), base_url="http://test"
     ) as evil_client:
         response = await evil_client.delete(f"/api/v1/documents/{doc_id}")
 

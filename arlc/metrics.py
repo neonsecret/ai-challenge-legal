@@ -78,11 +78,11 @@ def record_router_hit(question: str, answer_type: str, routed_doc_ids: list[str]
 
 
 def record_retrieval_recall(
-    question: str,
-    answer_type: str,
-    retrieved_pages: list[tuple[str, int]],
-    gold_pages: list[tuple[str, int]] | None,
-    top_k: int,
+        question: str,
+        answer_type: str,
+        retrieved_pages: list[tuple[str, int]],
+        gold_pages: list[tuple[str, int]] | None,
+        top_k: int,
 ) -> None:
     """Record retrieval recall@K: is the gold page in top-K retrieved results?
 
@@ -127,11 +127,11 @@ def record_retrieval_recall(
 
 
 def record_reranker_recall(
-    question: str,
-    answer_type: str,
-    reranked_pages: list[tuple[str, int]],
-    pre_rerank_pages: list[tuple[str, int]],
-    gold_pages: list[tuple[str, int]] | None,
+        question: str,
+        answer_type: str,
+        reranked_pages: list[tuple[str, int]],
+        pre_rerank_pages: list[tuple[str, int]],
+        gold_pages: list[tuple[str, int]] | None,
 ) -> None:
     """Record whether reranking preserved the gold page.
 

@@ -123,7 +123,8 @@ def _fallback_retrieve_pages(question: str, target_doc_ids: list[str] | None = N
                               include_context_pages: bool = False,
                               use_llm_rerank: bool = False,
                               boost_pages: dict | None = None,
-                              case_doc_groups: dict | None = None) -> list[dict]:
+                              case_doc_groups: dict | None = None,
+                              corpus: str = "difc") -> list[dict]:
     """Fallback: use existing retriever.retrieve() and convert format."""
     from arlc.retriever import retrieve
     chunks = retrieve(question, n_results=25)
@@ -403,6 +404,39 @@ def _enforce_page_limit(chunk_pages: list[dict], max_pages: int = 3) -> list[dic
     return result
 
 
+def _attach_source_text(chunk_pages: list[dict], source_pages: list[dict]) -> None:
+    """Enrich chunk_pages dicts with source text from retrieved pages (in-place).
+
+    The page verifier and LLM page verification steps create new chunk_pages dicts
+    that lack the 'text' field. This function copies text from source_pages back onto
+    chunk_pages so downstream consumers (e.g. the web frontend) have source text.
+
+    Lookup priority: exact (doc_id, page_number) match first, then any text for doc_id.
+    """
+    if not source_pages or not chunk_pages:
+        return
+    # Exact lookup: (doc_id, page_number) -> text
+    text_by_page = {
+        (sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "")
+        for sp in source_pages
+    }
+    # Fallback lookup: doc_id -> first non-empty text
+    text_by_doc = {
+        sp["doc_id"]: sp.get("text", "")
+        for sp in source_pages
+        if sp.get("text")
+    }
+    for cp in chunk_pages:
+        if cp.get("text"):
+            continue
+        doc_id = cp.get("doc_id", "")
+        for pn in cp.get("page_numbers", []):
+            text = text_by_page.get((doc_id, pn)) or text_by_doc.get(doc_id)
+            if text:
+                cp["text"] = text
+                break
+
+
 def _boost_cross_references(pages, question: str):
     """Add cross-referenced pages from the graph when targets are resolved.
 
@@ -489,6 +523,9 @@ async def _process_question(
     answer_fn,
     semaphore: asyncio.Semaphore,
     on_status=None,
+    on_token=None,
+    corpus: str = "difc",
+    web_mode: bool = False,
 ) -> dict:
     """Process a single question through the pipeline.
 
@@ -497,6 +534,7 @@ async def _process_question(
     question = question_data["question"]
     answer_type = question_data["answer_type"]
     question_id = question_data["id"]
+    laws = question_data.get("laws")
 
     def _emit(stage: str):
         if on_status is not None:
@@ -528,6 +566,10 @@ async def _process_question(
                         route_result, retrieve_fn, answer_fn,
                         _retrieval_cache=_retrieval_cache,
                         on_status=on_status,
+                        on_token=on_token,
+                        corpus=corpus,
+                        web_mode=web_mode,
+                        laws=laws,
                     ),
                     timeout=600,  # 10 min max per question (allows for rate limit retries)
                 )
@@ -611,8 +653,10 @@ async def _process_question(
         result["question"] = question
         result["answer_type"] = answer_type
 
-        # Step 4: Format check (programmatic, no LLM)
-        result = _format_check(result)
+        # Step 4: Format check (programmatic, no LLM).
+        # Skip in web_mode — FormatGuardian strips markdown and enforces char limits.
+        if not web_mode:
+            result = _format_check(result)
 
         return result
 
@@ -626,10 +670,18 @@ async def _process_question_inner(
     answer_fn,
     _retrieval_cache: dict | None = None,
     on_status=None,
+    on_token=None,
+    corpus: str = "difc",
+    web_mode: bool = False,
+    laws: list[str] | None = None,
 ) -> dict:
     """Inner pipeline logic (retrieval + answering), wrapped in timeout by caller.
+
     route_result is pre-computed by the caller so doc IDs survive a timeout.
-    _retrieval_cache: if provided, populated with source_pages after retrieval for fallback use."""
+    _retrieval_cache: if provided, populated with source_pages after retrieval for fallback use.
+    web_mode: passed through to answer_fn (generate_answer) for markdown formatting.
+        Also controls source text attachment to chunk_pages for the web frontend.
+    """
     t_start = time.monotonic()
 
     # Extract target_doc_ids from RouteResult (or plain list)
@@ -781,6 +833,9 @@ async def _process_question_inner(
         use_llm_rerank=is_free_text,  # re-enabled: now uses llm_router (working endpoints)
         boost_pages=boost_pages,
         case_doc_groups=_case_doc_groups,
+        corpus=corpus,
+        on_status=on_status,
+        laws=laws,
     )
 
     # Low-confidence fallback is handled in retriever.py (threshold 0.5)
@@ -826,7 +881,7 @@ async def _process_question_inner(
         if asyncio.iscoroutinefunction(answer_fn):
             answer_result = await asyncio.wait_for(
                 answer_fn(question, answer_type, source_pages, question_id,
-                          metadata_answer=metadata_answer),
+                          metadata_answer=metadata_answer, on_token=on_token, web_mode=web_mode),
                 timeout=300.0,
             )
         else:
@@ -856,6 +911,10 @@ async def _process_question_inner(
     else:
         result = answer_result
 
+    # Attach source text to chunk_pages for non-PDF corpora (e.g. Czech corpus).
+    # This is called again after each verification step that may replace chunk_pages.
+    _attach_source_text(result.get("chunk_pages", []), source_pages)
+
     # Step 4: Answer-grounded page verification.
     # Checks if cited pages actually contain evidence for the answer.
     # If not, scans adjacent/all pages in the doc to find the correct one.
@@ -870,10 +929,7 @@ async def _process_question_inner(
                     question, result["answer"], answer_type, _chunk_pages,
                     use_llm_fallback=_pv_mod.ENABLE_LLM_FALLBACK,
                 )
-                # Check if any pages changed
-                _old = str(_chunk_pages)
-                _new = str(_verified_pages)
-                _step4_changed = _old != _new
+                _step4_changed = str(_chunk_pages) != str(_verified_pages)
                 if _step4_changed:
                     print(
                         f"  [page-verify-v2] {question_id[:12]}... pages updated: "
@@ -881,6 +937,8 @@ async def _process_question_inner(
                         file=sys.stderr,
                     )
                 result["chunk_pages"] = _verified_pages
+                # Verifier returns new dicts without text — re-attach from source_pages
+                _attach_source_text(result["chunk_pages"], source_pages)
         except Exception as _pv2_err:
             _step4_changed = False
             print(f"  [page-verify-v2] {question_id[:12]}... error: {_pv2_err}", file=sys.stderr)
@@ -964,6 +1022,8 @@ async def _process_question_inner(
                             file=sys.stderr,
                         )
                     result["chunk_pages"] = _new_chunk_pages
+                    # Verifier returns new dicts without text — re-attach from source_pages
+                    _attach_source_text(result["chunk_pages"], source_pages)
         except Exception as _pv_err:
             print(f"  [page-verify] {question_id[:12]}... error: {_pv_err}", file=sys.stderr)
 
@@ -1071,6 +1131,25 @@ async def _process_question_inner(
     result.setdefault("input_tokens", 0)
     result.setdefault("output_tokens", 0)
     result.setdefault("model_name", "claude-sonnet-4-6")
+
+    # Final: attach source text to chunk_pages for the web frontend.
+    # Multiple post-processing steps (page verifier, _validate_chunk_pages,
+    # _enforce_page_limit) rebuild chunk_pages dicts without text.
+    # We do this once at the very end to avoid patching each step.
+    if web_mode and source_pages and result.get("chunk_pages"):
+        _txt_by_key = {(sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "")
+                       for sp in source_pages}
+        _txt_by_doc = {sp["doc_id"]: sp.get("text", "")
+                       for sp in source_pages if sp.get("text")}
+        for cp in result["chunk_pages"]:
+            if not cp.get("text"):
+                for pn in cp.get("page_numbers", []):
+                    t = _txt_by_key.get((cp["doc_id"], pn))
+                    if t:
+                        cp["text"] = t
+                        break
+                if not cp.get("text"):
+                    cp["text"] = _txt_by_doc.get(cp["doc_id"])
 
     return result
 

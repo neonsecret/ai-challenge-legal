@@ -11,6 +11,7 @@ retriever (`_simple_retrieve`) -- far weaker than our actual pipeline capabiliti
 ### Step 1: Download Corpus from HuggingFace
 
 Already implemented in `run.py`:
+
 ```python
 corpus_ds = hf_load("isaacus/legal-rag-bench", "corpus", split="test")
 qa_ds = hf_load("isaacus/legal-rag-bench", "qa", split="test")
@@ -59,6 +60,7 @@ bm25.save("benchmarks/legal-rag-bench/data/bm25_cache")
 ### Step 4: Implement Hybrid Retrieval
 
 Replace `_simple_retrieve()` with our actual hybrid approach:
+
 1. BM25 search over the corpus
 2. Vector search over the FAISS index
 3. Cross-encoder reranking of merged candidates
@@ -73,15 +75,16 @@ properly retrieved passages instead of keyword-matched ones.
 
 ### Published Results (March 2026)
 
-| Embedding Model           | Gen Model      | Correctness | Retrieval Acc | Groundedness |
-|--------------------------|----------------|-------------|---------------|--------------|
-| Kanon 2 Embedder         | GPT-5.2        | 80.3%       | 94%           | High         |
-| Kanon 2 Embedder         | Gemini 3.1 Pro | 79.3%       | 94%           | High         |
-| Text Embedding 3 Large   | GPT-5.2        | ~63%        | 60%           | Baseline     |
-| Text Embedding 3 Large   | Gemini 3.1 Pro | ~62%        | 60%           | Baseline     |
-| Gemini Embedding 001     | GPT-5.2        | ~63%        | <60%          | Lower        |
+| Embedding Model        | Gen Model      | Correctness | Retrieval Acc | Groundedness |
+|------------------------|----------------|-------------|---------------|--------------|
+| Kanon 2 Embedder       | GPT-5.2        | 80.3%       | 94%           | High         |
+| Kanon 2 Embedder       | Gemini 3.1 Pro | 79.3%       | 94%           | High         |
+| Text Embedding 3 Large | GPT-5.2        | ~63%        | 60%           | Baseline     |
+| Text Embedding 3 Large | Gemini 3.1 Pro | ~62%        | 60%           | Baseline     |
+| Gemini Embedding 001   | GPT-5.2        | ~63%        | <60%          | Lower        |
 
 Key findings:
+
 - Retrieval is the bottleneck (not reasoning)
 - Kanon 2 legal-domain embedder beats general-purpose by +34% retrieval accuracy
 - Generative model choice only swings +/-3%

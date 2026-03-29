@@ -3,8 +3,10 @@ Full pipeline analysis: run all 900 questions through router + retriever (no LLM
 to identify routing and retrieval quality patterns.
 """
 import json, sys, os, time
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 from arlc.router import route
@@ -94,27 +96,29 @@ for i, q in enumerate(questions):
 
     if (i + 1) % 100 == 0:
         elapsed = time.time() - t_start
-        print(f"  [{i+1}/{len(questions)}] {elapsed:.1f}s elapsed")
+        print(f"  [{i + 1}/{len(questions)}] {elapsed:.1f}s elapsed")
 
 elapsed = time.time() - t_start
 print(f"\nCompleted in {elapsed:.1f}s")
-print(f"\n{'='*70}")
+print(f"\n{'=' * 70}")
 print(f"SUMMARY: {len(questions)} questions")
-print(f"  Oracle hits: {oracle_count} ({oracle_count/len(questions)*100:.1f}%)")
+print(f"  Oracle hits: {oracle_count} ({oracle_count / len(questions) * 100:.1f}%)")
 print(f"  No pages retrieved: {no_pages_count}")
 print(f"  Low confidence (<0.4): {low_confidence_count}")
 print(f"\nBy answer type:")
-print(f"  {'Type':15s} {'Total':>5s} {'Oracle':>7s} {'Routed':>7s} {'Retr':>5s} {'NoPg':>5s} {'LowC':>5s} {'AvgTopScore':>12s}")
+print(
+    f"  {'Type':15s} {'Total':>5s} {'Oracle':>7s} {'Routed':>7s} {'Retr':>5s} {'NoPg':>5s} {'LowC':>5s} {'AvgTopScore':>12s}")
 for at in sorted(type_stats.keys()):
     s = type_stats[at]
-    avg = sum(s["scores"])/len(s["scores"]) if s["scores"] else 0
-    print(f"  {at:15s} {s['total']:5d} {s['oracle']:7d} {s['routed']:7d} {s['retrieved']:5d} {s['no_pages']:5d} {s['low_conf']:5d} {avg:12.3f}")
+    avg = sum(s["scores"]) / len(s["scores"]) if s["scores"] else 0
+    print(
+        f"  {at:15s} {s['total']:5d} {s['oracle']:7d} {s['routed']:7d} {s['retrieved']:5d} {s['no_pages']:5d} {s['low_conf']:5d} {avg:12.3f}")
 
 # Find worst questions (lowest top scores, excluding oracle)
 non_oracle = [r for r in results if not r.get("oracle") and "error" not in r and r["n_pages"] > 0]
 non_oracle.sort(key=lambda x: x["top_score"])
 
-print(f"\n{'='*70}")
+print(f"\n{'=' * 70}")
 print("LOWEST CONFIDENCE (non-oracle, retrieved):")
 for r in non_oracle[:20]:
     print(f"  [{r['type']:10s}] score={r['top_score']:.3f} docs={r['n_docs']} pages={r['n_pages']} | {r['q']}")
@@ -131,6 +135,6 @@ os.makedirs(os.path.join(os.path.dirname(__file__), "..", "output"), exist_ok=Tr
 out_path = os.path.join(os.path.dirname(__file__), "..", "output", "pipeline_analysis.json")
 with open(out_path, "w") as f:
     json.dump({"summary": {"total": len(questions), "oracle": oracle_count,
-                            "no_pages": no_pages_count, "low_confidence": low_confidence_count},
+                           "no_pages": no_pages_count, "low_confidence": low_confidence_count},
                "by_type": type_stats, "results": results}, f, indent=2, default=str)
 print(f"\nFull results saved to {out_path}")

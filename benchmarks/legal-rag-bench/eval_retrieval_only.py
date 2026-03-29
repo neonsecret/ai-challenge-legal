@@ -57,7 +57,7 @@ def load_embedding_model(model_name: str):
 
     elapsed = time.time() - t0
     params = sum(p.numel() for p in model.parameters())
-    print(f"[eval] Model loaded in {elapsed:.1f}s — {params/1e6:.0f}M params")
+    print(f"[eval] Model loaded in {elapsed:.1f}s — {params / 1e6:.0f}M params")
     return model, device
 
 
@@ -120,7 +120,7 @@ def build_index(model, model_name: str, data_dir: Path):
             batch_size=16,
         )
     embed_time = time.time() - t0
-    print(f"[eval] Embedding done in {embed_time:.1f}s ({embed_time/len(texts)*1000:.1f}ms/passage)")
+    print(f"[eval] Embedding done in {embed_time:.1f}s ({embed_time / len(texts) * 1000:.1f}ms/passage)")
 
     # FAISS index
     print("[eval] Building FAISS index...")
@@ -153,12 +153,12 @@ def build_index(model, model_name: str, data_dir: Path):
 
 
 def hybrid_retrieve(
-    question: str,
-    model,
-    model_name: str,
-    data_dir: Path,
-    top_k: int = 10,
-    use_reranker: bool = True,
+        question: str,
+        model,
+        model_name: str,
+        data_dir: Path,
+        top_k: int = 10,
+        use_reranker: bool = True,
 ) -> list[dict]:
     """Hybrid BM25 + vector + cross-encoder retrieval."""
     import faiss
@@ -273,7 +273,7 @@ def main():
 
     import psutil
     mem = psutil.virtual_memory()
-    print(f"[eval] RAM: {mem.total/1e9:.1f}GB total, {mem.available/1e9:.1f}GB available")
+    print(f"[eval] RAM: {mem.total / 1e9:.1f}GB total, {mem.available / 1e9:.1f}GB available")
 
     t_start = time.time()
     model, device = load_embedding_model(args.model)
@@ -316,7 +316,7 @@ def main():
             "retrieved_ids": retrieved_ids[:5],
             "hit": hit,
         })
-        print(f"  [{i+1}/{len(qa_items)}] {'HIT' if hit else 'MISS'} — {question[:60]}...")
+        print(f"  [{i + 1}/{len(qa_items)}] {'HIT' if hit else 'MISS'} — {question[:60]}...")
 
     n = len(results)
     retrieval_accuracy = hits / n if n else 0
@@ -325,14 +325,14 @@ def main():
 
     mem_after = psutil.virtual_memory()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Model: {args.model}")
     print(f"Retrieval Accuracy ({n} questions): {retrieval_accuracy:.4f} ({int(hits)}/{n})")
     print(f"Total time: {total_time:.1f}s (eval: {eval_time:.1f}s)")
     if embed_time:
         print(f"Index build time: {embed_time:.1f}s")
-    print(f"RAM used: {(mem_after.used - mem.used)/1e9:+.1f}GB change")
-    print(f"{'='*60}")
+    print(f"RAM used: {(mem_after.used - mem.used) / 1e9:+.1f}GB change")
+    print(f"{'=' * 60}")
 
     output = {
         "model": args.model,

@@ -45,13 +45,15 @@ metrics:
 
 # Phase 6: UI Polish + Demo Readiness Summary
 
-**One-liner:** One-command demo setup (`make demo`), settings page, landing/login page, route groups, confidence badges, copy-to-clipboard, tab title updates, demo mode badge, toast notifications.
+**One-liner:** One-command demo setup (`make demo`), settings page, landing/login page, route groups, confidence badges,
+copy-to-clipboard, tab title updates, demo mode badge, toast notifications.
 
 ## What Was Built
 
 ### Task 1: `make demo` One-Command Setup
 
-- Added `make demo` target to Makefile: installs Python/npm deps, creates demo API key via `neolex/demo_setup.py`, starts backend on port 8000, waits for health check, starts frontend on port 3000, opens browser.
+- Added `make demo` target to Makefile: installs Python/npm deps, creates demo API key via `neolex/demo_setup.py`,
+  starts backend on port 8000, waits for health check, starts frontend on port 3000, opens browser.
 - Added `make dev` (hot-reload), `make serve` (production + Tailscale), `make logs`, `make demo-stop`.
 - Added `scripts/dev.sh` for hot-reload development mode.
 - Commit: `92a65fb`
@@ -59,20 +61,24 @@ metrics:
 ### Task 2: Demo Mode Configuration
 
 - `DEMO_MODE=true` env var added to `neolex/config.py`.
-- On backend startup (lifespan), if `DEMO_MODE=true`, calls `ensure_demo_key()` to create a demo admin key in SQLite if absent.
-- `GET /api/v1/demo/config` endpoint (unauthenticated) returns `{ demo_mode, api_key, sample_questions }` — lets frontend auto-fill key and show demo questions.
+- On backend startup (lifespan), if `DEMO_MODE=true`, calls `ensure_demo_key()` to create a demo admin key in SQLite if
+  absent.
+- `GET /api/v1/demo/config` endpoint (unauthenticated) returns `{ demo_mode, api_key, sample_questions }` — lets
+  frontend auto-fill key and show demo questions.
 - Demo key written to `.demo_key` file for the endpoint to serve.
 - Commit: `92a65fb`
 
 ### Task 3: Settings Page
 
-- `frontend/src/app/(app)/settings/page.tsx`: API key input (show/hide toggle), backend URL configuration, theme toggle (Light/Dark/System), about section with version and API docs link.
+- `frontend/src/app/(app)/settings/page.tsx`: API key input (show/hide toggle), backend URL configuration, theme
+  toggle (Light/Dark/System), about section with version and API docs link.
 - All values saved to localStorage.
 - Commit: `f628f21`
 
 ### Task 4: Landing/Login Page
 
-- `frontend/src/app/(auth)/page.tsx`: If localStorage has API key, redirects to `/chat`. If `DEMO_MODE=true`, fetches demo config and auto-fills key with a "Demo key pre-filled" notice. Otherwise, shows plain API key entry form.
+- `frontend/src/app/(auth)/page.tsx`: If localStorage has API key, redirects to `/chat`. If `DEMO_MODE=true`, fetches
+  demo config and auto-fills key with a "Demo key pre-filled" notice. Otherwise, shows plain API key entry form.
 - Clean landing with Scale icon logo mark.
 - Sign-out button in sidebar footer clears localStorage and redirects to `/`.
 - Commit: `f628f21`
@@ -87,26 +93,33 @@ metrics:
 
 ### Task 5: Frontend Polish
 
-**Toast system:** Lightweight `toast.tsx` with `ToastProvider` and `useToast()` hook. Slide-in toasts (success/error/default), auto-dismiss in 4s, max 5 queued.
+**Toast system:** Lightweight `toast.tsx` with `ToastProvider` and `useToast()` hook. Slide-in toasts (
+success/error/default), auto-dismiss in 4s, max 5 queued.
 
-**Copy-to-clipboard:** Hover-visible copy button on assistant messages in `chat-message.tsx`. Shows checkmark for 1.5s after copy.
+**Copy-to-clipboard:** Hover-visible copy button on assistant messages in `chat-message.tsx`. Shows checkmark for 1.5s
+after copy.
 
-**Confidence indicator:** Badge on assistant messages showing "High / Medium / Low" based on pipeline `confidence` field (>=0.7 High, >=0.4 Medium, <0.4 Low). Color-coded (green/yellow/red).
+**Confidence indicator:** Badge on assistant messages showing "High / Medium / Low" based on pipeline `confidence`
+field (>=0.7 High, >=0.4 Medium, <0.4 Low). Color-coded (green/yellow/red).
 
-**Tab title updates:** While streaming, browser tab title changes to the question text (truncated to 50 chars). Resets to "NeoLex — Your AI Legal Counsel" when done.
+**Tab title updates:** While streaming, browser tab title changes to the question text (truncated to 50 chars). Resets
+to "NeoLex — Your AI Legal Counsel" when done.
 
-**Keyboard shortcuts:** Cmd+K focuses chat input from anywhere in the app. Hint shown below input bar. `ChatInput` exposes `onFocusRef` for wiring.
+**Keyboard shortcuts:** Cmd+K focuses chat input from anywhere in the app. Hint shown below input bar. `ChatInput`
+exposes `onFocusRef` for wiring.
 
 **Empty state:** Chat page shows Scale icon, heading, and 5 sample DIFC questions as clickable buttons.
 
 **Demo Mode badge:** Sidebar header shows "Demo" badge when backend reports `demo_mode: true`.
 
 **Sign-out button:** Sidebar footer has a Sign out button that clears `neolex_api_key` from localStorage.
+
 - Commit: `3a7c8fa`
 
 ### Task 6: DEMO_QUESTIONS.md
 
-- 10 demo-ready questions covering: limitation periods, employment, director duties, arbitration, contracts, winding up, remedies, jurisdiction, data protection, security enforcement.
+- 10 demo-ready questions covering: limitation periods, employment, director duties, arbitration, contracts, winding up,
+  remedies, jurisdiction, data protection, security enforcement.
 - Each question has rationale for why it works in a sales demo.
 - Demo script tips and expected performance section.
 - Commit: `15805a1`
@@ -124,13 +137,16 @@ metrics:
 ### Auto-fixed Issues
 
 **1. [Rule 1 - Bug] Missing aiosqlite and python-multipart in pyproject.toml**
+
 - **Found during:** Task 7 (test verification)
-- **Issue:** Both packages used by `neolex/db/audit.py` and `neolex/routers/documents.py` were not declared in `pyproject.toml`, causing `ModuleNotFoundError` during test collection.
+- **Issue:** Both packages used by `neolex/db/audit.py` and `neolex/routers/documents.py` were not declared in
+  `pyproject.toml`, causing `ModuleNotFoundError` during test collection.
 - **Fix:** Added `aiosqlite>=0.21.0` and `python-multipart>=0.0.12` to `[project].dependencies`.
 - **Files modified:** `pyproject.toml`, `uv.lock`
 - **Commit:** `20866ea`
 
 **2. [Rule 2 - Missing critical functionality] Sign-out button**
+
 - **Found during:** Task 4 (landing page)
 - **Issue:** No way to sign out once logged in — users would be permanently stuck with a bad API key.
 - **Fix:** Added Sign out button to sidebar footer that clears localStorage and redirects to `/`.
@@ -138,8 +154,11 @@ metrics:
 
 ### Plan Adjustments
 
-- **Route groups added** (not in original plan spec): Needed to give landing page a bare layout vs app pages with sidebar. This is a required structural change, not an extra feature.
-- **Demo key written to `.demo_key` file**: The plan assumed the backend would serve the key via the config endpoint. Since the key is only known at creation time and we can't store plaintext in SQLite, we write it to `.demo_key` on disk and serve from there. `.demo_key` is gitignored (not committed).
+- **Route groups added** (not in original plan spec): Needed to give landing page a bare layout vs app pages with
+  sidebar. This is a required structural change, not an extra feature.
+- **Demo key written to `.demo_key` file**: The plan assumed the backend would serve the key via the config endpoint.
+  Since the key is only known at creation time and we can't store plaintext in SQLite, we write it to `.demo_key` on
+  disk and serve from there. `.demo_key` is gitignored (not committed).
 
 ## Known Stubs
 
@@ -152,6 +171,7 @@ None. All implemented features are wired to real data sources.
 ## Self-Check: PASSED
 
 Files verified:
+
 - `Makefile` — exists, contains `demo`, `dev`, `serve`, `demo-stop` targets
 - `neolex/demo_setup.py` — exists
 - `neolex/routers/demo.py` — exists
@@ -164,6 +184,7 @@ Files verified:
 - Backend tests: 86 passed (non-integration), 0 failures
 
 Commits verified:
+
 - `92a65fb` feat(06-01): make demo + demo mode setup
 - `f628f21` feat(06-02): settings page + landing/login page + route groups
 - `3a7c8fa` feat(06-03): frontend polish — toasts, copy, confidence, demo badge, shortcuts

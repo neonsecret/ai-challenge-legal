@@ -49,11 +49,11 @@ def _get_backend() -> str:
 
 
 def _call_backend(
-    system_prompt: str,
-    user_message: str,
-    max_tokens: int,
-    model: str,
-    system_blocks: list[dict] | None,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int,
+        model: str,
+        system_blocks: list[dict] | None,
 ) -> tuple[str, float, float, float, int, int]:
     backend = _get_backend()
     if backend == "litellm":
@@ -82,11 +82,11 @@ def _is_rate_limit(exc: Exception) -> bool:
 
 
 def call_llm(
-    system_prompt: str,
-    user_message: str,
-    max_tokens: int = 512,
-    model: str = "claude-sonnet-4-6",
-    system_blocks: list[dict] | None = None,
+        system_prompt: str,
+        user_message: str,
+        max_tokens: int = 512,
+        model: str = "claude-sonnet-4-6",
+        system_blocks: list[dict] | None = None,
 ) -> tuple[str, float, float, float, int, int]:
     """Call LLM via the configured backend with retry logic."""
     last_exc = None

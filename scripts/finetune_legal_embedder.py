@@ -44,7 +44,6 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-
 # ---------------------------------------------------------------------------
 # STEP 1: Synthetic data generation
 # ---------------------------------------------------------------------------
@@ -64,11 +63,11 @@ Output ONLY the questions, one per line, no numbering, no preamble."""
 
 
 def generate_synthetic_pairs(
-    corpus_path: str | None,
-    output_dir: Path,
-    n_questions_per_passage: int = 3,
-    max_passages: int = 2000,
-    generator_model: str = "claude-sonnet-4-6",
+        corpus_path: str | None,
+        output_dir: Path,
+        n_questions_per_passage: int = 3,
+        max_passages: int = 2000,
+        generator_model: str = "claude-sonnet-4-6",
 ) -> Path:
     """Generate (query, passage) positive pairs from corpus using an LLM.
 
@@ -119,14 +118,14 @@ def generate_synthetic_pairs(
                 pairs.append(pair)
 
             if (i + 1) % 100 == 0:
-                print(f"  [{i+1}/{len(passages)}] Generated {len(pairs)} pairs so far")
+                print(f"  [{i + 1}/{len(passages)}] Generated {len(pairs)} pairs so far")
 
     print(f"[generate] Done. {len(pairs)} pairs saved to {pairs_path}")
     return pairs_path
 
 
 def _generate_with_anthropic(
-    text: str, n: int, model: str, api_key: str
+        text: str, n: int, model: str, api_key: str
 ) -> list[str]:
     """Generate questions using the Anthropic API."""
     import anthropic
@@ -166,11 +165,11 @@ def _generate_template_questions(text: str, n: int) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def mine_hard_negatives_for_dataset(
-    pairs_path: Path,
-    output_dir: Path,
-    base_model: str,
-    n_negatives: int = 1,
-    cross_encoder_model: str | None = "BAAI/bge-reranker-v2-m3",
+        pairs_path: Path,
+        output_dir: Path,
+        base_model: str,
+        n_negatives: int = 1,
+        cross_encoder_model: str | None = "BAAI/bge-reranker-v2-m3",
 ) -> Path:
     """Add hard negatives to training pairs using sentence-transformers v3.1+."""
     from datasets import Dataset
@@ -228,23 +227,23 @@ def mine_hard_negatives_for_dataset(
 # ---------------------------------------------------------------------------
 
 def train(
-    base_model: str,
-    triplets_path: Path,
-    output_dir: Path,
-    # LoRA config
-    lora_r: int = 32,
-    lora_alpha: int = 64,
-    lora_dropout: float = 0.05,
-    # Training config
-    epochs: int = 3,
-    batch_size: int = 32,          # effective batch; CachedMNRL handles memory
-    mini_batch_size: int = 16,     # actual GPU batch for gradient caching
-    learning_rate: float = 2e-4,
-    warmup_ratio: float = 0.1,
-    # Matryoshka dims (set to None to disable MRL)
-    matryoshka_dims: list[int] | None = None,  # e.g. [1024, 512, 256, 128, 64]
-    use_fp16: bool = True,
-    eval_steps: int = 100,
+        base_model: str,
+        triplets_path: Path,
+        output_dir: Path,
+        # LoRA config
+        lora_r: int = 32,
+        lora_alpha: int = 64,
+        lora_dropout: float = 0.05,
+        # Training config
+        epochs: int = 3,
+        batch_size: int = 32,  # effective batch; CachedMNRL handles memory
+        mini_batch_size: int = 16,  # actual GPU batch for gradient caching
+        learning_rate: float = 2e-4,
+        warmup_ratio: float = 0.1,
+        # Matryoshka dims (set to None to disable MRL)
+        matryoshka_dims: list[int] | None = None,  # e.g. [1024, 512, 256, 128, 64]
+        use_fp16: bool = True,
+        eval_steps: int = 100,
 ):
     """Full LoRA fine-tuning pipeline with CachedMultipleNegativesRankingLoss + MRL."""
     import torch
@@ -287,8 +286,8 @@ def train(
     model.add_adapter(peft_config)
     adapter_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"[train] Trainable params: {adapter_params/1e6:.2f}M / {total_params/1e6:.0f}M total "
-          f"({100*adapter_params/total_params:.1f}%)")
+    print(f"[train] Trainable params: {adapter_params / 1e6:.2f}M / {total_params / 1e6:.0f}M total "
+          f"({100 * adapter_params / total_params:.1f}%)")
 
     # ---- Load dataset ----
     print(f"[train] Loading triplets from {triplets_path}...")
@@ -411,7 +410,7 @@ def train(
     t0 = time.time()
     trainer.train()
     elapsed = time.time() - t0
-    print(f"[train] Training complete in {elapsed/60:.1f} minutes")
+    print(f"[train] Training complete in {elapsed / 60:.1f} minutes")
 
     # ---- Save adapter only (small: just LoRA weights) ----
     adapter_path = output_dir / "final_adapter"
@@ -438,11 +437,11 @@ def train(
 # ---------------------------------------------------------------------------
 
 def evaluate(
-    base_model: str,
-    adapter_path: str | None = None,
-    merged_path: str | None = None,
-    limit: int = 100,
-    output_dir: Path | None = None,
+        base_model: str,
+        adapter_path: str | None = None,
+        merged_path: str | None = None,
+        limit: int = 100,
+        output_dir: Path | None = None,
 ):
     """Quick eval: retrieval accuracy @1, @3, @5, @10 on Legal RAG Bench."""
     import numpy as np
@@ -476,7 +475,7 @@ def evaluate(
         corpus_embs = model.encode(
             texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True
         )
-    print(f"[eval] Corpus embedded in {time.time()-t0:.1f}s")
+    print(f"[eval] Corpus embedded in {time.time() - t0:.1f}s")
 
     print("[eval] Loading QA dataset...")
     qa_ds = hf_load("isaacus/legal-rag-bench", "qa", split="test")
@@ -503,11 +502,11 @@ def evaluate(
                 hits[k] += 1
 
     n = len(questions)
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"Model: {merged_path or adapter_path or base_model}")
     for k in [1, 3, 5, 10]:
-        print(f"  Acc@{k:2d}: {hits[k]/n:.4f} ({hits[k]}/{n})")
-    print(f"{'='*50}")
+        print(f"  Acc@{k:2d}: {hits[k] / n:.4f} ({hits[k]}/{n})")
+    print(f"{'=' * 50}")
 
     results = {
         "model": merged_path or adapter_path or base_model,

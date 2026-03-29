@@ -12,6 +12,7 @@ corpus.
 ### Step 1: Download the LegalBench-RAG Corpus
 
 The dataset auto-downloads from Dropbox (already implemented in `run.py`). After download:
+
 - `data/corpus/` contains raw `.txt` files of legal contracts
 - `data/benchmarks/` contains JSON files with queries + gold character spans
 
@@ -36,6 +37,7 @@ model = SentenceTransformer("Snowflake/snowflake-arctic-embed-l-v2.0")
 ```
 
 Key parameters to match the benchmark's evaluation:
+
 - **Chunking**: Use RCTS (best performer in paper) with ~500 char chunks
 - **No reranker**: Paper found Cohere reranker HURTS legal retrieval
 - **k=10**: Retrieve top 10 chunks per query (paper tests k=1 to k=64)
@@ -56,7 +58,7 @@ precision/recall/F1 by comparing predicted spans against gold spans.
 
 Best configuration: **RCTS + No Reranker** (Snowflake Arctic Embed)
 
-| Dataset      | Precision@1 | Recall@64 |
+| Dataset     | Precision@1 | Recall@64 |
 |-------------|-------------|-----------|
 | PrivacyQA   | 14.38%      | 84.19%    |
 | ContractNLI | 6.63%       | 61.72%    |
@@ -64,6 +66,7 @@ Best configuration: **RCTS + No Reranker** (Snowflake Arctic Embed)
 | CUAD        | 1.97%       | 74.70%    |
 
 Key findings:
+
 - MAUD (M&A) is hardest -- highly technical domain
 - Cohere reranker performs WORSE than no reranker on legal text
 - Character-level metrics are very strict (partial overlap penalized)

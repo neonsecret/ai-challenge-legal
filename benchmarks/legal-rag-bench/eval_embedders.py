@@ -78,9 +78,10 @@ def load_model(model_name: str, quantize: bool = False):
         except ImportError:
             pass
 
-    model = SentenceTransformer(model_name, device=device if "device_map" not in kwargs.get("model_kwargs", {}) else None, **kwargs)
+    model = SentenceTransformer(model_name,
+                                device=device if "device_map" not in kwargs.get("model_kwargs", {}) else None, **kwargs)
     params = sum(p.numel() for p in model.parameters())
-    print(f"[embedder] Loaded in {time.time()-t0:.1f}s — {params/1e6:.0f}M params")
+    print(f"[embedder] Loaded in {time.time() - t0:.1f}s — {params / 1e6:.0f}M params")
     return model
 
 
@@ -95,7 +96,7 @@ def embed_passages(model, texts: list[str], model_name: str, batch_size: int = 1
         batch_size=batch_size,
     )
     elapsed = time.time() - t0
-    print(f"[embedder] Passages embedded in {elapsed:.1f}s ({elapsed/len(texts)*1000:.1f}ms/passage)")
+    print(f"[embedder] Passages embedded in {elapsed:.1f}s ({elapsed / len(texts) * 1000:.1f}ms/passage)")
     return np.array(embeddings, dtype=np.float32)
 
 
@@ -126,11 +127,11 @@ def embed_queries(model, questions: list[str], model_name: str, batch_size: int 
 
 
 def compute_accuracy_at_k(
-    query_embs: np.ndarray,
-    passage_embs: np.ndarray,
-    gold_ids: list[str],
-    passage_ids: list[str],
-    ks: list[int] = (1, 3, 5, 10),
+        query_embs: np.ndarray,
+        passage_embs: np.ndarray,
+        gold_ids: list[str],
+        passage_ids: list[str],
+        ks: list[int] = (1, 3, 5, 10),
 ) -> dict[int, float]:
     """Compute Acc@k via brute-force cosine similarity."""
     print(f"[embedder] Computing similarities ({len(query_embs)} queries × {len(passage_embs)} passages)...")
@@ -195,7 +196,7 @@ def main():
     corpus_ds = hf_load("isaacus/legal-rag-bench", "corpus", split="test")
     passage_ids = [row["id"] for row in corpus_ds]
     passage_texts = [row["text"] for row in corpus_ds]
-    print(f"[embedder] Corpus: {len(passage_ids)} passages (loaded in {time.time()-t0:.1f}s)")
+    print(f"[embedder] Corpus: {len(passage_ids)} passages (loaded in {time.time() - t0:.1f}s)")
 
     print("[embedder] Loading QA pairs...")
     qa_ds = hf_load("isaacus/legal-rag-bench", "qa", split="test")
@@ -228,18 +229,18 @@ def main():
     ks = [1, 3, 5, 10]
     acc_at_k, misses = compute_accuracy_at_k(query_embs, passage_embs, gold_ids, passage_ids, ks)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Model: {args.model}")
     print(f"Corpus: {len(passage_ids)} passages | Questions: {len(questions)}")
     print(f"Embed time: {embed_time:.1f}s | VRAM used: {vram_peak:.2f}GB / {total_vram:.1f}GB")
     print(f"Embedding dim: {passage_embs.shape[1]}")
     print()
     print(f"{'k':>4} | {'Acc@k':>8} | {'Hits':>6}")
-    print(f"{'-'*25}")
+    print(f"{'-' * 25}")
     for k in ks:
         hits = int(acc_at_k[k] * len(questions))
         print(f"{k:>4} | {acc_at_k[k]:>8.4f} | {hits:>6}/{len(questions)}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     result = {
         "model": args.model,

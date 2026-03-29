@@ -79,11 +79,11 @@ def _sigmoid(x: float) -> float:
 # ---------------------------------------------------------------------------
 
 def llm_rerank_pages(
-    question: str,
-    pages: list,  # list[PageResult] — avoid circular import, duck-typed
-    llm_weight: float = LLM_WEIGHT,
-    model: str = LLM_RERANK_MODEL,
-    max_retries: int = MAX_RETRIES,
+        question: str,
+        pages: list,  # list[PageResult] — avoid circular import, duck-typed
+        llm_weight: float = LLM_WEIGHT,
+        model: str = LLM_RERANK_MODEL,
+        max_retries: int = MAX_RETRIES,
 ) -> list:
     """Rerank page results using LLM relevance scoring (Enterprise RAG winner approach).
 
@@ -164,7 +164,7 @@ def llm_rerank_pages(
         f"{candidates_block}\n\n"
         f"Output ONLY a valid JSON object mapping candidate number strings to float scores.\n"
         f"Example for {len(pages)} candidates: "
-        f"{{{', '.join(f'\"{i+1}\": 0.5' for i in range(len(pages)))}}}\n\n"
+        f"{{{', '.join(f'\"{i + 1}\": 0.5' for i in range(len(pages)))}}}\n\n"
         f"JSON scores:"
     )
 

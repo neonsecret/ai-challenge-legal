@@ -53,7 +53,8 @@ _STRIKETHROUGH_RE = re.compile(r'~~.*?~~', re.DOTALL)
 def _detect_doc_type(text: str, filename: str) -> str:
     """Detect document type from text content and filename."""
     text_lower = text[:3000].lower()
-    if any(kw in text_lower for kw in ["court of first instance", "court of appeal", "judgment", "claimant", "defendant", "respondent"]):
+    if any(kw in text_lower for kw in
+           ["court of first instance", "court of appeal", "judgment", "claimant", "defendant", "respondent"]):
         return "case"
     if any(kw in text_lower for kw in ["consultation paper", "policy paper"]):
         return "consultation_paper"
@@ -194,7 +195,8 @@ def convert_pdf(pdf_path: Path, force: bool = False) -> tuple[Path, Path] | None
 
         # Check text coverage — if Docling output is >20% shorter, supplement
         if len(docling_text.strip()) < len(pymupdf_text.strip()) * MIN_TEXT_RATIO:
-            print(f"  WARNING: {doc_id[:16]}... Docling output {len(docling_text)} chars vs PyMuPDF {len(pymupdf_text)} chars — supplementing")
+            print(
+                f"  WARNING: {doc_id[:16]}... Docling output {len(docling_text)} chars vs PyMuPDF {len(pymupdf_text)} chars — supplementing")
             # Append PyMuPDF sections that are missing
             docling_text = docling_text + "\n\n---\n<!-- PyMuPDF supplement for missing text -->\n" + pymupdf_text
             docling_page_map = pymupdf_page_map

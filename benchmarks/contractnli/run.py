@@ -29,6 +29,7 @@ PROJECT_ROOT = BENCH_DIR.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_DIR = BENCH_DIR / "data"
@@ -40,13 +41,13 @@ DATASET_ALT_URL = "https://github.com/stanfordnlp/contract-nli/raw/main/data/con
 # Model config
 MODEL = os.environ.get("CONTRACTNLI_MODEL", "claude-sonnet-4-6")
 
-
 # ---------------------------------------------------------------------------
 # Anthropic client
 # ---------------------------------------------------------------------------
 
 _client = None
 _use_litellm = False
+
 
 def get_client():
     global _client, _use_litellm

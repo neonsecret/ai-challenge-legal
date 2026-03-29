@@ -66,7 +66,7 @@ class DocumentDeleteResponse(BaseModel):
 # Reindex job
 # ---------------------------------------------------------------------------
 
-ReindexStatus = Literal["pending", "running", "complete", "failed"]
+ReindexStatus = Literal["pending", "running", "complete", "complete_with_warnings", "failed"]
 
 
 class ReindexJobResponse(BaseModel):
@@ -80,3 +80,4 @@ class ReindexJobResponse(BaseModel):
     completed_at: str | None = None
     error: str | None = None
     doc_count: int = Field(0, description="Number of documents indexed")
+    chunks_skipped: int = Field(0, description="Number of chunks skipped during embedding")

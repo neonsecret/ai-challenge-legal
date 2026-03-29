@@ -27,6 +27,7 @@ PROJECT_ROOT = BENCH_DIR.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_DIR = BENCH_DIR / "data"
@@ -294,6 +295,7 @@ def compute_char_overlap(predicted_spans: list[dict], gold_spans: list[dict]) ->
 
     Both predicted and gold are lists of {"file": str, "start": int, "end": int}.
     """
+
     # Build character sets per file
     def char_set(spans):
         chars = set()
@@ -371,7 +373,7 @@ def main():
                         "end": snippet.get("end", snippet.get("char_end", 0)),
                     })
 
-        print(f"  [{i+1}/{len(benchmarks)}] {query[:80]}...")
+        print(f"  [{i + 1}/{len(benchmarks)}] {query[:80]}...")
         predicted_spans = retrieve_for_query(query, CORPUS_DIR)
         metrics = compute_char_overlap(predicted_spans, gold_spans)
 

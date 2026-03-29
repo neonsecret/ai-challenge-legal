@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Optional, Union
 
 import numpy as np
@@ -50,11 +51,11 @@ class Qwen3Reranker:
     """
 
     def __init__(
-        self,
-        model_name: str = "Qwen/Qwen3-Reranker-0.6B",
-        instruction: str = "Given a legal question, retrieve the most relevant passage that directly answers it.",
-        device: Optional[str] = None,
-        batch_size: int = 8,
+            self,
+            model_name: str = "Qwen/Qwen3-Reranker-0.6B",
+            instruction: str = "Given a legal question, retrieve the most relevant passage that directly answers it.",
+            device: Optional[str] = None,
+            batch_size: int = 16,
     ) -> None:
         self.model_name = model_name
         self.instruction = instruction
@@ -116,7 +117,7 @@ class Qwen3Reranker:
             prompts,
             padding=True,
             truncation=True,
-            max_length=2048,
+            max_length=1024,
             return_tensors="pt",
         )
         target = "cuda:0" if self.device == "cuda" else self.device
@@ -129,22 +130,101 @@ class Qwen3Reranker:
         last_logits = logits[:, -1, :]  # (B, vocab)
         yes_no = last_logits[:, [self._yes_id, self._no_id]]  # (B, 2)
         probs = torch.softmax(yes_no, dim=-1)[:, 0]  # P(yes), shape (B,)
-        return probs.cpu().float().tolist()
+        scores = probs.cpu().float().tolist()
+
+        # Flush MPS pipeline between batches to prevent memory fragmentation hangs
+        if self.device == "mps":
+            torch.mps.synchronize()
+            torch.mps.empty_cache()
+
+        return scores
 
     def predict(
-        self,
-        sentences: list[tuple[str, str]],
-        batch_size: Optional[int] = None,
-        **kwargs,
+            self,
+            sentences: list[tuple[str, str]],
+            batch_size: Optional[int] = None,
+            on_progress=None,
+            timeout: Optional[float] = None,
+            **kwargs,
     ) -> np.ndarray:
         """Score (query, document) pairs. Returns float32 numpy array of relevance scores.
 
         Drop-in replacement for CrossEncoder.predict().
+
+        on_progress: optional callback(done: int, total: int) called after each batch.
+        timeout: optional timeout in seconds; raises TimeoutError if exceeded.
         """
         bs = batch_size or self.batch_size
         prompts = [self._make_prompt(q, doc) for q, doc in sentences]
+        total = len(prompts)
         all_scores: list[float] = []
-        for start in range(0, len(prompts), bs):
+        t_start = time.monotonic()
+        for start in range(0, total, bs):
+            if timeout and (time.monotonic() - t_start) > timeout:
+                raise TimeoutError(
+                    f"Reranking exceeded {timeout}s after {len(all_scores)}/{total} pairs"
+                )
             batch = prompts[start: start + bs]
             all_scores.extend(self._score_batch(batch))
+            if on_progress:
+                on_progress(min(start + bs, total), total)
         return np.array(all_scores, dtype=np.float32)
+
+
+class LlamaServerReranker:
+    """HTTP client for llama-server's /v1/rerank endpoint (GGUF model on CUDA/Metal).
+
+    Drop-in replacement for Qwen3Reranker — same predict() interface.
+    Uses llama-server with --reranking flag and a GGUF reranker model.
+
+    Start the server with::
+
+        llama-server -m Qwen3-Reranker-0.6B-Q8_0.gguf --reranking -ngl 99 \\
+            -c 4096 --port 8089 --host 0.0.0.0
+
+    Parameters
+    ----------
+    url:
+        Base URL of the llama-server reranking instance.
+    """
+
+    def __init__(self, url: str) -> None:
+        import requests as _requests
+        self._requests = _requests
+        self.url = url.rstrip("/")
+        try:
+            r = self._requests.get(f"{self.url}/health", timeout=3)
+            r.raise_for_status()
+            logger.info("llama-server reranker at %s is healthy", self.url)
+        except Exception as e:
+            raise RuntimeError(f"llama-server reranker at {self.url} not reachable: {e}")
+
+    def predict(
+            self,
+            sentences: list[tuple[str, str]],
+            batch_size: Optional[int] = None,
+            on_progress=None,
+            timeout: Optional[float] = None,
+            **kwargs,
+    ) -> np.ndarray:
+        """Score (query, document) pairs via llama-server /v1/rerank."""
+        # All pairs share the same query (reranking is query-vs-many-docs)
+        query = sentences[0][0] if sentences else ""
+        documents = [doc for _, doc in sentences]
+        try:
+            r = self._requests.post(
+                f"{self.url}/v1/rerank",
+                json={"model": "local", "query": query, "documents": documents},
+                timeout=timeout or 180,
+            )
+            if not r.ok:
+                logger.warning("llama-server rerank %s returned %d: %s", self.url, r.status_code, r.text[:300])
+            r.raise_for_status()
+            results = r.json()["results"]
+            results.sort(key=lambda x: x["index"])
+            scores = [x["relevance_score"] for x in results]
+            if on_progress:
+                on_progress(len(scores), len(scores))
+            return np.array(scores, dtype=np.float32)
+        except Exception as e:
+            raise RuntimeError(f"llama-server reranking failed: {e}") from e

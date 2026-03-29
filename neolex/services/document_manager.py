@@ -11,12 +11,12 @@ from __future__ import annotations
 import datetime
 import hashlib
 import os
+import re
 import shutil
 import uuid
 from pathlib import Path
 
 from neolex.config import settings
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -51,9 +51,9 @@ def client_index_dir(client_slug: str) -> Path:
 
 
 def save_upload(
-    client_slug: str,
-    filename: str,
-    content: bytes,
+        client_slug: str,
+        filename: str,
+        content: bytes,
 ) -> dict:
     """Save uploaded PDF bytes to the client's docs directory.
 
@@ -73,7 +73,9 @@ def save_upload(
 
     docs_dir = client_docs_dir(client_slug)
     # Sanitize filename: strip path components, keep only basename
-    safe_filename = Path(filename).name
+    # Sanitize: strip path components, restrict to safe chars, enforce .pdf extension.
+    stem = re.sub(r"[^a-zA-Z0-9._\- ]", "_", Path(filename).stem)[:180].strip("._- ") or "document"
+    safe_filename = f"{stem}.pdf"
     dest = docs_dir / f"{doc_id}_{safe_filename}"
     dest.write_bytes(content)
 

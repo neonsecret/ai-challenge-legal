@@ -37,10 +37,16 @@ class User(Base):
 
     # Subscription state
     subscription_status: Mapped[str] = mapped_column(
-        String, default="trial", nullable=False
-    )  # trial | active | past_due | canceled
-    trial_ends_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+        String, default="free", nullable=False
+    )  # free | starter | pro | enterprise | canceled  (legacy: trial treated as free)
     stripe_customer_id: Mapped[str | None] = mapped_column(String, unique=True)
+
+    # Usage tracking — free tier monthly, paid tiers daily
+    monthly_queries_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    monthly_queries_reset_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    daily_queries_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    daily_queries_reset_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+    max_corpora: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=_utcnow, nullable=False
@@ -192,4 +198,27 @@ class ConversationMessage(Base):
     __table_args__ = (
         # Fast lookup: load history for a user+conversation ordered by time
         Index("ix_convmsg_user_conv_time", "user_id", "conversation_id", "created_at"),
+    )
+
+
+class ConversationDocs(Base):
+    """Accumulated source documents for agent multi-turn conversations.
+
+    Stores the agent's accumulated_docs as JSON so follow-up questions
+    can reference prior sources without re-retrieval. One row per conversation.
+    """
+
+    __tablename__ = "conversation_docs"
+
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    docs_json: Mapped[str] = mapped_column(String, nullable=False, default="[]")
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )

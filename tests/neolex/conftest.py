@@ -68,12 +68,12 @@ async def app_client(mock_pipeline_result):
     # reference that was imported at router module load time.
     # Using the service module path would not intercept the router's local binding.
     with patch(
-        "neolex.routers.query.run_single_question",
-        new_callable=AsyncMock,
-        return_value=mock_pipeline_result,
+            "neolex.routers.query.run_single_question",
+            new_callable=AsyncMock,
+            return_value=mock_pipeline_result,
     ):
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             yield client
 
@@ -121,7 +121,8 @@ async def seeded_db(tmp_db_path, monkeypatch):
             scope="query",
         )
 
-    return tmp_db_path, raw_key, {"key_hash": k_hash, "key_prefix": k_prefix, "client_slug": "test-co", "scope": "query"}
+    return tmp_db_path, raw_key, {"key_hash": k_hash, "key_prefix": k_prefix, "client_slug": "test-co",
+                                  "scope": "query"}
 
 
 @pytest.fixture
@@ -157,11 +158,11 @@ async def authed_client(seeded_db):
     }
 
     with patch(
-        "neolex.routers.query.run_single_question",
-        new_callable=AsyncMock,
-        return_value=mock_result,
+            "neolex.routers.query.run_single_question",
+            new_callable=AsyncMock,
+            return_value=mock_result,
     ):
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             yield client, raw_key

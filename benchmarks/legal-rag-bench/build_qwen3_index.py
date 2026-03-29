@@ -44,17 +44,17 @@ def main():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     faiss_path = DATA_DIR / "faiss_llama-server.bin"
-    meta_path  = DATA_DIR / "faiss_llama-server.json"
-    ckpt_path  = DATA_DIR / "faiss_llama-server.ckpt.npy"
+    meta_path = DATA_DIR / "faiss_llama-server.json"
+    ckpt_path = DATA_DIR / "faiss_llama-server.ckpt.npy"
 
     # Step 1: Load corpus
     print("[build_bench_index] Loading corpus from HuggingFace...")
     corpus_ds = hf_load("isaacus/legal-rag-bench", "corpus", split="test")
     print(f"[build_bench_index] Loaded {len(corpus_ds)} passages")
 
-    ids    = [row["id"]           for row in corpus_ds]
-    texts  = [row["text"]         for row in corpus_ds]
-    titles = [row.get("title","") for row in corpus_ds]
+    ids = [row["id"] for row in corpus_ds]
+    texts = [row["text"] for row in corpus_ds]
+    titles = [row.get("title", "") for row in corpus_ds]
 
     # Step 2: Load checkpoint if present
     start_from = 0
@@ -66,7 +66,7 @@ def main():
         start_from = ckpt["next_start"]
         all_embeddings = [ckpt["embeddings"]]
         print(f"[build_bench_index] Resuming from passage {start_from}/{len(texts)} "
-              f"({start_from/len(texts)*100:.1f}% done)")
+              f"({start_from / len(texts) * 100:.1f}% done)")
     else:
         print("[build_bench_index] No checkpoint found, starting from scratch")
 

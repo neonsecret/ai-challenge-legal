@@ -12,12 +12,19 @@ class QueryRequest(BaseModel):
         pattern=r"^(boolean|number|name|names|date|free_text)$",
     )
     corpus: str = Field(default="difc", pattern=r"^(difc|czech)$")
+    # Optional list of Czech law prefixes to restrict retrieval to specific laws.
+    # E.g. ["zakonik_prace", "obcansky_zakonik"]. Empty or None = all laws.
+    laws: list[str] | None = Field(default=None)
     # Opaque session pointer — server loads history from DB using user_id+conversation_id.
     # Client never sends history content; only this UUID-like key.
     conversation_id: str | None = Field(
         default=None,
         pattern=r"^[a-zA-Z0-9_-]{1,64}$",
     )
+    # When True, route the question through the LangGraph agent instead of the
+    # deterministic pipeline.  The SSE event protocol is identical — the frontend
+    # does not need to know which path is active.
+    use_agent: bool = Field(default=False)
 
 
 class SourceCitation(BaseModel):

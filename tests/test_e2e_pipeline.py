@@ -20,6 +20,7 @@ import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from arlc.router import route
@@ -226,7 +227,7 @@ def main():
     total_start = time.perf_counter()
 
     for i, q in enumerate(selected):
-        print(f"[{i+1}/{len(selected)}] ({q['answer_type']}) {q['question'][:70]}...")
+        print(f"[{i + 1}/{len(selected)}] ({q['answer_type']}) {q['question'][:70]}...")
         t0 = time.perf_counter()
         r = test_single_question(q)
         elapsed = time.perf_counter() - t0

@@ -1,47 +1,29 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { cn } from "@/lib/utils"
+import dynamic from "next/dynamic"
+import {Loader2} from "lucide-react"
+import type {PdfViewerProps} from "./pdf-viewer-impl"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
+/**
+ * Dynamically import the react-pdf implementation to avoid SSR issues.
+ * pdfjs-dist references browser-only APIs (DOMMatrix, canvas) at module
+ * evaluation time, which breaks during Next.js static generation.
+ */
+const PdfViewerImpl = dynamic(() => import("./pdf-viewer-impl"), {
+    ssr: false,
+    loading: () => <PdfViewerSkeleton/>,
+})
 
-interface PdfViewerProps {
-  docId: string
-  page?: number
-  className?: string
+function PdfViewerSkeleton() {
+    return (
+        <div className="flex h-full items-center justify-center rounded-xl"
+             style={{background: "rgba(255,255,255,0.04)"}}
+        >
+            <Loader2 className="size-5 animate-spin" style={{color: "rgba(201,168,76,0.60)"}}/>
+        </div>
+    )
 }
 
-function getApiKey(): string {
-  if (typeof window === "undefined") return ""
-  return localStorage.getItem("neolex_api_key") ?? ""
-}
-
-export function PdfViewer({ docId, page = 1, className }: PdfViewerProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null)
-
-  const apiKey = getApiKey()
-  const pdfUrl = `${API_BASE}/api/v1/documents/${encodeURIComponent(docId)}/pdf?api_key=${encodeURIComponent(apiKey)}#page=${page}`
-
-  // When page changes, reload the iframe to jump to the correct page
-  useEffect(() => {
-    const iframe = iframeRef.current
-    if (!iframe) return
-    iframe.src = pdfUrl
-  }, [pdfUrl])
-
-  return (
-    <div className={cn("relative flex flex-col h-full bg-[#1a1f2e]", className)}>
-      {/* Page badge */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-md bg-[#0d1117]/80 px-2 py-1 text-xs font-mono text-amber-400 ring-1 ring-amber-400/20 backdrop-blur-sm">
-        p.{page}
-      </div>
-
-      <iframe
-        ref={iframeRef}
-        src={pdfUrl}
-        className="flex-1 w-full border-0"
-        title={`PDF viewer — ${docId}`}
-      />
-    </div>
-  )
+export function PdfViewer(props: PdfViewerProps) {
+    return <PdfViewerImpl {...props} />
 }

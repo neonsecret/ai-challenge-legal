@@ -1,105 +1,50 @@
-"""Vitreon Legal admin CLI.
+"""Vitreon Legal admin CLI — user management and audit log.
 
 Usage:
-    python -m neolex.admin keys-create --name "Al Tamimi POC" --client-slug al-tamimi
-    python -m neolex.admin keys-create --name "Admin Key" --client-slug admin --scope admin
-    python -m neolex.admin keys-list
-    python -m neolex.admin keys-revoke <prefix>
     python -m neolex.admin show-log [--table queries|events] [--limit N]
+    python -m neolex.admin list-users
 
 Reads DATABASE_URL from .env (PostgreSQL on RTX 3070).
 Does NOT require the FastAPI server to be running.
 """
 from dotenv import load_dotenv as _load_dotenv
+
 _load_dotenv(override=False)
 
 import argparse
 import asyncio
-import sys
 
-from neolex.auth.keys import generate_key, hash_key, key_prefix as get_prefix
-from neolex.config import settings
 from neolex.db.audit import get_audit_db
 
 
-# ---------------------------------------------------------------------------
-# Subcommand handlers
-# ---------------------------------------------------------------------------
+async def cmd_list_users(args: argparse.Namespace) -> None:
+    from neolex.db.postgres import AsyncSessionLocal
+    from neolex.db.models import User
+    from sqlalchemy import select
 
-async def cmd_keys_create(args: argparse.Namespace) -> None:
-    raw_key = generate_key()
-    k_hash = hash_key(raw_key)
-    k_prefix = get_prefix(raw_key)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(User).order_by(User.created_at.desc()))
+        users = result.scalars().all()
 
-    async with get_audit_db() as db:
-        await db.init_schema()
-        row_id = await db.create_key(
-            name=args.name,
-            key_hash=k_hash,
-            key_prefix=k_prefix,
-            client_slug=args.client_slug,
-            scope=args.scope,
-        )
-
-    print()
-    print("=" * 60)
-    print("  API KEY CREATED — SAVE THIS KEY, IT WILL NOT BE SHOWN AGAIN")
-    print("=" * 60)
-    print(f"  Name:        {args.name}")
-    print(f"  Client slug: {args.client_slug}")
-    print(f"  Scope:       {args.scope}")
-    print(f"  Key prefix:  {k_prefix}")
-    print(f"  DB row ID:   {row_id}")
-    print()
-    print(f"  KEY: {raw_key}")
-    print()
-    print("  Use in requests:  Authorization: Bearer <key>")
-    print("=" * 60)
-    print()
-
-
-async def cmd_keys_list(args: argparse.Namespace) -> None:
-    async with get_audit_db() as db:
-        await db.init_schema()
-        rows = await db.list_keys()
-
-    if not rows:
-        print("No API keys found.")
+    if not users:
+        print("No users found.")
         return
 
-    # Header
-    col_fmt = "{:<5} {:<25} {:<10} {:<15} {:<8} {:<8} {:<26} {}"
-    print(col_fmt.format("ID", "Name", "Prefix", "Client slug", "Scope", "Active", "Created", "Last used"))
+    fmt = "{:<38} {:<30} {:<10} {:<12} {}"
+    print(fmt.format("ID", "Email", "Status", "Verified", "Created"))
     print("-" * 110)
-    for row in rows:
-        r = dict(row)
-        print(col_fmt.format(
-            r["id"],
-            r["name"][:24],
-            r["key_prefix"],
-            r["client_slug"][:14],
-            r["scope"],
-            "YES" if r["active"] else "NO",
-            (r["created_at"] or "")[:25],
-            (r["last_used"] or "never"),
+    for u in users:
+        print(fmt.format(
+            str(u.id)[:37],
+            (u.email or "")[:29],
+            u.subscription_status,
+            "YES" if u.email_verified else "NO",
+            str(u.created_at)[:19] if u.created_at else "",
         ))
-
-
-async def cmd_keys_revoke(args: argparse.Namespace) -> None:
-    async with get_audit_db() as db:
-        await db.init_schema()
-        n = await db.revoke_key(args.prefix)
-
-    if n == 0:
-        print(f"No active keys found with prefix '{args.prefix}'.")
-        sys.exit(1)
-    else:
-        print(f"Revoked {n} key(s) with prefix '{args.prefix}'.")
 
 
 async def cmd_show_log(args: argparse.Namespace) -> None:
     async with get_audit_db() as db:
-        await db.init_schema()
         if args.table == "queries":
             rows = await db.get_queries(limit=args.limit)
         else:
@@ -110,12 +55,10 @@ async def cmd_show_log(args: argparse.Namespace) -> None:
         return
 
     print(f"\n--- {args.table} (last {len(rows)}) ---\n")
-    for row in rows:
-        r = dict(row)
+    for r in rows:
         ts = r.get("ts", "")
         if args.table == "queries":
-            print(f"[{ts}] key={r.get('key_hash', '')[:12]}... | "
-                  f"latency={r.get('latency_ms')}ms | "
+            print(f"[{ts}] latency={r.get('latency_ms')}ms | "
                   f"model={r.get('model_name', '')} | "
                   f"q={r.get('question', '')[:60]}")
         else:
@@ -126,35 +69,16 @@ async def cmd_show_log(args: argparse.Namespace) -> None:
     print()
 
 
-# ---------------------------------------------------------------------------
-# Argument parser
-# ---------------------------------------------------------------------------
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m neolex.admin",
-        description="Vitreon Legal admin CLI — manage API keys and view audit log.",
+        description="Vitreon Legal admin CLI — manage users and view audit log.",
     )
     sub = parser.add_subparsers(dest="command", metavar="COMMAND")
     sub.required = True
 
-    # keys-create
-    p_create = sub.add_parser("keys-create", help="Create a new API key")
-    p_create.add_argument("--name", required=True, help="Human-readable name for this key")
-    p_create.add_argument("--client-slug", required=True, dest="client_slug",
-                          help="Client namespace slug (e.g. al-tamimi). "
-                               "Maps to data/clients/<slug>/")
-    p_create.add_argument("--scope", choices=["query", "admin"], default="query",
-                          help="Key scope: 'query' (default) or 'admin'")
+    sub.add_parser("list-users", help="List all registered users")
 
-    # keys-list
-    sub.add_parser("keys-list", help="List all API keys")
-
-    # keys-revoke
-    p_revoke = sub.add_parser("keys-revoke", help="Revoke a key by its 8-char prefix")
-    p_revoke.add_argument("prefix", help="First 8 characters of the key to revoke")
-
-    # show-log
     p_log = sub.add_parser("show-log", help="Display recent audit log entries")
     p_log.add_argument("--table", choices=["queries", "events"], default="queries",
                        help="Which log table to show (default: queries)")
@@ -164,18 +88,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-# ---------------------------------------------------------------------------
-# Entry point
-# ---------------------------------------------------------------------------
-
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
     dispatch = {
-        "keys-create": cmd_keys_create,
-        "keys-list": cmd_keys_list,
-        "keys-revoke": cmd_keys_revoke,
+        "list-users": cmd_list_users,
         "show-log": cmd_show_log,
     }
 

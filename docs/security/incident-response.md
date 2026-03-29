@@ -16,23 +16,23 @@ names, contact info, and communication channels before using in production.
 
 ## Incident Classification
 
-| Severity | Criteria                                                                  | Response SLA |
-|----------|---------------------------------------------------------------------------|--------------|
-| P1       | Confirmed data breach, unauthorized access to client data, production down| 1 hour       |
-| P2       | Suspected breach, API key compromise, degraded availability               | 4 hours      |
-| P3       | Suspicious activity (unusual auth failures), dependency vulnerability     | 24 hours     |
-| P4       | Low-severity finding, informational                                       | 1 week       |
+| Severity | Criteria                                                                   | Response SLA |
+|----------|----------------------------------------------------------------------------|--------------|
+| P1       | Confirmed data breach, unauthorized access to client data, production down | 1 hour       |
+| P2       | Suspected breach, API key compromise, degraded availability                | 4 hours      |
+| P3       | Suspicious activity (unusual auth failures), dependency vulnerability      | 24 hours     |
+| P4       | Low-severity finding, informational                                        | 1 week       |
 
 ---
 
 ## Contacts
 
-| Role                    | Name | Contact |
-|-------------------------|------|---------|
-| Incident Commander      | TBD  | TBD     |
-| Engineering Lead        | TBD  | TBD     |
-| Client Relationship Lead| TBD  | TBD     |
-| Legal/Privacy Counsel   | TBD  | TBD     |
+| Role                     | Name | Contact |
+|--------------------------|------|---------|
+| Incident Commander       | TBD  | TBD     |
+| Engineering Lead         | TBD  | TBD     |
+| Client Relationship Lead | TBD  | TBD     |
+| Legal/Privacy Counsel    | TBD  | TBD     |
 
 ---
 

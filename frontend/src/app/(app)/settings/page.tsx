@@ -1,434 +1,335 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Eye, EyeOff, Check, Moon, Sun, Monitor, ExternalLink } from "lucide-react";
-import { useTheme } from "next-themes";
+import {useState, useEffect} from "react";
+import {Moon, Sun, Monitor, LogOut, User, Loader2} from "lucide-react";
+import {useTheme} from "next-themes";
+import {useRouter} from "next/navigation";
+import {useI18n} from "@/lib/i18n";
 
-const APP_VERSION = "0.1.0";
-const DEFAULT_API_URL = "http://localhost:8000";
+const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
 
 const fontStack = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 
 type ThemeOption = "light" | "dark" | "system";
 
+interface UserInfo {
+    id: string;
+    email: string;
+    name: string | null;
+    avatar_url: string | null;
+    subscription_status: string;
+    monthly_queries_used: number;
+    max_corpora: number;
+}
+
 export default function SettingsPage() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-  const [backendUrl, setBackendUrl] = useState(DEFAULT_API_URL);
-  const [showKey, setShowKey] = useState(false);
-  const [saved, setSaved] = useState(false);
+    const {theme, setTheme, resolvedTheme} = useTheme();
+    const router = useRouter();
+    const {t} = useI18n();
+    const [mounted, setMounted] = useState(false);
+    const [user, setUser] = useState<UserInfo | null>(null);
+    const [userLoading, setUserLoading] = useState(true);
+    const [loggingOut, setLoggingOut] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
-  const isDark = mounted && resolvedTheme === "dark";
+    const isDark = mounted && resolvedTheme === "dark";
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setApiKey(localStorage.getItem("neolex_api_key") ?? "");
-      setBackendUrl(
-        localStorage.getItem("neolex_backend_url") ?? DEFAULT_API_URL
-      );
-    }
-  }, []);
+    useEffect(() => {
+        fetch(`${API}/auth/me`, {credentials: "include"})
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => setUser(data))
+            .catch(() => setUser(null))
+            .finally(() => setUserLoading(false));
+    }, []);
 
-  const handleSave = () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("neolex_api_key", apiKey.trim());
-      localStorage.setItem("neolex_backend_url", backendUrl.trim() || DEFAULT_API_URL);
-    }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+    const handleLogout = async () => {
+        setLoggingOut(true);
+        try {
+            await fetch(`${API}/auth/logout`, {method: "POST", credentials: "include"});
+        } catch { /* ignore */
+        }
 
-  const themeOptions: { value: ThemeOption; label: string; icon: React.ReactNode }[] = [
-    { value: "light", label: "Light", icon: <Sun size={16} /> },
-    { value: "dark", label: "Dark", icon: <Moon size={16} /> },
-    { value: "system", label: "System", icon: <Monitor size={16} /> },
-  ];
+        router.push("/");
+    };
 
-  const glassCard: React.CSSProperties = {
-    background: isDark
-      ? "rgba(255,255,255,0.06)"
-      : "rgba(255,250,235,0.22)",
-    backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-    WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-    border: isDark
-      ? "0.5px solid rgba(255,255,255,0.12)"
-      : "0.5px solid rgba(255,255,255,0.38)",
-    borderRadius: "20px",
-    boxShadow: isDark
-      ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
-      : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
-    overflow: "clip",
-  };
+    const themeOptions: { value: ThemeOption; labelKey: string; icon: React.ReactNode }[] = [
+        {value: "light", labelKey: "settings.light", icon: <Sun size={16}/>},
+        {value: "dark", labelKey: "settings.dark", icon: <Moon size={16}/>},
+        {value: "system", labelKey: "settings.system", icon: <Monitor size={16}/>},
+    ];
 
-  const cardHeader: React.CSSProperties = {
-    padding: "16px 20px",
-    borderBottom: isDark
-      ? "0.5px solid rgba(255,255,255,0.12)"
-      : "0.5px solid rgba(255,255,255,0.30)",
-  };
+    const glassCard: React.CSSProperties = {
+        background: isDark
+            ? "rgba(255,255,255,0.06)"
+            : "rgba(255,250,235,0.22)",
+        backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        border: isDark
+            ? "0.5px solid rgba(255,255,255,0.12)"
+            : "0.5px solid rgba(255,255,255,0.38)",
+        borderRadius: "20px",
+        boxShadow: isDark
+            ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
+            : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
+        overflow: "clip",
+    };
 
-  const cardHeading: React.CSSProperties = {
-    fontSize: "14px",
-    fontWeight: 600,
-    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-    fontFamily: fontStack,
-    margin: 0,
-  };
+    const cardHeader: React.CSSProperties = {
+        padding: "16px 20px",
+        borderBottom: isDark
+            ? "0.5px solid rgba(255,255,255,0.12)"
+            : "0.5px solid rgba(255,255,255,0.30)",
+    };
 
-  const cardBody: React.CSSProperties = {
-    padding: "20px",
-  };
+    const cardHeading: React.CSSProperties = {
+        fontSize: "14px",
+        fontWeight: 600,
+        color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+        fontFamily: fontStack,
+        margin: 0,
+    };
 
-  const inputStyleBase: React.CSSProperties = {
-    background: isDark
-      ? "rgba(255,255,255,0.08)"
-      : "rgba(255,255,255,0.35)",
-    border: isDark
-      ? "0.5px solid rgba(255,255,255,0.14)"
-      : "0.5px solid rgba(255,255,255,0.50)",
-    borderRadius: "10px",
-    padding: "9px 12px",
-    fontSize: "13px",
-    color: isDark ? "rgba(255,255,255,0.88)" : "#2e1f08",
-    caretColor: isDark ? "#C9A84C" : undefined,
-    fontFamily: "monospace",
-    width: "100%",
-    outline: "none",
-    boxSizing: "border-box",
-  };
+    const cardBody: React.CSSProperties = {
+        padding: "20px",
+    };
 
-  const labelStyleDyn: React.CSSProperties = {
-    fontSize: "12px",
-    fontWeight: 500,
-    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
-    fontFamily: fontStack,
-    marginBottom: "6px",
-    display: "block",
-  };
+    const labelStyleDyn: React.CSSProperties = {
+        fontSize: "12px",
+        fontWeight: 500,
+        color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
+        fontFamily: fontStack,
+        marginBottom: "6px",
+        display: "block",
+    };
 
-  const mutedTextDyn: React.CSSProperties = {
-    fontSize: "12px",
-    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-    fontFamily: fontStack,
-    marginTop: "4px",
-  };
+    const themeButton = (active: boolean): React.CSSProperties => ({
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        borderRadius: "10px",
+        padding: "8px 16px",
+        fontSize: "13px",
+        fontWeight: 500,
+        fontFamily: fontStack,
+        cursor: "pointer",
+        transition: "all 0.15s ease",
+        background: isDark
+            ? (active ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.08)")
+            : (active ? "rgba(196,124,0,0.18)" : "rgba(255,255,255,0.20)"),
+        border: isDark
+            ? (active ? "0.5px solid rgba(201,168,76,0.40)" : "0.5px solid rgba(255,255,255,0.14)")
+            : (active ? "0.5px solid rgba(196,124,0,0.40)" : "0.5px solid rgba(255,255,255,0.40)"),
+        color: isDark
+            ? (active ? "#C9A84C" : "rgba(255,255,255,0.55)")
+            : (active ? "#5c2e08" : "rgba(46,31,8,0.60)"),
+    });
 
-  const themeButton = (active: boolean): React.CSSProperties => ({
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    borderRadius: "10px",
-    padding: "8px 16px",
-    fontSize: "13px",
-    fontWeight: 500,
-    fontFamily: fontStack,
-    cursor: "pointer",
-    transition: "all 0.15s ease",
-    background: isDark
-      ? (active ? "rgba(201,168,76,0.18)" : "rgba(255,255,255,0.08)")
-      : (active ? "rgba(196,124,0,0.18)" : "rgba(255,255,255,0.20)"),
-    border: isDark
-      ? (active ? "0.5px solid rgba(201,168,76,0.40)" : "0.5px solid rgba(255,255,255,0.14)")
-      : (active ? "0.5px solid rgba(196,124,0,0.40)" : "0.5px solid rgba(255,255,255,0.40)"),
-    color: isDark
-      ? (active ? "#C9A84C" : "rgba(255,255,255,0.55)")
-      : (active ? "#5c2e08" : "rgba(46,31,8,0.60)"),
-  });
+    const statusBadge = (status: string): React.CSSProperties => {
+        const isActive = status === "active" || status === "trial";
+        return {
+            background: isActive
+                ? (isDark ? "rgba(34,197,94,0.12)" : "rgba(34,197,94,0.15)")
+                : (isDark ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.15)"),
+            border: isActive
+                ? "0.5px solid rgba(34,197,94,0.30)"
+                : "0.5px solid rgba(239,68,68,0.30)",
+            color: isActive
+                ? (isDark ? "#4ade80" : "#16a34a")
+                : (isDark ? "#f87171" : "#dc2626"),
+            borderRadius: "9999px",
+            padding: "2px 10px",
+            fontSize: "11px",
+            fontWeight: 600,
+            textTransform: "capitalize" as const,
+        };
+    };
 
-  const aboutRow: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: "10px 0",
-    borderBottom: isDark
-      ? "0.5px solid rgba(255,255,255,0.08)"
-      : "0.5px solid rgba(255,255,255,0.20)",
-  };
-
-  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = isDark
-      ? "rgba(201,168,76,0.55)"
-      : "rgba(196,124,0,0.55)";
-    if (isDark) {
-      e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.10)";
-    }
-  };
-
-  const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = isDark
-      ? "rgba(255,255,255,0.14)"
-      : "rgba(255,255,255,0.50)";
-    e.currentTarget.style.boxShadow = "none";
-  };
-
-  return (
-    <div
-      style={{
-        padding: "24px 16px 120px",
-        maxWidth: "640px",
-        margin: "0 auto",
-      }}
-    >
-      {/* Page header */}
-      <div style={{ marginBottom: "24px" }}>
-        <h1
-          style={{
-            fontFamily: "var(--font-heading), Georgia, serif",
-            fontSize: "1.5rem",
-            fontWeight: 700,
-            color: isDark ? "rgba(255,255,255,0.90)" : "#1e1208",
-            margin: 0,
-          }}
+    return (
+        <div
+            style={{
+                padding: "24px 16px 120px",
+                maxWidth: "640px",
+                margin: "0 auto",
+            }}
         >
-          Settings
-        </h1>
-        <p
-          style={{
-            color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.55)",
-            fontSize: "13px",
-            fontFamily: fontStack,
-            marginTop: "4px",
-          }}
-        >
-          Configure your Vitreon Legal connection and preferences
-        </p>
-      </div>
-
-      {/* Cards container */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {/* API Configuration */}
-        <div style={glassCard}>
-          <div style={cardHeader}>
-            <h2 style={cardHeading}>API Configuration</h2>
-          </div>
-          <div style={cardBody}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* API Key */}
-              <div>
-                <label htmlFor="api-key" style={labelStyleDyn}>
-                  API Key
-                </label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    id="api-key"
-                    type={showKey ? "text" : "password"}
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Enter your Vitreon Legal API key"
-                    autoComplete="off"
+            {/* Page header */}
+            <div style={{marginBottom: "24px"}}>
+                <h1
                     style={{
-                      ...inputStyleBase,
-                      paddingRight: "36px",
+                        fontFamily: "var(--font-heading), Georgia, serif",
+                        fontSize: "1.5rem",
+                        fontWeight: 700,
+                        color: isDark ? "rgba(255,255,255,0.90)" : "#1e1208",
+                        margin: 0,
                     }}
-                    onFocus={handleInputFocus}
-                    onBlur={handleInputBlur}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowKey((v) => !v)}
-                    aria-label={showKey ? "Hide API key" : "Show API key"}
+                >
+                    {t("settings.title")}
+                </h1>
+                <p
                     style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
-                      padding: "2px",
-                      display: "flex",
-                      alignItems: "center",
+                        color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.55)",
+                        fontSize: "13px",
+                        fontFamily: fontStack,
+                        marginTop: "4px",
                     }}
-                  >
-                    {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
-                  </button>
-                </div>
-                <p style={mutedTextDyn}>
-                  Stored in browser localStorage. Never sent to third parties.
+                >
+                    {t("settings.subtitle")}
                 </p>
-              </div>
-
-              {/* Save button */}
-              <div>
-                <button
-                  onClick={handleSave}
-                  style={{
-                    background: isDark
-                      ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
-                      : "#5c2e08",
-                    color: isDark ? "#0F1623" : "#fff8ee",
-                    borderRadius: "10px",
-                    padding: "9px 20px",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    fontFamily: fontStack,
-                    boxShadow: isDark
-                      ? "0 2px 12px rgba(201,168,76,0.30)"
-                      : "0 2px 12px rgba(92,46,8,0.30)",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    transition: "opacity 0.15s ease",
-                  }}
-                >
-                  {saved ? (
-                    <>
-                      <Check size={15} />
-                      Saved
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-              </div>
             </div>
-          </div>
-        </div>
 
-        {/* Appearance */}
-        <div style={glassCard}>
-          <div style={cardHeader}>
-            <h2 style={cardHeading}>Appearance</h2>
-          </div>
-          <div style={cardBody}>
-            <div>
-              <span style={labelStyleDyn}>Theme</span>
-              <div style={{ display: "flex", gap: "8px", marginTop: "2px" }}>
-                {themeOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setTheme(opt.value)}
-                    style={themeButton(theme === opt.value)}
-                  >
-                    {opt.icon}
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+            {/* Cards container */}
+            <div style={{display: "flex", flexDirection: "column", gap: "20px"}}>
+                {/* Account */}
+                <div style={glassCard}>
+                    <div style={cardHeader}>
+                        <h2 style={cardHeading}>{t("settings.account")}</h2>
+                    </div>
+                    <div style={cardBody}>
+                        {userLoading ? (
+                            <div style={{display: "flex", alignItems: "center", gap: 8}}>
+                                <Loader2 size={16} style={{
+                                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
+                                    animation: "spin 1s linear infinite"
+                                }}/>
+                                <span style={{
+                                    fontSize: 13,
+                                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
+                                    fontFamily: fontStack
+                                }}>{t("settings.loading")}</span>
+                            </div>
+                        ) : user ? (
+                            <div style={{display: "flex", flexDirection: "column", gap: 16}}>
+                                <div style={{display: "flex", alignItems: "center", gap: 14}}>
+                                    {user.avatar_url ? (
+                                        <img src={user.avatar_url} alt="" style={{
+                                            width: 44,
+                                            height: 44,
+                                            borderRadius: 12,
+                                            border: isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.45)"
+                                        }}/>
+                                    ) : (
+                                        <div style={{
+                                            width: 44,
+                                            height: 44,
+                                            borderRadius: 12,
+                                            background: isDark ? "rgba(201,168,76,0.15)" : "rgba(196,124,0,0.15)",
+                                            border: isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(196,124,0,0.30)",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center"
+                                        }}>
+                                            <User size={20} style={{color: isDark ? "#C9A84C" : "#c47c00"}}/>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p style={{
+                                            fontSize: 15,
+                                            fontWeight: 600,
+                                            color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+                                            fontFamily: fontStack,
+                                            margin: 0
+                                        }}>{user.name || user.email}</p>
+                                        <p style={{
+                                            fontSize: 12,
+                                            color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+                                            fontFamily: fontStack,
+                                            margin: "2px 0 0"
+                                        }}>{user.email}</p>
+                                    </div>
+                                </div>
+                                <div style={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
+                                    <span style={{
+                                        fontSize: 12,
+                                        color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+                                        fontFamily: fontStack
+                                    }}>{t("settings.plan")}</span>
+                                    <span
+                                        style={statusBadge(user.subscription_status)}>{user.subscription_status}</span>
+                                </div>
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={loggingOut}
+                                    style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 6,
+                                        padding: "9px 16px",
+                                        borderRadius: 10,
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        fontFamily: fontStack,
+                                        background: isDark ? "rgba(239,68,68,0.10)" : "rgba(239,68,68,0.08)",
+                                        border: isDark ? "0.5px solid rgba(239,68,68,0.25)" : "0.5px solid rgba(239,68,68,0.20)",
+                                        color: isDark ? "#f87171" : "#dc2626",
+                                        cursor: loggingOut ? "default" : "pointer",
+                                        opacity: loggingOut ? 0.5 : 1,
+                                        transition: "opacity 0.15s",
+                                        alignSelf: "flex-start",
+                                    }}
+                                >
+                                    <LogOut size={14}/>
+                                    {loggingOut ? t("settings.signing_out") : t("settings.sign_out")}
+                                </button>
+                            </div>
+                        ) : (
+                            <div style={{textAlign: "center", padding: "12px 0"}}>
+                                <p style={{
+                                    fontSize: 13,
+                                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+                                    fontFamily: fontStack,
+                                    margin: "0 0 12px"
+                                }}>{t("settings.not_signed_in")}</p>
+                                <a href="/login" style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    padding: "9px 20px",
+                                    borderRadius: 10,
+                                    fontSize: 13,
+                                    fontWeight: 600,
+                                    fontFamily: fontStack,
+                                    background: isDark ? "linear-gradient(135deg, #C9A84C, #e8cc7a)" : "#5c2e08",
+                                    color: isDark ? "#0F1623" : "#fff8ee",
+                                    textDecoration: "none",
+                                    boxShadow: isDark ? "0 2px 12px rgba(201,168,76,0.30)" : "0 2px 12px rgba(92,46,8,0.30)",
+                                    border: "none"
+                                }}>
+                                    {t("settings.sign_in")}
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
-        {/* About */}
-        <div style={glassCard}>
-          <div style={cardHeader}>
-            <h2 style={cardHeading}>About</h2>
-          </div>
-          <div style={cardBody}>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={aboutRow}>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                    fontFamily: fontStack,
-                  }}
-                >
-                  Application
-                </span>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    color: isDark ? "rgba(255,255,255,0.65)" : "#2e1f08",
-                    fontFamily: fontStack,
-                  }}
-                >
-                  Vitreon Legal
-                </span>
-              </div>
-              <div style={aboutRow}>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                    fontFamily: fontStack,
-                  }}
-                >
-                  Version
-                </span>
-                <span
-                  style={{
-                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)",
-                    border: isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.45)",
-                    color: isDark ? "rgba(255,255,255,0.65)" : "#5c2e08",
-                    borderRadius: "9999px",
-                    padding: "2px 10px",
-                    fontSize: "11px",
-                    fontFamily: "monospace",
-                  }}
-                >
-                  v{APP_VERSION}
-                </span>
-              </div>
-              <div style={aboutRow}>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                    fontFamily: fontStack,
-                  }}
-                >
-                  Backend
-                </span>
-                <a
-                  href={`${backendUrl || DEFAULT_API_URL}/docs`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    fontSize: "13px",
-                    color: isDark ? "#C9A84C" : "#5c2e08",
-                    fontFamily: fontStack,
-                    fontWeight: 500,
-                    textDecoration: "none",
-                  }}
-                >
-                  API Docs
-                  <ExternalLink size={12} />
-                </a>
-              </div>
-              <div
-                style={{
-                  ...aboutRow,
-                  borderBottom: "none",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                    fontFamily: fontStack,
-                  }}
-                >
-                  Tagline
-                </span>
-                <span
-                  style={{
-                    fontSize: "13px",
-                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                    fontStyle: "italic",
-                    fontFamily: fontStack,
-                  }}
-                >
-                  Your AI Legal Counsel
-                </span>
-              </div>
+                {/* Appearance */}
+                <div style={glassCard}>
+                    <div style={cardHeader}>
+                        <h2 style={cardHeading}>{t("settings.appearance")}</h2>
+                    </div>
+                    <div style={cardBody}>
+                        <div>
+                            <span style={labelStyleDyn}>{t("settings.theme")}</span>
+                            <div style={{display: "flex", gap: "8px", marginTop: "2px"}}>
+                                {themeOptions.map((opt) => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setTheme(opt.value)}
+                                        style={themeButton(theme === opt.value)}
+                                    >
+                                        {opt.icon}
+                                        {t(opt.labelKey)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

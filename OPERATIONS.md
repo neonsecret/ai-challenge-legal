@@ -44,12 +44,12 @@ cloudflared tunnel run --token eyJhIjoiODk4M2Y3NjYyMDIzOGIxZTMzODYwOWRiOGJmNmI3N
 
 ## URLs
 
-| Service | Local | Public |
-|---|---|---|
-| Frontend | http://localhost:3000 | https://vitreon.app |
-| Backend API | http://localhost:8000 | https://api.vitreon.app |
+| Service      | Local                        | Public                         |
+|--------------|------------------------------|--------------------------------|
+| Frontend     | http://localhost:3000        | https://vitreon.app            |
+| Backend API  | http://localhost:8000        | https://api.vitreon.app        |
 | Health check | http://localhost:8000/health | https://api.vitreon.app/health |
-| LAN access | http://192.168.0.150:3000 | — |
+| LAN access   | http://192.168.0.150:3000    | —                              |
 
 ## Kill Everything
 
@@ -89,20 +89,20 @@ python3 -m neolex.admin show-log --limit 20
 
 ## Infrastructure
 
-| Component | Location | Details |
-|---|---|---|
-| Backend + Frontend | Mac (local) | Python 3.13, Node 22 |
-| Embedding server | RTX 3070 (100.98.171.97:8088) | llama-server, Qwen3-8B-Q4_K_M |
-| PostgreSQL | RTX 3070 (100.98.171.97:5432) | vitreon_legal DB, Tailscale-only |
-| Cloudflare Tunnel | Mac (local) | Routes vitreon.app → localhost |
-| Domain | Cloudflare | vitreon.app ($14.20/yr) |
+| Component          | Location                      | Details                          |
+|--------------------|-------------------------------|----------------------------------|
+| Backend + Frontend | Mac (local)                   | Python 3.13, Node 22             |
+| Embedding server   | RTX 3070 (100.98.171.97:8088) | llama-server, Qwen3-8B-Q4_K_M    |
+| PostgreSQL         | Mac (local, localhost:5432)   | vitreon_legal DB, local only     |
+| Cloudflare Tunnel  | Mac (local)                   | Routes vitreon.app → localhost   |
+| Domain             | Cloudflare                    | vitreon.app ($14.20/yr)          |
 
 ## Environment (.env)
 
 All config in `.env` at project root. Auto-loaded by backend. Key vars:
 
 ```
-DATABASE_URL=postgresql+asyncpg://vitreon:...@100.98.171.97:5432/vitreon_legal
+DATABASE_URL=postgresql+asyncpg://vitreon:...@localhost:5432/vitreon_legal
 LLAMA_SERVER_URL=http://100.98.171.97:8088
 EMBEDDING_MODEL=llama-server
 FAISS_INDEX_PATH=data/faiss_llama-server.bin
@@ -125,16 +125,15 @@ ssh neon@100.98.171.97
   -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \
   --embedding --pooling last -ngl 99 -c 16384 --port 8088 &
 
-# PostgreSQL
-sudo systemctl status postgresql
+# PostgreSQL is on local Mac (localhost:5432), not on this machine
 ```
 
 ## FAISS Indexes
 
-| Index | File | Vectors | Dim | Corpus |
-|---|---|---|---|---|
-| DIFC | data/faiss_llama-server.bin | 26,947 | 4096 | 303 DIFC PDFs |
-| Czech | data/faiss_czech.bin | 1,216 | 4096 | 5 Czech codes |
+| Index | File                        | Vectors | Dim  | Corpus        |
+|-------|-----------------------------|---------|------|---------------|
+| DIFC  | data/faiss_llama-server.bin | 26,947  | 4096 | 303 DIFC PDFs |
+| Czech | data/faiss_czech.bin        | 5,056   | 4096 | 5 Czech codes (section-aware) |
 
 ## Troubleshooting
 

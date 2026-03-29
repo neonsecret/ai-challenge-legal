@@ -22,6 +22,7 @@ PROJECT_ROOT = BENCH_DIR.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / ".env")
 
 RESULTS_PATH = BENCH_DIR / "results.json"

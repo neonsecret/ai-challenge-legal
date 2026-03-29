@@ -33,6 +33,7 @@ PROJECT_ROOT = BENCH_DIR.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_DIR = BENCH_DIR / "data"
@@ -45,13 +46,13 @@ REPO_URL = "https://github.com/amazon-science/GaRAGe.git"
 # Model config
 MODEL = os.environ.get("GARAGE_MODEL", "claude-sonnet-4-6")
 
-
 # ---------------------------------------------------------------------------
 # Anthropic client (reuses pipeline's backend logic)
 # ---------------------------------------------------------------------------
 
 _client = None
 _use_litellm = False
+
 
 def get_client():
     global _client, _use_litellm
@@ -166,7 +167,7 @@ def build_user_prompt(question: str, passages: list) -> str:
     parts = ["Here are the passages:\n"]
     for i, passage in enumerate(passages):
         text = extract_passage_text(passage, i)
-        parts.append(f"[P{i+1}] {text}\n")
+        parts.append(f"[P{i + 1}] {text}\n")
     parts.append(f"\nQuestion: {question}")
     return "\n".join(parts)
 
@@ -237,8 +238,8 @@ def is_deflection(response: str) -> bool:
 # ---------------------------------------------------------------------------
 
 def compute_attribution_metrics(
-    cited_passages: set[int],
-    gold_relevant: list[bool],
+        cited_passages: set[int],
+        gold_relevant: list[bool],
 ) -> dict:
     """Compute attribution precision, recall, F1."""
     gold_set = {i for i, r in enumerate(gold_relevant) if r}
@@ -258,10 +259,10 @@ def compute_attribution_metrics(
 
 
 def compute_raf_score(
-    response: str,
-    cited_passages: set[int],
-    gold_relevant: list[bool],
-    deflected: bool,
+        response: str,
+        cited_passages: set[int],
+        gold_relevant: list[bool],
+        deflected: bool,
 ) -> float:
     """Compute Relevance-Aware Factuality score for a single item.
 
@@ -425,7 +426,8 @@ def main():
     defl_fpr = (sum(1 for r in has_relevant if r["deflected"]) / len(has_relevant)) if has_relevant else 0
 
     # Eligibility: model cited at least one relevant passage
-    eligible = sum(1 for r in has_relevant if r["num_cited"] > 0 and not r["deflected"]) / len(has_relevant) if has_relevant else 0
+    eligible = sum(1 for r in has_relevant if r["num_cited"] > 0 and not r["deflected"]) / len(
+        has_relevant) if has_relevant else 0
 
     aggregate = {
         "num_evaluated": evaluated,

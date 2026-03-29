@@ -478,8 +478,8 @@ class Router:
         # Uses q_lower_no_quotes to avoid matching law names inside document title quotes.
         _fallback_added = 0
         for key in sorted(
-            (k for k in self._law_name_index if k != "_meta"),
-            key=len, reverse=True,
+                (k for k in self._law_name_index if k != "_meta"),
+                key=len, reverse=True,
         ):
             if key in q_lower_no_quotes and key not in found:
                 # Skip if this key is a substring of an already-found key (less specific).
@@ -499,8 +499,8 @@ class Router:
         # Safe because it only fires when found is completely empty (normal extraction failed).
         if not found:
             for key in sorted(
-                (k for k in self._law_name_index if k != "_meta"),
-                key=len, reverse=True,
+                    (k for k in self._law_name_index if k != "_meta"),
+                    key=len, reverse=True,
             ):
                 if key in q_lower and key not in found:
                     found.append(key)
@@ -627,7 +627,7 @@ class Router:
         # E.g.: 'the consultation paper "PROPOSED NEW INTELLECTUAL PROPERTY LAW"'
         # E.g.: 'the DIFC document "EMPLOYMENT LAW AMENDMENT LAW & NEW EMPLOYMENT REGULATIONS"'
         if not doc_ids and re.search(
-            r'\b(?:consultation\s+paper|difc\s+document)\b', question, re.IGNORECASE
+                r'\b(?:consultation\s+paper|difc\s+document)\b', question, re.IGNORECASE
         ):
             matched_topics = []
             for topic, patterns in CP_TOPIC_KEYWORDS.items():
@@ -717,7 +717,7 @@ class Router:
         return None
 
     def _get_metadata_pages(
-        self, case_ids: list[str], metadata_type: str | None
+            self, case_ids: list[str], metadata_type: str | None
     ) -> dict[str, int] | None:
         """Get metadata page numbers for shortcuts."""
         if not metadata_type or not case_ids:
@@ -761,8 +761,8 @@ class Router:
         return pages if pages else None
 
     def _get_metadata_answer(
-        self, case_ids: list[str], metadata_type: str | None, question: str,
-        answer_type: str = "",
+            self, case_ids: list[str], metadata_type: str | None, question: str,
+            answer_type: str = "",
     ) -> Any:
         """Try to extract a pre-computed answer from metadata."""
         if not metadata_type or not case_ids:
@@ -872,7 +872,7 @@ class Router:
         return None
 
     def _get_article_pages(
-        self, doc_id: str, article_keys: list[str]
+            self, doc_id: str, article_keys: list[str]
     ) -> dict[str, int] | None:
         """Get page numbers for specific articles in a document."""
         if doc_id not in self._article_index:
@@ -1094,9 +1094,9 @@ def test_routing_coverage():
     with_articles = 0
     with_meta_answer = 0
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"ROUTING COVERAGE TEST — {len(questions)} questions")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     for i, q in enumerate(questions):
         result = router.route(q["question"], q["answer_type"])
@@ -1137,17 +1137,17 @@ def test_routing_coverage():
         print(f"  [{status:8s}] {doc_count:2d} docs | {q['answer_type']:10s} | {detail_str}")
         print(f"            Q: {q_short}")
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"SUMMARY")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"  Total questions:    {len(questions)}")
-    print(f"  Routed:             {routed} ({100*routed/len(questions):.1f}%)")
-    print(f"  Fallback:           {fallback} ({100*fallback/len(questions):.1f}%)")
+    print(f"  Routed:             {routed} ({100 * routed / len(questions):.1f}%)")
+    print(f"  Fallback:           {fallback} ({100 * fallback / len(questions):.1f}%)")
     print(f"  Cross-case:         {cross_case}")
     print(f"  With metadata page: {with_metadata}")
     print(f"  With articles:      {with_articles}")
     print(f"  With meta answer:   {with_meta_answer}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     return routed, fallback
 

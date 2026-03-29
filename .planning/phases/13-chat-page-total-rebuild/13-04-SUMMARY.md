@@ -53,7 +53,8 @@ completed: "2026-03-27"
 
 # Phase 13 Plan 04: Chat Input Warm Palette + Grounding Drawer Wiring Summary
 
-**chat-input.tsx re-skinned to Arrakis/Dune warm glass palette with espresso #5c2e08 CTA, and grounding drawer chain verified complete (SourcesPanel chip click opens Sheet with correct answer+sources)**
+**chat-input.tsx re-skinned to Arrakis/Dune warm glass palette with espresso #5c2e08 CTA, and grounding drawer chain
+verified complete (SourcesPanel chip click opens Sheet with correct answer+sources)**
 
 ## Performance
 
@@ -65,11 +66,14 @@ completed: "2026-03-27"
 
 ## Accomplishments
 
-- Re-skinned chat-input.tsx from dark navy glass (`rgba(255,255,255,0.06)`) to warm amber glass (`rgba(255,240,215,0.20)`) with warm brown shadow
+- Re-skinned chat-input.tsx from dark navy glass (`rgba(255,255,255,0.06)`) to warm amber glass (
+  `rgba(255,240,215,0.20)`) with warm brown shadow
 - Send button now uses espresso `#5c2e08` active CTA (was gold `#C9A84C`) with warm brown glow `rgba(92,46,8,0.35)`
-- Textarea text changed from `rgba(255,255,255,0.88)` (white) to `#2e1f08` (espresso), caret from `#C9A84C` to `#c9a230`, placeholder via Tailwind `placeholder:text-[#b29254]`
+- Textarea text changed from `rgba(255,255,255,0.88)` (white) to `#2e1f08` (espresso), caret from `#C9A84C` to
+  `#c9a230`, placeholder via Tailwind `placeholder:text-[#b29254]`
 - Keyboard hint color changed from white-alpha to `rgba(92,46,8,0.35)` (warm muted brown)
-- Verified complete onSourceClick chain: SourcesPanel button click → ChatMessage intercept → page.tsx `handleSourceClick` → `setDrawerData` + `setDrawerOpen(true)` → `<GroundingDrawer open={drawerOpen}>` Sheet
+- Verified complete onSourceClick chain: SourcesPanel button click → ChatMessage intercept → page.tsx
+  `handleSourceClick` → `setDrawerData` + `setDrawerOpen(true)` → `<GroundingDrawer open={drawerOpen}>` Sheet
 
 ## Task Commits
 
@@ -87,12 +91,16 @@ Each task was committed atomically:
 ## Decisions Made
 
 - Task 2 was verification-only: plans 02 and 03 had already wired the complete chain correctly. No patches required.
-- The SourcesPanel `onSourceClick` signature (`source: Source`) differs from the page-level `handleSourceClick` signature (`answer: string, sources: Source[]`) — this is intentional. ChatMessage intercepts in the middle and maps `(_source) => onSourceClick?.(content ?? "", sources)`, which correctly passes the full message answer and all sources to the drawer.
+- The SourcesPanel `onSourceClick` signature (`source: Source`) differs from the page-level `handleSourceClick`
+  signature (`answer: string, sources: Source[]`) — this is intentional. ChatMessage intercepts in the middle and maps
+  `(_source) => onSourceClick?.(content ?? "", sources)`, which correctly passes the full message answer and all sources
+  to the drawer.
 - Espresso `#5c2e08` confirmed as CTA color (not gold) per STATE.md design system lock decision.
 
 ## Deviations from Plan
 
-None — plan executed exactly as written. Task 1 was a pure styling replacement. Task 2 confirmed wiring was already correct from Wave 2 plans.
+None — plan executed exactly as written. Task 1 was a pure styling replacement. Task 2 confirmed wiring was already
+correct from Wave 2 plans.
 
 ## Issues Encountered
 

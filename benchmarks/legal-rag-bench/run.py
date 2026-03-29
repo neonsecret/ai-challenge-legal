@@ -28,6 +28,7 @@ PROJECT_ROOT = BENCH_DIR.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(PROJECT_ROOT / ".env")
 
 DATA_DIR = BENCH_DIR / "data"
@@ -199,8 +200,8 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     # Collect signals for score fusion
     passage_info = {}  # pid -> {"text", "title"}
     faiss_scores = {}  # pid -> raw FAISS similarity score (inner product, 0–1)
-    vec_rank = {}      # pid -> rank (kept for reference but not used in fusion)
-    bm25_rank = {}     # pid -> rank (1-based)
+    vec_rank = {}  # pid -> rank (kept for reference but not used in fusion)
+    bm25_rank = {}  # pid -> rank (1-based)
 
     # --- Vector search ---
     if has_faiss:
@@ -293,9 +294,9 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     for pid in all_pids:
         score = 0.0
         if pid in faiss_scores:
-            score += faiss_scores[pid]          # raw similarity, typically 0.5–1.0
+            score += faiss_scores[pid]  # raw similarity, typically 0.5–1.0
         if pid in bm25_rank:
-            score += 1.0 / (RRF_K + bm25_rank[pid])   # rank-based, ~0.006–0.016
+            score += 1.0 / (RRF_K + bm25_rank[pid])  # rank-based, ~0.006–0.016
         if pid in hyde_rank:
             # HyDE is document-to-document (same embedding space as index) so
             # it deserves higher weight than a query-to-document BM25 match.
@@ -321,7 +322,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
         # legal passages. Min-max stretches that gap to 0–1, letting reranker noise
         # dominate. Raw scores stay nearly constant across candidates, so RRF correctly
         # controls ordering.
-        rr_arr  = np.array(rerank_scores, dtype=float)  # raw, already in [0,1]
+        rr_arr = np.array(rerank_scores, dtype=float)  # raw, already in [0,1]
         rrf_arr = np.array([c["score"] for c in candidate_list], dtype=float)
         rrf_lo, rrf_hi = rrf_arr.min(), rrf_arr.max()
         rrf_norm = (rrf_arr - rrf_lo) / (rrf_hi - rrf_lo + 1e-8)
@@ -459,7 +460,7 @@ def main():
         gold_answer = item["answer"]
         gold_passage_id = item["relevant_passage_id"]
 
-        print(f"  [{i+1}/{len(qa_items)}] {question[:80]}...")
+        print(f"  [{i + 1}/{len(qa_items)}] {question[:80]}...")
 
         pipeline_output = asyncio.run(run_pipeline(question, corpus_index))
 

@@ -74,7 +74,7 @@ async def lifecycle_client(tmp_path, monkeypatch):
     app.dependency_overrides[get_api_key] = mock_get_api_key
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
         yield client
 
@@ -239,7 +239,7 @@ async def test_client_isolation_in_listing(lifecycle_client, tmp_path, monkeypat
     app.dependency_overrides[get_api_key] = other_key
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+            transport=ASGITransport(app=app), base_url="http://test"
     ) as other_client:
         # other-corp uploads their own doc
         await other_client.post(

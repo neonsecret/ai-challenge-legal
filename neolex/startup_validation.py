@@ -98,6 +98,19 @@ def validate_startup(data_dir: str) -> None:
                 f"--embedding --pooling last -ngl 99 -c 4096 --port 8088"
             )
 
+    # --- Auth / billing secret validation ---
+    from neolex.config import settings as _s
+    if _s.auth_enabled:
+        if not _s.jwt_secret_key:
+            errors.append("JWT_SECRET_KEY must be set when AUTH_ENABLED=true")
+        if not _s.database_url:
+            errors.append("DATABASE_URL must be set when AUTH_ENABLED=true")
+    if _s.stripe_enabled:
+        if not _s.stripe_secret_key:
+            errors.append("STRIPE_SECRET_KEY must be set when STRIPE_ENABLED=true")
+        if not _s.stripe_webhook_secret:
+            warnings.append("  STRIPE_WEBHOOK_SECRET not set — webhook signature verification will fail")
+
     # --- Check recommended env vars ---
     for var, reason in _RECOMMENDED_ENV_VARS:
         if not os.environ.get(var):

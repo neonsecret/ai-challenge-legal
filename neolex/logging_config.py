@@ -24,7 +24,6 @@ import re
 import sys
 import time
 
-
 # ---------------------------------------------------------------------------
 # Security: scrub api_key query param from access logs
 # ---------------------------------------------------------------------------
@@ -113,11 +112,11 @@ class HumanFormatter(logging.Formatter):
     """Coloured, human-readable formatter for development."""
 
     _COLORS = {
-        "DEBUG":    "\033[36m",   # cyan
-        "INFO":     "\033[32m",   # green
-        "WARNING":  "\033[33m",   # yellow
-        "ERROR":    "\033[31m",   # red
-        "CRITICAL": "\033[35m",   # magenta
+        "DEBUG": "\033[36m",  # cyan
+        "INFO": "\033[32m",  # green
+        "WARNING": "\033[33m",  # yellow
+        "ERROR": "\033[31m",  # red
+        "CRITICAL": "\033[35m",  # magenta
     }
     _RESET = "\033[0m"
 
@@ -183,11 +182,16 @@ def configure_logging(level: str | None = None) -> None:
     _noisy = [
         "httpx", "httpcore", "urllib3", "sentence_transformers",
         "faiss", "transformers", "torch", "filelock",
-        "arlc",  # keep arlc quiet by default; it's very verbose
     ]
     if log_level != "DEBUG":
         for name in _noisy:
             logging.getLogger(name).setLevel(logging.WARNING)
+
+    # Keep arlc.retriever / arlc.llm quiet (verbose per-chunk logging) but
+    # allow arlc.agent through at INFO so agent decisions are visible.
+    if log_level != "DEBUG":
+        logging.getLogger("arlc").setLevel(logging.WARNING)
+        logging.getLogger("arlc.agent").setLevel(logging.INFO)
 
     # Security: attach the api_key scrubber to the uvicorn access logger so
     # that ?api_key=<value> query params are never written to log storage.

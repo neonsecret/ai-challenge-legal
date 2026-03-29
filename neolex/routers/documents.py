@@ -6,13 +6,19 @@ Routes:
     DELETE /api/v1/documents/{doc_id}  — delete document + trigger reindex (DOC-07)
     POST   /api/v1/documents/reindex   — manually trigger reindex
     GET    /api/v1/documents/reindex/{job_id} — poll reindex status (DOC-05)
+    GET    /api/v1/documents/{doc_id}/pdf      — serve raw PDF for source viewer
 """
 from __future__ import annotations
 
 import asyncio
 import logging
+import re
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
+
+from neolex.config import settings
 
 from neolex.auth.middleware import get_api_key
 from neolex.db.audit import get_audit_db
@@ -25,6 +31,7 @@ from neolex.schemas.documents import (
 )
 from neolex.services.document_manager import (
     MAX_UPLOAD_BYTES,
+    client_docs_dir,
     delete_document,
     save_doc_meta,
     save_upload,
@@ -41,9 +48,9 @@ router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 
 @router.post("", response_model=DocumentUploadResponse, status_code=201)
 async def upload_document(
-    request: Request,
-    file: UploadFile = File(...),
-    key_row: dict = Depends(get_api_key),
+        request: Request,
+        file: UploadFile = File(...),
+        key_row: dict = Depends(get_api_key),
 ) -> DocumentUploadResponse:
     """Upload a PDF document into the client's private corpus.
 
@@ -56,7 +63,7 @@ async def upload_document(
 
     # --- Validate content type ---
     ct = (file.content_type or "").lower()
-    if ct not in ("application/pdf", "application/octet-stream", ""):
+    if ct not in ("application/pdf",):
         async with get_audit_db() as db:
             await db.log_event(
                 key_hash=key_row["key_hash"],
@@ -70,8 +77,24 @@ async def upload_document(
             detail=f"Unsupported file type '{ct}'. Only application/pdf is accepted.",
         )
 
-    # --- Read and size-check ---
+    # --- Read and validate ---
     content = await file.read()
+
+    # Reject empty files
+    if len(content) == 0:
+        async with get_audit_db() as db:
+            await db.log_event(
+                key_hash=key_row["key_hash"],
+                event_type="upload",
+                detail={"filename": file.filename, "status": "rejected_empty"},
+                ip=getattr(request.client, "host", None),
+                user_agent=request.headers.get("user-agent"),
+            )
+        raise HTTPException(
+            status_code=400,
+            detail="File is empty (0 bytes). Upload a valid PDF document.",
+        )
+
     if len(content) > MAX_UPLOAD_BYTES:
         async with get_audit_db() as db:
             await db.log_event(
@@ -128,9 +151,9 @@ async def upload_document(
     from neolex.config import settings
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
-    job_id = await create_job(client_slug, settings.db_path)
+    job_id = await create_job(client_slug)
     asyncio.create_task(
-        run_reindex_job(job_id, client_slug, settings.db_path, app=request.app),
+        run_reindex_job(job_id, client_slug, app=request.app),
         name=f"reindex-{job_id[:8]}",
     )
 
@@ -175,7 +198,7 @@ async def upload_document(
 
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
-    key_row: dict = Depends(get_api_key),
+        key_row: dict = Depends(get_api_key),
 ) -> DocumentListResponse:
     """List all documents uploaded by this client."""
     client_slug = key_row["client_slug"]
@@ -208,9 +231,9 @@ async def list_documents(
 
 @router.delete("/{doc_id}", response_model=DocumentDeleteResponse)
 async def delete_doc(
-    doc_id: str,
-    request: Request,
-    key_row: dict = Depends(get_api_key),
+        doc_id: str,
+        request: Request,
+        key_row: dict = Depends(get_api_key),
 ) -> DocumentDeleteResponse:
     """Delete a document from the client's corpus and trigger reindex."""
     client_slug = key_row["client_slug"]
@@ -236,9 +259,9 @@ async def delete_doc(
     from neolex.config import settings
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
-    job_id = await create_job(client_slug, settings.db_path)
+    job_id = await create_job(client_slug)
     asyncio.create_task(
-        run_reindex_job(job_id, client_slug, settings.db_path, app=request.app),
+        run_reindex_job(job_id, client_slug, app=request.app),
         name=f"reindex-{job_id[:8]}",
     )
 
@@ -278,8 +301,8 @@ async def delete_doc(
 
 @router.post("/reindex", response_model=ReindexJobResponse, status_code=202)
 async def trigger_reindex(
-    request: Request,
-    key_row: dict = Depends(get_api_key),
+        request: Request,
+        key_row: dict = Depends(get_api_key),
 ) -> ReindexJobResponse:
     """Manually trigger a reindex job for the client's corpus.
 
@@ -290,9 +313,9 @@ async def trigger_reindex(
     from neolex.config import settings
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
-    job_id = await create_job(client_slug, settings.db_path)
+    job_id = await create_job(client_slug)
     asyncio.create_task(
-        run_reindex_job(job_id, client_slug, settings.db_path, app=request.app),
+        run_reindex_job(job_id, client_slug, app=request.app),
         name=f"reindex-{job_id[:8]}",
     )
 
@@ -325,16 +348,15 @@ async def trigger_reindex(
 
 @router.get("/reindex/{job_id}", response_model=ReindexJobResponse)
 async def get_reindex_status(
-    job_id: str,
-    key_row: dict = Depends(get_api_key),
+        job_id: str,
+        key_row: dict = Depends(get_api_key),
 ) -> ReindexJobResponse:
     """Poll reindex job status. Returns 404 if job_id not found."""
     client_slug = key_row["client_slug"]
 
     from neolex.indexing.reindex_worker import get_job
-    from neolex.config import settings
 
-    job = await get_job(job_id, settings.db_path)
+    job = await get_job(job_id)
 
     if job is None:
         raise HTTPException(status_code=404, detail=f"Reindex job '{job_id}' not found")
@@ -353,3 +375,54 @@ async def get_reindex_status(
         error=job.get("error"),
         doc_count=job.get("doc_count", 0),
     )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/documents/{doc_id}/pdf  — serve corpus PDF for source viewer
+# ---------------------------------------------------------------------------
+
+
+_PDF_CACHE_HEADERS = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, private",
+    "X-Content-Type-Options": "nosniff",
+}
+
+
+@router.get("/{doc_id}/pdf")
+async def get_document_pdf(
+        doc_id: str,
+        key_row: dict = Depends(get_api_key),
+) -> FileResponse:
+    """Serve the raw PDF for a given doc_id.
+
+    Corpus documents (shared DIFC laws/cases) are served to all authenticated
+    users. Client-uploaded documents are scoped to the client's own corpus.
+    """
+    # Sanitise: doc_id must be hex hash or alphanumeric/dash/underscore only
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
+        raise HTTPException(status_code=400, detail="Invalid doc_id format")
+
+    client_slug = key_row["client_slug"]
+
+    # 1. Corpus documents (shared public law texts — accessible to all tenants)
+    corpus_path = Path(settings.data_dir) / "documents" / f"{doc_id}.pdf"
+    if corpus_path.exists():
+        logger.info("Serving shared corpus PDF %s to client %s", doc_id[:16], client_slug)
+        return FileResponse(
+            path=str(corpus_path),
+            media_type="application/pdf",
+            filename=f"{doc_id}.pdf",
+            headers=_PDF_CACHE_HEADERS,
+        )
+
+    # 2. Client-uploaded documents (tenant-scoped)
+    client_dir = client_docs_dir(client_slug)
+    for f in client_dir.glob(f"{doc_id}_*.pdf"):
+        return FileResponse(
+            path=str(f),
+            media_type="application/pdf",
+            filename=f.name,
+            headers=_PDF_CACHE_HEADERS,
+        )
+
+    raise HTTPException(status_code=404, detail="PDF not found")

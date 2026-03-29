@@ -28,6 +28,7 @@ from arlc.llm.router import call_llm
 _CASE_METADATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "case_metadata_index.json")
 _case_metadata: dict = {}
 
+
 def _load_case_metadata() -> dict:
     global _case_metadata
     if _case_metadata:
@@ -67,6 +68,7 @@ def extract_entities_from_chunk(text: str) -> list[str]:
             if entity:
                 entities.add(entity)
     return sorted(entities)
+
 
 DOCUMENTS_DIR = "data/documents"
 CHROMA_DIR = "data/chroma_db"
@@ -240,7 +242,8 @@ def _ocr_page(page, pdf_file: str, page_num: int) -> str:
                 "role": "user",
                 "content": [
                     {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
-                    {"type": "text", "text": "Extract all text from this legal document page. Return only the extracted text, no commentary."}
+                    {"type": "text",
+                     "text": "Extract all text from this legal document page. Return only the extracted text, no commentary."}
                 ]
             }],
         )
@@ -293,7 +296,7 @@ def split_page_into_chunks(text: str, page_num: int, max_chars: int = 500, overl
                 if len(sentences) == 1:
                     # Try semicolon splits for legal lists
                     sentences = [s.strip() + ';' if i < len(para.split(';')) - 1 else s.strip()
-                                for i, s in enumerate(para.split(';')) if s.strip()]
+                                 for i, s in enumerate(para.split(';')) if s.strip()]
 
                 # If still one giant chunk, force split at max_chars
                 if len(sentences) == 1 and len(sentences[0]) > max_chars:
@@ -456,7 +459,7 @@ def build_index():
             entities = extract_entities_from_chunk(chunk_info["text"])
             all_metadatas.append({
                 "pdf_id": pdf_id,
-                "page": chunk_info["page"],   # 1-based, used for grounding
+                "page": chunk_info["page"],  # 1-based, used for grounding
                 "source_file": pdf_file,
                 "entities": "|".join(entities),  # pipe-separated for ChromaDB scalar compat
             })

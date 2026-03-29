@@ -126,13 +126,13 @@ law firm deployment behind Tailscale Funnel (zero-trust network access).
 
 ## Trust Boundaries
 
-| Boundary           | Description                                             | Controls                                |
-|--------------------|---------------------------------------------------------|-----------------------------------------|
-| Internet / Funnel  | Public internet to Tailscale Funnel endpoint            | TLS 1.3, Tailscale ACL                  |
-| Frontend           | Next.js client — serves UI, proxies API calls           | CORS, no API key exposure to browser    |
-| Backend            | FastAPI server — all business logic                     | API key auth, rate limiting, audit log  |
-| ML Pipeline        | arlc/ — retrieval and generation                        | Semaphore (max 5 concurrent), in-process|
-| LLM Provider       | Anthropic / LiteLLM — external AI inference             | HTTPS, API key in .env only             |
+| Boundary          | Description                                   | Controls                                 |
+|-------------------|-----------------------------------------------|------------------------------------------|
+| Internet / Funnel | Public internet to Tailscale Funnel endpoint  | TLS 1.3, Tailscale ACL                   |
+| Frontend          | Next.js client — serves UI, proxies API calls | CORS, no API key exposure to browser     |
+| Backend           | FastAPI server — all business logic           | API key auth, rate limiting, audit log   |
+| ML Pipeline       | arlc/ — retrieval and generation              | Semaphore (max 5 concurrent), in-process |
+| LLM Provider      | Anthropic / LiteLLM — external AI inference   | HTTPS, API key in .env only              |
 
 ---
 
@@ -161,12 +161,12 @@ law firm deployment behind Tailscale Funnel (zero-trust network access).
 
 ## Secrets and Credentials
 
-| Secret                 | Where Stored | Access Pattern                                   |
-|------------------------|--------------|--------------------------------------------------|
-| Anthropic API key      | `.env` only  | Read by arlc/ at startup via python-dotenv       |
-| LiteLLM proxy URL/key  | `.env` only  | Read by arlc/llm/litellm_backend.py at startup   |
-| NeoLex API keys        | `neolex.db`  | SHA-256 hash only; plaintext shown once, never stored |
-| Tailscale auth key     | OS keychain or `.env` | Not committed to source control         |
+| Secret                | Where Stored          | Access Pattern                                        |
+|-----------------------|-----------------------|-------------------------------------------------------|
+| Anthropic API key     | `.env` only           | Read by arlc/ at startup via python-dotenv            |
+| LiteLLM proxy URL/key | `.env` only           | Read by arlc/llm/litellm_backend.py at startup        |
+| NeoLex API keys       | `neolex.db`           | SHA-256 hash only; plaintext shown once, never stored |
+| Tailscale auth key    | OS keychain or `.env` | Not committed to source control                       |
 
 `.env` is gitignored. `.planning/` is gitignored. `paper/` is gitignored.
 Run `bash scripts/scan-secrets.sh` before every commit.
@@ -175,13 +175,13 @@ Run `bash scripts/scan-secrets.sh` before every commit.
 
 ## Data at Rest (Storage Inventory)
 
-| Location               | Contents                                | Encryption    | Backup       |
-|------------------------|-----------------------------------------|---------------|--------------|
-| `neolex.db`            | Audit log, API keys (hashes), doc metadata | Filesystem permissions | None configured |
-| `data/*.faiss`         | FAISS vector index (embeddings)         | Filesystem    | Rebuild from PDFs |
-| `data/*.pkl`           | BM25 sparse index                       | Filesystem    | Rebuild from PDFs |
-| `data/clients/<slug>/docs/` | Uploaded client PDFs              | Filesystem    | None configured |
-| Application logs       | Request IDs, IPs, paths, status codes  | None (plaintext) | Log rotation |
+| Location                    | Contents                                   | Encryption             | Backup            |
+|-----------------------------|--------------------------------------------|------------------------|-------------------|
+| `neolex.db`                 | Audit log, API keys (hashes), doc metadata | Filesystem permissions | None configured   |
+| `data/*.faiss`              | FAISS vector index (embeddings)            | Filesystem             | Rebuild from PDFs |
+| `data/*.pkl`                | BM25 sparse index                          | Filesystem             | Rebuild from PDFs |
+| `data/clients/<slug>/docs/` | Uploaded client PDFs                       | Filesystem             | None configured   |
+| Application logs            | Request IDs, IPs, paths, status codes      | None (plaintext)       | Log rotation      |
 
 ---
 
@@ -221,14 +221,14 @@ Run `bash scripts/scan-secrets.sh` before every commit.
 
 ## Component Versions (2026-03-26)
 
-| Component        | Version       | Role                          |
-|------------------|---------------|-------------------------------|
-| FastAPI          | 0.115.x       | ASGI web framework            |
-| Uvicorn          | latest        | ASGI server                   |
-| aiosqlite        | 0.21.x        | Async SQLite driver           |
-| httpx            | 0.28.x        | Async HTTP client             |
-| sse-starlette    | 2.x           | Server-Sent Events            |
-| Claude API       | claude-sonnet-4-6 | LLM inference              |
-| sentence-transformers | latest   | Cross-encoder reranking       |
-| FAISS            | 1.x           | Vector similarity search      |
-| Next.js          | 15.x          | Frontend framework            |
+| Component             | Version           | Role                     |
+|-----------------------|-------------------|--------------------------|
+| FastAPI               | 0.115.x           | ASGI web framework       |
+| Uvicorn               | latest            | ASGI server              |
+| aiosqlite             | 0.21.x            | Async SQLite driver      |
+| httpx                 | 0.28.x            | Async HTTP client        |
+| sse-starlette         | 2.x               | Server-Sent Events       |
+| Claude API            | claude-sonnet-4-6 | LLM inference            |
+| sentence-transformers | latest            | Cross-encoder reranking  |
+| FAISS                 | 1.x               | Vector similarity search |
+| Next.js               | 15.x              | Frontend framework       |

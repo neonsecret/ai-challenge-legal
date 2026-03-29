@@ -16,7 +16,7 @@ from neolex.db.postgres import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
 
-MAX_HISTORY_TURNS = 6  # 3 Q&A pairs — caps token cost for rewriting
+MAX_HISTORY_TURNS = 10  # 5 Q&A pairs — worst-case context for agent cost control
 
 
 def _to_conv_uuid(conversation_id: str) -> uuid.UUID:
@@ -59,6 +59,72 @@ async def load_history(user_id: str, conversation_id: str) -> list[dict]:
     except Exception:
         logger.exception("Failed to load conversation history for conv=%s", conversation_id)
         return []
+
+
+async def load_accumulated_docs(user_id: str, conversation_id: str) -> list[dict]:
+    """Load accumulated source documents for an agent conversation.
+
+    Returns [] on error or if no docs saved yet.
+    """
+    if not conversation_id:
+        return []
+    try:
+        import json as _json
+        uid = uuid.UUID(str(user_id))
+        cid = _to_conv_uuid(conversation_id)
+        async with AsyncSessionLocal() as session:
+            from neolex.db.models import ConversationDocs
+            from sqlalchemy import select as _select
+            result = await session.execute(
+                _select(ConversationDocs.docs_json).where(
+                    ConversationDocs.conversation_id == cid,
+                    ConversationDocs.user_id == uid,
+                )
+            )
+            row = result.scalar_one_or_none()
+            return _json.loads(row) if row else []
+    except Exception:
+        logger.exception("Failed to load accumulated docs for conv=%s", conversation_id)
+        return []
+
+
+async def save_accumulated_docs(
+    user_id: str,
+    conversation_id: str,
+    docs: list[dict],
+) -> None:
+    """Persist accumulated source documents for multi-turn agent conversations.
+
+    Upserts — creates or updates the single row per conversation.
+    """
+    if not conversation_id or not docs:
+        return
+    try:
+        import json as _json
+        uid = uuid.UUID(str(user_id))
+        cid = _to_conv_uuid(conversation_id)
+        docs_str = _json.dumps(docs, ensure_ascii=False)
+        async with AsyncSessionLocal() as session:
+            from neolex.db.models import ConversationDocs
+            from sqlalchemy import select as _select
+            result = await session.execute(
+                _select(ConversationDocs).where(
+                    ConversationDocs.conversation_id == cid,
+                    ConversationDocs.user_id == uid,
+                )
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                existing.docs_json = docs_str
+            else:
+                session.add(ConversationDocs(
+                    conversation_id=cid,
+                    user_id=uid,
+                    docs_json=docs_str,
+                ))
+            await session.commit()
+    except Exception:
+        logger.exception("Failed to save accumulated docs for conv=%s", conversation_id)
 
 
 async def save_turn(

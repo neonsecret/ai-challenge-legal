@@ -51,7 +51,8 @@ completed: 2026-03-27
 
 # Phase 13 Plan 02: Chat Page Total Rebuild Summary
 
-**Warm Arrakis amber chat shell with grounding drawer state, three vivid blobs, and GlassCard EmptyState component replacing dark #060C16 navy background.**
+**Warm Arrakis amber chat shell with grounding drawer state, three vivid blobs, and GlassCard EmptyState component
+replacing dark #060C16 navy background.**
 
 ## Performance
 
@@ -66,7 +67,8 @@ completed: 2026-03-27
 - Root div background replaced: `#060C16` dark navy → `linear-gradient(145deg, #dfc090 0%, #e8d4b8 45%, #dbb870 100%)`
 - 4 dark navy blur orbs replaced with 3 warm amber radial blobs (0.35–0.45 center opacity, no filter:blur)
 - overflow-clip on root div (not overflow-hidden) to prevent Chrome backdrop-filter stacking context bug
-- Grounding drawer fully wired: `drawerOpen` / `drawerData` state + `handleSourceClick` callback + `<GroundingDrawer>` rendered
+- Grounding drawer fully wired: `drawerOpen` / `drawerData` state + `handleSourceClick` callback + `<GroundingDrawer>`
+  rendered
 - Follow-up suggestion buttons converted from JS onMouseEnter/onMouseLeave to Tailwind CSS-only hover
 - Input bar and error banner updated to warm palette colors
 - EmptyState extracted to `frontend/src/components/chat/empty-state.tsx` using GlassCard variant=subtle
@@ -78,11 +80,13 @@ Each task was committed atomically:
 
 1. **Task 1 + Task 2: Rebuild chat page and create EmptyState** - `dddf6b3` (feat)
 
-**Note:** Tasks 1 and 2 were committed together since Task 2 (empty-state.tsx) is imported by Task 1 (page.tsx) — they are a single atomic unit required for a passing build.
+**Note:** Tasks 1 and 2 were committed together since Task 2 (empty-state.tsx) is imported by Task 1 (page.tsx) — they
+are a single atomic unit required for a passing build.
 
 ## Files Created/Modified
 
-- `frontend/src/app/(app)/chat/page.tsx` - Warm amber bg, 3 blobs, overflow-clip, drawer state, CSS hover, import EmptyState
+- `frontend/src/app/(app)/chat/page.tsx` - Warm amber bg, 3 blobs, overflow-clip, drawer state, CSS hover, import
+  EmptyState
 - `frontend/src/components/chat/empty-state.tsx` - NEW standalone component with GlassCard suggestion grid
 - `frontend/src/components/chat/chat-message.tsx` - Added onSourceClick prop to interface + destructuring
 
@@ -90,7 +94,8 @@ Each task was committed atomically:
 
 - overflow-clip chosen over overflow-hidden — critical for Chrome backdrop-filter in glass children
 - Warm blobs placed WITHOUT blur() filter — matches showcase reference (blobs are vivid, not diffuse)
-- onSourceClick added to ChatMessage interface in this plan (not deferred to Plan 03) — plan spec required it, deferring would cause TypeScript error
+- onSourceClick added to ChatMessage interface in this plan (not deferred to Plan 03) — plan spec required it, deferring
+  would cause TypeScript error
 - GlassCard variant=subtle used for suggestion cards — no inline backdropFilter overrides needed
 
 ## Deviations from Plan
@@ -98,9 +103,12 @@ Each task was committed atomically:
 ### Auto-fixed Issues
 
 **1. [Rule 2 - Missing Critical] Added onSourceClick prop to ChatMessage component**
+
 - **Found during:** Task 1 (Rebuild chat/page.tsx)
-- **Issue:** page.tsx passes `onSourceClick={handleSourceClick}` to `<ChatMessage>`, but ChatMessage interface lacked this prop — would cause TypeScript build failure
-- **Fix:** Added `onSourceClick?: (answer: string, sources: Source[]) => void` to ChatMessageProps interface and destructuring in ChatMessage function
+- **Issue:** page.tsx passes `onSourceClick={handleSourceClick}` to `<ChatMessage>`, but ChatMessage interface lacked
+  this prop — would cause TypeScript build failure
+- **Fix:** Added `onSourceClick?: (answer: string, sources: Source[]) => void` to ChatMessageProps interface and
+  destructuring in ChatMessage function
 - **Files modified:** frontend/src/components/chat/chat-message.tsx
 - **Verification:** `npm run build` exits 0, TypeScript check passes
 - **Committed in:** dddf6b3 (Task 1+2 commit)
@@ -119,7 +127,8 @@ None — plan specified exactly what was needed, build passed on first attempt.
 - Chat page shell complete with warm Arrakis palette
 - Grounding drawer state wired and ready for Plan 03 to wire source click events in ChatMessage
 - EmptyState uses GlassCard — ready for visual polish in subsequent plans
-- Plan 03 (ChatMessage visual rebuild) can now rely on: `onSourceClick` prop exists, `drawerOpen`/`drawerData` state pattern established
+- Plan 03 (ChatMessage visual rebuild) can now rely on: `onSourceClick` prop exists, `drawerOpen`/`drawerData` state
+  pattern established
 
 ---
 *Phase: 13-chat-page-total-rebuild*

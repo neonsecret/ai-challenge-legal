@@ -79,8 +79,8 @@ def update_law_name_index(editions: dict):
         variants = [
             name_lower,
             re.sub(r'\s+\d{4}$', '', name_lower),  # without year
-            re.sub(r'^difc\s+', '', name_lower),     # without DIFC prefix
-            re.sub(r'\s+law$', '', name_lower),       # without "law" suffix
+            re.sub(r'^difc\s+', '', name_lower),  # without DIFC prefix
+            re.sub(r'\s+law$', '', name_lower),  # without "law" suffix
         ]
         for v in variants:
             if v and len(v) > 3:

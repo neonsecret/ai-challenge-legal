@@ -44,4 +44,4 @@ with open(OUT_PATH, "w") as f:
 
 size_mb = OUT_PATH.stat().st_size / 1024 / 1024
 print(f"Done: {total_pages} pages, {len(cache)} docs, {size_mb:.1f}MB → {OUT_PATH}", file=sys.stderr)
-print(f"Time: {time.monotonic()-t0:.1f}s", file=sys.stderr)
+print(f"Time: {time.monotonic() - t0:.1f}s", file=sys.stderr)

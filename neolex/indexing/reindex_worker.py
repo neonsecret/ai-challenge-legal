@@ -1,7 +1,7 @@
 """Background reindex worker for per-client document indexing (Phase 3).
 
 Architecture:
-- Jobs are tracked in SQLite (reindex_jobs table) alongside the audit log.
+- Jobs are tracked in PostgreSQL (reindex_jobs table) via AuditDB.
 - Reindex runs in a background asyncio Task (non-blocking for the API caller).
 - On completion, the worker updates app.state to hot-swap the index (PIPE-06).
 - The actual indexing is delegated to _run_indexing(), which wraps arlc/ tooling.
@@ -27,18 +27,18 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Job store (SQLite via AuditDB extension)
+# Job store (PostgreSQL via AuditDB)
 # ---------------------------------------------------------------------------
 
 
-async def create_job(client_slug: str, db_path: str) -> str:
+async def create_job(client_slug: str) -> str:
     """Insert a new reindex_jobs row and return the job_id."""
     from neolex.db.audit import get_audit_db
 
     job_id = str(uuid.uuid4())
     ts = datetime.datetime.utcnow().isoformat()
 
-    async with get_audit_db(db_path) as db:
+    async with get_audit_db() as db:
         await db.create_reindex_job(
             job_id=job_id,
             client_slug=client_slug,
@@ -48,32 +48,31 @@ async def create_job(client_slug: str, db_path: str) -> str:
     return job_id
 
 
-async def get_job(job_id: str, db_path: str) -> dict | None:
+async def get_job(job_id: str) -> dict | None:
     """Return job status dict or None if not found."""
     from neolex.db.audit import get_audit_db
 
-    async with get_audit_db(db_path) as db:
+    async with get_audit_db() as db:
         row = await db.get_reindex_job(job_id)
 
     if row is None:
         return None
-    return dict(row)
+    return row
 
 
 async def update_job(
-    job_id: str,
-    db_path: str,
-    *,
-    status: str,
-    progress: float = 0.0,
-    completed_at: str | None = None,
-    error: str | None = None,
-    doc_count: int = 0,
+        job_id: str,
+        *,
+        status: str,
+        progress: float = 0.0,
+        completed_at: str | None = None,
+        error: str | None = None,
+        doc_count: int = 0,
 ) -> None:
-    """Update job status in SQLite."""
+    """Update job status in PostgreSQL."""
     from neolex.db.audit import get_audit_db
 
-    async with get_audit_db(db_path) as db:
+    async with get_audit_db() as db:
         await db.update_reindex_job(
             job_id=job_id,
             status=status,
@@ -89,13 +88,15 @@ async def update_job(
 # ---------------------------------------------------------------------------
 
 
-def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> int:
+def _run_indexing_sync(
+    client_slug: str, docs_dir: Path, index_dir: Path
+) -> tuple[int, int]:
     """Synchronous indexing implementation.
 
     Tries to use arlc/indexing/indexer.py if available.
     Falls back to a lightweight stub that tracks documents without embeddings.
 
-    Returns number of documents indexed.
+    Returns (doc_count, chunks_skipped).
     """
     import json
     import os
@@ -119,12 +120,36 @@ def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> int
             pass
 
     doc_count = len(doc_ids_with_pdfs)
+    chunks_skipped = 0
 
     # Attempt real arlc indexing
     try:
         _run_arlc_indexing(client_slug, docs_dir, index_dir, list(doc_ids_with_pdfs))
     except Exception as exc:
-        logger.warning("arlc indexing unavailable (falling back to stub): %s", exc)
+        # Check if this is an HTTP 400 from llama-server (bad chunk)
+        is_http_error = False
+        try:
+            import requests
+            if isinstance(exc, requests.exceptions.HTTPError):
+                is_http_error = True
+                status_code = getattr(exc.response, "status_code", 0)
+                if status_code == 400:
+                    logger.error(
+                        "llama-server returned 400 during indexing — "
+                        "chunk likely exceeds context window: %s", exc,
+                    )
+                    chunks_skipped += 1
+                else:
+                    logger.error(
+                        "llama-server HTTP %d during indexing: %s",
+                        status_code, exc,
+                    )
+        except ImportError:
+            pass
+
+        if not is_http_error:
+            logger.warning("arlc indexing unavailable (falling back to stub): %s", exc)
+
         # Stub: write a simple manifest so the job is considered complete
         manifest = {
             "client_slug": client_slug,
@@ -132,18 +157,19 @@ def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> int
             "doc_count": doc_count,
             "docs": [str(p) for p in docs_dir.glob("*.meta")],
             "stub": True,
+            "chunks_skipped": chunks_skipped,
         }
         manifest_path = index_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2))
 
-    return doc_count
+    return doc_count, chunks_skipped
 
 
 def _run_arlc_indexing(
-    client_slug: str,
-    docs_dir: Path,
-    index_dir: Path,
-    doc_ids: list[str],
+        client_slug: str,
+        docs_dir: Path,
+        index_dir: Path,
+        doc_ids: list[str],
 ) -> None:
     """Attempt to call arlc/indexing/indexer.py for real vector indexing.
 
@@ -184,10 +210,9 @@ def _run_arlc_indexing(
 
 
 async def run_reindex_job(
-    job_id: str,
-    client_slug: str,
-    db_path: str,
-    app: "FastAPI | None" = None,
+        job_id: str,
+        client_slug: str,
+        app: "FastAPI | None" = None,
 ) -> None:
     """Async background task: runs indexing and updates job status.
 
@@ -200,21 +225,25 @@ async def run_reindex_job(
 
     logger.info("Reindex job %s starting for client %s", job_id, client_slug)
 
-    await update_job(job_id, db_path, status="running", progress=0.1)
+    await update_job(job_id, status="running", progress=0.1)
 
     try:
         # Run the CPU/IO-heavy indexing in a thread to avoid blocking the event loop
-        doc_count = await asyncio.to_thread(
+        doc_count, chunks_skipped = await asyncio.to_thread(
             _run_indexing_sync, client_slug, docs_dir, index_dir
         )
 
+        status = "complete" if chunks_skipped == 0 else "complete_with_warnings"
         await update_job(
             job_id,
-            db_path,
-            status="complete",
+            status=status,
             progress=1.0,
             completed_at=datetime.datetime.utcnow().isoformat(),
             doc_count=doc_count,
+            error=(
+                f"{chunks_skipped} chunk(s) skipped during embedding"
+                if chunks_skipped > 0 else None
+            ),
         )
 
         # Mark all documents as indexed in their sidecar meta files
@@ -228,10 +257,11 @@ async def run_reindex_job(
                 pass
 
         logger.info(
-            "Reindex job %s complete: %d docs indexed for client %s",
+            "Reindex job %s complete: %d docs indexed for client %s (chunks_skipped=%d)",
             job_id,
             doc_count,
             client_slug,
+            chunks_skipped,
         )
 
         # Hot-swap index in app.state (PIPE-06) — optional, only if app provided
@@ -242,7 +272,6 @@ async def run_reindex_job(
         logger.exception("Reindex job %s failed: %s", job_id, exc)
         await update_job(
             job_id,
-            db_path,
             status="failed",
             completed_at=datetime.datetime.utcnow().isoformat(),
             error=str(exc),

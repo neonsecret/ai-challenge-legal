@@ -19,6 +19,8 @@ speed_agent/page_cache.json
 .env
 .env.local
 .demo_key
+client_secret*.json
+*credentials*.json
 
 # IDE
 .idea/
@@ -44,3 +46,5 @@ paper/
 # Other
 other_people/
 tmp/
+models/*.gguf
+.next/

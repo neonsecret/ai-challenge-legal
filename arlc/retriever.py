@@ -1,8 +1,10 @@
 """Retrieve relevant document chunks for a question using hybrid search."""
 
+import logging
 import re
 import os
 import json
+import time
 import threading
 from dataclasses import dataclass
 import numpy as np
@@ -20,6 +22,8 @@ from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
+logger = logging.getLogger(__name__)
+
 _HAIKU_MODEL = "claude-haiku-4-5"  # short ID required for direct Vertex AI (no date suffix)
 
 # Anthropic client (lazy singleton for HyDE / query variants)
@@ -34,6 +38,7 @@ def _get_anthropic_client() -> anthropic.Anthropic:
             timeout=30.0,
         )
     return _anthropic_client
+
 
 CHROMA_DIR = "data/chroma_db"  # Fallback ChromaDB path
 DOCUMENTS_DIR = "data/documents"
@@ -57,7 +62,10 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
 # Rebuild with: EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \
 #     --corpus data/chunks/ --output data/faiss_llama-server.bin
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "data/faiss_llama-server.bin")
-FAISS_METADATA_PATH = os.environ.get("FAISS_METADATA_PATH", "data/faiss_metadata.json")
+FAISS_METADATA_PATH = os.environ.get("FAISS_METADATA_PATH", "data/faiss_llama-server.json")
+# Czech corpus FAISS index paths
+FAISS_CZECH_INDEX_PATH = os.environ.get("FAISS_CZECH_INDEX_PATH", "data/faiss_czech.bin")
+FAISS_CZECH_METADATA_PATH = os.environ.get("FAISS_CZECH_METADATA_PATH", "data/faiss_czech.json")
 # VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
 VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
 # Embedding prefixes: Arctic uses "query: " for queries, "" for documents
@@ -77,6 +85,7 @@ BM25_DOC_IDS_PATH = "data/bm25_doc_cache/corpus_ids.json"
 # Judge/claimant/defendant are always page 1 — only dates need a targeted lookup.
 # Loaded once at module import (cheap: single JSON read, no ML).
 _DOC_DATE_PAGES: dict[str, int] = {}
+
 
 def _load_doc_date_pages() -> None:
     """Populate _DOC_DATE_PAGES from case_metadata_index.json."""
@@ -98,11 +107,12 @@ def _load_doc_date_pages() -> None:
     except Exception as e:
         print(f"[retriever] Warning: could not load date pages: {e}")
 
+
 _load_doc_date_pages()
 
 # Module-level caches
-_doc_index = None         # pdf_id -> full text (for keyword matching)
-_chunks_by_doc = None     # pdf_id -> list[dict] (for fast page retrieval, replaces collection.get())
+_doc_index = None  # pdf_id -> full text (for keyword matching)
+_chunks_by_doc = None  # pdf_id -> list[dict] (for fast page retrieval, replaces collection.get())
 _bm25_index = None
 _bm25_corpus_ids = None
 _bm25_page1_index = None
@@ -110,10 +120,13 @@ _bm25_page1_ids = None
 _bm25_doc_index = None
 _bm25_doc_ids = None
 _collection = None
-_reranker = None
+_reranker = None          # primary (remote if available, else local)
+_local_reranker = None    # always local PyTorch — used as fallback when remote fails mid-query
 _embedding_model = None
-_faiss_index = None       # FAISS index (loaded lazily)
-_faiss_metadata = None    # FAISS metadata list (loaded lazily)
+_faiss_index = None  # FAISS index (loaded lazily) — default/DIFC corpus
+_faiss_metadata = None  # FAISS metadata list (loaded lazily) — default/DIFC corpus
+# Multi-corpus FAISS cache: corpus_name -> (index, metadata)
+_faiss_corpus_cache: dict[str, tuple] = {}
 
 # Locks for thread-safe lazy initialization
 _bm25_lock = threading.Lock()
@@ -147,52 +160,126 @@ def _format_reranker_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]
     return [(prefix + q, doc) for q, doc in pairs]
 
 
-def get_reranker():
-    """Get reranker (cached, thread-safe).
+def _init_local_reranker():
+    """Create the local llama-server reranker (cached).
 
-    Model is controlled by RERANKER_MODEL env var (default: Qwen/Qwen3-Reranker-0.6B).
-    Returns Qwen3Reranker for Qwen models (correct causal-LM inference via yes/no
-    token probabilities) or CrossEncoder for standard models (BGE, MiniLM, etc.).
-    Both expose the same predict() interface.
+    Priority: local llama-server on port 8089 > PyTorch fallback.
+    llama-server with Metal is ~20x faster than PyTorch MPS for the 0.6B model.
+    """
+    global _local_reranker
+    if _local_reranker is not None:
+        return _local_reranker
+
+    # Try local llama-server first (much faster than PyTorch MPS)
+    local_reranker_url = os.environ.get("RERANKER_LOCAL_URL", "http://localhost:8089")
+    try:
+        from arlc.qwen3_reranker import LlamaServerReranker
+        _local_reranker = LlamaServerReranker(url=local_reranker_url)
+        logger.info("Using local llama-server reranker at %s", local_reranker_url)
+        return _local_reranker
+    except Exception as e:
+        logger.warning("Local llama-server reranker at %s unavailable (%s), falling back to PyTorch", local_reranker_url, e)
+
+    # PyTorch fallback (slow MPS but always works)
+    if _is_qwen_reranker():
+        from arlc.qwen3_reranker import Qwen3Reranker
+        _local_reranker = Qwen3Reranker(
+            model_name=RERANKER_MODEL,
+            instruction=RERANKER_INSTRUCTION,
+        )
+    else:
+        import torch
+        from sentence_transformers import CrossEncoder
+        device = (
+            'cuda' if torch.cuda.is_available()
+            else 'mps' if torch.backends.mps.is_available()
+            else 'cpu'
+        )
+        device = os.environ.get("RERANKER_DEVICE", device)
+        _local_reranker = CrossEncoder(RERANKER_MODEL, max_length=1024, device=device)
+    return _local_reranker
+
+
+def get_reranker():
+    """Get primary reranker (cached, thread-safe).
+
+    Failover chain:
+    1. Remote llama-server (RERANKER_SERVER_URL, CUDA on RTX 3070) — ~1.7s for 108 docs
+    2. Local llama-server (RERANKER_LOCAL_URL, Metal) — ~2.1s for 40 docs
+    3. Local PyTorch (MPS) — ~38s for 40 docs (last resort)
     """
     global _reranker
     if _reranker is None:
         with _reranker_lock:
             if _reranker is None:
-                if _is_qwen_reranker():
-                    from arlc.qwen3_reranker import Qwen3Reranker
-                    _reranker = Qwen3Reranker(
-                        model_name=RERANKER_MODEL,
-                        instruction=RERANKER_INSTRUCTION,
-                    )
-                else:
-                    import torch
-                    from sentence_transformers import CrossEncoder
-                    device = (
-                        'cuda' if torch.cuda.is_available()
-                        else 'mps' if torch.backends.mps.is_available()
-                        else 'cpu'
-                    )
-                    # Allow overriding via RERANKER_DEVICE to avoid GPU OOM when
-                    # llama-server shares the same GPU (e.g. RTX 3070 8GB).
-                    device = os.environ.get("RERANKER_DEVICE", device)
-                    _reranker = CrossEncoder(RERANKER_MODEL, max_length=1024, device=device)
+                _init_local_reranker()
+
+                remote_url = os.environ.get("RERANKER_SERVER_URL", "")
+                if remote_url:
+                    try:
+                        from arlc.qwen3_reranker import LlamaServerReranker
+                        _reranker = LlamaServerReranker(url=remote_url)
+                        logger.info("Using remote reranker at %s (local ready as fallback)", remote_url)
+                        return _reranker
+                    except Exception as e:
+                        logger.warning("Remote reranker at %s unavailable (%s), using local", remote_url, e)
+
+                _reranker = _local_reranker
     return _reranker
 
 
-def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15) -> list[dict]:
-    """Rerank chunks by relevance to question using cross-encoder. Returns top_k."""
+def get_local_reranker():
+    """Get the local reranker (for mid-query fallback when remote fails)."""
+    if _local_reranker is not None:
+        return _local_reranker
+    with _reranker_lock:
+        return _init_local_reranker()
+
+
+def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=None) -> list[dict]:
+    """Rerank chunks by relevance to question using cross-encoder. Returns top_k.
+
+    Failover chain: primary reranker (remote CUDA if available) → local PyTorch → unranked.
+    If remote 3070 goes offline mid-query, falls back to local instantly.
+    """
     if len(chunks) <= top_k:
         return chunks
-    ranker = get_reranker()
-    # 2000 chars ≈ 500-700 tokens — within CrossEncoder's max_length=1024 token budget.
-    # SAC adds ~150-char [DOCUMENT: ...] prefix to each chunk. Legal provisions can span
-    # multiple sub-clauses; 2000 chars captures full articles for better ranking precision.
+
+    RERANK_TIMEOUT = 180  # seconds — MPS is slow (~50s/batch for Qwen3-0.6B)
     pairs = _format_reranker_pairs([(question, chunk["text"][:2000]) for chunk in chunks])
-    with _reranker_lock:  # tokenizer is not thread-safe
-        scores = ranker.predict(pairs)
-    indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
-    return [chunks[i] for i, _ in indexed[:top_k]]
+
+    def _progress(done, total):
+        if on_status:
+            on_status(f"retrieving:reranking passages ({done}/{total})")
+
+    # Try primary reranker (remote if configured, else local)
+    ranker = get_reranker()
+    try:
+        with _reranker_lock:
+            scores = ranker.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
+        indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
+        return [chunks[i] for i, _ in indexed[:top_k]]
+    except Exception as e:
+        # If primary was remote, try local PyTorch as fallback
+        local = get_local_reranker()
+        if local is not ranker:
+            logger.warning("Primary reranker failed (%s), falling back to local", e)
+            if on_status:
+                on_status("retrieving:reranking (fallback to local)")
+            try:
+                with _reranker_lock:
+                    scores = local.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
+                indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
+                return [chunks[i] for i, _ in indexed[:top_k]]
+            except Exception as e2:
+                logger.warning("Local reranker also failed (%s), using vector-distance ordering", e2)
+
+        else:
+            logger.warning("Reranking failed (%s), using vector-distance ordering", e)
+
+        if on_status:
+            on_status("retrieving:reranking skipped (fallback)")
+        return chunks[:top_k]
 
 
 def _is_arctic_model() -> bool:
@@ -248,51 +335,83 @@ def embed_query(question: str) -> list[float]:
     return embedding.tolist()
 
 
-def _load_faiss():
-    """Load FAISS index and metadata from disk (cached, thread-safe)."""
-    global _faiss_index, _faiss_metadata
-    if _faiss_index is None:
-        with _faiss_lock:
-            if _faiss_index is None:
-                import faiss
-                print(f"Loading FAISS index from {FAISS_INDEX_PATH}...")
-                _faiss_index = faiss.read_index(FAISS_INDEX_PATH)
-                with open(FAISS_METADATA_PATH) as f:
-                    _faiss_metadata = json.load(f)
-                print(f"FAISS index loaded: {_faiss_index.ntotal} vectors, dim={_faiss_index.d}")
+def _load_faiss(corpus: str = "difc"):
+    """Load FAISS index and metadata from disk (cached, thread-safe).
 
-                # Validate dimension matches query embedder to catch mismatches early.
-                # Probe with a dummy query — this is cheaper than a silent FAISS crash later.
-                try:
-                    probe = embed_query("dimension check")
-                    if len(probe) != _faiss_index.d:
-                        raise RuntimeError(
-                            f"FAISS index dim ({_faiss_index.d}) != "
-                            f"query embedding dim ({len(probe)}) for "
-                            f"EMBEDDING_MODEL={EMBEDDING_MODEL!r}. "
-                            f"Rebuild the index with the same backend:\n"
-                            f"  EMBEDDING_MODEL={EMBEDDING_MODEL} python3 -m neolex.embeddings.build_index "
-                            f"--corpus data/chunks/ --output {FAISS_INDEX_PATH}"
-                        )
-                except Exception as e:
-                    if "dim" in str(e).lower() or "FAISS index dim" in str(e):
-                        raise
-                    # embed_query errors (e.g. server not running) surface here — re-raise clearly
-                    raise RuntimeError(
-                        f"Embedding backend check failed for EMBEDDING_MODEL={EMBEDDING_MODEL!r}: {e}"
-                    ) from e
+    Parameters
+    ----------
+    corpus : str
+        Which corpus index to load. "difc" (default) or "czech".
+    """
+    global _faiss_index, _faiss_metadata, _faiss_corpus_cache
 
-    return _faiss_index, _faiss_metadata
+    # Select paths based on corpus
+    if corpus == "czech":
+        idx_path = FAISS_CZECH_INDEX_PATH
+        meta_path = FAISS_CZECH_METADATA_PATH
+    elif corpus == "difc":
+        idx_path = FAISS_INDEX_PATH
+        meta_path = FAISS_METADATA_PATH
+    else:
+        # Dynamic corpus: look for data/faiss_{corpus}.bin
+        idx_path = f"data/faiss_{corpus}.bin"
+        meta_path = f"data/faiss_{corpus}.json"
+
+    # Check multi-corpus cache first
+    if corpus in _faiss_corpus_cache:
+        return _faiss_corpus_cache[corpus]
+
+    with _faiss_lock:
+        # Double-check after acquiring lock
+        if corpus in _faiss_corpus_cache:
+            return _faiss_corpus_cache[corpus]
+
+        import faiss
+        print(f"Loading FAISS index for corpus={corpus!r} from {idx_path}...")
+        index = faiss.read_index(idx_path)
+        with open(meta_path) as f:
+            metadata = json.load(f)
+        print(f"FAISS index loaded (corpus={corpus!r}): {index.ntotal} vectors, dim={index.d}")
+
+        # Validate dimension matches query embedder to catch mismatches early.
+        # Probe with a dummy query — this is cheaper than a silent FAISS crash later.
+        try:
+            probe = embed_query("dimension check")
+            if len(probe) != index.d:
+                raise RuntimeError(
+                    f"FAISS index dim ({index.d}) != "
+                    f"query embedding dim ({len(probe)}) for "
+                    f"EMBEDDING_MODEL={EMBEDDING_MODEL!r}, corpus={corpus!r}. "
+                    f"Rebuild the index with the same backend:\n"
+                    f"  EMBEDDING_MODEL={EMBEDDING_MODEL} python3 -m neolex.embeddings.build_index "
+                    f"--corpus data/chunks/ --output {idx_path}"
+                )
+        except Exception as e:
+            if "dim" in str(e).lower() or "FAISS index dim" in str(e):
+                raise
+            # embed_query errors (e.g. server not running) surface here — re-raise clearly
+            raise RuntimeError(
+                f"Embedding backend check failed for EMBEDDING_MODEL={EMBEDDING_MODEL!r}: {e}"
+            ) from e
+
+        _faiss_corpus_cache[corpus] = (index, metadata)
+
+        # Keep backward compat: update the legacy singletons for "difc"
+        if corpus == "difc":
+            _faiss_index = index
+            _faiss_metadata = metadata
+
+        return index, metadata
 
 
-def _search_faiss(query_embedding: list[float], top_k: int = 50) -> dict:
+def _search_faiss(query_embedding: list[float], top_k: int = 50, corpus: str = "difc") -> dict:
     """Search FAISS index, returning results in ChromaDB-compatible format.
 
     Returns dict with keys: ids, documents, metadatas, distances
     Each is a list-of-lists (matching ChromaDB's batch format).
     Distances are cosine distances (1 - similarity) for ChromaDB compatibility.
     """
-    index, metadata = _load_faiss()
+    index, metadata = _load_faiss(corpus=corpus)
     query_np = np.array([query_embedding], dtype='float32')
     import faiss
     faiss.normalize_L2(query_np)  # normalize query for cosine similarity
@@ -308,12 +427,13 @@ def _search_faiss(query_embedding: list[float], top_k: int = 50) -> dict:
         if idx < 0:  # FAISS returns -1 for unfilled slots
             continue
         entry = metadata[idx]
-        ids.append(entry["chunk_id"])
+        ids.append(entry.get("chunk_id", f"{entry['doc_id']}_{entry['page']}"))
         documents.append(entry["text"])
         metadatas.append({
-            "pdf_id": entry["pdf_id"],
+            "doc_id": entry["doc_id"],
+            "pdf_id": entry.get("pdf_id", entry["doc_id"]),
             "page": entry["page"],
-            "source_file": entry["source_file"],
+            "source_file": entry.get("source_file", entry["doc_id"]),
         })
         # Convert inner product similarity to cosine distance for ChromaDB compat
         distances.append(1.0 - float(D[0][i]))
@@ -326,15 +446,15 @@ def _search_faiss(query_embedding: list[float], top_k: int = 50) -> dict:
     }
 
 
-def _faiss_count() -> int:
+def _faiss_count(corpus: str = "difc") -> int:
     """Return total number of vectors in FAISS index."""
-    index, _ = _load_faiss()
+    index, _ = _load_faiss(corpus=corpus)
     return index.ntotal
 
 
-def _faiss_get_all() -> dict:
+def _faiss_get_all(corpus: str = "difc") -> dict:
     """Get all documents and metadata from FAISS (equivalent to collection.get())."""
-    _, metadata = _load_faiss()
+    _, metadata = _load_faiss(corpus=corpus)
     ids = [entry["chunk_id"] for entry in metadata]
     documents = [entry["text"] for entry in metadata]
     metadatas = [
@@ -350,13 +470,14 @@ def _faiss_get_all() -> dict:
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
 
-def _faiss_get_by_ids(chunk_ids: list[str]) -> dict:
+def _faiss_get_by_ids(chunk_ids: list[str], corpus: str = "difc") -> dict:
     """Get specific chunks by ID from FAISS metadata."""
-    _, metadata = _load_faiss()
-    # Build lookup on first call (O(n) once, then O(1) per lookup)
-    if not hasattr(_faiss_get_by_ids, "_id_map"):
-        _faiss_get_by_ids._id_map = {entry["chunk_id"]: entry for entry in metadata}
-    id_map = _faiss_get_by_ids._id_map
+    _, metadata = _load_faiss(corpus=corpus)
+    # Build lookup on first call per corpus (O(n) once, then O(1) per lookup)
+    cache_attr = f"_id_map_{corpus}"
+    if not hasattr(_faiss_get_by_ids, cache_attr):
+        setattr(_faiss_get_by_ids, cache_attr, {entry["chunk_id"]: entry for entry in metadata})
+    id_map = getattr(_faiss_get_by_ids, cache_attr)
 
     ids = []
     documents = []
@@ -374,11 +495,16 @@ def _faiss_get_by_ids(chunk_ids: list[str]) -> dict:
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
 
-def _use_faiss() -> bool:
+def _use_faiss(corpus: str = "difc") -> bool:
     """Check if FAISS backend should be used (preferred when available)."""
     if VECTOR_BACKEND != "faiss":
         return False
-    return os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_METADATA_PATH)
+    if corpus == "czech":
+        return os.path.exists(FAISS_CZECH_INDEX_PATH) and os.path.exists(FAISS_CZECH_METADATA_PATH)
+    elif corpus == "difc":
+        return os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_METADATA_PATH)
+    else:
+        return os.path.exists(f"data/faiss_{corpus}.bin") and os.path.exists(f"data/faiss_{corpus}.json")
 
 
 def get_collection():
@@ -397,17 +523,24 @@ def get_collection():
     return _collection
 
 
-def _load_all_chunks():
+# Multi-corpus chunk caches: corpus_name -> (doc_index, chunks_by_doc)
+_corpus_chunk_cache: dict[str, tuple[dict, dict]] = {}
+
+
+def _load_all_chunks(corpus: str = "difc"):
     """Load all chunks from vector store once into memory. Builds both indexes simultaneously.
 
     Uses FAISS metadata when available (faster, no SQLite), falls back to ChromaDB.
     """
-    global _doc_index, _chunks_by_doc
-    if _use_faiss():
-        all_results = _faiss_get_all()
-    else:
+    global _doc_index, _chunks_by_doc, _corpus_chunk_cache
+    if _use_faiss(corpus=corpus):
+        all_results = _faiss_get_all(corpus=corpus)
+    elif corpus == "difc":
         collection = get_collection()
         all_results = collection.get(include=["documents", "metadatas"])
+    else:
+        # Non-DIFC corpora require FAISS — no ChromaDB fallback
+        raise RuntimeError(f"No FAISS index found for corpus={corpus!r}")
 
     doc_text_index = {}
     chunks_by_doc = {}
@@ -426,13 +559,23 @@ def _load_all_chunks():
             "metadata": meta,
         })
 
-    _doc_index = doc_text_index
-    _chunks_by_doc = chunks_by_doc
+    _corpus_chunk_cache[corpus] = (doc_text_index, chunks_by_doc)
+
+    # Keep backward compat: update legacy singletons for "difc"
+    if corpus == "difc":
+        _doc_index = doc_text_index
+        _chunks_by_doc = chunks_by_doc
 
 
-def build_doc_index() -> dict[str, str]:
+def build_doc_index(corpus: str = "difc") -> dict[str, str]:
     """Build keyword-matching index from ChromaDB data (includes OCR'd text)."""
     global _doc_index
+    if corpus != "difc":
+        if corpus not in _corpus_chunk_cache:
+            with _doc_index_lock:
+                if corpus not in _corpus_chunk_cache:
+                    _load_all_chunks(corpus=corpus)
+        return _corpus_chunk_cache[corpus][0]
     if _doc_index is None:
         with _doc_index_lock:
             if _doc_index is None:
@@ -440,9 +583,15 @@ def build_doc_index() -> dict[str, str]:
     return _doc_index
 
 
-def get_chunks_by_doc() -> dict[str, list[dict]]:
+def get_chunks_by_doc(corpus: str = "difc") -> dict[str, list[dict]]:
     """Get in-memory chunk index (pdf_id -> list of chunks). Avoids slow collection.get() per doc."""
     global _chunks_by_doc
+    if corpus != "difc":
+        if corpus not in _corpus_chunk_cache:
+            with _doc_index_lock:
+                if corpus not in _corpus_chunk_cache:
+                    _load_all_chunks(corpus=corpus)
+        return _corpus_chunk_cache[corpus][1]
     if _chunks_by_doc is None:
         with _doc_index_lock:
             if _chunks_by_doc is None:
@@ -557,10 +706,10 @@ def _score_doc_by_law_name(law_name: str, doc_index: dict) -> list[str]:
             sac_prefix = text_lower[:200]
             is_court = "court case" in sac_prefix
             is_law = "[document:" in sac_prefix and (
-                "difc law" in sac_prefix
-                or "law/enactment" in sac_prefix
-                or "enactment" in sac_prefix
-                or "regulation" in sac_prefix
+                    "difc law" in sac_prefix
+                    or "law/enactment" in sac_prefix
+                    or "enactment" in sac_prefix
+                    or "regulation" in sac_prefix
             )
             # Law docs get 1000× score boost; court cases marked separately
             boosted_score = score * 1000 if is_law else score
@@ -703,9 +852,7 @@ _STOPWORDS = frozenset({
     'such', 'same', 'both', 'also', 'may', 'shall', 'will', 'who',
 })
 
-
 _SCHEDULE_INDICATORS = frozenset({'schedule', 'contravention', 'appendix', 'annex', 'fine', 'penalty table'})
-
 
 _ENACTMENT_KEYWORDS = frozenset({
     'enacted', 'enact', 'enactment', 'promulgated', 'came into force', 'effective date',
@@ -1099,6 +1246,19 @@ USE_MULTI_SIGNAL_FUSION = True  # Enable/disable multi-signal document fusion
 # BM25 hurts page-level ranking within a known document — dense similarity only is better
 PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
 
+# Adaptive CE pre-filter: scale pool size with document size instead of hard-capping at 50.
+# For large docs (>50 chunks), top-50 covers only a fraction — may miss correct pages.
+# Formula: min(100, max(50, n_chunks // 2)) — doubles coverage for medium docs, caps at 100.
+# Set to False to restore original fixed-50 behaviour.
+CE_ADAPTIVE_PREFILTER = os.environ.get("CE_ADAPTIVE_PREFILTER", "1") != "0"
+
+# BM25 injection: inject top BM25-matched chunks from the target doc into the CE pool,
+# rescuing pages with strong lexical signal (article numbers, case refs) that dense
+# scoring de-prioritised. Distinct from PAGE_RANK_USE_BM25 — BM25 only expands the
+# candidate set; the cross-encoder still provides all final scores.
+PAGE_RANK_BM25_INJECTION = os.environ.get("PAGE_RANK_BM25_INJECTION", "1") != "0"
+BM25_INJECTION_K = 8  # Max BM25 candidates to inject per doc into CE pool
+
 # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
 # top_k: retrieval depth — how many candidates to pull before reranking.
 # Inspired by CPBD (Azamat Yelmagambetov, 1st place) who swept 22 depth values.
@@ -1108,29 +1268,29 @@ PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
 # NOTE: This is retrieval POOL depth, not output pages. "Extra pages" graveyard entry
 # refers to max output pages (max_pages), not the candidate pool. These are different.
 RETRIEVAL_CONFIGS = {
-    "boolean":   {"top_k": 200, "max_docs": 3, "max_pages": 3},
-    "number":    {"top_k": 200, "max_docs": 2, "max_pages": 2},
-    "date":      {"top_k": 200, "max_docs": 2, "max_pages": 1},
-    "name":      {"top_k": 200, "max_docs": 3, "max_pages": 3},
-    "names":     {"top_k": 200, "max_docs": 3, "max_pages": 3},
+    "boolean": {"top_k": 200, "max_docs": 3, "max_pages": 3},
+    "number": {"top_k": 200, "max_docs": 2, "max_pages": 2},
+    "date": {"top_k": 200, "max_docs": 2, "max_pages": 1},
+    "name": {"top_k": 200, "max_docs": 3, "max_pages": 3},
+    "names": {"top_k": 200, "max_docs": 3, "max_pages": 3},
     "free_text": {"top_k": 200, "max_docs": 4, "max_pages": 5},
 }
 
 DOC_FUSION_WEIGHTS = {
-    "bm25_std": 0.10,     # standard BM25 page score (max per doc)
-    "dense_std": 0.05,    # dense embedding score (max per doc)
-    "dense_rrf": 0.20,    # dense RRF rank score
-    "bm25_doc": 0.30,     # document-level BM25
-    "bm25_page1": 0.30,   # page-1-only BM25
+    "bm25_std": 0.10,  # standard BM25 page score (max per doc)
+    "dense_std": 0.05,  # dense embedding score (max per doc)
+    "dense_rrf": 0.20,  # dense RRF rank score
+    "bm25_doc": 0.30,  # document-level BM25
+    "bm25_page1": 0.30,  # page-1-only BM25
 }
 
 DOC_FUSION_GAP_THRESHOLD = 0.15  # Adaptive doc selection gap
 
 
 def _doc_fusion_select(
-    question: str,
-    max_docs: int = 3,
-    answer_type: str = "",
+        question: str,
+        max_docs: int = 3,
+        answer_type: str = "",
 ) -> list[str] | None:
     """Select target documents using multi-signal fusion.
 
@@ -1221,7 +1381,7 @@ def _doc_fusion_select(
     dense_rrf_doc_scores: dict[str, float] = {}
     k_rrf = 60
     for rank, (meta, dist) in enumerate(
-        zip(vector_results["metadatas"][0], vector_results["distances"][0])
+            zip(vector_results["metadatas"][0], vector_results["distances"][0])
     ):
         doc_id = meta["pdf_id"]
         sim = 1.0 - float(dist)  # ChromaDB cosine distance -> similarity
@@ -1355,7 +1515,7 @@ def prewarm():
     print("Pre-warming retrieval caches...")
     get_embedding_model()
     get_collection()
-    build_doc_index()      # also populates _chunks_by_doc via _load_all_chunks()
+    build_doc_index()  # also populates _chunks_by_doc via _load_all_chunks()
     build_bm25_index()
     # Multi-signal fusion indexes (graceful if not yet built)
     if USE_MULTI_SIGNAL_FUSION:
@@ -1566,8 +1726,8 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                 seen_ids.add(chunk["chunk_id"])
                 merged.append(chunk)
 
-        # Cap at 60 chunks before reranking — larger pool for citation coverage
-        ranked = rerank_chunks(question, merged[:60], top_k=40)
+        # Cap at 30 chunks before reranking — balances citation coverage with latency
+        ranked = rerank_chunks(question, merged[:30], top_k=20)
 
         # Guarantee each keyword-matched doc has at least 1 chunk in the result.
         # CrossEncoder can rank one doc's chunks so highly that another keyword doc disappears
@@ -1649,7 +1809,9 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                 try:
                     v_tokens = legal_tokenize_queries(variant)
                     v_results, _ = bm25_index.retrieve(v_tokens, k=top_k)
-                    v_bm25_ranking = [corpus_ids[idx] for idx in (v_results[0] if len(v_results.shape) > 1 else v_results) if idx < len(corpus_ids)]
+                    v_bm25_ranking = [corpus_ids[idx] for idx in
+                                      (v_results[0] if len(v_results.shape) > 1 else v_results) if
+                                      idx < len(corpus_ids)]
                     variant_rankings.append(v_bm25_ranking)
                 except Exception:
                     pass
@@ -1702,9 +1864,10 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                 else:
                     other_chunks.append(chunk)
             final_chunks = article_chunks + other_chunks
-            print(f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted (vector path)")
+            print(
+                f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted (vector path)")
 
-        return rerank_chunks(question, final_chunks[:60], top_k=40)
+        return rerank_chunks(question, final_chunks[:30], top_k=20)
 
 
 # ---------------------------------------------------------------------------
@@ -1744,16 +1907,98 @@ _METADATA_QUESTION_PATTERNS = re.compile(
 )
 
 
+def _retrieve_pages_simple(
+        question: str,
+        max_per_doc: int = 1,
+        max_total: int = 3,
+        corpus: str = "czech",
+        on_status=None,
+        laws: list[str] | None = None,
+) -> list[PageResult]:
+    """Simplified retrieval for non-DIFC corpora: FAISS vector search + cross-encoder reranking.
+
+    No BM25, no routing metadata, no DIFC-specific heuristics.
+    """
+    print(f"[retriever] simple retrieval for corpus={corpus!r}")
+    if on_status:
+        on_status(f"retrieving:embedding query")
+    query_emb = embed_query(question)
+    top_k = min(50, _faiss_count(corpus=corpus))
+    if on_status:
+        on_status(f"retrieving:vector search ({top_k} candidates)")
+    vector_results = _search_faiss(query_emb, top_k=top_k, corpus=corpus)
+
+    # Convert to chunk dicts for reranking
+    chunks = []
+    for i in range(len(vector_results["ids"][0])):
+        chunks.append({
+            "chunk_id": vector_results["ids"][0][i],
+            "text": vector_results["documents"][0][i],
+            "metadata": vector_results["metadatas"][0][i],
+            "distance": vector_results["distances"][0][i],
+        })
+
+    # Filter by law prefixes if specified (Czech corpus law selector)
+    if laws:
+        law_prefixes = set(laws)
+        chunks = [c for c in chunks if any(c["metadata"].get("doc_id", "").startswith(p) for p in law_prefixes)]
+
+    # Preserve top FAISS result before reranking — embedding models handle
+    # cross-language queries better than the reranker for non-DIFC corpora.
+    faiss_top = chunks[0] if chunks else None
+
+    # Cross-encoder reranking
+    if on_status:
+        on_status(f"retrieving:reranking {len(chunks[:40])} passages")
+    ranked = rerank_chunks(question, chunks[:40], top_k=20, on_status=on_status)
+
+    # Aggregate chunks to pages, pick best per (doc_id, page)
+    page_scores: dict[tuple[str, int], tuple[float, str]] = {}
+    for chunk in ranked:
+        doc_id = chunk["metadata"].get("doc_id", chunk["metadata"]["pdf_id"])
+        page = int(chunk["metadata"]["page"])
+        score = chunk.get("rerank_score", 0.5)
+        key = (doc_id, page)
+        if key not in page_scores or score > page_scores[key][0]:
+            page_scores[key] = (score, chunk["text"])
+
+    # Inject FAISS top-1 if the reranker dropped it — the embedding model's
+    # best pick often outperforms the reranker on cross-language queries.
+    if faiss_top:
+        ft_doc = faiss_top["metadata"].get("doc_id", faiss_top["metadata"]["pdf_id"])
+        ft_page = int(faiss_top["metadata"]["page"])
+        ft_key = (ft_doc, ft_page)
+        if ft_key not in page_scores:
+            page_scores[ft_key] = (0.5, faiss_top["text"])
+
+    # Sort by score descending, apply per-doc and total limits
+    sorted_pages = sorted(page_scores.items(), key=lambda x: x[1][0], reverse=True)
+    doc_counts: dict[str, int] = {}
+    results: list[PageResult] = []
+    for (doc_id, page), (score, text) in sorted_pages:
+        if len(results) >= max_total:
+            break
+        if doc_counts.get(doc_id, 0) >= max_per_doc:
+            continue
+        doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
+        results.append(PageResult(doc_id=doc_id, page_number=page, score=score, text=text))
+
+    return results
+
+
 def retrieve_pages(
-    question: str,
-    target_doc_ids: list[str] | None = None,
-    max_per_doc: int = 1,
-    max_total: int = 3,
-    answer_type: str = "",
-    include_context_pages: bool = False,
-    use_llm_rerank: bool = False,
-    boost_pages: dict[str, int] | None = None,
-    case_doc_groups: dict[str, list[str]] | None = None,
+        question: str,
+        target_doc_ids: list[str] | None = None,
+        max_per_doc: int = 1,
+        max_total: int = 3,
+        answer_type: str = "",
+        include_context_pages: bool = False,
+        use_llm_rerank: bool = False,
+        boost_pages: dict[str, int] | None = None,
+        case_doc_groups: dict[str, list[str]] | None = None,
+        corpus: str = "difc",
+        on_status=None,
+        laws: list[str] | None = None,
 ) -> list[PageResult]:
     """Retrieve the best pages for answering a question.
 
@@ -1780,7 +2025,15 @@ def retrieve_pages(
     use_llm_rerank : bool
         If True, apply LLM reranking after cross-encoder (adds one Haiku call).
         Enterprise RAG winner used this as their highest-impact strategy.
+    corpus : str
+        Corpus to search. "difc" (default) or "czech".
     """
+    # ── Non-DIFC corpus: simplified vector-only retrieval path ──
+    # Czech and other non-DIFC corpora use FAISS vector search + cross-encoder reranking.
+    # They don't have BM25 indexes, routing metadata, or DIFC-specific heuristics.
+    if corpus != "difc":
+        return _retrieve_pages_simple(question, max_per_doc, max_total, corpus=corpus, on_status=on_status, laws=laws)
+
     # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
     # Apply per-answer-type retrieval config if available, using caller's values as overrides
     type_cfg = RETRIEVAL_CONFIGS.get(answer_type, {})
@@ -1792,26 +2045,23 @@ def retrieve_pages(
             max_total = type_cfg["max_pages"]
 
     if target_doc_ids:
-        # For 2-doc name/names comparison questions where the router boosts a specific non-p1 page
-        # for EACH doc (e.g., claim value on p2), cap mpd=1 to get exactly 1 boosted page per doc.
-        # Without this, mpd=2 selects p1+p2 from each doc, and max_total=3 drops p2 of the 2nd doc.
+        if on_status:
+            on_status(f"retrieving:searching {len(target_doc_ids)} target docs")
         effective_mpd = max_per_doc
         if (answer_type in ("name", "names") and boost_pages
                 and len(target_doc_ids) == 2
                 and all(d in boost_pages for d in target_doc_ids)
                 and any(boost_pages[d] != 1 for d in target_doc_ids)):
             effective_mpd = 1
-        results = _retrieve_pages_targeted(question, target_doc_ids, effective_mpd, max_total, answer_type, boost_pages=boost_pages, case_doc_groups=case_doc_groups)
-        # Low-confidence fallback: if targeted retrieval's best score < 0.4,
-        # the router likely pointed to the wrong doc. Supplement with corpus-wide
-        # fallback retrieval and merge by score. (Threshold 0.4 vs 0.5: avoids triggering
-        # when targeted correctly finds the right doc with a moderate score 0.40-0.50.)
+        results = _retrieve_pages_targeted(question, target_doc_ids, effective_mpd, max_total, answer_type,
+                                           boost_pages=boost_pages, case_doc_groups=case_doc_groups,
+                                           on_status=on_status)
         best_score = max((r.score for r in results), default=0.0)
         if best_score < 0.4:
+            if on_status:
+                on_status("retrieving:low confidence, adding fallback search")
             print(f"[retriever] low-confidence targeted ({best_score:.3f} < 0.40), adding fallback")
-            # Limit fallback to 1 page to rescue routing misses without adding noise
             fb_results = _retrieve_pages_fallback(question, max_per_doc=1, max_total=1, answer_type=answer_type)
-            # Merge: deduplicate by (doc_id, page_number), keep highest score
             seen = {}
             for r in results + fb_results:
                 key = (r.doc_id, r.page_number)
@@ -1819,7 +2069,12 @@ def retrieve_pages(
                     seen[key] = r
             results = sorted(seen.values(), key=lambda p: p.score, reverse=True)[:max_total]
     else:
+        if on_status:
+            on_status("retrieving:full corpus hybrid search (BM25 + vector)")
         results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type)
+
+    if on_status and results:
+        on_status(f"retrieving:found {len(results)} pages, scoring {results[0].score:.0%} best match")
 
     if use_llm_rerank and len(results) > 1:
         from arlc.llm.reranker import llm_rerank_pages
@@ -1832,9 +2087,9 @@ def retrieve_pages(
 
 
 def _fair_case_select(
-    pages: list["PageResult"],
-    case_doc_groups: dict[str, list[str]],
-    max_total: int,
+        pages: list["PageResult"],
+        case_doc_groups: dict[str, list[str]],
+        max_total: int,
 ) -> list["PageResult"]:
     """Select pages ensuring at least 1 page per case group.
 
@@ -1918,13 +2173,14 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict]) -> dict[i
 
 
 def _retrieve_pages_targeted(
-    question: str,
-    target_doc_ids: list[str],
-    max_per_doc: int,
-    max_total: int,
-    answer_type: str,
-    boost_pages: dict[str, int] | None = None,
-    case_doc_groups: dict[str, list[str]] | None = None,
+        question: str,
+        target_doc_ids: list[str],
+        max_per_doc: int,
+        max_total: int,
+        answer_type: str,
+        boost_pages: dict[str, int] | None = None,
+        case_doc_groups: dict[str, list[str]] | None = None,
+        on_status=None,
 ) -> list[PageResult]:
     """Retrieve pages by reranking all chunks from target documents."""
     # Small-doc full inclusion: for documents with ≤8 pages, skip reranking and
@@ -1936,8 +2192,8 @@ def _retrieve_pages_targeted(
 
     # Detect metadata questions (date, judge, claimant) that are answered on page 1
     is_metadata_q = (
-        answer_type in ("date", "name")
-        and bool(_METADATA_QUESTION_PATTERNS.search(question))
+            answer_type in ("date", "name")
+            and bool(_METADATA_QUESTION_PATTERNS.search(question))
     )
 
     # Detect date-related questions regardless of answer_type (e.g. "which doc has
@@ -1952,7 +2208,8 @@ def _retrieve_pages_targeted(
     # Only detects article DEFINITION headers (e.g., "13.\nTitle"), not references.
     # Skip when question asks about fines/penalties — the answer is in a schedule,
     # not the article definition page.
-    _asks_fine = bool(re.search(r'\b(fine|penalty|penalt|sanction|contravene|contravention)\b', question, re.IGNORECASE))
+    _asks_fine = bool(
+        re.search(r'\b(fine|penalty|penalt|sanction|contravene|contravention)\b', question, re.IGNORECASE))
     _art_root_nums = list(set(re.findall(r'Article\s+(\d+)', question, re.IGNORECASE))) if not _asks_fine else []
 
     # Law-title-page boost: "What is the law number / official number of X?"
@@ -1981,7 +2238,12 @@ def _retrieve_pages_targeted(
 
     all_page_scores: list[PageResult] = []
 
-    for doc_id in target_doc_ids:
+    if on_status:
+        on_status(f"retrieving:scoring {len(target_doc_ids)} documents")
+
+    for i_doc, doc_id in enumerate(target_doc_ids):
+        if on_status:
+            on_status(f"retrieving:scoring document {i_doc + 1}/{len(target_doc_ids)}")
         doc_chunks = chunks_by_doc_map.get(doc_id, [])
         if not doc_chunks:
             continue
@@ -2017,13 +2279,67 @@ def _retrieve_pages_targeted(
                 pg = chunk["metadata"].get("page", 1)
                 chunk_dense.append((dense_scores.get(pg, 0.0), chunk))
             chunk_dense.sort(key=lambda x: x[0], reverse=True)
-            # Take top 50 chunks by dense score for cross-encoder reranking
-            # V5: Raised from 20 to 50 — larger pre-filter improves CE recall
-            # (not 100 — Qwen3-Reranker-0.6B is heavier than benchmark's lighter CE)
-            top_chunks = [c for _, c in chunk_dense[:50]]
+            # Adaptive CE pre-filter: scale pool with doc size (Technique 5).
+            # Fixed-50 was a latency compromise for competition TTFT bonus — no longer needed.
+            # Formula: min(100, max(50, n_chunks // 2)) — covers ~half of medium docs,
+            # caps at 100 to keep Qwen3-Reranker-0.6B latency acceptable.
+            if CE_ADAPTIVE_PREFILTER:
+                _ce_pool_size = min(100, max(50, len(chunk_dense) // 2))
+            else:
+                _ce_pool_size = 50
+            top_chunks = [c for _, c in chunk_dense[:_ce_pool_size]]
+
+            # BM25 injection: rescue pages with strong lexical signal that dense de-ranked
+            # (Technique 2). Query BM25 on the full corpus, filter to this doc's chunks,
+            # inject up to BM25_INJECTION_K candidates not already in the dense pool.
+            # CE still provides all final scores — BM25 only expands the candidate set.
+            if PAGE_RANK_BM25_INJECTION:
+                try:
+                    _bm25_idx, _bm25_ids = build_bm25_index()
+                    _q_tokens = legal_tokenize_queries(question)
+                    _doc_cid_set = {c["chunk_id"] for c in doc_chunks}
+                    _pool_cid_set = {c["chunk_id"] for c in top_chunks}
+                    _bm25_results, _ = _bm25_idx.retrieve(_q_tokens, k=min(800, len(_bm25_ids)))
+                    _bm25_indices = _bm25_results[0] if len(_bm25_results.shape) > 1 else _bm25_results
+                    _injected = 0
+                    # Build a chunk_id → chunk lookup for fast injection
+                    _cid_to_chunk = {c["chunk_id"]: c for c in doc_chunks}
+                    for _bidx in _bm25_indices:
+                        if _injected >= BM25_INJECTION_K:
+                            break
+                        if int(_bidx) >= len(_bm25_ids):
+                            continue
+                        _cid = _bm25_ids[int(_bidx)]
+                        if _cid in _doc_cid_set and _cid not in _pool_cid_set:
+                            top_chunks.append(_cid_to_chunk[_cid])
+                            _pool_cid_set.add(_cid)
+                            _injected += 1
+                except Exception as _inj_err:
+                    pass  # Injection is best-effort; never block page scoring
+
             pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in top_chunks])
-            with _reranker_lock:
-                ce_scores = ranker.predict(pairs)
+            if on_status:
+                on_status(f"retrieving:reranking {len(pairs)} passages")
+            try:
+                with _reranker_lock:
+                    ce_scores = ranker.predict(pairs, timeout=180)
+            except Exception as e:
+                local = get_local_reranker()
+                if local is not ranker:
+                    logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
+                    if on_status:
+                        on_status("retrieving:reranking (fallback to local)")
+                    try:
+                        with _reranker_lock:
+                            ce_scores = local.predict(pairs, timeout=180)
+                    except Exception as e2:
+                        logger.warning("Local reranking also failed for %s (%s), using dense scores", doc_id, e2)
+                        ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
+                else:
+                    logger.warning("Targeted reranking failed for %s: %s, using dense scores only", doc_id, e)
+                    if on_status:
+                        on_status("retrieving:reranking failed, using dense scores")
+                    ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
             # Merge: use cross-encoder scores for the top candidates
             page_scores: dict[int, float] = {}
             for chunk, score in zip(top_chunks, ce_scores):
@@ -2036,8 +2352,28 @@ def _retrieve_pages_targeted(
             # Use 2000 chars to capture more legal context than the default 1000
             # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
             pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in doc_chunks])
-            with _reranker_lock:  # tokenizer is not thread-safe
-                scores = ranker.predict(pairs)
+            if on_status:
+                on_status(f"retrieving:reranking {len(pairs)} passages")
+            try:
+                with _reranker_lock:
+                    scores = ranker.predict(pairs, timeout=180)
+            except Exception as e:
+                local = get_local_reranker()
+                if local is not ranker:
+                    logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
+                    if on_status:
+                        on_status("retrieving:reranking (fallback to local)")
+                    try:
+                        with _reranker_lock:
+                            scores = local.predict(pairs, timeout=180)
+                    except Exception as e2:
+                        logger.warning("Local reranking also failed for %s (%s), using uniform scores", doc_id, e2)
+                        scores = [0.5] * len(doc_chunks)
+                else:
+                    logger.warning("Targeted reranking failed for %s: %s, using uniform scores", doc_id, e)
+                    if on_status:
+                        on_status("retrieving:reranking failed, using uniform scores")
+                    scores = [0.5] * len(doc_chunks)
             page_scores: dict[int, float] = {}
             for chunk, score in zip(doc_chunks, scores):
                 page_num = chunk["metadata"].get("page", 1)
@@ -2086,7 +2422,7 @@ def _retrieve_pages_targeted(
             for chunk in doc_chunks:
                 pg = chunk["metadata"].get("page", 1)
                 if pg not in _award_boosted and re.search(
-                    r'(?:EUR|USD|AED|GBP)\s+[\d,]+', chunk["text"]
+                        r'(?:EUR|USD|AED|GBP)\s+[\d,]+', chunk["text"]
                 ):
                     page_scores[pg] = page_scores.get(pg, 0.0) + 0.30
                     _award_boosted.add(pg)
@@ -2157,7 +2493,8 @@ def _retrieve_pages_targeted(
                         _is_fine_schedule = bool(
                             re.search(r'SCHEDULE\s+\d+\s*\n\s*(?:CONTRAVENTIONS\s+AND\s+)?FINES', ct, re.IGNORECASE)
                             or re.search(r'SCHEDULE\s+\d+\s*\n\s*FINES\s+AND\s+FEES', ct, re.IGNORECASE)
-                            or (re.search(r'^SCHEDULE\s+\d+', ct, re.IGNORECASE) and re.search(r'\bFINES?\b', ct[:200], re.IGNORECASE))
+                            or (re.search(r'^SCHEDULE\s+\d+', ct, re.IGNORECASE) and re.search(r'\bFINES?\b', ct[:200],
+                                                                                               re.IGNORECASE))
                         )
                         if _is_fine_schedule:
                             page_scores[page_num] += 0.8  # +0.8 (vs +0.4): must beat router's +0.6 article boost
@@ -2170,7 +2507,8 @@ def _retrieve_pages_targeted(
         # (e.g. defendants/claimants questions where p1 IS the answer page).
         _p1_is_boosted = bool(boost_pages and doc_id in boost_pages and boost_pages[doc_id] == 1)
         _demotion_types = {"free_text", "number", "date", "name", "names"}
-        if answer_type in _demotion_types and not is_metadata_q and not _p1_is_boosted and 1 in page_scores and len(page_scores) > 1:
+        if answer_type in _demotion_types and not is_metadata_q and not _p1_is_boosted and 1 in page_scores and len(
+                page_scores) > 1:
             p1_score = page_scores[1]
             best_deep = max(
                 ((pn, sc) for pn, sc in page_scores.items() if pn > 1),
@@ -2180,7 +2518,8 @@ def _retrieve_pages_targeted(
             if best_deep and p1_score > best_deep[1] and (p1_score - best_deep[1]) < 0.15:
                 # Swap: push page 1 just below the best deep page
                 page_scores[1] = best_deep[1] - 0.001
-                print(f"[retriever] title-page demotion: p1 ({p1_score:.3f}) demoted below p{best_deep[0]} ({best_deep[1]:.3f})")
+                print(
+                    f"[retriever] title-page demotion: p1 ({p1_score:.3f}) demoted below p{best_deep[0]} ({best_deep[1]:.3f})")
 
         # Skip docs where the best page scores near-zero: routing false-positives
         # that got included (e.g. a law doc cited in the case but not the primary doc).
@@ -2261,10 +2600,10 @@ def _retrieve_pages_targeted(
 
 
 def _retrieve_pages_fallback(
-    question: str,
-    max_per_doc: int,
-    max_total: int,
-    answer_type: str,
+        question: str,
+        max_per_doc: int,
+        max_total: int,
+        answer_type: str,
 ) -> list[PageResult]:
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
     # Use existing hybrid retrieval to get ranked chunks — pass answer_type for per-type depth
@@ -2275,8 +2614,8 @@ def _retrieve_pages_fallback(
 
     # Detect metadata questions
     is_metadata_q = (
-        answer_type in ("date", "name")
-        and bool(_METADATA_QUESTION_PATTERNS.search(question))
+            answer_type in ("date", "name")
+            and bool(_METADATA_QUESTION_PATTERNS.search(question))
     )
     _is_date_question = bool(re.search(
         r'\b(date of issue|issue date|issued|earlier.*date|later.*date)\b',

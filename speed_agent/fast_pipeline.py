@@ -50,6 +50,7 @@ def enforce_page_limit(pages: list, max_per_doc: int = 1, max_total: int = 3) ->
             break
     return result
 
+
 # ---------------------------------------------------------------------------
 # Google AI — Gemini Flash Lite via API (stdlib only, no C deps)
 # ---------------------------------------------------------------------------
@@ -64,8 +65,8 @@ _SSL_CTX = ssl.create_default_context()
 def _google_ai_key() -> str:
     """Google AI endpoint; set GOOGLE_AI_API_KEY or GOOGLE_AI_BEARER in env."""
     return (
-        os.environ.get("GOOGLE_AI_API_KEY", "").strip()
-        or os.environ.get("GOOGLE_AI_BEARER", "").strip()
+            os.environ.get("GOOGLE_AI_API_KEY", "").strip()
+            or os.environ.get("GOOGLE_AI_BEARER", "").strip()
     )
 
 
@@ -77,6 +78,7 @@ def _llm_headers_base() -> dict:
         "Accept": "text/event-stream",
         "Connection": "keep-alive",
     }
+
 
 # ---------------------------------------------------------------------------
 # Per-thread persistent HTTPS connection pool (avoids repeated SSL handshake)
@@ -116,6 +118,7 @@ def _http_post(path: str, body: bytes, headers: dict, stream: bool = False):
             if attempt == 2:
                 raise
 
+
 # ---------------------------------------------------------------------------
 # Data paths (loaded in main() to support --questions arg)
 # ---------------------------------------------------------------------------
@@ -132,11 +135,11 @@ def _load(path):
 CASE_META: dict = {}
 ARTICLE_IDX: dict = {}
 LAW_NAME_IDX: dict = {}
-CP_IDX: dict = {}       # consultation_paper_index.json
-CO_IDX: dict = {}       # court_order_index.json
-APPEAL_IDX: dict = {}   # appeal_index.json
-Q_DOC_MAP: dict = {}    # question_doc_mapping.json — question_id -> [doc_ids]
-PAGE_CACHE: dict = {}   # {doc_id: {str(page_num): text}}
+CP_IDX: dict = {}  # consultation_paper_index.json
+CO_IDX: dict = {}  # court_order_index.json
+APPEAL_IDX: dict = {}  # appeal_index.json
+Q_DOC_MAP: dict = {}  # question_doc_mapping.json — question_id -> [doc_ids]
+PAGE_CACHE: dict = {}  # {doc_id: {str(page_num): text}}
 _LAW_DOC_IDS: set = set()
 
 # Runtime-built keyword index for docs not in any static index
@@ -271,7 +274,9 @@ _FACTUAL_FIXES = {
 # ---------------------------------------------------------------------------
 
 _LAW_NAME_PATTERNS = [
-    re.compile(r"(?:the\s+)?(?:DIFC\s+)?Law\s+on\s+the\s+Application\s+of\s+Civil\s+and\s+Commercial\s+Laws(?:\s+in\s+the\s+DIFC)?", re.IGNORECASE),
+    re.compile(
+        r"(?:the\s+)?(?:DIFC\s+)?Law\s+on\s+the\s+Application\s+of\s+Civil\s+and\s+Commercial\s+Laws(?:\s+in\s+the\s+DIFC)?",
+        re.IGNORECASE),
     re.compile(r"(?:the\s+)?(?:DIFC\s+)?Common\s+Reporting\s+Standard\s+Law(?:\s+\d{4})?", re.IGNORECASE),
     re.compile(r"(?:the\s+)?(?:DIFC\s+)?Limited\s+Liability\s+Partnership\s+Law(?:\s+\d{4})?", re.IGNORECASE),
     re.compile(r"(?:the\s+)?(?:DIFC\s+)?General\s+Partnership\s+Law(?:\s+\d{4})?", re.IGNORECASE),
@@ -296,11 +301,18 @@ _DIFC_LAW_NO_MAP = {
 }
 
 _META_INDICATORS = {
-    "date_of_issue": [r"date\s+of\s+issue", r"issue\s+date", r"earlier\s+issue", r"issued\s+(?:earlier|first|later|date)", r"earlier\s+(?:date\s+of\s+)?issue", r"which\s+(?:case|document)\s+(?:has|was)\s+(?:an?\s+)?earlier"],
-    "claim_value":   [r"claim\s+value", r"monetary\s+claim", r"higher\s+monetary", r"claim\s+(?:value|amount)\s+in\s+AED", r"(?:larger|higher|bigger|greater)\s+(?:sum|amount|claim)", r"sum\s+claimed\s+by\s+the\s+claimant"],
-    "judge":         [r"(?:who\s+is\s+)?(?:the\s+)?judge", r"same\s+judge", r"judge.*both", r"judge\s+(?:who\s+)?presid", r"(?:any\s+)?judge\s+(?:in\s+common|common\s+to|involved\s+in\s+both)"],
-    "parties":       [r"(?:claimant|defendant|parties)", r"same.*(?:entities|party|parties)", r"named\s+as\s+a\s+main\s+party", r"(?:judgment\s+)?(?:creditor|debtor)", r"(?:against\s+which|against\s+whom)\s+.*\benforcement\b"],
-    "outcome":       [r"(?:result|outcome|ruling|decision)", r"(?:court\s+)?(?:decide|rule|order|grant|dismiss)", r"application.*(?:granted|dismissed)"],
+    "date_of_issue": [r"date\s+of\s+issue", r"issue\s+date", r"earlier\s+issue",
+                      r"issued\s+(?:earlier|first|later|date)", r"earlier\s+(?:date\s+of\s+)?issue",
+                      r"which\s+(?:case|document)\s+(?:has|was)\s+(?:an?\s+)?earlier"],
+    "claim_value": [r"claim\s+value", r"monetary\s+claim", r"higher\s+monetary", r"claim\s+(?:value|amount)\s+in\s+AED",
+                    r"(?:larger|higher|bigger|greater)\s+(?:sum|amount|claim)", r"sum\s+claimed\s+by\s+the\s+claimant"],
+    "judge": [r"(?:who\s+is\s+)?(?:the\s+)?judge", r"same\s+judge", r"judge.*both", r"judge\s+(?:who\s+)?presid",
+              r"(?:any\s+)?judge\s+(?:in\s+common|common\s+to|involved\s+in\s+both)"],
+    "parties": [r"(?:claimant|defendant|parties)", r"same.*(?:entities|party|parties)",
+                r"named\s+as\s+a\s+main\s+party", r"(?:judgment\s+)?(?:creditor|debtor)",
+                r"(?:against\s+which|against\s+whom)\s+.*\benforcement\b"],
+    "outcome": [r"(?:result|outcome|ruling|decision)", r"(?:court\s+)?(?:decide|rule|order|grant|dismiss)",
+                r"application.*(?:granted|dismissed)"],
 }
 
 _ORDINAL_RE = re.compile(r"(?:the\s+)?(first|second|third|last|title|cover)\s+page", re.IGNORECASE)
@@ -456,8 +468,8 @@ def _extract_law_names(question):
     # Broad substring fallback against law_name_index keys (up to 2)
     _fallback_added = 0
     for key in sorted(
-        (k for k in LAW_NAME_IDX if k != "_meta"),
-        key=len, reverse=True,
+            (k for k in LAW_NAME_IDX if k != "_meta"),
+            key=len, reverse=True,
     ):
         if key in q_lower_no_quotes and key not in found:
             if any(key in fk for fk in found):
@@ -470,8 +482,8 @@ def _extract_law_names(question):
     # Last resort: retry with quoted strings preserved
     if not found:
         for key in sorted(
-            (k for k in LAW_NAME_IDX if k != "_meta"),
-            key=len, reverse=True,
+                (k for k in LAW_NAME_IDX if k != "_meta"),
+                key=len, reverse=True,
         ):
             if key in q_lower and key not in found:
                 found.append(key)
@@ -998,7 +1010,8 @@ def _lookup_oracle(question, answer_type):
             return doi["value"], [{"doc_id": did, "page_numbers": [p]}] if did else []
 
     appeal_kws = ("original judgment", "original judge", "first instance", "trial judge", "lower court")
-    if answer_type in ("name", "names") and any(k in q for k in ("judge", "presided", "presiding")) and not any(k in q for k in appeal_kws):
+    if answer_type in ("name", "names") and any(k in q for k in ("judge", "presided", "presiding")) and not any(
+            k in q for k in appeal_kws):
         j = meta.get("judge")
         judges = j if isinstance(j, list) else ([j] if isinstance(j, dict) else [])
         judges = [jj for jj in judges if isinstance(jj, dict) and jj.get("name")]
@@ -1068,11 +1081,11 @@ def keyword_search_pages(doc_id, keywords, max_results=3):
 # LLM call — Gemini Flash Lite with SSE streaming for true TTFT
 # ---------------------------------------------------------------------------
 _TYPE_INSTRUCTIONS = {
-    "boolean":   "Answer ONLY 'true' or 'false'. If the document does not contain enough information to determine the answer, respond with exactly 'null'.",
-    "number":    "Answer ONLY with a number (integer or decimal). No units. If unknown, respond with exactly 'null'.",
-    "date":      "Answer ONLY with a date in YYYY-MM-DD format. If unknown, respond with exactly 'null'.",
-    "name":      "Answer ONLY with the exact name as it appears in the document. If unknown, respond with exactly 'null'.",
-    "names":     "Answer ONLY with names separated by semicolons. If none found, respond with exactly 'null'.",
+    "boolean": "Answer ONLY 'true' or 'false'. If the document does not contain enough information to determine the answer, respond with exactly 'null'.",
+    "number": "Answer ONLY with a number (integer or decimal). No units. If unknown, respond with exactly 'null'.",
+    "date": "Answer ONLY with a date in YYYY-MM-DD format. If unknown, respond with exactly 'null'.",
+    "name": "Answer ONLY with the exact name as it appears in the document. If unknown, respond with exactly 'null'.",
+    "names": "Answer ONLY with names separated by semicolons. If none found, respond with exactly 'null'.",
     "free_text": (
         "Answer in 400-650 characters. Be direct and specific. Use single quotes for legal text. "
         "If information is absent, state clearly: 'The document does not specify...' "
@@ -1331,7 +1344,7 @@ def process_question(q):
     if isinstance(meta_answer, list) and atype == "name" and meta_answer and isinstance(meta_answer[0], str):
         meta_answer = meta_answer[0]
     if meta_answer is not None and atype != "free_text" and not (
-        isinstance(meta_answer, list) and meta_answer and isinstance(meta_answer[0], dict)
+            isinstance(meta_answer, list) and meta_answer and isinstance(meta_answer[0], dict)
     ):
         chunk_pages = _all_case_pages(case_ids, boost_pages)
         if not chunk_pages and target_docs:
@@ -1753,9 +1766,9 @@ def main():
     ]
     avg_llm_ttft = sum(llm_ttfts) / len(llm_ttfts) if llm_ttfts else 0
 
-    print(f"\n{'='*60}", file=sys.stderr)
+    print(f"\n{'=' * 60}", file=sys.stderr)
     print(f"SPEED AGENT ({runtime}) RESULTS", file=sys.stderr)
-    print(f"{'='*60}", file=sys.stderr)
+    print(f"{'=' * 60}", file=sys.stderr)
     print(f"  Runtime:          {sys.version.split()[0]} ({runtime})", file=sys.stderr)
     print(f"  Total questions:  {len(questions)}", file=sys.stderr)
     print(f"  Oracle answers:   {oracle_n}", file=sys.stderr)
@@ -1768,7 +1781,7 @@ def main():
     print(f"  Max TTFT:         {max_ttft:.0f}ms", file=sys.stderr)
     print(f"  Total time:       {t_total:.1f}s", file=sys.stderr)
     print(f"  Output:           {out_path}", file=sys.stderr)
-    print(f"{'='*60}", file=sys.stderr)
+    print(f"{'=' * 60}", file=sys.stderr)
 
 
 if __name__ == "__main__":

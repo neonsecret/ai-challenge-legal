@@ -161,14 +161,14 @@ class FormatGuardian:
 
             # Try to parse common formats
             date_formats = [
-                '%d %B %Y',         # "2 February 2026"
-                '%B %d, %Y',        # "February 2, 2026"
-                '%d/%m/%Y',         # "02/02/2026"
-                '%m/%d/%Y',         # "02/02/2026" (US format)
-                '%Y-%m-%d',         # "2026-2-2" (missing zeros)
-                '%d-%m-%Y',         # "02-02-2026"
-                '%Y/%m/%d',         # "2026/02/02"
-                '%d.%m.%Y',         # "02.02.2026"
+                '%d %B %Y',  # "2 February 2026"
+                '%B %d, %Y',  # "February 2, 2026"
+                '%d/%m/%Y',  # "02/02/2026"
+                '%m/%d/%Y',  # "02/02/2026" (US format)
+                '%Y-%m-%d',  # "2026-2-2" (missing zeros)
+                '%d-%m-%Y',  # "02-02-2026"
+                '%Y/%m/%d',  # "2026/02/02"
+                '%d.%m.%Y',  # "02.02.2026"
             ]
 
             for fmt in date_formats:
@@ -417,7 +417,7 @@ class FormatGuardian:
         if '**' in cleaned or '*' in cleaned or cleaned.startswith('#'):
             md_cleaned = cleaned
             md_cleaned = re.sub(r'\*\*(.+?)\*\*', r'\1', md_cleaned)  # **bold**
-            md_cleaned = re.sub(r'\*(.+?)\*', r'\1', md_cleaned)      # *italic*
+            md_cleaned = re.sub(r'\*(.+?)\*', r'\1', md_cleaned)  # *italic*
             md_cleaned = re.sub(r'^#+\s+', '', md_cleaned, flags=re.MULTILINE)  # # headers
 
             if md_cleaned != cleaned:
@@ -441,7 +441,7 @@ class FormatGuardian:
                 answer_type=answer_type,
                 severity='info',
                 issue='Removed trailing Caveat meta-commentary',
-                original_value=cleaned[caveat_match.start():caveat_match.start()+80] + '...',
+                original_value=cleaned[caveat_match.start():caveat_match.start() + 80] + '...',
                 fixed_value='[removed]',
                 question=question
             ))
@@ -450,7 +450,7 @@ class FormatGuardian:
         return cleaned
 
     def fix_unanswerable(self, answer: Any, chunk_pages: List, answer_type: str,
-                        question_id: str, question: str) -> Tuple[Any, List]:
+                         question_id: str, question: str) -> Tuple[Any, List]:
         """
         Fix unanswerable format.
         - Det types: answer must be JSON null (not string "null", not "N/A")

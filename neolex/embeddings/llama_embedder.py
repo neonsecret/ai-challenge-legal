@@ -55,41 +55,76 @@ QWEN_QUERY_TASK = os.environ.get(
 QWEN_QUERY_PREFIX = f"Instruct: {QWEN_QUERY_TASK}\nQuery: "
 
 _DEFAULT_URL = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")
+_REMOTE_URL = os.environ.get("LLAMA_SERVER_REMOTE_URL", "http://100.98.171.97:8088")
+_HEALTH_CHECK_INTERVAL = 30  # seconds between remote health checks
 
 
 class LlamaServerEmbedder:
     """HTTP client for a llama-server /v1/embeddings endpoint.
 
-    Assumes the server is already running with::
-
-        llama-server -m <model.gguf> --embedding --pooling last -ngl 99
+    Supports automatic failover: if LLAMA_SERVER_REMOTE_URL is set and healthy,
+    it's used as primary (RTX 3070 CUDA >> local MPS).  Falls back to the local
+    server on any error.  Health is re-checked periodically.
 
     Parameters
     ----------
     url:
-        Base URL of the llama-server instance.
+        Base URL of the local llama-server instance (fallback).
     batch_size:
-        Number of texts sent per HTTP request.  The server processes them in
-        parallel internally.  64 is a safe default; raise if GPU has headroom.
+        Number of texts sent per HTTP request.
     """
 
     def __init__(self, url: str = _DEFAULT_URL, batch_size: int = 64) -> None:
-        self.url = url.rstrip("/")
+        self._local_url = url.rstrip("/")
+        self._remote_url = _REMOTE_URL.rstrip("/") if _REMOTE_URL else ""
+        self._remote_healthy = False
+        self._last_health_check = 0.0
         self.batch_size = batch_size
-        self._verify_server()
+
+        # Verify at least the local server is reachable
+        self._verify_server_url(self._local_url)
+
+        # Check if remote is available (non-blocking, best-effort)
+        if self._remote_url and self._remote_url != self._local_url:
+            self._check_remote_health()
+            if self._remote_healthy:
+                logger.info("Remote llama-server at %s is healthy — using as primary", self._remote_url)
+            else:
+                logger.info("Remote llama-server at %s is offline — using local only", self._remote_url)
+
+    @property
+    def url(self) -> str:
+        """Active server URL — remote if healthy, local otherwise."""
+        if self._remote_url and self._remote_url != self._local_url:
+            now = time.monotonic()
+            if now - self._last_health_check > _HEALTH_CHECK_INTERVAL:
+                self._check_remote_health()
+            if self._remote_healthy:
+                return self._remote_url
+        return self._local_url
+
+    def _check_remote_health(self) -> None:
+        """Quick health check on the remote server."""
+        self._last_health_check = time.monotonic()
+        try:
+            r = requests.get(f"{self._remote_url}/health", timeout=3)
+            self._remote_healthy = r.ok
+        except Exception:
+            self._remote_healthy = False
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _verify_server(self) -> None:
+    @staticmethod
+    def _verify_server_url(url: str) -> None:
         """Raise a clear error if the server is not reachable."""
         try:
-            r = requests.get(f"{self.url}/health", timeout=10)
+            r = requests.get(f"{url}/health", timeout=10)
             r.raise_for_status()
         except requests.exceptions.ConnectionError:
             raise RuntimeError(
-                f"llama-server not reachable at {self.url}.\n"
+                f"llama-server not reachable at {url}.\n"
                 f"Start it with:\n"
                 f"  llama-server -m <model.gguf> --embedding --pooling last "
                 f"-ngl 99 -c 4096 --port 8088\n"
@@ -99,18 +134,33 @@ class LlamaServerEmbedder:
             raise RuntimeError(f"llama-server health check failed: {e}")
 
     def _embed_batch(self, texts: list[str]) -> np.ndarray:
-        """POST a single batch to /v1/embeddings; returns (N, dim) float32."""
+        """POST a single batch to /v1/embeddings; returns (N, dim) float32.
+
+        Tries the active server (remote if healthy, local otherwise).
+        On failure, falls back to local and marks remote as unhealthy.
+        """
+        active_url = self.url  # property: remote if healthy, else local
+        try:
+            return self._embed_batch_url(active_url, texts)
+        except Exception:
+            if active_url != self._local_url:
+                logger.warning("Remote embedding failed, falling back to local")
+                self._remote_healthy = False
+                return self._embed_batch_url(self._local_url, texts)
+            raise
+
+    @staticmethod
+    def _embed_batch_url(url: str, texts: list[str]) -> np.ndarray:
+        """POST a batch to a specific server URL."""
         r = requests.post(
-            f"{self.url}/v1/embeddings",
+            f"{url}/v1/embeddings",
             json={"input": texts, "encoding_format": "float"},
             timeout=120,
         )
         r.raise_for_status()
         data = r.json()["data"]
-        # API guarantees order == input order, but sort defensively
         data.sort(key=lambda x: x["index"])
         matrix = np.array([d["embedding"] for d in data], dtype=np.float32)
-        # L2-normalise (llama-server doesn't always normalise for us)
         norms = np.linalg.norm(matrix, axis=1, keepdims=True)
         norms = np.where(norms == 0.0, 1.0, norms)
         return matrix / norms
@@ -120,10 +170,10 @@ class LlamaServerEmbedder:
     # ------------------------------------------------------------------
 
     def embed_texts(
-        self,
-        texts: list[str],
-        batch_size: Optional[int] = None,
-        **kwargs,
+            self,
+            texts: list[str],
+            batch_size: Optional[int] = None,
+            **kwargs,
     ) -> np.ndarray:
         """Embed document passages without an instruction prefix.
 
@@ -136,9 +186,9 @@ class LlamaServerEmbedder:
         return np.concatenate(chunks, axis=0)
 
     def embed_query(
-        self,
-        query: str,
-        task: str = QWEN_QUERY_TASK,
+            self,
+            query: str,
+            task: str = QWEN_QUERY_TASK,
     ) -> np.ndarray:
         """Embed a single query with the Qwen3 instruction prefix.
 
@@ -148,11 +198,11 @@ class LlamaServerEmbedder:
         return self._embed_batch([prefixed])[0]
 
     def encode(
-        self,
-        sentences: Union[str, list[str]],
-        normalize_embeddings: bool = True,
-        prompt_name: Optional[str] = None,
-        **kwargs,
+            self,
+            sentences: Union[str, list[str]],
+            normalize_embeddings: bool = True,
+            prompt_name: Optional[str] = None,
+            **kwargs,
     ) -> np.ndarray:
         """SentenceTransformer-compatible encode() API.
 
@@ -208,10 +258,10 @@ def _wait_for_port(host: str, port: int, timeout: float = 60.0) -> None:
 
 @contextmanager
 def start_server(
-    model_path: Optional[str] = None,
-    port: int = 8088,
-    n_gpu_layers: int = 99,
-    context_size: int = 4096,
+        model_path: Optional[str] = None,
+        port: int = 8088,
+        n_gpu_layers: int = 99,
+        context_size: int = 4096,
 ):
     """Context manager that starts a llama-server subprocess and yields its URL.
 

@@ -6,6 +6,7 @@ deadlocks under concurrent cold-start load (see arlc/pipeline.py lines 1491-1493
 """
 # Load .env BEFORE any other imports — Settings reads os.environ at class definition time.
 from dotenv import load_dotenv as _load_dotenv
+
 _load_dotenv(override=False)
 
 import asyncio
@@ -26,7 +27,9 @@ from neolex.routers import health
 from neolex.routers import query as query_router
 from neolex.routers import admin as admin_router
 from neolex.routers import documents as documents_router
-from neolex.routers import demo as demo_router
+from neolex.routers import stripe_router
+from neolex.auth import oauth as oauth_router
+from neolex.auth import email_auth as email_auth_router
 from neolex.startup_validation import validate_startup
 
 # Configure logging before anything else.
@@ -68,8 +71,13 @@ async def lifespan(app: FastAPI):
         import arlc.retriever as _ret
         logger.info("Pre-warming retriever singletons (FAISS, BM25, cross-encoder)...")
         await asyncio.to_thread(_ret.get_chunks_by_doc)
-        await asyncio.to_thread(_ret.get_reranker)
+        await asyncio.to_thread(_ret._load_faiss, "difc")
+        await asyncio.to_thread(_ret._load_faiss, "czech")   # avoids cold-start on first Czech query
+        await asyncio.to_thread(_ret.build_bm25_index)        # BM25 cold-start is ~3 min without this
+        reranker = await asyncio.to_thread(_ret.get_reranker)
         await asyncio.to_thread(_ret.get_embedding_model)
+        # Fire one dummy rerank to compile the MPS Metal graph — first real call drops from 6s to 3.6s
+        await asyncio.to_thread(reranker.predict, [("warm up", "warm up")])
         logger.info("Retriever singletons warmed.")
 
         # Semaphore: 5 workers = cross-encoder lock contention limit (per PIPE-03).
@@ -77,20 +85,11 @@ async def lifespan(app: FastAPI):
         app.state.semaphore = asyncio.Semaphore(settings.workers)
         app.state.workers = settings.workers
 
-        # Initialize audit DB schema (WAL mode, idempotent).
-        from neolex.db.audit import get_audit_db
-        async with get_audit_db() as db:
-            await db.init_schema()
-        logger.info("Audit DB initialized at %s (WAL mode).", settings.db_path)
-
-        # Demo mode: ensure a demo API key exists.
-        if settings.demo_mode:
-            from neolex.demo_setup import ensure_demo_key
-            demo_key = await ensure_demo_key()
-            if demo_key:
-                logger.info("Demo mode: created demo API key with prefix %s", demo_key[:8])
-            else:
-                logger.info("Demo mode: demo API key already exists.")
+        # Initialize all PostgreSQL tables (auth + billing + operational).
+        if settings.database_url:
+            from neolex.db.postgres import init_db as init_pg
+            await init_pg()
+            logger.info("PostgreSQL tables initialized.")
 
         app.state.ready = True
         app.state.startup_time = time.monotonic()
@@ -119,6 +118,7 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None,
 )
+
 
 # ---------------------------------------------------------------------------
 # Global exception handler — catch ALL unhandled exceptions and return JSON.
@@ -178,6 +178,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
+# SessionMiddleware is required by authlib's starlette OAuth client
+# to store the CSRF state between the redirect and the callback.
+from starlette.middleware.sessions import SessionMiddleware
+
+app.add_middleware(SessionMiddleware, secret_key=settings.jwt_secret_key)
 app.add_middleware(TimeoutMiddleware, timeout_seconds=settings.request_timeout_seconds)
 app.add_middleware(RequestIDMiddleware)
 # JSONErrorMiddleware must be outermost (registered last) so it wraps
@@ -190,4 +195,6 @@ app.include_router(health.router)
 app.include_router(query_router.router)
 app.include_router(admin_router.router)
 app.include_router(documents_router.router)
-app.include_router(demo_router.router)
+app.include_router(oauth_router.router)
+app.include_router(email_auth_router.router)
+app.include_router(stripe_router.router)

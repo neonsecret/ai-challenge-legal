@@ -236,12 +236,12 @@ async def test_full_phase2_cycle(tmp_db_path, monkeypatch):
     app.state.answer_fn = MagicMock()
 
     with patch(
-        "neolex.routers.query.run_single_question",
-        new_callable=AsyncMock,
-        return_value=mock_result,
+            "neolex.routers.query.run_single_question",
+            new_callable=AsyncMock,
+            return_value=mock_result,
     ):
         async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
+                transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
             # Step 3: Authenticate and query
             response = await client.post(

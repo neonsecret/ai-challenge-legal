@@ -9,13 +9,15 @@ Expected answer quality: cited, authoritative, 400-650 characters.
 
 **Question:** What is the limitation period for a contract claim under DIFC Law No. 5 of 2005?
 
-**Why it works:** Crisp factual answer, clear citation to a specific law, demonstrates the system knows DIFC statute numbers.
+**Why it works:** Crisp factual answer, clear citation to a specific law, demonstrates the system knows DIFC statute
+numbers.
 
 ---
 
 ## 2. Employment Termination
 
-**Question:** On what grounds may an employer lawfully terminate an employee without notice under the DIFC Employment Law?
+**Question:** On what grounds may an employer lawfully terminate an employee without notice under the DIFC Employment
+Law?
 
 **Why it works:** Common law firm question. Answer cites specific article numbers with page references.
 
@@ -65,7 +67,8 @@ Expected answer quality: cited, authoritative, 400-650 characters.
 
 **Question:** What is the territorial and subject-matter jurisdiction of the DIFC Courts?
 
-**Why it works:** Jurisdiction is always the first question in a DIFC dispute. Demonstrates confidence on a threshold issue.
+**Why it works:** Jurisdiction is always the first question in a DIFC dispute. Demonstrates confidence on a threshold
+issue.
 
 ---
 

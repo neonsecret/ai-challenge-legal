@@ -40,6 +40,7 @@ question = (
 ### Full Document Handling
 
 Current code truncates NDAs to 8000 chars. Most NDAs are longer. Options:
+
 1. Increase to full document (Claude Sonnet handles 200K context)
 2. Use our retriever to find relevant spans first, then classify
 3. Chunk the NDA and classify each chunk, then aggregate
@@ -48,6 +49,7 @@ Current code truncates NDAs to 8000 chars. Most NDAs are longer. Options:
 
 ContractNLI also evaluates evidence identification (which spans support the decision).
 Current `run.py` does not extract evidence spans. Adding this would enable:
+
 - Evidence F1 metric (mean average precision)
 - More meaningful comparison with Span NLI BERT baseline
 
@@ -57,18 +59,20 @@ Current `run.py` does not extract evidence spans. Adding this would enable:
 
 **Span NLI BERT (original baseline):**
 
-| Model Variant   | NLI Accuracy | Evidence mAP |
-|----------------|-------------|-------------|
-| BERT_base       | ~83%        | ~0.885       |
-| BERT_large      | ~87.5%      | ~0.922       |
-| DeBERTa v2_xlarge | ~89% (est) | ~0.93 (est)  |
+| Model Variant     | NLI Accuracy | Evidence mAP |
+|-------------------|--------------|--------------|
+| BERT_base         | ~83%         | ~0.885       |
+| BERT_large        | ~87.5%       | ~0.922       |
+| DeBERTa v2_xlarge | ~89% (est)   | ~0.93 (est)  |
 
 **Classical baselines:**
+
 - Majority class: ~45% accuracy
 - TF-IDF + SVM: ~65% accuracy
 - SQuAD-style QA: ~70% accuracy
 
 **LLM-era estimates (no formal leaderboard):**
+
 - GPT-4 zero-shot on contract NLI tasks: ~85-90% accuracy (various papers)
 - Claude Sonnet with proper prompting: ~85-90% accuracy (estimated)
 - Fine-tuned legal LLMs: ~90-92% accuracy (estimated from related benchmarks)
@@ -76,6 +80,7 @@ Current `run.py` does not extract evidence spans. Adding this would enable:
 ### Where We Would Rank
 
 With Claude Sonnet as our backbone:
+
 - **NLI Accuracy**: Likely 85-90% (competitive with BERT_large baseline)
 - **Evidence identification**: Not currently implemented
 - Zero-shot LLMs typically match or beat fine-tuned BERT on NLI tasks

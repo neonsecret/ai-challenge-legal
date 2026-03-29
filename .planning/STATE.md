@@ -29,12 +29,14 @@ No active phase. Ready for next milestone.
 ## What Was Built (v2.0)
 
 **Design System:**
+
 - Liquid Glass panels (theme-aware: warm amber light / deep navy dark)
 - AppBackground client component with theme-adaptive blobs + gradient
 - macOS Tahoe-style bottom nav pill with Light/Dark toggle
 - CSS transitions: `background 0.4s ease`, 60fps transform-only button animations
 
 **Chat Page:**
+
 - Perplexity layout: sources above answer, heading for user question
 - Side-by-side PDF document preview panel (FakePdf) on question click
 - 2 animated questions with law-name underline hover + PDF preview
@@ -43,12 +45,14 @@ No active phase. Ready for next milestone.
 - Full dark mode: navy glass, white text, gold accents
 
 **All App Pages:**
+
 - Documents: glass cards, upload zone, dark-mode column hiding on mobile
 - Settings: glass cards, gold-gradient save button in dark mode, theme toggles
 - Landing: dual theme — light=warm amber, dark=navy, system-preference aware
 - Mobile: responsive across 390px–1440px, hidden date/size columns on mobile
 
 **Dark Mode:**
+
 - AppBackground, ChatInput, ChatMessage, SourcesPanel, EmptyState, Documents, Settings all theme-aware
 - Smooth CSS transitions on theme switch (no disableTransitionOnChange)
 

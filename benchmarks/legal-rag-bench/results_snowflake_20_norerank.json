@@ -1,0 +1,252 @@
+{
+  "model": "Snowflake/snowflake-arctic-embed-l-v2.0",
+  "num_queries": 20,
+  "retrieval_accuracy": 0.45,
+  "hits": 9,
+  "index_dir": "benchmarks/legal-rag-bench/data",
+  "total_time_s": 82.31254506111145,
+  "embed_time_s": null,
+  "use_reranker": false,
+  "per_query": [
+    {
+      "question": "Bob and Ted are close friends. Ted is on trial for drug offences, and Bob has be",
+      "gold_id": "1.2-c2-s2",
+      "retrieved_ids": [
+        "1.2-c2-s2",
+        "1.2.1-c3-s1",
+        "1.2-c2-s3",
+        "1.11-c8-s1",
+        "1.5.1-c5-s1"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Harry is serving as a juror in a burglary trial. He is also a professional locks",
+      "gold_id": "1.5-c5-s1",
+      "retrieved_ids": [
+        "4.13.1-c5-s6",
+        "8.8-c7-s4",
+        "4.13.1.1-c1-s1",
+        "4.13.3-c3-s1",
+        "4.13.1.2-c1-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Isaac is on trial for statutory murder of an emergency worker. You are his barri",
+      "gold_id": "1.5-c6-s1",
+      "retrieved_ids": [
+        "7.4.9-c1-s1",
+        "7.2.1A-c1-s1",
+        "3.10-c2-s9",
+        "7.2.1A.1-c1-s1",
+        "8.1-c5-s1"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Should jurors be excused if they have encountered news stories about the accused",
+      "gold_id": "1.5-c7-s2",
+      "retrieved_ids": [
+        "1.2-c2-s2",
+        "1.2.1-c1-s1",
+        "1.2-c2-s3",
+        "1.1-c1-s2",
+        "1.2-c1-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Frank and Joe are jurors in an arson trial. Over the weekend, Joe finds photos o",
+      "gold_id": "1.5-c8-s1",
+      "retrieved_ids": [
+        "1.11-c8-s1",
+        "1.5.1-c5-s1",
+        "1.5-c1-s4",
+        "1.5.1-c5-s2",
+        "1.11-c8-s2"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Does the standard of proof of \u201cbeyond reasonable doubt\u201d imply that the jury must",
+      "gold_id": "1.7-c3-s2",
+      "retrieved_ids": [
+        "3.7.1-c1-s1",
+        "11.1-c12-s1",
+        "3.16-c8-s1",
+        "10.2.1-c6-s1",
+        "1.11-c10-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Sally is accused of cultivating narcotic plants in her backyard. One of the elem",
+      "gold_id": "2.1-c1-s1",
+      "retrieved_ids": [
+        "7.6.2.1-c1-s1",
+        "7.6.2-c2-s1",
+        "7.6.2.4-c1-s1",
+        "7.6.2.4-c3-s2",
+        "7.6.2.2-c1-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Josh is 21 years old. He witnessed a murder that was clearly perpetrated by the ",
+      "gold_id": "2.3.3-c2-s1",
+      "retrieved_ids": [
+        "7.2.1.3-c1-s1",
+        "7.2.2.2-c3-s1",
+        "7.2.1.1-c1-s1",
+        "7.2.1.4-c1-s1",
+        "7.2.1A.1-c5-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Olivia illegally bought cannabis from a tobacconist. As she left, she saw a man ",
+      "gold_id": "2.5-c1-s1",
+      "retrieved_ids": [
+        "2.5.1-c1-s1",
+        "2.5-c1-s2",
+        "7.5.1.2-c4-s1",
+        "4.1.1-c1-s1",
+        "4.13.1.3-c1-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Emma is found in possession of someone else\u2019s phone but has no documentation of ",
+      "gold_id": "3.6-c2-s1",
+      "retrieved_ids": [
+        "7.5.11-c4-s3",
+        "7.5.11-c7-s3",
+        "7.5.11-c1-s1",
+        "7.9.1-c2-s1",
+        "7.5.11.1-c1-s2"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "John is on trial for an unnamed offence. John testifies that he could not have c",
+      "gold_id": "3.6-c1-s1",
+      "retrieved_ids": [
+        "4.25.1-c1-s1",
+        "4.25-c2-s2",
+        "4.25-c1-s1",
+        "4.25-c2-s4",
+        "4.25-c2-s3"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Does Victoria have a law/laws protecting against double jeopardy?",
+      "gold_id": "3.12-c1-s1",
+      "retrieved_ids": [
+        "4.24-c1-s1",
+        "7.2.1A-c6-s2",
+        "8.15-c2-s2",
+        "7.2.1-c8-s1",
+        "7.5.22-c2-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Sophie and Hazel are two of twelve jurors in a trial. Both are uncertain of thei",
+      "gold_id": "3.13-c2-s1",
+      "retrieved_ids": [
+        "3.13-c3-s3",
+        "3.13-c3-s5",
+        "3.13-c3-s1",
+        "3.13-c2-s1",
+        "1.1-c1-s2"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Tim is on trial for aggravated burglary. Before Tim gives evidence, his counsel ",
+      "gold_id": "4.1-c1-s1",
+      "retrieved_ids": [
+        "7.5.5.7-c7-s1",
+        "7.5.5.5-c8-s1",
+        "7.5.5.2-c7-s1",
+        "2.4-c1-s4",
+        "7.5.5-c2-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Paul is 12 years old. He is a witness in a trial related to a common law riot. Y",
+      "gold_id": "4.2-c3-s1",
+      "retrieved_ids": [
+        "7.3.21.1-c7-s1",
+        "7.3.16.1-c5-s2",
+        "7.3.12.1-c3-s5",
+        "4.2-c3-s1",
+        "7.3.16.1-c5-s1"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Can the defence use good character evidence to argue the accused is innocent?",
+      "gold_id": "4.3-c2-s2",
+      "retrieved_ids": [
+        "4.3.1-c1-s2",
+        "4.3-c2-s2",
+        "4.3-c2-s3",
+        "4.3-c2-s1",
+        "4.3-c3-s1"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Can the prosecution freely use bad character evidence to argue the accused is gu",
+      "gold_id": "4.3-c3-s1",
+      "retrieved_ids": [
+        "4.3.1-c1-s2",
+        "4.3-c3-s1",
+        "4.3-c3-s2",
+        "4.3.3-c1-s1",
+        "4.3.2-c1-s3"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Sam is on trial for murdering her neighbour. The prosecution presents a text fro",
+      "gold_id": "4.5-c5-s1",
+      "retrieved_ids": [
+        "4.5.1-c2-s1",
+        "1.11-c4-s2",
+        "1.5.1-c1-s3",
+        "4.16-c4-s4",
+        "4.5-c2-s1"
+      ],
+      "hit": 0.0
+    },
+    {
+      "question": "Omar is charged with intentionally causing serious injury. In a recorded intervi",
+      "gold_id": "4.6-c3-s5",
+      "retrieved_ids": [
+        "4.6-c3-s5",
+        "7.4.2.7-c8-s1",
+        "7.4.2.5-c7-s2",
+        "4.6-c1-s1",
+        "7.4.2.1-c7-s1"
+      ],
+      "hit": 1.0
+    },
+    {
+      "question": "Liam is on trial for arson. His sister gives evidence that, at a family dinner, ",
+      "gold_id": "4.6-c4-s1",
+      "retrieved_ids": [
+        "4.1.1-c1-s1",
+        "4.16-c4-s4",
+        "4.15-c5-s2",
+        "4.6.4-c1-s2",
+        "4.16.1-c1-s2"
+      ],
+      "hit": 1.0
+    }
+  ]
+}

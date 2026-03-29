@@ -39,10 +39,10 @@ attribution. This prefix is insufficient to reconstruct the full key.
 
 ## Key Scopes
 
-| Scope   | Access                                                          |
-|---------|-----------------------------------------------------------------|
+| Scope   | Access                                                                                |
+|---------|---------------------------------------------------------------------------------------|
 | `query` | `POST /api/v1/query`, `GET /api/v1/query/stream`, `GET/POST/DELETE /api/v1/documents` |
-| `admin` | All of the above + `GET /api/v1/admin/audit`                   |
+| `admin` | All of the above + `GET /api/v1/admin/audit`                                          |
 
 Admin-scoped keys are created with `python -m neolex.admin keys create --name "..." --scope admin`.
 
@@ -82,18 +82,19 @@ counter to prevent per-process windows undermining the limit.
 
 The following endpoints are intentionally exempt from API key authentication:
 
-| Endpoint          | Reason                                                     |
-|-------------------|------------------------------------------------------------|
-| `GET /health`     | Liveness check — safe to expose for load balancer probes   |
-| `GET /health/live`| Same as above                                              |
-| `GET /health/ready`| Readiness check — no data access                          |
-| `GET /api/v1/demo/config` | Demo mode metadata — no sensitive data            |
+| Endpoint                  | Reason                                                   |
+|---------------------------|----------------------------------------------------------|
+| `GET /health`             | Liveness check — safe to expose for load balancer probes |
+| `GET /health/live`        | Same as above                                            |
+| `GET /health/ready`       | Readiness check — no data access                         |
+| `GET /api/v1/demo/config` | Demo mode metadata — no sensitive data                   |
 
 ---
 
 ## Auth Failure Logging
 
 Every authentication failure is appended to the `events` table with:
+
 - `event_type`: `"auth_failure"`
 - `detail_json`: `{"reason": "missing_key"}` or `{"reason": "invalid_key", "key_prefix": "..."}`
 - `ip`: Client IP address
@@ -134,9 +135,9 @@ and the rejection is logged as `auth_failure`.
 
 ## Environment Variables
 
-| Variable           | Default | Description                                    |
-|--------------------|---------|------------------------------------------------|
-| `RATE_LIMIT_RPM`   | `60`    | Max requests per minute per API key            |
-| `NEOLEX_DB_PATH`   | `neolex.db` | SQLite audit DB path                       |
-| `ALLOWED_ORIGINS`  | `http://localhost:3000,http://localhost:8000` | CORS allowed origins |
-| `DEMO_MODE`        | `false` | Enable demo key pre-seeding                    |
+| Variable          | Default                                       | Description                         |
+|-------------------|-----------------------------------------------|-------------------------------------|
+| `RATE_LIMIT_RPM`  | `60`                                          | Max requests per minute per API key |
+| `NEOLEX_DB_PATH`  | `neolex.db`                                   | SQLite audit DB path                |
+| `ALLOWED_ORIGINS` | `http://localhost:3000,http://localhost:8000` | CORS allowed origins                |
+| `DEMO_MODE`       | `false`                                       | Enable demo key pre-seeding         |

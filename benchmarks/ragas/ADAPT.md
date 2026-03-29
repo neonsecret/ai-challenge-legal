@@ -47,6 +47,7 @@ llm = LangchainLLMWrapper(ChatAnthropic(model="claude-sonnet-4-20250514"))
 ### Reference-Free Evaluation
 
 For benchmarks without ground truth answers, use reference-free metrics only:
+
 - Faithfulness (does answer match retrieved context?)
 - Answer Relevancy (does answer address the question?)
 - Context Precision (are retrieved passages relevant?)
@@ -58,12 +59,12 @@ For benchmarks without ground truth answers, use reference-free metrics only:
 RAGAS is a framework, not a competition. There is no single leaderboard. However,
 typical score ranges from published papers:
 
-| Metric              | Poor   | Average | Good   | Excellent |
-|--------------------|--------|---------|--------|-----------|
-| Faithfulness        | <0.5   | 0.5-0.7 | 0.7-0.85 | >0.85   |
-| Answer Relevancy    | <0.5   | 0.5-0.7 | 0.7-0.85 | >0.85   |
-| Context Precision   | <0.3   | 0.3-0.6 | 0.6-0.8  | >0.8    |
-| Context Recall      | <0.3   | 0.3-0.6 | 0.6-0.8  | >0.8    |
+| Metric            | Poor | Average | Good     | Excellent |
+|-------------------|------|---------|----------|-----------|
+| Faithfulness      | <0.5 | 0.5-0.7 | 0.7-0.85 | >0.85     |
+| Answer Relevancy  | <0.5 | 0.5-0.7 | 0.7-0.85 | >0.85     |
+| Context Precision | <0.3 | 0.3-0.6 | 0.6-0.8  | >0.8      |
+| Context Recall    | <0.3 | 0.3-0.6 | 0.6-0.8  | >0.8      |
 
 These ranges are approximate and vary significantly by domain and task difficulty.
 Legal domain typically scores lower than general domain due to terminology precision.
@@ -71,6 +72,7 @@ Legal domain typically scores lower than general domain due to terminology preci
 ### How Our Pipeline Would Score
 
 Based on our ARLC competition results (S_asst=0.761, G=0.797):
+
 - **Faithfulness**: Likely 0.75-0.85 (our answers are well-grounded)
 - **Answer Relevancy**: Likely 0.70-0.80 (calibration phrases may reduce this)
 - **Context Precision**: Likely 0.60-0.75 (depends on retrieval quality)

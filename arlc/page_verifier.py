@@ -115,11 +115,11 @@ def _extract_answer_keywords(answer, answer_type: str) -> list[str]:
         try:
             dt = datetime.strptime(s, "%Y-%m-%d")
             keywords.extend([
-                dt.strftime("%d %B %Y"),       # 15 January 2024
-                dt.strftime("%d %b %Y"),        # 15 Jan 2024
-                dt.strftime("%B %d, %Y"),       # January 15, 2024
-                dt.strftime("%-d %B %Y"),       # 5 January 2024 (no leading zero)
-                dt.strftime("%d/%m/%Y"),         # 15/01/2024
+                dt.strftime("%d %B %Y"),  # 15 January 2024
+                dt.strftime("%d %b %Y"),  # 15 Jan 2024
+                dt.strftime("%B %d, %Y"),  # January 15, 2024
+                dt.strftime("%-d %B %Y"),  # 5 January 2024 (no leading zero)
+                dt.strftime("%d/%m/%Y"),  # 15/01/2024
             ])
         except ValueError:
             pass
@@ -176,10 +176,10 @@ def _extract_answer_keywords(answer, answer_type: str) -> list[str]:
 
 
 def _verify_single_page(
-    page_text: str,
-    answer,
-    answer_type: str,
-    question: str,
+        page_text: str,
+        answer,
+        answer_type: str,
+        question: str,
 ) -> str:
     """Verify whether a single page supports the answer.
 
@@ -259,12 +259,12 @@ def _verify_single_page(
 # ---------------------------------------------------------------------------
 
 def _find_best_page_in_doc(
-    doc_id: str,
-    answer,
-    answer_type: str,
-    question: str,
-    current_page: int,
-    max_scan: int = 30,
+        doc_id: str,
+        answer,
+        answer_type: str,
+        question: str,
+        current_page: int,
+        max_scan: int = 30,
 ) -> tuple[int | None, str]:
     """Scan pages in a doc to find the best supporting page.
 
@@ -314,12 +314,12 @@ def _find_best_page_in_doc(
 
 
 def _find_best_page_llm(
-    doc_id: str,
-    answer,
-    answer_type: str,
-    question: str,
-    current_page: int,
-    max_scan: int = 20,
+        doc_id: str,
+        answer,
+        answer_type: str,
+        question: str,
+        current_page: int,
+        max_scan: int = 20,
 ) -> int | None:
     """Use LLM to pick the best supporting page (fallback when keyword matching fails).
 
@@ -391,11 +391,11 @@ def _find_best_page_llm(
 # ---------------------------------------------------------------------------
 
 def verify_pages(
-    question: str,
-    answer,
-    answer_type: str,
-    pages: list[dict],
-    use_llm_fallback: bool = False,
+        question: str,
+        answer,
+        answer_type: str,
+        pages: list[dict],
+        use_llm_fallback: bool = False,
 ) -> list[dict]:
     """Verify that cited pages support the answer. Replace bad pages.
 

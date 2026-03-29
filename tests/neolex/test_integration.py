@@ -91,10 +91,10 @@ async def live_client():
 
     async with LifespanManager(app, startup_timeout=120, shutdown_timeout=30) as manager:
         async with AsyncClient(
-            transport=ASGITransport(app=manager.app, raise_app_exceptions=True),
-            base_url="http://test",
-            timeout=120.0,
-            headers={"Authorization": f"Bearer {_int_raw_key}"},
+                transport=ASGITransport(app=manager.app, raise_app_exceptions=True),
+                base_url="http://test",
+                timeout=120.0,
+                headers={"Authorization": f"Bearer {_int_raw_key}"},
         ) as client:
             yield client
 

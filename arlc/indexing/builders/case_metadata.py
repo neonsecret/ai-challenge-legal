@@ -48,7 +48,9 @@ LAW_TITLE_RE = re.compile(
 )
 
 # Date patterns for quick classification
-DATE_RE = re.compile(r"\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b", re.IGNORECASE)
+DATE_RE = re.compile(
+    r"\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b",
+    re.IGNORECASE)
 
 CASE_EXTRACT_PROMPT = """You are a legal metadata extractor for DIFC court documents. Extract structured data from the following court document pages.
 
@@ -174,7 +176,7 @@ def classify_document(doc_path: Path) -> str:
 
 
 def get_doc_pages(
-    doc_path: Path, n_first: int = 3, n_last: int = 3, max_chars_per_page: int = 2000
+        doc_path: Path, n_first: int = 3, n_last: int = 3, max_chars_per_page: int = 2000
 ) -> list[tuple[int, str]]:
     """Extract text from first N and last N pages of a PDF."""
     doc = fitz.open(str(doc_path))
@@ -216,10 +218,10 @@ def quick_extract_case_id(text: str) -> str | None:
 
 
 async def extract_case_metadata(
-    client: anthropic.AsyncAnthropic,
-    doc_id: str,
-    doc_path: Path,
-    semaphore: asyncio.Semaphore,
+        client: anthropic.AsyncAnthropic,
+        doc_id: str,
+        doc_path: Path,
+        semaphore: asyncio.Semaphore,
 ) -> dict | None:
     """Extract metadata from a case document using Haiku."""
     pages = get_doc_pages(doc_path)
@@ -261,10 +263,10 @@ async def extract_case_metadata(
 
 
 async def extract_law_metadata(
-    client: anthropic.AsyncAnthropic,
-    doc_id: str,
-    doc_path: Path,
-    semaphore: asyncio.Semaphore,
+        client: anthropic.AsyncAnthropic,
+        doc_id: str,
+        doc_path: Path,
+        semaphore: asyncio.Semaphore,
 ) -> dict | None:
     """Extract metadata from a law document using Haiku."""
     pages = get_doc_pages(doc_path, n_first=2, n_last=0)
@@ -295,7 +297,7 @@ async def extract_law_metadata(
 
 
 async def process_all_docs(
-    docs_dir: Path, max_concurrent: int = MAX_CONCURRENT
+        docs_dir: Path, max_concurrent: int = MAX_CONCURRENT
 ) -> tuple[dict, dict]:
     """Process all PDFs and return (case_index, law_index)."""
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -389,9 +391,9 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
     with open(manual_path) as f:
         manual_index = json.load(f)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("VALIDATION: Auto vs Manual Index")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
 
     # Compare case IDs
     auto_cases = set(auto_index.keys())
@@ -491,14 +493,14 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
                     )
 
     print(f"\n  Overall accuracy: {correct_fields}/{total_fields} "
-          f"({100*correct_fields/total_fields:.1f}%)" if total_fields else "")
+          f"({100 * correct_fields / total_fields:.1f}%)" if total_fields else "")
 
     print(f"\n  Per-field accuracy:")
     for field, stats in sorted(field_stats.items()):
         pct = 100 * stats["correct"] / stats["total"] if stats["total"] else 0
         print(f"    {field:20s}  {stats['correct']}/{stats['total']}  ({pct:.0f}%)")
 
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
 
 def dry_run(docs_dir: Path):

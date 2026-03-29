@@ -92,8 +92,7 @@ async def readiness(request: Request):
     try:
         from neolex.db.audit import get_audit_db
         async with get_audit_db() as db:
-            async with db._conn.execute("SELECT 1") as cur:
-                await cur.fetchone()
+            await db.ping()
     except Exception as exc:
         return JSONResponse(
             status_code=503,

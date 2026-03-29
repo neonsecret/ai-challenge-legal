@@ -5,6 +5,8 @@ import {useQueryStream, type Source, type UseQueryStreamReturn} from "./use-quer
 import {useJurisdiction} from "@/lib/use-jurisdiction"
 import {jurisdictionToCorpus} from "@/lib/jurisdictions"
 
+export type {Source}
+
 export interface Message {
     id: string
     role: "user" | "assistant"
@@ -22,15 +24,15 @@ export interface ChatSession {
 }
 
 const SESSIONS_KEY = "neolex_chat_sessions"
+const CURRENT_SESSION_KEY = "neolex_current_session"
 const MAX_SESSIONS = 20
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days — matches cookie expiry
+const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 function loadSessions(): ChatSession[] {
     try {
         const raw = localStorage.getItem(SESSIONS_KEY)
         if (!raw) return []
         const all: ChatSession[] = JSON.parse(raw)
-        // Prune expired sessions
         const now = Date.now()
         return all.filter(s => (now - s.createdAt) < SESSION_TTL_MS)
     } catch {
@@ -41,8 +43,7 @@ function loadSessions(): ChatSession[] {
 function saveSessions(sessions: ChatSession[]) {
     try {
         localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions.slice(0, MAX_SESSIONS)))
-    } catch { /* ignore */
-    }
+    } catch { /* ignore */ }
 }
 
 function titleFromMessages(msgs: Message[]): string {
@@ -60,9 +61,10 @@ interface ChatState {
     wasStreamingRef: React.MutableRefObject<boolean>
     selectedCorpus: string
     setSelectedCorpus: (c: string) => void
+    selectedLaws: string[]
+    setSelectedLaws: React.Dispatch<React.SetStateAction<string[]>>
     stream: UseQueryStreamReturn
     handleSend: (question: string) => void
-    // Session management
     sessions: ChatSession[]
     currentSessionId: string | null
     loadSession: (id: string) => void
@@ -75,26 +77,186 @@ const ChatStateContext = createContext<ChatState | null>(null)
 export function ChatStateProvider({children}: { children: ReactNode }) {
     const [messages, setMessages] = useState<Message[]>([])
     const [selectedCorpus, setSelectedCorpus] = useState("DIFC Law")
+    const [selectedLaws, setSelectedLaws] = useState<string[]>([])
     const [sessions, setSessions] = useState<ChatSession[]>([])
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+    // Hydration gate: false during SSR and first client render.
+    // Sync effects skip when false, preventing them from writing initial empty state to localStorage.
+    // The mount effect loads from localStorage and sets this to true, triggering a re-render
+    // where sync effects see the loaded data.
+    const [hydrated, setHydrated] = useState(false)
     const activeAssistantId = useRef<string | null>(null)
     const traceRef = useRef<string[]>([])
     const wasStreamingRef = useRef<boolean>(false)
+    const streamingSessionIdRef = useRef<string | null>(null)
+    const streamingMessagesRef = useRef<Message[]>([])
     const {jurisdiction} = useJurisdiction()
 
     const stream = useQueryStream()
 
-    // Load sessions from localStorage on mount
+    // ── Mount: load from localStorage (client-only, runs once) ──
     useEffect(() => {
-        setSessions(loadSessions())
+        const loaded = loadSessions()
+        const lastId = localStorage.getItem(CURRENT_SESSION_KEY)
+        const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+
+        // Mark interrupted messages across ALL sessions and recover from server
+        const INTERRUPTED = "*Response was interrupted. Please ask again.*"
+        const patched = loaded.map(s => {
+            const hasNull = s.messages.some(m => m.role === "assistant" && m.content === null)
+            if (!hasNull) return s
+            return {
+                ...s,
+                messages: s.messages.map(m =>
+                    m.role === "assistant" && m.content === null
+                        ? {...m, content: INTERRUPTED}
+                        : m
+                ),
+            }
+        })
+        setSessions(patched)
+
+        // Restore current session messages
+        if (lastId) {
+            const session = patched.find(s => s.id === lastId)
+            if (session) {
+                setMessages(session.messages)
+                setCurrentSessionId(lastId)
+            }
+        }
+
+        // Poll to recover interrupted answers from server for ALL affected sessions.
+        // Backend may still be processing (60-90s pipeline), so poll every 5s for up to 3 min.
+        const interruptedIds = loaded
+            .filter(s => s.messages.some(m => m.role === "assistant" && m.content === null))
+            .map(s => s.id)
+
+        const applyRecovery = (convId: string, answer: string) => {
+            setSessions(prev => prev.map(s => {
+                if (s.id !== convId) return s
+                return {
+                    ...s,
+                    messages: s.messages.map(m =>
+                        m.role === "assistant" && m.content === INTERRUPTED
+                            ? {...m, content: answer}
+                            : m
+                    ),
+                }
+            }))
+            if (convId === lastId) {
+                setMessages(prev => prev.map(m =>
+                    m.role === "assistant" && m.content === INTERRUPTED
+                        ? {...m, content: answer}
+                        : m
+                ))
+            }
+        }
+
+        for (const convId of interruptedIds) {
+            ;(async () => {
+                for (let attempt = 0; attempt < 36; attempt++) {
+                    try {
+                        const r = await fetch(`${API}/api/v1/conversations/${encodeURIComponent(convId)}/last-answer`, {
+                            credentials: "include",
+                        })
+                        if (r.ok) {
+                            const data = await r.json()
+                            if (data?.answer) {
+                                applyRecovery(convId, data.answer)
+                                return
+                            }
+                        }
+                    } catch { /* network error, keep trying */ }
+                    await new Promise(r => setTimeout(r, 5000))
+                }
+            })()
+        }
+
+        setHydrated(true)
     }, [])
 
-    // Auto-save current session when messages change (debounced)
+    // ── Streaming sync effects ──
+
     useEffect(() => {
+        const id = activeAssistantId.current
+        if (id === null) return
+        const onStreamingSession = streamingSessionIdRef.current === currentSessionId || streamingSessionIdRef.current === null
+        if (onStreamingSession) {
+            setMessages((prev) => prev.map((m) =>
+                m.id === id
+                    ? {...m, content: stream.answer, sources: stream.sources ?? [], confidence: stream.confidence ?? null}
+                    : m
+            ))
+        } else {
+            streamingMessagesRef.current = streamingMessagesRef.current.map((m) =>
+                m.id === id
+                    ? {...m, content: stream.answer, sources: stream.sources ?? [], confidence: stream.confidence ?? null}
+                    : m
+            )
+        }
+    }, [stream.answer, stream.sources, stream.confidence, currentSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (stream.isStreaming && stream.streamingStatus && !traceRef.current.includes(stream.streamingStatus)) {
+            traceRef.current = [...traceRef.current, stream.streamingStatus]
+        }
+    }, [stream.streamingStatus, stream.isStreaming]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (!stream.isStreaming && wasStreamingRef.current) {
+            const id = activeAssistantId.current
+            const trace = traceRef.current.slice()
+            const streamSessionId = streamingSessionIdRef.current
+
+            if (streamSessionId && streamSessionId !== currentSessionId) {
+                const finalMessages = streamingMessagesRef.current.map(m =>
+                    m.id === id ? {...m, trace: trace.length > 0 ? trace : m.trace} : m
+                )
+                const saveable = finalMessages.filter(m => m.content !== null || m.role === "user")
+                if (saveable.length > 0) {
+                    setSessions(prev => {
+                        const existing = prev.find(s => s.id === streamSessionId)
+                        const session: ChatSession = {
+                            id: streamSessionId,
+                            title: titleFromMessages(saveable),
+                            messages: saveable,
+                            createdAt: existing?.createdAt ?? Date.now(),
+                        }
+                        return [session, ...prev.filter(s => s.id !== streamSessionId)].slice(0, MAX_SESSIONS)
+                    })
+                }
+            } else {
+                if (id && trace.length > 0) {
+                    setMessages((prev) => prev.map((m) => m.id === id ? {...m, trace} : m))
+                }
+            }
+
+            traceRef.current = []
+            streamingSessionIdRef.current = null
+            streamingMessagesRef.current = []
+        }
+        wasStreamingRef.current = stream.isStreaming
+    }, [stream.isStreaming, currentSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Persistence effects (all gated by hydrated) ──
+
+    useEffect(() => {
+        if (!hydrated) return
+        saveSessions(sessions)
+    }, [sessions, hydrated])
+
+    useEffect(() => {
+        if (!hydrated) return
+        if (currentSessionId) {
+            localStorage.setItem(CURRENT_SESSION_KEY, currentSessionId)
+        } else {
+            localStorage.removeItem(CURRENT_SESSION_KEY)
+        }
+    }, [currentSessionId, hydrated])
+
+    useEffect(() => {
+        if (!hydrated) return
         if (messages.length === 0) return
-        // Only save messages that have content (skip empty streaming placeholders)
-        const saveable = messages.filter(m => m.content !== null || m.role === "user")
-        if (saveable.length === 0) return
 
         const id = currentSessionId ?? `chat-${Date.now()}`
         if (!currentSessionId) setCurrentSessionId(id)
@@ -103,23 +265,32 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             const existing = prev.find(s => s.id === id)
             const session: ChatSession = {
                 id,
-                title: titleFromMessages(saveable),
-                messages: saveable,
+                title: titleFromMessages(messages),
+                messages,
                 createdAt: existing?.createdAt ?? Date.now(),
             }
-            const updated = [session, ...prev.filter(s => s.id !== id)].slice(0, MAX_SESSIONS)
-            saveSessions(updated)
-            return updated
+            return [session, ...prev.filter(s => s.id !== id)].slice(0, MAX_SESSIONS)
         })
-    }, [messages, currentSessionId])
+    }, [messages, currentSessionId, hydrated])
+
+    // ── Actions ──
 
     const loadSession = useCallback((id: string) => {
-        const session = loadSessions().find(s => s.id === id)
-        if (!session) return
-        setMessages(session.messages)
-        setCurrentSessionId(id)
-        activeAssistantId.current = null
-    }, [])
+        if (stream.isStreaming && currentSessionId) {
+            streamingMessagesRef.current = messages.slice()
+        }
+        setSessions(prev => {
+            const session = prev.find(s => s.id === id)
+            if (session) {
+                setMessages(session.messages)
+                setCurrentSessionId(id)
+                if (!stream.isStreaming) {
+                    activeAssistantId.current = null
+                }
+            }
+            return prev
+        })
+    }, [stream.isStreaming, currentSessionId, messages])
 
     const newChat = useCallback(() => {
         setMessages([])
@@ -129,11 +300,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     }, [])
 
     const deleteSession = useCallback((id: string) => {
-        setSessions(prev => {
-            const updated = prev.filter(s => s.id !== id)
-            saveSessions(updated)
-            return updated
-        })
+        setSessions(prev => prev.filter(s => s.id !== id))
         if (currentSessionId === id) newChat()
     }, [currentSessionId, newChat])
 
@@ -143,26 +310,25 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         const assistantId = `assistant-${Date.now()}`
         activeAssistantId.current = assistantId
 
-        // Ensure a session ID exists before sending — server uses it to load history
         const convId = currentSessionId ?? `chat-${Date.now()}`
         if (!currentSessionId) setCurrentSessionId(convId)
+        streamingSessionIdRef.current = convId
 
         setMessages((prev) => [
             ...prev,
             {id: userId, role: "user", content: question},
             {id: assistantId, role: "assistant", content: null, sources: [], confidence: null},
         ])
-        // Map jurisdiction to backend corpus name (e.g., "cz" -> "czech", "difc" -> "difc")
         const corpus = jurisdictionToCorpus(jurisdiction)
-        // Pass conversation_id so the server can load history and detect follow-ups.
-        // History content stays on the server — only the opaque ID travels here.
-        stream.sendQuery(question, corpus, convId)
-    }, [stream.sendQuery, jurisdiction, currentSessionId])
+        const laws = jurisdiction === "cz" && selectedLaws.length > 0 ? selectedLaws : undefined
+        stream.sendQuery(question, corpus, convId, laws)
+    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws])
 
     return (
         <ChatStateContext.Provider value={{
             messages, setMessages, activeAssistantId, traceRef, wasStreamingRef,
-            selectedCorpus, setSelectedCorpus, stream, handleSend,
+            selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
+            stream, handleSend,
             sessions, currentSessionId, loadSession, newChat, deleteSession,
         }}>
             {children}

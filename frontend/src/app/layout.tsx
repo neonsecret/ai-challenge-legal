@@ -1,51 +1,54 @@
-import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import type {Metadata} from "next";
+import {Playfair_Display, Inter} from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/components/theme-provider";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { ToastProvider } from "@/components/ui/toast";
+import {ThemeProvider} from "@/components/theme-provider";
+import {TooltipProvider} from "@/components/ui/tooltip";
+import {ToastProvider} from "@/components/ui/toast";
+import {I18nProvider} from "@/lib/i18n";
 
 const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  display: "swap",
+    subsets: ["latin"],
+    variable: "--font-heading",
+    display: "swap",
 });
 
 const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-sans",
-  display: "swap",
+    subsets: ["latin"],
+    variable: "--font-sans",
+    display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Vitreon Legal — Your AI Legal Counsel",
-  description: "AI-powered legal research and document analysis",
+    title: "Vitreon Legal — Your AI Legal Counsel",
+    description: "AI-powered legal research and document analysis",
 };
 
 export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
+                                       children,
+                                   }: Readonly<{
+    children: React.ReactNode;
 }>) {
-  return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${playfair.variable} ${inter.variable} h-full antialiased`}
-    >
-      <body className="h-full bg-background text-foreground">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
+    return (
+        <html
+            lang="en"
+            suppressHydrationWarning
+            className={`${playfair.variable} ${inter.variable} h-full antialiased`}
         >
-          <TooltipProvider>
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </TooltipProvider>
+        <body className="h-full bg-background text-foreground">
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+        >
+            <I18nProvider>
+                <TooltipProvider>
+                    <ToastProvider>
+                        {children}
+                    </ToastProvider>
+                </TooltipProvider>
+            </I18nProvider>
         </ThemeProvider>
-      </body>
-    </html>
-  );
+        </body>
+        </html>
+    );
 }

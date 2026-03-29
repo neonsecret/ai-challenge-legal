@@ -680,26 +680,27 @@ class DomainConfig:
 
 **Current DIFC-specific code (with line numbers):**
 
-| Lines | What | Change |
-|-------|------|--------|
-| 22-25 | `CASE_ID_PATTERN` hardcoded regex | Read from `config.document_types.case.id_patterns` |
-| 28-31 | `BARE_CASE_ID_PATTERN` | Read from config (entries with `type: "bare"`) |
-| 58-62 | `CONSULTATION_PAPER_PATTERN` | Read from `config.retrieval.consultation_paper_pattern` |
-| 65-73 | `COURT_ORDER_PATTERN`, `DRA_ORDER_PATTERN` | Read from `config.retrieval.court_order_patterns` |
-| 76-109 | `CP_TOPIC_KEYWORDS` dict | Move to config or plugin (DIFC-specific complex logic) |
-| 117-121 | `DIFC_LAW_NO_PATTERN` | Read from `config.law_names.number_pattern` |
-| 124-168 | `LAW_NAME_PATTERNS` list of regexes | Read from `config.law_names.extraction_patterns` |
-| 170-217 | `METADATA_INDICATORS` dict | Read from `config.document_types.case.metadata_fields[*].indicators` |
-| 235-236 | `Router.__init__` class docstring "for DIFC" | Parameterize |
-| 289-335 | `_extract_case_ids()` | Generalize normalization using `normalize` and `normalize_alts` from config |
-| 337-494 | `_extract_law_names()` | Use config patterns, abbreviations, short_names, number_map |
-| 399-408 | `canonical_short` dict | Read from `config.law_names.short_names` |
-| 418-428 | `abbrev_law_pairs` | Read from `config.law_names.abbreviations` |
-| 435-449 | `difc_law_map` (law_no -> name) | Read from `config.law_names.number_map` |
-| 921 | `"these Regulations"` detection | Keep generic (applies to any regulatory domain) |
-| 939-954 | Amendment question detection | Keep generic (pattern is jurisdiction-agnostic) |
+| Lines   | What                                         | Change                                                                      |
+|---------|----------------------------------------------|-----------------------------------------------------------------------------|
+| 22-25   | `CASE_ID_PATTERN` hardcoded regex            | Read from `config.document_types.case.id_patterns`                          |
+| 28-31   | `BARE_CASE_ID_PATTERN`                       | Read from config (entries with `type: "bare"`)                              |
+| 58-62   | `CONSULTATION_PAPER_PATTERN`                 | Read from `config.retrieval.consultation_paper_pattern`                     |
+| 65-73   | `COURT_ORDER_PATTERN`, `DRA_ORDER_PATTERN`   | Read from `config.retrieval.court_order_patterns`                           |
+| 76-109  | `CP_TOPIC_KEYWORDS` dict                     | Move to config or plugin (DIFC-specific complex logic)                      |
+| 117-121 | `DIFC_LAW_NO_PATTERN`                        | Read from `config.law_names.number_pattern`                                 |
+| 124-168 | `LAW_NAME_PATTERNS` list of regexes          | Read from `config.law_names.extraction_patterns`                            |
+| 170-217 | `METADATA_INDICATORS` dict                   | Read from `config.document_types.case.metadata_fields[*].indicators`        |
+| 235-236 | `Router.__init__` class docstring "for DIFC" | Parameterize                                                                |
+| 289-335 | `_extract_case_ids()`                        | Generalize normalization using `normalize` and `normalize_alts` from config |
+| 337-494 | `_extract_law_names()`                       | Use config patterns, abbreviations, short_names, number_map                 |
+| 399-408 | `canonical_short` dict                       | Read from `config.law_names.short_names`                                    |
+| 418-428 | `abbrev_law_pairs`                           | Read from `config.law_names.abbreviations`                                  |
+| 435-449 | `difc_law_map` (law_no -> name)              | Read from `config.law_names.number_map`                                     |
+| 921     | `"these Regulations"` detection              | Keep generic (applies to any regulatory domain)                             |
+| 939-954 | Amendment question detection                 | Keep generic (pattern is jurisdiction-agnostic)                             |
 
-**Approach:** `Router.__init__` takes a `DomainConfig` parameter. All patterns are compiled from config at init time. The `route()` method logic stays the same -- only the patterns it matches against change.
+**Approach:** `Router.__init__` takes a `DomainConfig` parameter. All patterns are compiled from config at init time.
+The `route()` method logic stays the same -- only the patterns it matches against change.
 
 **Effort: ~1.5 days**
 
@@ -707,18 +708,20 @@ class DomainConfig:
 
 **Current DIFC-specific code:**
 
-| Lines | What | Change |
-|-------|------|--------|
-| 361-395 | `_DIFC_LAW_NAMES` list | Read from `config.law_names.known_names` |
-| 398-428 | `extract_identifiers()` -- hardcoded case ID regexes + `_DIFC_LAW_NAMES` | Read patterns from `config.retrieval.identifier_patterns` and `config.law_names.known_names` |
-| 431-506 | `_score_doc_by_law_name()` -- SAC prefix matching ("difc law", "court case") | Read from `config.document_types[*].sac_keywords` |
-| 509-598 | `find_docs_by_keyword()` -- case pattern with CFI/SCT/etc prefixes | Read from `config.document_types.case.id_patterns` |
-| 546-565 | Partial match case patterns (CFI, CA, ARB, ENF, SCT, TCD, DEC) | Extract prefixes from config patterns |
-| 567-578 | Enactment keyword search | Read from `config.retrieval.enactment_keywords` |
-| 648-656 | CE query cleaning (DIFC-specific long case name regex) | Move regex to config or plugin |
-| 970 | HyDE prompt: "from a DIFC legal document" | Read from `config.retrieval.hyde_prompt` |
+| Lines   | What                                                                         | Change                                                                                       |
+|---------|------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| 361-395 | `_DIFC_LAW_NAMES` list                                                       | Read from `config.law_names.known_names`                                                     |
+| 398-428 | `extract_identifiers()` -- hardcoded case ID regexes + `_DIFC_LAW_NAMES`     | Read patterns from `config.retrieval.identifier_patterns` and `config.law_names.known_names` |
+| 431-506 | `_score_doc_by_law_name()` -- SAC prefix matching ("difc law", "court case") | Read from `config.document_types[*].sac_keywords`                                            |
+| 509-598 | `find_docs_by_keyword()` -- case pattern with CFI/SCT/etc prefixes           | Read from `config.document_types.case.id_patterns`                                           |
+| 546-565 | Partial match case patterns (CFI, CA, ARB, ENF, SCT, TCD, DEC)               | Extract prefixes from config patterns                                                        |
+| 567-578 | Enactment keyword search                                                     | Read from `config.retrieval.enactment_keywords`                                              |
+| 648-656 | CE query cleaning (DIFC-specific long case name regex)                       | Move regex to config or plugin                                                               |
+| 970     | HyDE prompt: "from a DIFC legal document"                                    | Read from `config.retrieval.hyde_prompt`                                                     |
 
-**Approach:** Module-level `_DIFC_LAW_NAMES` replaced by `DomainConfig.get().law_names.known_names`. Functions like `extract_identifiers()` iterate over config-provided patterns. The hybrid retrieval logic (BM25 + vector + cross-encoder) is generic and stays unchanged.
+**Approach:** Module-level `_DIFC_LAW_NAMES` replaced by `DomainConfig.get().law_names.known_names`. Functions like
+`extract_identifiers()` iterate over config-provided patterns. The hybrid retrieval logic (BM25 + vector +
+cross-encoder) is generic and stays unchanged.
 
 **Effort: ~1 day**
 
@@ -726,26 +729,28 @@ class DomainConfig:
 
 **Current DIFC-specific code:**
 
-| Lines | What | Change |
-|-------|------|--------|
-| 117-126 | `_SYSTEM_BOOLEAN` -- "expert in DIFC laws" | Read from `config.prompts.boolean` |
-| 128-133 | `_SYSTEM_NUMBER` | Read from `config.prompts.number` |
-| 135-140 | `_SYSTEM_NAME` | Read from `config.prompts.name` |
-| 142-155 | `_SYSTEM_NAME_DATE_COMPARE` | Read from `config.prompts.name_date_compare` |
-| 157-171 | `_SYSTEM_NAME_VALUE_COMPARE` | Read from `config.prompts.name_value_compare` |
-| 173-177 | `_SYSTEM_NAMES` | Read from `config.prompts.names` |
-| 179-184 | `_SYSTEM_DATE` | Read from `config.prompts.date` |
-| 187-238 | `_SYSTEM_FREE_TEXT_LAW` | Read from `config.prompts.free_text_law` |
-| 241-282 | `_SYSTEM_FREE_TEXT_CASE` | Read from `config.prompts.free_text_case` |
-| 284-286 | `_SYSTEM_FREE_TEXT_TRICK` | Read from `config.prompts.free_text_trick` |
-| 288-295 | `_CASE_ID_PATTERN`, `_CASE_KEYWORDS` | Read from config patterns |
-| 297-326 | `_TRICK_KEYWORDS` | Read from `config.trick_questions.keywords` |
-| 861-865 | Trick answer inline text referencing DIFC | Read from `config.trick_questions.answer_template` |
-| 1808 | Law identification heuristics (trust -> "trust law", etc.) | Read from `config.law_names.short_names` |
-| 1866-1878 | `_identify_law()` keyword lists | Read from config |
-| 2058 | "COMPLETE text of the relevant DIFC Law" | Template with `{short_name}` |
+| Lines     | What                                                       | Change                                             |
+|-----------|------------------------------------------------------------|----------------------------------------------------|
+| 117-126   | `_SYSTEM_BOOLEAN` -- "expert in DIFC laws"                 | Read from `config.prompts.boolean`                 |
+| 128-133   | `_SYSTEM_NUMBER`                                           | Read from `config.prompts.number`                  |
+| 135-140   | `_SYSTEM_NAME`                                             | Read from `config.prompts.name`                    |
+| 142-155   | `_SYSTEM_NAME_DATE_COMPARE`                                | Read from `config.prompts.name_date_compare`       |
+| 157-171   | `_SYSTEM_NAME_VALUE_COMPARE`                               | Read from `config.prompts.name_value_compare`      |
+| 173-177   | `_SYSTEM_NAMES`                                            | Read from `config.prompts.names`                   |
+| 179-184   | `_SYSTEM_DATE`                                             | Read from `config.prompts.date`                    |
+| 187-238   | `_SYSTEM_FREE_TEXT_LAW`                                    | Read from `config.prompts.free_text_law`           |
+| 241-282   | `_SYSTEM_FREE_TEXT_CASE`                                   | Read from `config.prompts.free_text_case`          |
+| 284-286   | `_SYSTEM_FREE_TEXT_TRICK`                                  | Read from `config.prompts.free_text_trick`         |
+| 288-295   | `_CASE_ID_PATTERN`, `_CASE_KEYWORDS`                       | Read from config patterns                          |
+| 297-326   | `_TRICK_KEYWORDS`                                          | Read from `config.trick_questions.keywords`        |
+| 861-865   | Trick answer inline text referencing DIFC                  | Read from `config.trick_questions.answer_template` |
+| 1808      | Law identification heuristics (trust -> "trust law", etc.) | Read from `config.law_names.short_names`           |
+| 1866-1878 | `_identify_law()` keyword lists                            | Read from config                                   |
+| 2058      | "COMPLETE text of the relevant DIFC Law"                   | Template with `{short_name}`                       |
 
-**Approach:** All `_SYSTEM_*` variables become properties of `DomainConfig` with `{expert_role}`, `{short_name}`, `{jurisdiction_context}` placeholders resolved at load time. The answer generation logic itself (LLM call, parsing, retry) is generic.
+**Approach:** All `_SYSTEM_*` variables become properties of `DomainConfig` with `{expert_role}`, `{short_name}`,
+`{jurisdiction_context}` placeholders resolved at load time. The answer generation logic itself (LLM call, parsing,
+retry) is generic.
 
 **Effort: ~1 day**
 
@@ -753,15 +758,17 @@ class DomainConfig:
 
 **Current DIFC-specific code:**
 
-| Lines | What | Change |
-|-------|------|--------|
-| 14-16 | `_CASE_ID_RE` -- hardcoded `[A-Z]{2,5}` | Read from `config.tokenizer.patterns` |
-| 19-21 | `_ENF_RE` -- ENF-specific | Becomes one of the config patterns |
-| 24-31 | `_ARTICLE_RE`, `_LAW_NO_RE` | Read from config patterns |
-| 34-41 | `_SCHEDULE_RE`, `_REGULATION_RE` | Read from config patterns |
-| 55-106 | `_expand_legal_refs()` | Iterate over config patterns, apply expansion templates |
+| Lines  | What                                    | Change                                                  |
+|--------|-----------------------------------------|---------------------------------------------------------|
+| 14-16  | `_CASE_ID_RE` -- hardcoded `[A-Z]{2,5}` | Read from `config.tokenizer.patterns`                   |
+| 19-21  | `_ENF_RE` -- ENF-specific               | Becomes one of the config patterns                      |
+| 24-31  | `_ARTICLE_RE`, `_LAW_NO_RE`             | Read from config patterns                               |
+| 34-41  | `_SCHEDULE_RE`, `_REGULATION_RE`        | Read from config patterns                               |
+| 55-106 | `_expand_legal_refs()`                  | Iterate over config patterns, apply expansion templates |
 
-**Approach:** `_expand_legal_refs()` becomes a generic function that iterates over `config.tokenizer.patterns`, applies each regex, and generates expansion tokens from the template strings. The template language supports `{group_name}` substitution and conditional inclusion (only expand if group was captured).
+**Approach:** `_expand_legal_refs()` becomes a generic function that iterates over `config.tokenizer.patterns`, applies
+each regex, and generates expansion tokens from the template strings. The template language supports `{group_name}`
+substitution and conditional inclusion (only expand if group was captured).
 
 **Effort: ~0.5 day**
 
@@ -769,11 +776,12 @@ class DomainConfig:
 
 **Current DIFC-specific code:**
 
-| Lines | What | Change |
-|-------|------|--------|
+| Lines | What                         | Change                                  |
+|-------|------------------------------|-----------------------------------------|
 | 37-48 | `_BOILERPLATE_PATTERNS` list | Read from `config.boilerplate_patterns` |
 
-This is a straightforward replacement. The `clean_text_for_embedding()` function already takes a list of patterns -- it just needs to read them from config instead of module-level constants.
+This is a straightforward replacement. The `clean_text_for_embedding()` function already takes a list of patterns -- it
+just needs to read them from config instead of module-level constants.
 
 **Effort: ~0.25 day**
 
@@ -781,19 +789,20 @@ This is a straightforward replacement. The `clean_text_for_embedding()` function
 
 **Current DIFC-specific code:**
 
-| Lines | What | Change |
-|-------|------|--------|
-| 186-235 | `_TRICK_KEYWORDS` list | Read from `config.trick_questions.keywords` |
-| 239-248 | `_CRIMINAL_PREFIX_RE` | Read from `config.trick_questions.regex_patterns` |
-| 252-280 | `_is_trick_question()` | Use config for keywords, regexes, case_id_safety_pattern |
-| 271 | Case ID safety guard regex | Read from `config.trick_questions.case_id_safety_pattern` |
-| 718 | Trick answer text | Read from `config.trick_questions.answer_template` |
+| Lines   | What                       | Change                                                    |
+|---------|----------------------------|-----------------------------------------------------------|
+| 186-235 | `_TRICK_KEYWORDS` list     | Read from `config.trick_questions.keywords`               |
+| 239-248 | `_CRIMINAL_PREFIX_RE`      | Read from `config.trick_questions.regex_patterns`         |
+| 252-280 | `_is_trick_question()`     | Use config for keywords, regexes, case_id_safety_pattern  |
+| 271     | Case ID safety guard regex | Read from `config.trick_questions.case_id_safety_pattern` |
+| 718     | Trick answer text          | Read from `config.trick_questions.answer_template`        |
 
 **Effort: ~0.5 day**
 
 ### 3.8 `arlc/page_verifier.py` -- No Changes
 
-This module is already fully generic. It works with answer types, keywords, and page text without any jurisdiction-specific logic.
+This module is already fully generic. It works with answer types, keywords, and page text without any
+jurisdiction-specific logic.
 
 ### 3.9 New: `arlc/plugins/base.py` (Plugin Interface)
 
@@ -852,7 +861,9 @@ data_indices:
   appeals: "data/appeal_index.json"
 ```
 
-For a new domain, you would build equivalent index files from the new corpus. The indexing tools (`build_index()`, metadata extraction scripts) would need to understand the domain's document structure -- this is where plugins provide custom extraction logic.
+For a new domain, you would build equivalent index files from the new corpus. The indexing tools (`build_index()`,
+metadata extraction scripts) would need to understand the domain's document structure -- this is where plugins provide
+custom extraction logic.
 
 ## 5. Migration Path
 
@@ -879,56 +890,63 @@ For a new domain, you would build equivalent index files from the new corpus. Th
 
 ## 6. Example: Adding "US Federal Courts" Domain
 
-| Step | Work | Time |
-|------|------|------|
-| 1. Create `domains/us_federal.yaml` | Write config with US case patterns, statutes, CFR refs | 4 hours |
-| 2. Build data indices | Run indexer on federal corpus; build `case_metadata_index.json` (judges, dates, parties) and `law_name_index.json` (USC/CFR mappings) | 8 hours |
-| 3. Write prompts | Adapt free_text prompts for federal legal style; adjust calibration examples | 4 hours |
-| 4. Write plugin (if needed) | USC cross-reference resolution, circuit/district disambiguation | 4 hours |
-| 5. Test and tune | Run evaluation dataset, tune retrieval boosts, cross-encoder thresholds | 8 hours |
-| **Total** | | **~3.5 days** |
+| Step                                | Work                                                                                                                                  | Time          |
+|-------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| 1. Create `domains/us_federal.yaml` | Write config with US case patterns, statutes, CFR refs                                                                                | 4 hours       |
+| 2. Build data indices               | Run indexer on federal corpus; build `case_metadata_index.json` (judges, dates, parties) and `law_name_index.json` (USC/CFR mappings) | 8 hours       |
+| 3. Write prompts                    | Adapt free_text prompts for federal legal style; adjust calibration examples                                                          | 4 hours       |
+| 4. Write plugin (if needed)         | USC cross-reference resolution, circuit/district disambiguation                                                                       | 4 hours       |
+| 5. Test and tune                    | Run evaluation dataset, tune retrieval boosts, cross-encoder thresholds                                                               | 8 hours       |
+| **Total**                           |                                                                                                                                       | **~3.5 days** |
 
-**What stays untouched:** BM25 indexing, FAISS/ChromaDB vector store, cross-encoder reranking, page verification, format guardian, LLM call infrastructure, parallel worker pipeline.
+**What stays untouched:** BM25 indexing, FAISS/ChromaDB vector store, cross-encoder reranking, page verification, format
+guardian, LLM call infrastructure, parallel worker pipeline.
 
 ## 7. Example: Adding "UK Contract Law" Domain
 
-| Step | Work | Time |
-|------|------|------|
-| 1. Create `domains/uk_contracts.yaml` | EWHC/EWCA/UKSC patterns, Section refs, Act patterns | 3 hours |
-| 2. Build data indices | Index contract law cases and statutes; build metadata | 6 hours |
-| 3. Write prompts | Contract law expertise, English legal terminology | 3 hours |
-| 4. Write plugin (minimal) | Neutral citation resolution, statute section cross-refs | 2 hours |
-| 5. Disable trick questions | UK has criminal jurisdiction -- set `trick_questions.enabled: false` | 0.25 hours |
-| 6. Test and tune | | 6 hours |
-| **Total** | | **~2.5 days** |
+| Step                                  | Work                                                                 | Time          |
+|---------------------------------------|----------------------------------------------------------------------|---------------|
+| 1. Create `domains/uk_contracts.yaml` | EWHC/EWCA/UKSC patterns, Section refs, Act patterns                  | 3 hours       |
+| 2. Build data indices                 | Index contract law cases and statutes; build metadata                | 6 hours       |
+| 3. Write prompts                      | Contract law expertise, English legal terminology                    | 3 hours       |
+| 4. Write plugin (minimal)             | Neutral citation resolution, statute section cross-refs              | 2 hours       |
+| 5. Disable trick questions            | UK has criminal jurisdiction -- set `trick_questions.enabled: false` | 0.25 hours    |
+| 6. Test and tune                      |                                                                      | 6 hours       |
+| **Total**                             |                                                                      | **~2.5 days** |
 
 ## 8. Estimated Total Effort
 
-| Component | Effort |
-|-----------|--------|
-| `arlc/domain.py` (config loader) | 0.5 day |
-| `arlc/plugins/base.py` + `difc.py` | 0.5 day |
-| `arlc/router.py` refactor | 1.5 days |
-| `arlc/retriever.py` refactor | 1 day |
-| `arlc/answerer.py` refactor | 1 day |
-| `arlc/indexing/legal_tokenizer.py` refactor | 0.5 day |
-| `arlc/indexing/indexer.py` refactor | 0.25 day |
-| `arlc/pipeline.py` refactor | 0.5 day |
-| `domains/difc.yaml` creation | 0.5 day |
-| Integration testing (bit-identical validation) | 1 day |
-| **Total Phase 1+2 (config-driven DIFC)** | **~7 days** |
+| Component                                       | Effort        |
+|-------------------------------------------------|---------------|
+| `arlc/domain.py` (config loader)                | 0.5 day       |
+| `arlc/plugins/base.py` + `difc.py`              | 0.5 day       |
+| `arlc/router.py` refactor                       | 1.5 days      |
+| `arlc/retriever.py` refactor                    | 1 day         |
+| `arlc/answerer.py` refactor                     | 1 day         |
+| `arlc/indexing/legal_tokenizer.py` refactor     | 0.5 day       |
+| `arlc/indexing/indexer.py` refactor             | 0.25 day      |
+| `arlc/pipeline.py` refactor                     | 0.5 day       |
+| `domains/difc.yaml` creation                    | 0.5 day       |
+| Integration testing (bit-identical validation)  | 1 day         |
+| **Total Phase 1+2 (config-driven DIFC)**        | **~7 days**   |
 | **Each new domain (config + indices + tuning)** | **~2-4 days** |
 
 ## 9. Key Design Decisions
 
-1. **YAML over JSON** for config: YAML supports comments, multi-line strings (prompts), and is more readable for complex legal patterns.
+1. **YAML over JSON** for config: YAML supports comments, multi-line strings (prompts), and is more readable for complex
+   legal patterns.
 
-2. **Plugin system over config-only**: Some DIFC logic (CP topic disambiguation, appeal cross-referencing) involves reading PDF content at init time and maintaining runtime state. This is fundamentally procedural and does not reduce well to declarative config. The plugin interface provides clean hooks without polluting the generic pipeline.
+2. **Plugin system over config-only**: Some DIFC logic (CP topic disambiguation, appeal cross-referencing) involves
+   reading PDF content at init time and maintaining runtime state. This is fundamentally procedural and does not reduce
+   well to declarative config. The plugin interface provides clean hooks without polluting the generic pipeline.
 
 3. **Singleton DomainConfig**: Loaded once at startup, immutable thereafter. Thread-safe. No per-request overhead.
 
-4. **Prompt template variables**: Simple `{variable}` substitution (not Jinja2) to keep dependencies minimal and prompts auditable. Variables: `{expert_role}`, `{short_name}`, `{jurisdiction_context}`, `{question}`.
+4. **Prompt template variables**: Simple `{variable}` substitution (not Jinja2) to keep dependencies minimal and prompts
+   auditable. Variables: `{expert_role}`, `{short_name}`, `{jurisdiction_context}`, `{question}`.
 
-5. **Backward compatibility**: The DIFC config should reproduce the exact current behavior. The `ARLC_DOMAIN` env var defaults to `"difc"`, so existing deployments work without changes.
+5. **Backward compatibility**: The DIFC config should reproduce the exact current behavior. The `ARLC_DOMAIN` env var
+   defaults to `"difc"`, so existing deployments work without changes.
 
-6. **Index files per domain**: Stored in `data/<domain>/` subdirectories. The generic pipeline reads paths from config, not hardcoded `data/` paths.
+6. **Index files per domain**: Stored in `data/<domain>/` subdirectories. The generic pipeline reads paths from config,
+   not hardcoded `data/` paths.

@@ -14,7 +14,6 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from httpx import AsyncClient, ASGITransport
 
-
 # Minimal valid PDF magic bytes for upload tests
 _MINIMAL_PDF = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
 
@@ -264,7 +263,7 @@ async def test_invalid_key_logged_with_prefix(seeded_db, monkeypatch):
     invalid_failures = [
         e for e in events
         if e["event_type"] == "auth_failure"
-        and json.loads(e["detail_json"]).get("reason") == "invalid_key"
+           and json.loads(e["detail_json"]).get("reason") == "invalid_key"
     ]
     assert len(invalid_failures) >= 1, "invalid_key auth_failure must be logged"
     detail = json.loads(invalid_failures[0]["detail_json"])
