@@ -13,7 +13,7 @@ import {GroundingView} from "@/components/grounding/grounding-view"
 import {FakePdf} from "@/components/landing/fake-pdf"
 import type {DemoScenario} from "@/components/landing/demo-panel"
 import {useJurisdiction} from "@/lib/use-jurisdiction"
-import {JURISDICTIONS, JURISDICTION_ORDER, type Jurisdiction} from "@/lib/jurisdictions"
+import {JURISDICTIONS, JURISDICTION_ORDER, jurisdictionToCorpus, type Jurisdiction} from "@/lib/jurisdictions"
 import {useIsMobile} from "@/hooks/use-mobile"
 import {useDocumentIndex} from "@/components/chat/use-document-index"
 import {DocumentIndex} from "@/components/chat/document-index"
@@ -181,7 +181,7 @@ export default function ChatPage() {
         messages, activeAssistantId,
         selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
         stream, handleSend,
-        sessions, currentSessionId, loadSession, newChat, deleteSession,
+        sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
     const {answer, sources, confidence, isStreaming, streamingStatus, error, clearError} = stream
@@ -197,6 +197,9 @@ export default function ChatPage() {
     const longPressFiredRef = useRef(false)
     const [layoutMode, setLayoutMode] = useState<"chat" | "split" | "source">("split")
     const [customCorpus, setCustomCorpus] = useState("")
+    const [corpusWarning, setCorpusWarning] = useState<{corpus: string, jurisdiction: Jurisdiction} | null>(null)
+    const [corpusBlocked, setCorpusBlocked] = useState(false)
+    const [hideCorpusWarning, setHideCorpusWarning] = useState(false)
     const customInputRef = useRef<HTMLInputElement>(null)
     const {resolvedTheme} = useTheme()
     const [mounted, setMounted] = useState(false)
@@ -249,13 +252,18 @@ export default function ChatPage() {
 
     const onSend = useCallback((question: string) => {
         setPreviewIndex(null)
-        handleSend(question)
+        const result = handleSend(question)
+        if (result === "blocked") {
+            setCorpusBlocked(true)
+            setTimeout(() => setCorpusBlocked(false), 4000)
+        }
     }, [handleSend])
 
-    // Load custom corpus name from localStorage
+    // Load custom corpus name and corpus warning preference from localStorage
     useEffect(() => {
         const stored = localStorage.getItem("neolex_custom_corpus")
         if (stored) setCustomCorpus(stored)
+        setHideCorpusWarning(localStorage.getItem("neolex_hide_corpus_warning") === "1")
     }, [])
 
     // Auto-focus custom input when switching to custom jurisdiction
@@ -562,13 +570,35 @@ export default function ChatPage() {
                                             return
                                         }
                                         if (!isEnabled) return
-                                        if (isActive && hasLawPane) {
-                                            // Already on this jurisdiction — toggle law pane
-                                            setLawPaneOpen(o => !o)
-                                        } else {
+
+                                        const newCorpus = jurisdictionToCorpus(key)
+
+                                        // Already in this chat's corpora, or new chat — just switch
+                                        if (currentCorpora.length === 0 || currentCorpora.includes(newCorpus)) {
+                                            if (isActive && hasLawPane) {
+                                                setLawPaneOpen(o => !o)
+                                            } else {
+                                                setJurisdiction(key)
+                                                if (hasLawPane) setLawPaneOpen(true)
+                                                else setLawPaneOpen(false)
+                                            }
+                                            return
+                                        }
+
+                                        // Would be 3rd+ corpus — block
+                                        if (currentCorpora.length >= 2) {
+                                            setCorpusBlocked(true)
+                                            setTimeout(() => setCorpusBlocked(false), 4000)
+                                            return
+                                        }
+
+                                        // Would be 2nd corpus — show warning (unless dismissed)
+                                        if (hideCorpusWarning) {
                                             setJurisdiction(key)
                                             if (hasLawPane) setLawPaneOpen(true)
                                             else setLawPaneOpen(false)
+                                        } else {
+                                            setCorpusWarning({corpus: newCorpus, jurisdiction: key})
                                         }
                                     }}
                                     title={isEnabled ? config.description : "Coming soon"}
@@ -688,6 +718,18 @@ export default function ChatPage() {
                                 }}
                             />
                         )}
+                        {/* Active corpora indicator */}
+                        {currentCorpora.length > 0 && (
+                            <span style={{
+                                fontSize: 9,
+                                color: isDark ? "rgba(255,255,255,0.30)" : "rgba(46,31,8,0.30)",
+                                whiteSpace: "nowrap",
+                                flexShrink: 0,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                            }}>
+                                {currentCorpora.join(" + ")}
+                            </span>
+                        )}
                     </div>
                     {/* History toggle + Sources toggle + New chat */}
                     <button
@@ -779,6 +821,123 @@ export default function ChatPage() {
                         </button>
                     )}
                 </div>
+
+                {/* Corpus warning banner — switching to a 2nd corpus */}
+                {corpusWarning && (
+                    <div style={{
+                        padding: "10px 20px",
+                        background: isDark ? "rgba(201,168,76,0.12)" : "rgba(196,124,0,0.08)",
+                        border: isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(196,124,0,0.25)",
+                        borderRadius: 0,
+                        borderBottom: isDark ? "0.5px solid rgba(201,168,76,0.20)" : "0.5px solid rgba(196,124,0,0.18)",
+                        display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+                        fontSize: 12,
+                        color: isDark ? "rgba(255,255,255,0.85)" : "#2e1f08",
+                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                        flexShrink: 0,
+                    }}>
+                        <span>
+                            Adding <strong>{JURISDICTIONS[corpusWarning.jurisdiction].name}</strong> to this conversation. Cross-jurisdiction queries may be slower.
+                        </span>
+                        <div style={{display: "flex", gap: 6, marginLeft: "auto"}}>
+                            <button
+                                onClick={() => {
+                                    const j = corpusWarning.jurisdiction
+                                    const hasLawPane = j === "cz" && availableLaws.length > 0
+                                    setJurisdiction(j)
+                                    if (hasLawPane) setLawPaneOpen(true)
+                                    else setLawPaneOpen(false)
+                                    setCorpusWarning(null)
+                                }}
+                                style={{
+                                    fontSize: 11, fontWeight: 600,
+                                    padding: "4px 12px", borderRadius: 7,
+                                    cursor: "pointer",
+                                    background: isDark ? "rgba(201,168,76,0.22)" : "rgba(196,124,0,0.16)",
+                                    border: isDark ? "0.5px solid rgba(201,168,76,0.45)" : "0.5px solid rgba(196,124,0,0.35)",
+                                    color: isDark ? "#C9A84C" : "#7a4a00",
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                    transition: "all 0.12s",
+                                }}
+                            >
+                                Continue
+                            </button>
+                            <button
+                                onClick={() => setCorpusWarning(null)}
+                                style={{
+                                    fontSize: 11, fontWeight: 500,
+                                    padding: "4px 10px", borderRadius: 7,
+                                    cursor: "pointer",
+                                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.18)",
+                                    border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.35)",
+                                    color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
+                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                    transition: "all 0.12s",
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                        <label style={{
+                            fontSize: 10, opacity: 0.55, cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: 4,
+                            fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                        }}>
+                            <input
+                                type="checkbox"
+                                style={{width: 12, height: 12, cursor: "pointer"}}
+                                onChange={(e) => {
+                                    setHideCorpusWarning(e.target.checked)
+                                    localStorage.setItem("neolex_hide_corpus_warning", e.target.checked ? "1" : "")
+                                }}
+                            />
+                            Don&apos;t show again
+                        </label>
+                    </div>
+                )}
+
+                {/* Corpus blocked banner — max 2 per conversation */}
+                <AnimatePresence>
+                    {corpusBlocked && (
+                        <motion.div
+                            initial={{opacity: 0, height: 0}}
+                            animate={{opacity: 1, height: "auto"}}
+                            exit={{opacity: 0, height: 0}}
+                            transition={{duration: 0.2}}
+                            style={{overflow: "hidden", flexShrink: 0}}
+                        >
+                            <div style={{
+                                padding: "10px 20px",
+                                background: isDark ? "rgba(255,80,60,0.10)" : "rgba(180,40,20,0.07)",
+                                borderBottom: isDark ? "0.5px solid rgba(255,80,60,0.25)" : "0.5px solid rgba(180,40,20,0.20)",
+                                fontSize: 12,
+                                color: isDark ? "rgba(255,140,122,0.90)" : "#7a2010",
+                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                display: "flex", alignItems: "center", gap: 8,
+                            }}>
+                                <span>Maximum 2 jurisdictions per conversation. Start a new chat to use a different corpus.</span>
+                                <button
+                                    onClick={() => {
+                                        newChat()
+                                        setCorpusBlocked(false)
+                                    }}
+                                    style={{
+                                        fontSize: 11, fontWeight: 600,
+                                        padding: "4px 10px", borderRadius: 7,
+                                        cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap",
+                                        background: isDark ? "rgba(255,80,60,0.18)" : "rgba(180,40,20,0.12)",
+                                        border: isDark ? "0.5px solid rgba(255,80,60,0.35)" : "0.5px solid rgba(180,40,20,0.25)",
+                                        color: isDark ? "rgba(255,140,122,0.90)" : "#7a2010",
+                                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                        transition: "all 0.12s",
+                                    }}
+                                >
+                                    New chat
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* Czech law selector pills — toggle via country pill click */}
                 {jurisdiction === "cz" && lawPaneOpen && availableLaws.length > 0 && (

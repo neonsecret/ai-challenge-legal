@@ -21,6 +21,7 @@ export interface ChatSession {
     title: string
     messages: Message[]
     createdAt: number
+    corpora: string[]
 }
 
 const MAX_SESSIONS = 20
@@ -42,7 +43,10 @@ function loadSessions(): ChatSession[] {
         if (!raw) return []
         const all: ChatSession[] = JSON.parse(raw)
         const now = Date.now()
-        return all.filter(s => (now - s.createdAt) < SESSION_TTL_MS)
+        // Normalize: ensure corpora field exists (backward compat with pre-corpora sessions)
+        return all
+            .filter(s => (now - s.createdAt) < SESSION_TTL_MS)
+            .map(s => ({...s, corpora: s.corpora ?? []}))
     } catch {
         return []
     }
@@ -82,9 +86,10 @@ interface ChatState {
     selectedLaws: string[]
     setSelectedLaws: React.Dispatch<React.SetStateAction<string[]>>
     stream: UseQueryStreamReturn
-    handleSend: (question: string) => void
+    handleSend: (question: string) => "ok" | "blocked"
     sessions: ChatSession[]
     currentSessionId: string | null
+    currentCorpora: string[]
     loadSession: (id: string) => void
     newChat: () => void
     deleteSession: (id: string) => void
@@ -239,6 +244,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                             title: titleFromMessages(saveable),
                             messages: saveable,
                             createdAt: existing?.createdAt ?? Date.now(),
+                            corpora: existing?.corpora ?? [],
                         }
                         return [session, ...prev.filter(s => s.id !== streamSessionId)].slice(0, MAX_SESSIONS)
                     })
@@ -282,6 +288,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 title: titleFromMessages(messages),
                 messages,
                 createdAt: existing?.createdAt ?? Date.now(),
+                corpora: existing?.corpora ?? [],
             }
             return [session, ...prev.filter(s => s.id !== id)].slice(0, MAX_SESSIONS)
         })
@@ -318,32 +325,54 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         if (currentSessionId === id) newChat()
     }, [currentSessionId, newChat])
 
-    const handleSend = useCallback((question: string) => {
+    const handleSend = useCallback((question: string): "ok" | "blocked" => {
+        const corpus = jurisdictionToCorpus(jurisdiction)
+        if (!corpus) return "blocked"  // safety: at least one corpus required
+
+        // Check corpus limit: max 2 distinct corpora per conversation
+        const convId = currentSessionId ?? `chat-${Date.now()}`
+        const session = sessions.find(s => s.id === convId)
+        const existingCorpora = session?.corpora ?? []
+        if (existingCorpora.length >= 2 && !existingCorpora.includes(corpus)) {
+            // Blocked — max 2 corpora per conversation
+            return "blocked" as const
+        }
+
         traceRef.current = []
         const userId = `user-${Date.now()}`
         const assistantId = `assistant-${Date.now()}`
         activeAssistantId.current = assistantId
 
-        const convId = currentSessionId ?? `chat-${Date.now()}`
         if (!currentSessionId) setCurrentSessionId(convId)
         streamingSessionIdRef.current = convId
+
+        // Add corpus to session if new
+        if (!existingCorpora.includes(corpus)) {
+            setSessions(prev => prev.map(s =>
+                s.id === convId
+                    ? {...s, corpora: [...(s.corpora ?? []), corpus]}
+                    : s
+            ))
+        }
 
         setMessages((prev) => [
             ...prev,
             {id: userId, role: "user", content: question},
             {id: assistantId, role: "assistant", content: null, sources: [], confidence: null},
         ])
-        const corpus = jurisdictionToCorpus(jurisdiction)
         const laws = jurisdiction === "cz" && selectedLaws.length > 0 ? selectedLaws : undefined
         stream.sendQuery(question, corpus, convId, laws)
-    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws])
+        return "ok" as const
+    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, sessions])
+
+    const currentCorpora = sessions.find(s => s.id === currentSessionId)?.corpora ?? []
 
     return (
         <ChatStateContext.Provider value={{
             messages, setMessages, activeAssistantId, traceRef, wasStreamingRef,
             selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
             stream, handleSend,
-            sessions, currentSessionId, loadSession, newChat, deleteSession,
+            sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
         }}>
             {children}
         </ChatStateContext.Provider>
