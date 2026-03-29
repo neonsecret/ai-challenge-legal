@@ -54,8 +54,13 @@ async def run_agent_question(
             load_accumulated_docs(user_id, conversation_id),
         )
 
+        # Drop docs from a different corpus — they're irrelevant after a jurisdiction switch
         if accumulated_docs:
-            logger.info("Loaded %d accumulated docs from prior turns", len(accumulated_docs))
+            same_corpus = [d for d in accumulated_docs if d.get("_corpus", corpus) == corpus]
+            if len(same_corpus) < len(accumulated_docs):
+                logger.info("Dropped %d docs from different corpus (kept %d for %s)",
+                           len(accumulated_docs) - len(same_corpus), len(same_corpus), corpus)
+            accumulated_docs = same_corpus
 
     # Run the agent
     from arlc.agent.graph import run_agent_turn

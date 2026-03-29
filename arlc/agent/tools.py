@@ -84,6 +84,7 @@ def execute_search(
             page=p.page_number,
             text=p.text or "",
             score=p.score,
+            _corpus=corpus,
         )
         for p in new_pages
     ]

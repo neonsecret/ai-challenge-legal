@@ -40,6 +40,7 @@ class SourceDocument(TypedDict, total=False):
     text: Required[str]
     score: Required[float]
     verified: bool
+    _corpus: str  # which corpus this doc came from (for cross-corpus filtering)
 
 
 class AgentState(TypedDict):
