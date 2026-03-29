@@ -53,10 +53,17 @@ from arlc.agent.config import (
     MAX_ACCUMULATED_DOCS,
     MAX_HISTORY_MESSAGES,
     MAX_SEARCHES_PER_TURN,
+    WEB_SEARCH_ENABLED,
 )
 from arlc.agent.prompts import build_system_prompt
 from arlc.agent.state import AgentState, SourceDocument
-from arlc.agent.tools import execute_search, format_search_results, verify_source_relevance
+from arlc.agent.tools import (
+    execute_search,
+    execute_web_search,
+    format_search_results,
+    format_web_results,
+    verify_source_relevance,
+)
 from arlc.agent.verification import verify_agent_pages
 
 logger = logging.getLogger(__name__)
@@ -72,6 +79,14 @@ def search_legal_corpus(query: str) -> str:
     Write queries in the corpus language (Czech for Czech law, English for DIFC).
     Each call returns fresh documents not previously retrieved in this conversation."""
     raise RuntimeError("search_legal_corpus is schema-only; execution handled by search_node")
+
+
+@tool
+def search_web(query: str) -> str:
+    """Search the internet for current legal information, recent amendments, news, or court decisions not available in the corpus.
+    Use ONLY when corpus search returns insufficient results and the question needs up-to-date information.
+    Web results are unverified — always prefer corpus sources when available."""
+    raise RuntimeError("search_web is schema-only; execution handled by search_node")
 
 
 # ---------------------------------------------------------------------------
@@ -92,17 +107,22 @@ def _build_llm_pair():
         location=os.environ.get("VERTEX_LOCATION", "us-east5"),
     )
 
+    tools = [search_legal_corpus]
+    if WEB_SEARCH_ENABLED:
+        tools.append(search_web)
+        logger.info("[agent] web search tool enabled")
+
     fast = ChatAnthropicVertex(
         model_name=LLM_MODEL_FAST,
         max_tokens=1024,  # First round only needs short tool calls
         **base_kwargs,
-    ).bind_tools([search_legal_corpus])
+    ).bind_tools(tools)
 
     full = ChatAnthropicVertex(
         model_name=LLM_MODEL,
         max_tokens=LLM_MAX_TOKENS,
         **base_kwargs,
-    ).bind_tools([search_legal_corpus])
+    ).bind_tools(tools)
 
     return fast, full
 
@@ -171,6 +191,19 @@ def build_agent_graph():
                 ))
                 continue
 
+            # --- Web search tool ---
+            if tc["name"] == "search_web":
+                if on_status:
+                    on_status("retrieving:searching the web")
+                web_results = execute_web_search(query)
+                content = format_web_results(web_results)
+                logger.info("[agent] web search: query=\"%s\" -> %d results",
+                           query[:60], len(web_results))
+                results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
+                # Web results don't go into accumulated_docs (they're not corpus docs)
+                continue
+
+            # --- Corpus search tool (default) ---
             # Status: user-facing, no internal details
             if on_status:
                 on_status("retrieving:searching corpus")

@@ -15,6 +15,10 @@ MAX_SEARCHES_PER_TURN: int = int(os.environ.get("AGENT_MAX_SEARCHES", "5"))
 MAX_ACCUMULATED_DOCS: int = int(os.environ.get("AGENT_MAX_DOCS", "10"))
 MAX_HISTORY_MESSAGES: int = int(os.environ.get("AGENT_MAX_HISTORY", "10"))  # 5 Q&A pairs
 
+# --- Web search ---
+WEB_SEARCH_MAX_RESULTS: int = int(os.environ.get("AGENT_WEB_SEARCH_MAX", "3"))
+WEB_SEARCH_ENABLED: bool = os.environ.get("AGENT_WEB_SEARCH_ENABLED", "true").lower() == "true"
+
 # --- LLM ---
 LLM_MODEL: str = os.environ.get("AGENT_LLM_MODEL", "claude-sonnet-4-6")
 LLM_MODEL_FAST: str = os.environ.get("AGENT_LLM_MODEL_FAST", "claude-haiku-4-5-20251001")

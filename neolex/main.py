@@ -70,10 +70,18 @@ class CSRFMiddleware(BaseHTTPMiddleware):
 
 
 async def _cleanup_expired() -> None:
-    """Periodic cleanup of expired sessions and auth tokens."""
-    from sqlalchemy import delete as sql_delete
+    """Periodic cleanup of expired sessions, auth tokens, and old conversation data.
 
-    from neolex.db.models import AuthToken, Session
+    GDPR data retention enforcement:
+    - Sessions and auth tokens: deleted when expired (30-day TTL set at creation)
+    - Conversation messages: deleted after 90 days
+    - Conversation docs: deleted when no messages remain for that conversation
+    """
+    from datetime import timedelta
+
+    from sqlalchemy import delete as sql_delete, select as sql_select
+
+    from neolex.db.models import AuthToken, ConversationDocs, ConversationMessage, Session
     from neolex.db.postgres import AsyncSessionLocal
 
     while True:
@@ -81,12 +89,41 @@ async def _cleanup_expired() -> None:
         try:
             async with AsyncSessionLocal() as db:
                 now = datetime.now(timezone.utc)
+
+                # 1. Expired sessions and auth tokens
                 await db.execute(sql_delete(Session).where(Session.expires_at < now))
                 await db.execute(sql_delete(AuthToken).where(AuthToken.expires_at < now))
+
+                # 2. Conversation messages older than 90 days (GDPR retention)
+                cutoff_90d = now - timedelta(days=90)
+                result = await db.execute(
+                    sql_delete(ConversationMessage)
+                    .where(ConversationMessage.created_at < cutoff_90d)
+                    .returning(ConversationMessage.id)
+                )
+                deleted_msgs = len(result.all())
+
+                # 3. Orphaned conversation docs (no remaining messages)
+                if deleted_msgs > 0:
+                    result2 = await db.execute(
+                        sql_delete(ConversationDocs).where(
+                            ~ConversationDocs.conversation_id.in_(
+                                sql_select(ConversationMessage.conversation_id).distinct()
+                            )
+                        ).returning(ConversationDocs.conversation_id)
+                    )
+                    deleted_docs = len(result2.all())
+                else:
+                    deleted_docs = 0
+
                 await db.commit()
-                logger.info("Cleaned up expired sessions and tokens")
+                logger.info(
+                    "Cleanup complete: expired sessions/tokens, %d old messages, %d orphaned conv docs",
+                    deleted_msgs,
+                    deleted_docs,
+                )
         except Exception:
-            logger.exception("Session cleanup failed")
+            logger.exception("Periodic cleanup failed")
 
 
 @asynccontextmanager

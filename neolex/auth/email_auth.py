@@ -1,4 +1,4 @@
-"""Email/password auth routes: register, login, verify-email, forgot/reset password."""
+"""Email/password auth routes: register, login, verify-email, forgot/reset password, data export."""
 import hashlib
 import secrets
 import time
@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from neolex.auth.email_service import send_password_reset_email, send_verification_email
-from neolex.auth.session import create_session, _set_session_cookie
+from neolex.auth.session import create_session, get_current_user, _set_session_cookie
 from neolex.config import settings
-from neolex.db.models import AuthToken, User
+from neolex.db.models import AuthToken, ConversationDocs, ConversationMessage, Session, User
 from neolex.db.postgres import get_db
 from neolex.schemas.auth import (
     ForgotPasswordRequest,
@@ -196,3 +196,72 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
 
     await db.commit()
     return {"message": "Password reset successful. Please log in."}
+
+
+@router.get("/my-data")
+async def export_my_data(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Export all personal data (GDPR Article 20 — right to data portability).
+
+    Returns the authenticated user's profile, conversation history, and
+    accumulated document references as a structured JSON object.
+    """
+    # 1. User profile (exclude internal fields like password_hash)
+    profile = {
+        "id": str(user.id),
+        "email": user.email,
+        "name": user.name,
+        "avatar_url": user.avatar_url,
+        "email_verified": user.email_verified,
+        "subscription_status": user.subscription_status,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "last_login": user.last_login.isoformat() if user.last_login else None,
+    }
+
+    # 2. Active sessions (metadata only — not the token hashes)
+    sessions_result = await db.execute(
+        select(Session).where(Session.user_id == user.id).order_by(Session.created_at.desc())
+    )
+    sessions = [
+        {
+            "created_at": s.created_at.isoformat(),
+            "expires_at": s.expires_at.isoformat(),
+            "ip": s.ip,
+            "user_agent": s.user_agent,
+        }
+        for s in sessions_result.scalars()
+    ]
+
+    # 3. Conversation messages
+    msgs_result = await db.execute(
+        select(ConversationMessage)
+        .where(ConversationMessage.user_id == user.id)
+        .order_by(ConversationMessage.created_at.asc())
+    )
+    conversations: dict[str, list[dict]] = {}
+    for m in msgs_result.scalars():
+        conv_id = str(m.conversation_id)
+        conversations.setdefault(conv_id, []).append({
+            "role": m.role,
+            "content": m.content,
+            "created_at": m.created_at.isoformat(),
+        })
+
+    # 4. Conversation docs (accumulated source references)
+    docs_result = await db.execute(
+        select(ConversationDocs).where(ConversationDocs.user_id == user.id)
+    )
+    conversation_docs = {
+        str(d.conversation_id): d.docs_json
+        for d in docs_result.scalars()
+    }
+
+    return {
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "profile": profile,
+        "sessions": sessions,
+        "conversations": conversations,
+        "conversation_docs": conversation_docs,
+    }

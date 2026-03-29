@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from arlc.agent.config import SEARCH_ANSWER_TYPE, SEARCH_MAX_PER_DOC, SEARCH_TOP_K
+from arlc.agent.config import SEARCH_ANSWER_TYPE, SEARCH_MAX_PER_DOC, SEARCH_TOP_K, WEB_SEARCH_MAX_RESULTS
 from arlc.agent.state import SourceDocument
 
 logger = logging.getLogger(__name__)
@@ -98,6 +98,31 @@ def format_search_results(docs: list[SourceDocument], offset: int = 0) -> str:
     for i, doc in enumerate(docs):
         idx = offset + i + 1
         parts.append(f"[DOC-{idx}] {doc['doc_id']} (page {doc['page']})\n{doc['text']}")
+    return "\n---\n".join(parts)
+
+
+def execute_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> list[dict]:
+    """Search the web via DuckDuckGo. Returns list of {title, url, snippet}."""
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=max_results))
+        return [
+            {"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")}
+            for r in results
+        ]
+    except Exception as e:
+        logger.warning("[web-search] failed: %s", e)
+        return []
+
+
+def format_web_results(results: list[dict]) -> str:
+    """Format web search results for the LLM context."""
+    if not results:
+        return "No web results found."
+    parts = []
+    for r in results:
+        parts.append(f"[WEB: \"{r['title']}\"]\nURL: {r['url']}\n{r['snippet']}")
     return "\n---\n".join(parts)
 
 

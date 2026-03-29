@@ -7,7 +7,7 @@ export const metadata: Metadata = {
         "How Vitreon Legal collects, uses, and protects your data when you use our AI-powered legal research platform.",
 };
 
-const LAST_UPDATED = "March 27, 2026";
+const LAST_UPDATED = "March 2026";
 
 export default function PrivacyPage() {
     return (
@@ -91,10 +91,14 @@ export default function PrivacyPage() {
                 {/* Intro */}
                 <Section>
                     <p style={{color: "rgba(255,255,255,0.62)", lineHeight: 1.75}}>
-                        Vitreon Legal (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) is committed to
-                        protecting the privacy of our users. This Privacy Policy explains what data we collect,
-                        why we collect it, how we use it, and the rights you have over your information when you
-                        use the Vitreon Legal AI legal research platform (&ldquo;Service&rdquo;).
+                        Vitreon Legal (&ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;) operates the
+                        AI-powered legal research platform at{" "}
+                        <a href="https://vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
+                            vitreon.app
+                        </a>
+                        . This Privacy Policy explains what personal data we collect, why we collect it, how
+                        long we keep it, and the rights you have over your information under the General Data
+                        Protection Regulation (GDPR) and other applicable privacy laws.
                     </p>
                     <p className="mt-4" style={{color: "rgba(255,255,255,0.62)", lineHeight: 1.75}}>
                         By using the Service you agree to the practices described in this policy. If you do not
@@ -104,101 +108,89 @@ export default function PrivacyPage() {
 
                 <Divider/>
 
-                {/* 1. Data Collection */}
+                {/* 1. Who We Are */}
                 <Section>
-                    <SectionTitle index="1">Data Collection</SectionTitle>
-
-                    <SubHeading>Information you provide</SubHeading>
+                    <SectionTitle index="1">Who We Are</SectionTitle>
                     <BodyText>
-                        When you configure Vitreon Legal, you provide your Anthropic API key to authenticate requests
-                        to the Claude API. This key is stored exclusively in your browser&apos;s
-                        <code style={codeStyle}>localStorage</code> and is never transmitted to Vitreon Legal servers.
+                        Vitreon Legal is an AI-powered legal research platform that helps legal professionals
+                        find answers grounded in primary legal sources. We are the data controller for the
+                        personal data processed through our Service.
+                    </BodyText>
+                </Section>
+
+                <Divider/>
+
+                {/* 2. Data We Collect */}
+                <Section>
+                    <SectionTitle index="2">Data We Collect</SectionTitle>
+
+                    <SubHeading>Account information</SubHeading>
+                    <BodyText>
+                        When you create an account, we collect your email address, display name, and a
+                        cryptographically hashed version of your password. If you sign in with Google, we
+                        receive your email, name, and profile picture URL from Google. We never store your
+                        password in plain text.
+                    </BodyText>
+
+                    <SubHeading>Legal research queries and answers</SubHeading>
+                    <BodyText>
+                        When you submit a question, we store your query text and the AI-generated answer
+                        (including cited sources) in your conversation history. This enables multi-turn
+                        conversations and lets you review past research.
+                    </BodyText>
+
+                    <SubHeading>Session and security data</SubHeading>
+                    <BodyText>
+                        We record your IP address and browser user-agent string when you log in or create a
+                        session. This data is used exclusively for security purposes — detecting unauthorised
+                        access, preventing brute-force attacks, and investigating incidents.
+                    </BodyText>
+
+                    <SubHeading>Payment information</SubHeading>
+                    <BodyText>
+                        Payments are processed entirely by{" "}
+                        <a
+                            href="https://stripe.com/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{color: "#C9A84C"}}
+                            className="hover:underline"
+                        >
+                            Stripe
+                        </a>
+                        . We do not store credit card numbers, CVVs, or full card details on our servers. We
+                        only retain your Stripe customer ID and subscription status for billing management.
                     </BodyText>
 
                     <SubHeading>Documents you upload</SubHeading>
                     <BodyText>
-                        Documents you upload for analysis are processed in memory on the server instance you
-                        connect to (typically running on your own infrastructure). We do not copy, cache, or
-                        retain the raw text of your documents beyond the duration of a single analysis session.
-                        Documents are stored locally on client-controlled infrastructure and are not transferred
-                        to Vitreon Legal or any third-party storage service.
-                    </BodyText>
-
-                    <SubHeading>Usage and audit logs</SubHeading>
-                    <BodyText>
-                        We retain structured audit logs — including query timestamps, document identifiers, and
-                        session metadata — for up to <strong style={{color: "rgba(255,255,255,0.85)"}}>365
-                        days</strong> by
-                        default. These logs support SOC 2 compliance, incident investigation, and billing
-                        integrity. Log retention periods may be adjusted under enterprise agreements.
-                    </BodyText>
-
-                    <SubHeading>Technical data</SubHeading>
-                    <BodyText>
-                        Standard web server logs (IP address, browser user-agent, request path, response code)
-                        may be recorded to support operational monitoring and security incident response. These
-                        logs are not linked to individual user identities.
+                        Documents you upload for analysis are processed and indexed on our servers. Document
+                        content is stored only for the purpose of providing the research service and is subject
+                        to the retention periods described below.
                     </BodyText>
                 </Section>
 
                 <Divider/>
 
-                {/* 2. How We Use Data */}
+                {/* 3. Why We Collect It */}
                 <Section>
-                    <SectionTitle index="2">How We Use Your Data</SectionTitle>
-                    <BodyText>We use the information described above to:</BodyText>
+                    <SectionTitle index="3">Why We Collect Your Data</SectionTitle>
+                    <BodyText>We process your personal data for the following purposes:</BodyText>
                     <BulletList
                         items={[
-                            "Deliver accurate, source-grounded answers from your legal documents.",
-                            "Forward your queries and document content to the Anthropic Claude API on your behalf, using the API key you supply.",
-                            "Maintain audit trails required by SOC 2 Type II controls and enterprise data governance policies.",
-                            "Detect and investigate security incidents, abuse, or service integrity issues.",
-                            "Improve the reliability, performance, and accuracy of the Service through anonymised aggregate telemetry.",
+                            "Provide the Service: deliver accurate, source-grounded legal research answers and maintain your conversation history.",
+                            "Improve answer quality: analyse aggregate usage patterns to improve retrieval accuracy and answer relevance.",
+                            "Security and abuse prevention: detect unauthorised access, enforce rate limits, and investigate security incidents.",
+                            "Billing: manage subscriptions, process payments through Stripe, and enforce usage limits.",
+                            "Legal compliance: meet our obligations under GDPR and other applicable data protection laws.",
                         ]}
                     />
 
                     <Callout>
-                        We do <strong>not</strong> use your documents, queries, or any content you submit to
-                        train, fine-tune, or evaluate AI models — including the models provided by Anthropic.
-                        Your data is processed to generate your response and nothing else.
+                        We do <strong>not</strong> use your queries, answers, or uploaded documents to
+                        train, fine-tune, or evaluate AI models. Your data is processed solely to generate
+                        your research results.
                     </Callout>
-                </Section>
-
-                <Divider/>
-
-                {/* 3. Anthropic API & Data Handling */}
-                <Section>
-                    <SectionTitle index="3">Anthropic API and Data Handling</SectionTitle>
-                    <BodyText>
-                        Vitreon Legal uses the Anthropic Claude API to generate legal research answers. When you submit
-                        a query, the relevant document excerpts and your question are sent to Anthropic&apos;s
-                        infrastructure for inference. This data handling is governed by{" "}
-                        <a
-                            href="https://www.anthropic.com/legal/privacy"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{color: "#C9A84C"}}
-                            className="hover:underline"
-                        >
-                            Anthropic&apos;s Privacy Policy
-                        </a>{" "}
-                        and their{" "}
-                        <a
-                            href="https://www.anthropic.com/legal/aup"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{color: "#C9A84C"}}
-                            className="hover:underline"
-                        >
-                            Usage Policies
-                        </a>
-                        .
-                    </BodyText>
-                    <BodyText>
-                        Anthropic&apos;s enterprise API does not use customer inputs to train foundation models
-                        by default. We recommend reviewing their data handling documentation if you have
-                        enterprise data residency or processing requirements.
-                    </BodyText>
                 </Section>
 
                 <Divider/>
@@ -206,68 +198,105 @@ export default function PrivacyPage() {
                 {/* 4. Data Retention */}
                 <Section>
                     <SectionTitle index="4">Data Retention</SectionTitle>
-                    <BulletList
-                        items={[
-                            "API keys: stored only in your browser localStorage; purged when you clear site data or log out.",
-                            "Document content: not persisted beyond the active session.",
-                            "Audit logs: retained for 365 days by default; configurable under enterprise agreements.",
-                            "Anonymised aggregate telemetry: retained indefinitely for service improvement.",
-                        ]}
-                    />
                     <BodyText>
-                        You may request deletion of audit log entries associated with your organisation by
-                        contacting{" "}
-                        <a href="mailto:privacy@vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
-                            privacy@vitreon.app
-                        </a>
-                        . Deletion requests are processed within 30 days subject to applicable legal retention
-                        obligations.
+                        We retain your data only as long as necessary for the purposes described above.
+                        Specific retention periods:
+                    </BodyText>
+
+                    <div
+                        className="mt-4 rounded-xl overflow-hidden"
+                        style={{
+                            border: "1px solid rgba(255,255,255,0.08)",
+                        }}
+                    >
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr style={{background: "rgba(255,255,255,0.04)"}}>
+                                    <th className="text-left px-5 py-3 font-semibold" style={{color: "rgba(255,255,255,0.78)"}}>Data type</th>
+                                    <th className="text-left px-5 py-3 font-semibold" style={{color: "rgba(255,255,255,0.78)"}}>Retention period</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {[
+                                    ["Queries and answers (conversation history)", "90 days, then automatically deleted"],
+                                    ["Account data (email, name, preferences)", "Until you delete your account"],
+                                    ["Sessions (login records)", "30 days"],
+                                    ["Audit logs", "90 days"],
+                                    ["Payment records", "As required by financial regulations"],
+                                ].map(([type, period], i) => (
+                                    <tr
+                                        key={type}
+                                        style={{
+                                            borderTop: "1px solid rgba(255,255,255,0.06)",
+                                            background: i % 2 === 1 ? "rgba(255,255,255,0.02)" : "transparent",
+                                        }}
+                                    >
+                                        <td className="px-5 py-3" style={{color: "rgba(255,255,255,0.58)"}}>{type}</td>
+                                        <td className="px-5 py-3" style={{color: "rgba(255,255,255,0.58)"}}>{period}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <BodyText>
+                        <span className="mt-4 block">
+                            Automated cleanup processes run hourly to enforce these retention periods. When you
+                            delete your account, all associated data (conversations, sessions, documents) is
+                            permanently removed.
+                        </span>
                     </BodyText>
                 </Section>
 
                 <Divider/>
 
-                {/* 5. Your Rights */}
+                {/* 5. Your Rights (GDPR Articles 15-22) */}
                 <Section>
-                    <SectionTitle index="5">Your Rights</SectionTitle>
+                    <SectionTitle index="5">Your Rights Under GDPR</SectionTitle>
                     <BodyText>
-                        Depending on your jurisdiction, you may have the following rights regarding your personal
-                        data:
+                        Under the General Data Protection Regulation (Articles 15-22), you have the following
+                        rights regarding your personal data:
                     </BodyText>
                     <BulletList
                         items={[
-                            "Access: request a copy of the personal data we hold about you.",
-                            "Rectification: request correction of inaccurate data.",
-                            "Erasure: request deletion of your personal data where no overriding legal obligation exists.",
-                            "Portability: receive your data in a structured, machine-readable format.",
-                            "Objection: object to processing based on legitimate interests.",
-                            "Restriction: request that we restrict processing of your data in certain circumstances.",
+                            "Right to access (Article 15): Request a copy of all personal data we hold about you. You can also export your data directly from the platform.",
+                            "Right to rectification (Article 16): Request correction of inaccurate or incomplete personal data.",
+                            "Right to erasure (Article 17): Request deletion of your account and all associated data. We will remove all your personal data unless we have a legal obligation to retain it.",
+                            "Right to data portability (Article 20): Receive your data in a structured, machine-readable JSON format. Use the data export feature in your account settings or contact us.",
+                            "Right to object (Article 21): Object to processing of your personal data based on legitimate interests.",
+                            "Right to restrict processing (Article 18): Request that we limit how we process your data in certain circumstances.",
+                            "Right to withdraw consent (Article 7): Where processing is based on consent, you may withdraw it at any time without affecting the lawfulness of prior processing.",
                         ]}
                     />
+
+                    <SubHeading>How to exercise your rights</SubHeading>
                     <BodyText>
                         To exercise any of these rights, email{" "}
                         <a href="mailto:privacy@vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
                             privacy@vitreon.app
                         </a>{" "}
-                        with the subject line &ldquo;Data Subject Request&rdquo;. We will respond within 30 days.
+                        with the subject line &ldquo;Data Subject Request&rdquo;. We will respond within 30 days
+                        as required by GDPR. For data export, you can also use the self-service export endpoint
+                        available in your authenticated account.
                     </BodyText>
                 </Section>
 
                 <Divider/>
 
-                {/* 6. Security */}
+                {/* 6. Data Security */}
                 <Section>
-                    <SectionTitle index="6">Security</SectionTitle>
+                    <SectionTitle index="6">Data Security</SectionTitle>
                     <BodyText>
-                        Vitreon Legal is designed with security-first principles:
+                        We implement appropriate technical and organisational measures to protect your data:
                     </BodyText>
                     <BulletList
                         items={[
-                            "SOC 2 Type II controls govern access, change management, and incident response.",
-                            "All data in transit is encrypted using TLS 1.2 or higher.",
-                            "API keys are never stored server-side; they remain in your browser only.",
-                            "Document processing occurs on client-controlled infrastructure by default.",
-                            "Access to audit logs is restricted to authorised personnel with a documented need.",
+                            "Encryption in transit: all connections are encrypted using TLS 1.2 or higher.",
+                            "Password security: passwords are hashed using bcrypt with automatic salting — we never store plain-text passwords.",
+                            "Session security: authentication uses HttpOnly, SameSite cookies that cannot be accessed by JavaScript or sent in cross-site requests.",
+                            "CSRF protection: state-mutating requests require a custom header, blocking cross-site request forgery.",
+                            "Rate limiting: brute-force protection on authentication endpoints (IP-based throttling).",
+                            "Access control: audit logs and user data are restricted by user ID — one user cannot access another's data.",
                         ]}
                     />
                     <BodyText>
@@ -281,22 +310,116 @@ export default function PrivacyPage() {
 
                 <Divider/>
 
-                {/* 7. Cookies */}
+                {/* 7. Third Parties */}
                 <Section>
-                    <SectionTitle index="7">Cookies and Local Storage</SectionTitle>
+                    <SectionTitle index="7">Third-Party Services</SectionTitle>
                     <BodyText>
-                        Vitreon Legal does not use tracking cookies or third-party analytics cookies. We use
-                        browser <code style={codeStyle}>localStorage</code> solely to persist your API key and
-                        application preferences (such as backend URL) between sessions. No data stored in
-                        localStorage is transmitted to any third party.
+                        We share data with the following third-party services, each for a specific and limited
+                        purpose:
+                    </BodyText>
+
+                    <SubHeading>Anthropic (via Google Cloud Vertex AI)</SubHeading>
+                    <BodyText>
+                        Your legal research queries and relevant document excerpts are sent to the Anthropic
+                        Claude API (accessed through Google Cloud Vertex AI) to generate answers. Anthropic&apos;s
+                        enterprise API does not use customer inputs to train foundation models. See{" "}
+                        <a
+                            href="https://www.anthropic.com/legal/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{color: "#C9A84C"}}
+                            className="hover:underline"
+                        >
+                            Anthropic&apos;s Privacy Policy
+                        </a>
+                        .
+                    </BodyText>
+
+                    <SubHeading>Stripe</SubHeading>
+                    <BodyText>
+                        Payment processing is handled by Stripe. We share your email and subscription details
+                        with Stripe to manage billing. Stripe is PCI DSS Level 1 certified. See{" "}
+                        <a
+                            href="https://stripe.com/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{color: "#C9A84C"}}
+                            className="hover:underline"
+                        >
+                            Stripe&apos;s Privacy Policy
+                        </a>
+                        .
+                    </BodyText>
+
+                    <SubHeading>Google (OAuth)</SubHeading>
+                    <BodyText>
+                        If you choose to sign in with Google, we receive your email, name, and profile picture
+                        from Google&apos;s OAuth service. We do not access any other Google account data. See{" "}
+                        <a
+                            href="https://policies.google.com/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{color: "#C9A84C"}}
+                            className="hover:underline"
+                        >
+                            Google&apos;s Privacy Policy
+                        </a>
+                        .
                     </BodyText>
                 </Section>
 
                 <Divider/>
 
-                {/* 8. Contact */}
+                {/* 8. Cookies */}
                 <Section>
-                    <SectionTitle index="8">Contact Us</SectionTitle>
+                    <SectionTitle index="8">Cookies</SectionTitle>
+                    <BodyText>
+                        Vitreon Legal uses a single session cookie (<code style={codeStyle}>vitreon_session</code>)
+                        to maintain your authenticated session. This cookie is:
+                    </BodyText>
+                    <BulletList
+                        items={[
+                            "HttpOnly: cannot be read by JavaScript, protecting against XSS attacks.",
+                            "SameSite=Lax: not sent on cross-site requests, preventing CSRF.",
+                            "Secure: transmitted only over HTTPS in production.",
+                        ]}
+                    />
+                    <BodyText>
+                        We do not use tracking cookies, advertising cookies, or third-party analytics cookies.
+                        We do not use browser <code style={codeStyle}>localStorage</code> to store sensitive data.
+                    </BodyText>
+                </Section>
+
+                <Divider/>
+
+                {/* 9. International Transfers */}
+                <Section>
+                    <SectionTitle index="9">International Data Transfers</SectionTitle>
+                    <BodyText>
+                        When your queries are processed by Anthropic via Google Cloud Vertex AI, your data may
+                        be transferred to servers outside your country of residence. These transfers are
+                        protected by appropriate safeguards including Google Cloud&apos;s data processing terms
+                        and Anthropic&apos;s enterprise data handling agreements.
+                    </BodyText>
+                </Section>
+
+                <Divider/>
+
+                {/* 10. Changes */}
+                <Section>
+                    <SectionTitle index="10">Changes to This Policy</SectionTitle>
+                    <BodyText>
+                        We may update this Privacy Policy from time to time. Material changes will be
+                        communicated via email or a prominent notice on the Service. Your continued use of the
+                        Service after changes take effect constitutes acceptance of the updated policy.
+                    </BodyText>
+                </Section>
+
+                <Divider/>
+
+                {/* 11. Contact */}
+                <Section>
+                    <SectionTitle index="11">Contact Us</SectionTitle>
                     <BodyText>
                         For questions, complaints, or data subject requests related to this Privacy Policy,
                         please contact:
@@ -319,6 +442,12 @@ export default function PrivacyPage() {
                             </a>
                         </p>
                     </div>
+                    <BodyText>
+                        <span className="mt-4 block">
+                            If you are not satisfied with our response, you have the right to lodge a complaint
+                            with your local data protection supervisory authority.
+                        </span>
+                    </BodyText>
                 </Section>
 
                 {/* Footer nav */}
@@ -350,7 +479,7 @@ export default function PrivacyPage() {
     );
 }
 
-/* ── Shared layout primitives ── */
+/* -- Shared layout primitives -- */
 
 function Section({children}: { children: React.ReactNode }) {
     return <section className="mb-10">{children}</section>;
@@ -422,7 +551,7 @@ function BulletList({items}: { items: string[] }) {
         <ul className="mb-4 space-y-1.5 pl-1">
             {items.map((item) => (
                 <li
-                    key={item}
+                    key={item.slice(0, 40)}
                     className="flex items-start gap-2.5 text-sm leading-6"
                     style={{color: "rgba(255,255,255,0.58)"}}
                 >

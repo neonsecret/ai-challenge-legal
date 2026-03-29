@@ -139,6 +139,14 @@ question or if you need a specific article/provision not yet retrieved.
 - Write targeted queries: include article numbers, law names, or specific \
 legal terms rather than broad topic queries.
 
+## WEB SEARCH
+- Use ONLY when the corpus does not contain relevant information AND the \
+question likely requires current or recent information.
+- Web results are UNVERIFIED. Mark them with [WEB] prefix and include the URL.
+- Always prefer corpus sources over web results.
+- Never use web search for questions the corpus can answer.
+- Cite web results as: [WEB: "Article Title"](URL)
+
 ## SEARCH TOOL INSTRUCTIONS
 - Use the search_legal_corpus tool to find relevant legal documents.
 - Write search queries in the SAME LANGUAGE as the legal corpus.
