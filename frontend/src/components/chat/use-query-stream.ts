@@ -65,14 +65,28 @@ export function formatStatus(raw: string): string | null {
  * Returns null if <answer> hasn't appeared yet.
  */
 function extractAnswerContent(raw: string): string | null {
+    // If the LLM uses <answer> tags, extract content from within them
     const answerStart = raw.indexOf("<answer>")
-    if (answerStart === -1) return null
-    const contentStart = answerStart + "<answer>".length
-    const answerEnd = raw.indexOf("</answer>", contentStart)
-    const content = answerEnd >= 0
-        ? raw.slice(contentStart, answerEnd)
-        : raw.slice(contentStart)
-    return content.trim() || null
+    if (answerStart !== -1) {
+        const contentStart = answerStart + "<answer>".length
+        const answerEnd = raw.indexOf("</answer>", contentStart)
+        const content = answerEnd >= 0
+            ? raw.slice(contentStart, answerEnd)
+            : raw.slice(contentStart)
+        return content.trim() || null
+    }
+
+    // No <answer> tags — the LLM outputs raw text directly.
+    // Strip any <analysis>...</analysis> blocks and show the rest.
+    let text = raw
+    // Remove complete <analysis> blocks
+    text = text.replace(/<analysis>[\s\S]*?<\/analysis>/g, "")
+    // If <analysis> is still open (streaming), hide everything after it
+    const openAnalysis = text.indexOf("<analysis>")
+    if (openAnalysis !== -1) text = text.slice(0, openAnalysis)
+    // Clean up leftover tags
+    text = text.replace(/<\/?(?:analysis|answer)>/g, "").trim()
+    return text || null
 }
 
 /**
