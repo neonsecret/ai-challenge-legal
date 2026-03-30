@@ -700,3 +700,15 @@ button:active:not(:disabled):not(.no-press-scale) {
     transform: translateZ(0);
     backface-visibility: hidden;
 }
+
+/* ============================================================
+   REDUCED MOTION — respect user preference for minimal animation
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

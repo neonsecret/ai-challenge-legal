@@ -273,17 +273,21 @@ async def query_stream(
                 if body.use_agent:
                     # ---- LangGraph agent path ----
                     from neolex.services.agent_pipeline import run_agent_question
+                    from arlc.agent.config import AGENT_TIMEOUT_SECONDS
 
-                    pipeline_result = await run_agent_question(
-                        question=body.question,
-                        answer_type=body.answer_type,
-                        corpus=corpus,
-                        user_id=user_id,
-                        conversation_id=conversation_id,
-                        selected_laws=body.laws,
-                        on_status=on_status_async,
-                        on_token=on_token_async,
-                        use_internet=body.use_internet,
+                    pipeline_result = await asyncio.wait_for(
+                        run_agent_question(
+                            question=body.question,
+                            answer_type=body.answer_type,
+                            corpus=corpus,
+                            user_id=user_id,
+                            conversation_id=conversation_id,
+                            selected_laws=body.laws,
+                            on_status=on_status_async,
+                            on_token=on_token_async,
+                            use_internet=body.use_internet,
+                        ),
+                        timeout=AGENT_TIMEOUT_SECONDS,
                     )
                 else:
                     # ---- Deterministic pipeline path (unchanged) ----
@@ -301,6 +305,9 @@ async def query_stream(
                         conversation_id=conversation_id,
                         laws=body.laws,
                     )
+            except asyncio.TimeoutError:
+                logger.error("Agent pipeline timed out for question: %.80s", body.question)
+                pipeline_error = asyncio.TimeoutError("Agent pipeline exceeded time limit")
             except BaseException as exc:
                 pipeline_error = exc
             finally:
@@ -328,6 +335,13 @@ async def query_stream(
         # Handle pipeline errors
         if isinstance(pipeline_error, asyncio.CancelledError):
             logger.info("SSE pipeline cancelled")
+            return
+        if isinstance(pipeline_error, (asyncio.TimeoutError, TimeoutError)):
+            yield {
+                "event": "error",
+                "data": json.dumps(
+                    {"error": "Pipeline timeout", "detail": "Query exceeded time limit. Please try a simpler question."}),
+            }
             return
         if pipeline_error is not None:
             logger.exception("SSE pipeline error: %s", pipeline_error)

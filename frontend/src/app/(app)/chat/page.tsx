@@ -18,6 +18,7 @@ import {useIsMobile} from "@/hooks/use-mobile"
 import {useDocumentIndex} from "@/components/chat/use-document-index"
 import {DocumentIndex} from "@/components/chat/document-index"
 import {X} from "lucide-react"
+import {FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE, TEXT_DARK, TEXT_LIGHT} from "@/lib/design-tokens"
 
 // Error boundary to prevent grounding panel crashes from taking down the whole page
 class GroundingErrorBoundary extends Component<
@@ -154,21 +155,21 @@ const PREVIEW_SCENARIOS_MAP: Record<string, DemoScenario[]> = {
 
 function makeGlassPanel(isDark: boolean) {
     return isDark ? {
-        background: "rgba(255,255,255,0.07)",
-        backdropFilter: "blur(40px) saturate(180%) brightness(108%)",
-        WebkitBackdropFilter: "blur(40px) saturate(180%) brightness(108%)",
-        border: "0.5px solid rgba(255,255,255,0.14)",
-        borderRadius: "24px",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 20px 60px rgba(0,0,0,0.40)",
+        background: GLASS.dark.bg,
+        backdropFilter: GLASS.dark.blur,
+        WebkitBackdropFilter: GLASS.dark.blur,
+        border: `0.5px solid ${GLASS.dark.border}`,
+        borderRadius: `${RADIUS['2xl']}px`,
+        boxShadow: `${GLASS.dark.innerGlow}, ${GLASS.dark.shadow}`,
         willChange: "transform",
         transform: "translateZ(0)",
     } : {
         background: "rgba(255,252,242,0.18)",
-        backdropFilter: "blur(40px) saturate(160%) brightness(106%)",
-        WebkitBackdropFilter: "blur(40px) saturate(160%) brightness(106%)",
-        border: "0.5px solid rgba(255,255,255,0.55)",
-        borderRadius: "24px",
-        boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.85), inset 1px 0 0 rgba(255,255,255,0.30), 0 16px 48px rgba(100,50,0,0.12)",
+        backdropFilter: GLASS.light.blur,
+        WebkitBackdropFilter: GLASS.light.blur,
+        border: `0.5px solid ${GLASS.light.border}`,
+        borderRadius: `${RADIUS['2xl']}px`,
+        boxShadow: `${GLASS.light.innerGlow}, inset 1px 0 0 rgba(255,255,255,0.30), 0 16px 48px rgba(100,50,0,0.12)`,
         willChange: "transform",
         transform: "translateZ(0)",
     };
@@ -319,7 +320,7 @@ export default function ChatPage() {
             height: "100%",
             display: "flex",
             alignItems: "stretch",
-            gap: isMobile ? "0px" : "8px",
+            gap: isMobile ? 0 : SPACE['2'],
             overflow: "hidden",
             maxWidth: "100vw",
             position: "relative",
@@ -345,40 +346,40 @@ export default function ChatPage() {
                                 background: isDark ? "rgba(15,22,35,0.60)" : "rgba(255,250,235,0.45)",
                                 backdropFilter: "blur(60px) saturate(200%) brightness(110%)",
                                 WebkitBackdropFilter: "blur(60px) saturate(200%) brightness(110%)",
-                                boxShadow: isDark ? "inset 0 1px 0 rgba(255,255,255,0.12)" : "inset 0 1.5px 0 rgba(255,255,255,0.75)",
-                                border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.50)",
+                                boxShadow: isDark ? GLASS.dark.innerGlow : GLASS.light.innerGlow,
+                                border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                             } : makeGlassPanel(isDark)),
                         }}
                     >
                         {/* History header */}
                         <div style={{
-                            padding: isMobile ? "16px 16px" : "14px 16px",
-                            paddingTop: isMobile ? "max(16px, env(safe-area-inset-top))" : "14px",
-                            borderBottom: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.30)",
+                            padding: `${SPACE['4']}px ${SPACE['4']}px`,
+                            paddingTop: isMobile ? `max(${SPACE['4']}px, env(safe-area-inset-top))` : SPACE['4'],
+                            borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+                            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                         }}>
               <span style={{
-                  fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                  fontSize: TYPE_SCALE.xs, fontWeight: 700, textTransform: "uppercase",
                   letterSpacing: "0.12em",
-                  color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
-                  fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                  color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.tertiary,
+                  fontFamily: FONT.sans,
               }}>Chats</span>
-                            <div style={{display: "flex", alignItems: "center", gap: 6}}>
+                            <div style={{display: "flex", alignItems: "center", gap: SPACE['2']}}>
                             <button onClick={() => {
                                 newChat();
                                 setHistoryOpen(false)
                             }} title="New chat" style={{
-                                display: "flex", alignItems: "center", gap: 4,
-                                padding: "4px 8px", borderRadius: 7, fontSize: 11, fontWeight: 500,
-                                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.22)",
-                                border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.45)",
-                                color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
-                                cursor: "pointer", transition: "all 0.12s",
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                display: "flex", alignItems: "center", gap: SPACE['1'],
+                                padding: `${SPACE['1']}px ${SPACE['2']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.xs, fontWeight: 500,
+                                background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                cursor: "pointer", transition: `all ${TIMING.instant}`,
+                                fontFamily: FONT.sans,
                             }}>
-                                <SquarePen size={11} strokeWidth={1.8}/>
+                                <SquarePen size={TYPE_SCALE.xs} strokeWidth={1.8}/>
                                 New
                             </button>
                             {isMobile && (
@@ -387,11 +388,11 @@ export default function ChatPage() {
                                     title="Close"
                                     style={{
                                         display: "flex", alignItems: "center", justifyContent: "center",
-                                        width: 28, height: 28, borderRadius: 8,
-                                        background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)",
-                                        border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.50)",
+                                        width: 28, height: 28, borderRadius: RADIUS.md,
+                                        background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                        border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
                                         cursor: "pointer",
-                                        color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)",
+                                        color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
                                     }}
                                 >
                                     <X size={14} strokeWidth={2}/>
@@ -400,12 +401,12 @@ export default function ChatPage() {
                             </div>
                         </div>
                         {/* Sessions list */}
-                        <div style={{flex: 1, overflowY: "auto", padding: "8px"}}>
+                        <div style={{flex: 1, overflowY: "auto", padding: SPACE['2']}}>
                             {sessions.length === 0 ? (
                                 <p style={{
-                                    fontSize: 12, textAlign: "center", padding: "24px 12px",
-                                    color: isDark ? "rgba(255,255,255,0.28)" : "rgba(46,31,8,0.35)",
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                    fontSize: TYPE_SCALE.sm, textAlign: "center", padding: `${SPACE['6']}px ${SPACE['3']}px`,
+                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                    fontFamily: FONT.sans,
                                 }}>No chats yet</p>
                             ) : (
                                 sessions.map((s) => {
@@ -420,31 +421,31 @@ export default function ChatPage() {
                                                 onClick={() => { loadSession(s.id); if (isMobile) setHistoryOpen(false) }}
                                                 style={{
                                                     display: "block", width: "100%", textAlign: "left",
-                                                    padding: "9px 30px 9px 10px", borderRadius: 10,
-                                                    fontSize: 12.5,
+                                                    padding: `${SPACE['2']}px ${SPACE['8']}px ${SPACE['2']}px ${SPACE['3']}px`, borderRadius: RADIUS.lg,
+                                                    fontSize: TYPE_SCALE.sm,
                                                     color: isActive
-                                                        ? isDark ? "rgba(255,255,255,0.92)" : "#1a0e04"
-                                                        : isDark ? "rgba(255,255,255,0.65)" : "rgba(46,31,8,0.68)",
+                                                        ? isDark ? TEXT_DARK.primary : TEXT_LIGHT.primary
+                                                        : isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
                                                     background: isActive
-                                                        ? isDark ? "rgba(201,168,76,0.14)" : "rgba(255,255,255,0.38)"
+                                                        ? isDark ? COLOR.gold.tint : "rgba(255,255,255,0.38)"
                                                         : "transparent",
                                                     border: isActive
-                                                        ? isDark ? "0.5px solid rgba(201,168,76,0.28)" : "0.5px solid rgba(255,255,255,0.60)"
+                                                        ? isDark ? `0.5px solid ${COLOR.gold.border}` : `0.5px solid ${GLASS.light.border}`
                                                         : "0.5px solid transparent",
                                                     cursor: "pointer",
                                                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                                    transition: "background 0.12s, border-color 0.12s, box-shadow 0.12s, color 0.12s",
+                                                    fontFamily: FONT.sans,
+                                                    transition: `background ${TIMING.instant}, border-color ${TIMING.instant}, box-shadow ${TIMING.instant}, color ${TIMING.instant}`,
                                                     fontWeight: isActive ? 600 : 400,
                                                 }}
                                                 onMouseEnter={e => {
                                                     if (!isActive) {
-                                                        e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.28)"
-                                                        e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.50)"
+                                                        e.currentTarget.style.background = isDark ? GLASS.dark.bg : "rgba(255,255,255,0.28)"
+                                                        e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : GLASS.light.borderSubtle
                                                         e.currentTarget.style.boxShadow = isDark
-                                                            ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.15)"
-                                                            : "inset 0 1px 0 rgba(255,255,255,0.60), 0 2px 8px rgba(100,50,0,0.08)"
-                                                        e.currentTarget.style.backdropFilter = "blur(12px) saturate(140%)"
+                                                            ? `${GLASS.dark.innerGlow}, 0 2px 8px rgba(0,0,0,0.15)`
+                                                            : `${GLASS.light.innerGlow}, 0 2px 8px rgba(100,50,0,0.08)`
+                                                        e.currentTarget.style.backdropFilter = GLASS.dark.blurLight
                                                     }
                                                 }}
                                                 onMouseLeave={e => {
@@ -475,7 +476,7 @@ export default function ChatPage() {
                                                 className="opacity-0 group-hover:opacity-100 no-press-scale"
                                                 style={{
                                                     position: "absolute",
-                                                    right: 6,
+                                                    right: SPACE['2'],
                                                     top: "50%",
                                                     /* Negate the global button:active scale by always including translateY centering */
                                                     transform: "translateY(-50%)",
@@ -484,12 +485,12 @@ export default function ChatPage() {
                                                     justifyContent: "center",
                                                     width: 22,
                                                     height: 22,
-                                                    borderRadius: 6,
-                                                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)",
-                                                    border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.45)",
+                                                    borderRadius: RADIUS.sm,
+                                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                                                     cursor: "pointer",
-                                                    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.40)",
-                                                    transition: "opacity 0.12s, background 0.12s, color 0.12s",
+                                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                    transition: `opacity ${TIMING.instant}, background ${TIMING.instant}, color ${TIMING.instant}`,
                                                     padding: 0,
                                                     zIndex: 1,
                                                     flexShrink: 0,
@@ -499,8 +500,8 @@ export default function ChatPage() {
                                                     e.currentTarget.style.color = isDark ? "rgba(255,120,100,0.90)" : "rgba(180,40,20,0.80)"
                                                 }}
                                                 onMouseLeave={e => {
-                                                    e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)"
-                                                    e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.40)"
+                                                    e.currentTarget.style.background = isDark ? GLASS.dark.bg : GLASS.light.bgSubtle
+                                                    e.currentTarget.style.color = isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary
                                                 }}
                                             >
                                                 <Trash2 size={11} strokeWidth={1.8}/>
@@ -526,31 +527,31 @@ export default function ChatPage() {
                 position: "relative",
                 overflow: "clip",
                 contain: "layout style",
-                transition: "all 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+                transition: `all ${TIMING.slow} ${EASE.out}`,
                 ...makeGlassPanel(isDark),
             }}>
                 {/* Header */}
                 <div style={{
-                    padding: isMobile ? "10px 12px" : "14px 22px",
-                    borderBottom: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.30)",
-                    display: "flex", alignItems: "center", gap: isMobile ? "6px" : "10px", flexShrink: 0,
-                    background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+                    padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
+                    borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                    display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
+                    background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                 }}>
                     <div style={{
-                        width: isMobile ? 26 : 30, height: isMobile ? 26 : 30, borderRadius: isMobile ? 7 : 9,
-                        background: isDark ? "rgba(201,168,76,0.14)" : "rgba(196,124,0,0.18)",
-                        border: isDark ? "0.5px solid rgba(201,168,76,0.28)" : "0.5px solid rgba(196,124,0,0.38)",
+                        width: isMobile ? 26 : 30, height: isMobile ? 26 : 30, borderRadius: isMobile ? RADIUS.md : RADIUS.lg,
+                        background: isDark ? COLOR.gold.tint : "rgba(196,124,0,0.18)",
+                        border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.38)",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65)",
                     }}>
             <span style={{
-                fontSize: isMobile ? "13px" : "15px", fontWeight: 700, color: isDark ? "#C9A84C" : "#7a4a00", lineHeight: 1,
-                fontFamily: "Georgia, serif"
+                fontSize: isMobile ? TYPE_SCALE.sm : TYPE_SCALE.md, fontWeight: 700, color: isDark ? COLOR.gold.base : "#7a4a00", lineHeight: 1,
+                fontFamily: FONT.brand
             }}>N</span>
                     </div>
                     {!isMobile && <span style={{
-                        fontWeight: 700, fontSize: "15px", color: isDark ? "rgba(255,255,255,0.90)" : "#1a0e04",
-                        fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: "-0.04em"
+                        fontWeight: 700, fontSize: TYPE_SCALE.md, color: isDark ? TEXT_DARK.primary : TEXT_LIGHT.primary,
+                        fontFamily: FONT.brand, letterSpacing: "-0.04em"
                     }}>
             Vitreon Legal
           </span>}
@@ -560,7 +561,7 @@ export default function ChatPage() {
                         display: "flex",
                         alignItems: "center",
                         gap: isMobile ? 2 : 3,
-                        marginLeft: isMobile ? 4 : 12,
+                        marginLeft: isMobile ? SPACE['1'] : SPACE['3'],
                         overflowX: "auto",
                         minWidth: 0,
                         scrollbarWidth: "none",
@@ -570,7 +571,6 @@ export default function ChatPage() {
                             const config = JURISDICTIONS[key]
                             const isActive = jurisdiction === key
                             const isEnabled = key === "difc" || key === "cz" || key === "custom"
-                            const accentColor = "#d4af37"
                             const hasLawPane = key === "cz" && availableLaws.length > 0
                             return (
                                 <button
@@ -651,33 +651,33 @@ export default function ChatPage() {
                                     onContextMenu={(e) => e.preventDefault()}
                                     onMouseEnter={(e) => {
                                         if (!isActive && isEnabled) {
-                                            e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.24)"
-                                            e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.45)"
+                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.24)"
+                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.transform = "scale(1)"
                                         if (!isActive && isEnabled) {
-                                            e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)"
-                                            e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.32)"
+                                            e.currentTarget.style.background = isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)"
+                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
                                         }
                                     }}
                                     style={{
-                                        fontSize: isMobile ? 9 : 10, fontWeight: isActive ? 700 : 500,
-                                        padding: isMobile ? "2px 6px" : "3px 8px", borderRadius: 6,
+                                        fontSize: TYPE_SCALE.xs, fontWeight: isActive ? 700 : 500,
+                                        padding: isMobile ? `2px ${SPACE['2']}px` : `3px ${SPACE['2']}px`, borderRadius: RADIUS.sm,
                                         cursor: isEnabled ? "pointer" : "not-allowed",
                                         opacity: isEnabled ? 1 : 0.38,
                                         background: isActive
-                                            ? isDark ? "rgba(201,168,76,0.75)" : "rgba(196,124,0,0.65)"
-                                            : isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)",
+                                            ? COLOR.gold.solid
+                                            : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)",
                                         border: isActive
-                                            ? isDark ? "0.5px solid rgba(201,168,76,0.80)" : "0.5px solid rgba(196,124,0,0.75)"
-                                            : isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.32)",
+                                            ? `0.5px solid ${COLOR.gold.border}`
+                                            : isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                                         color: isActive
-                                            ? "rgba(255,255,255,0.95)"
-                                            : isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
-                                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                        transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                            ? TEXT_DARK.primary
+                                            : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        fontFamily: FONT.sans,
+                                        transition: `all ${TIMING.fast} ${EASE.spring}`,
                                         whiteSpace: "nowrap",
                                         userSelect: "none",
                                         WebkitUserSelect: "none",
@@ -713,31 +713,31 @@ export default function ChatPage() {
                                     }
                                 }}
                                 style={{
-                                    fontSize: isMobile ? 9 : 10,
+                                    fontSize: TYPE_SCALE.xs,
                                     fontWeight: 500,
-                                    padding: isMobile ? "2px 6px" : "3px 8px",
-                                    borderRadius: 6,
+                                    padding: isMobile ? `2px ${SPACE['2']}px` : `3px ${SPACE['2']}px`,
+                                    borderRadius: RADIUS.sm,
                                     maxWidth: 120,
                                     minWidth: 60,
-                                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.22)",
-                                    border: isDark ? "0.5px solid rgba(201,168,76,0.35)" : "0.5px solid rgba(212,175,55,0.45)",
-                                    color: isDark ? "rgba(255,255,255,0.80)" : "rgba(46,31,8,0.75)",
+                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                    border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(212,175,55,0.45)",
+                                    color: isDark ? TEXT_DARK.primary : TEXT_LIGHT.secondary,
                                     outline: "none",
-                                    fontFamily: "monospace",
+                                    fontFamily: FONT.mono,
                                     backdropFilter: "blur(8px)",
                                     WebkitBackdropFilter: "blur(8px)",
-                                    transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                    transition: `all ${TIMING.fast} ${EASE.spring}`,
                                 }}
                             />
                         )}
                         {/* Active corpora indicator */}
                         {currentCorpora.length > 0 && (
                             <span style={{
-                                fontSize: 9,
-                                color: isDark ? "rgba(255,255,255,0.30)" : "rgba(46,31,8,0.30)",
+                                fontSize: TYPE_SCALE.xs,
+                                color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
                                 whiteSpace: "nowrap",
                                 flexShrink: 0,
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                fontFamily: FONT.sans,
                             }}>
                                 {currentCorpora.join(" + ")}
                             </span>
@@ -748,27 +748,27 @@ export default function ChatPage() {
                             title={useInternet ? "Web search enabled — click to disable" : "Web search disabled — click to enable"}
                             style={{
                                 display: "inline-flex", alignItems: "center", gap: 3,
-                                padding: isMobile ? "2px 6px" : "3px 8px", borderRadius: 6,
-                                fontSize: isMobile ? 9 : 10, fontWeight: useInternet ? 700 : 500, lineHeight: 1,
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                padding: isMobile ? `2px ${SPACE['2']}px` : `3px ${SPACE['2']}px`, borderRadius: RADIUS.sm,
+                                fontSize: TYPE_SCALE.xs, fontWeight: useInternet ? 700 : 500, lineHeight: 1,
+                                fontFamily: FONT.sans,
                                 background: useInternet
-                                    ? isDark ? "rgba(56,178,172,0.14)" : "rgba(0,128,128,0.10)"
-                                    : isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)",
+                                    ? isDark ? COLOR.teal.tint : "rgba(0,128,128,0.10)"
+                                    : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)",
                                 border: useInternet
-                                    ? isDark ? "0.5px solid rgba(56,178,172,0.35)" : "0.5px solid rgba(0,128,128,0.25)"
-                                    : isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.32)",
+                                    ? isDark ? `0.5px solid ${COLOR.teal.border}` : "0.5px solid rgba(0,128,128,0.25)"
+                                    : isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                                 color: useInternet
-                                    ? isDark ? "#38B2AC" : "#0d7377"
-                                    : isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.45)",
+                                    ? isDark ? COLOR.teal.base : "#0d7377"
+                                    : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
                                 cursor: "pointer",
-                                transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                transition: `all ${TIMING.fast} ${EASE.spring}`,
                                 userSelect: "none",
                                 WebkitUserSelect: "none",
                                 whiteSpace: "nowrap",
                                 flexShrink: 0,
                             }}
                         >
-                            <Globe size={10} strokeWidth={useInternet ? 2 : 1.5}/>
+                            <Globe size={TYPE_SCALE.xs} strokeWidth={useInternet ? 2 : 1.5}/>
                             Internet
                         </button>
                     </div>
@@ -777,22 +777,22 @@ export default function ChatPage() {
                         onClick={() => setHistoryOpen(o => !o)}
                         title="Chat history"
                         style={{
-                            display: "flex", alignItems: "center", gap: 4,
-                            padding: "5px 10px", borderRadius: 9, fontSize: 12, fontWeight: 500,
+                            display: "flex", alignItems: "center", gap: SPACE['1'],
+                            padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.sm, fontWeight: 500,
                             background: historyOpen
-                                ? isDark ? "rgba(201,168,76,0.16)" : "rgba(196,124,0,0.12)"
-                                : isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.18)",
+                                ? isDark ? COLOR.gold.tint : "rgba(196,124,0,0.12)"
+                                : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
                             border: historyOpen
-                                ? isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(196,124,0,0.28)"
-                                : isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.42)",
+                                ? isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.28)"
+                                : isDark ? `0.5px solid ${GLASS.dark.border}` : "0.5px solid rgba(255,255,255,0.42)",
                             color: historyOpen
-                                ? isDark ? "rgba(201,168,76,0.85)" : "#7a4a00"
-                                : isDark ? "rgba(255,255,255,0.52)" : "rgba(46,31,8,0.55)",
-                            cursor: "pointer", transition: "all 0.12s",
-                            fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                ? isDark ? COLOR.gold.base : "#7a4a00"
+                                : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            cursor: "pointer", transition: `all ${TIMING.instant}`,
+                            fontFamily: FONT.sans,
                         }}
                     >
-                        <History size={12} strokeWidth={1.8}/>
+                        <History size={TYPE_SCALE.sm} strokeWidth={1.8}/>
                     </button>
                     {documentIndex.length > 0 && (
                         <button
@@ -802,31 +802,31 @@ export default function ChatPage() {
                             }}
                             title="Document sources index"
                             style={{
-                                display: "flex", alignItems: "center", gap: 4,
-                                padding: "5px 10px", borderRadius: 9, fontSize: 12, fontWeight: 500,
+                                display: "flex", alignItems: "center", gap: SPACE['1'],
+                                padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.sm, fontWeight: 500,
                                 position: "relative",
                                 background: indexOpen
-                                    ? isDark ? "rgba(201,168,76,0.16)" : "rgba(196,124,0,0.12)"
-                                    : isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.18)",
+                                    ? isDark ? COLOR.gold.tint : "rgba(196,124,0,0.12)"
+                                    : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
                                 border: indexOpen
-                                    ? isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(196,124,0,0.28)"
-                                    : isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.42)",
+                                    ? isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.28)"
+                                    : isDark ? `0.5px solid ${GLASS.dark.border}` : "0.5px solid rgba(255,255,255,0.42)",
                                 color: indexOpen
-                                    ? isDark ? "rgba(201,168,76,0.85)" : "#7a4a00"
-                                    : isDark ? "rgba(255,255,255,0.52)" : "rgba(46,31,8,0.55)",
-                                cursor: "pointer", transition: "all 0.12s",
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                    ? isDark ? COLOR.gold.base : "#7a4a00"
+                                    : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                cursor: "pointer", transition: `all ${TIMING.instant}`,
+                                fontFamily: FONT.sans,
                             }}
                         >
-                            <BookOpen size={12} strokeWidth={1.8}/>
+                            <BookOpen size={TYPE_SCALE.sm} strokeWidth={1.8}/>
                             {/* Badge with count */}
                             <span style={{
                                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                minWidth: 16, height: 16, borderRadius: 8,
-                                padding: "0 4px",
-                                fontSize: 9, fontWeight: 700,
-                                background: isDark ? "rgba(201,168,76,0.22)" : "rgba(196,124,0,0.16)",
-                                color: isDark ? "#C9A84C" : "#7a4a00",
+                                minWidth: SPACE['4'], height: SPACE['4'], borderRadius: RADIUS.md,
+                                padding: `0 ${SPACE['1']}px`,
+                                fontSize: TYPE_SCALE.xs, fontWeight: 700,
+                                background: isDark ? COLOR.gold.glow : "rgba(196,124,0,0.16)",
+                                color: isDark ? COLOR.gold.base : "#7a4a00",
                             }}>
                                 {documentIndex.length}
                             </span>
@@ -840,24 +840,24 @@ export default function ChatPage() {
                             }}
                             title="New chat"
                             style={{
-                                display: "flex", alignItems: "center", gap: 5,
-                                padding: "5px 10px", borderRadius: 9, fontSize: 12, fontWeight: 500,
-                                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.18)",
-                                border: isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.42)",
-                                color: isDark ? "rgba(255,255,255,0.52)" : "rgba(46,31,8,0.55)",
-                                cursor: "pointer", transition: "all 0.12s",
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                display: "flex", alignItems: "center", gap: SPACE['1'],
+                                padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.sm, fontWeight: 500,
+                                background: isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
+                                border: isDark ? `0.5px solid ${GLASS.dark.border}` : "0.5px solid rgba(255,255,255,0.42)",
+                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                cursor: "pointer", transition: `all ${TIMING.instant}`,
+                                fontFamily: FONT.sans,
                             }}
                             onMouseEnter={e => {
-                                e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.28)";
-                                e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.80)" : "rgba(46,31,8,0.80)"
+                                e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.28)";
+                                e.currentTarget.style.color = isDark ? TEXT_DARK.primary : TEXT_LIGHT.secondary
                             }}
                             onMouseLeave={e => {
-                                e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.18)";
-                                e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.52)" : "rgba(46,31,8,0.55)"
+                                e.currentTarget.style.background = isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)";
+                                e.currentTarget.style.color = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
                             }}
                         >
-                            <SquarePen size={12} strokeWidth={1.8}/>
+                            <SquarePen size={TYPE_SCALE.sm} strokeWidth={1.8}/>
                             New
                         </button>
                     )}
@@ -866,21 +866,21 @@ export default function ChatPage() {
                 {/* Corpus warning banner — switching to a 2nd corpus */}
                 {corpusWarning && (
                     <div style={{
-                        padding: "10px 20px",
-                        background: isDark ? "rgba(201,168,76,0.12)" : "rgba(196,124,0,0.08)",
-                        border: isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(196,124,0,0.25)",
+                        padding: `${SPACE['3']}px ${SPACE['5']}px`,
+                        background: isDark ? COLOR.gold.tint : "rgba(196,124,0,0.08)",
+                        border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.25)",
                         borderRadius: 0,
-                        borderBottom: isDark ? "0.5px solid rgba(201,168,76,0.20)" : "0.5px solid rgba(196,124,0,0.18)",
-                        display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-                        fontSize: 12,
-                        color: isDark ? "rgba(255,255,255,0.85)" : "#2e1f08",
-                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                        borderBottom: isDark ? `0.5px solid ${COLOR.gold.glow}` : "0.5px solid rgba(196,124,0,0.18)",
+                        display: "flex", alignItems: "center", gap: SPACE['3'], flexWrap: "wrap",
+                        fontSize: TYPE_SCALE.sm,
+                        color: isDark ? TEXT_DARK.primary : TEXT_LIGHT.secondary,
+                        fontFamily: FONT.sans,
                         flexShrink: 0,
                     }}>
                         <span>
                             Adding <strong>{JURISDICTIONS[corpusWarning.jurisdiction].name}</strong> to this conversation. Cross-jurisdiction queries may be slower.
                         </span>
-                        <div style={{display: "flex", gap: 6, marginLeft: "auto"}}>
+                        <div style={{display: "flex", gap: SPACE['2'], marginLeft: "auto"}}>
                             <button
                                 onClick={() => {
                                     const j = corpusWarning.jurisdiction
@@ -891,14 +891,14 @@ export default function ChatPage() {
                                     setCorpusWarning(null)
                                 }}
                                 style={{
-                                    fontSize: 11, fontWeight: 600,
-                                    padding: "4px 12px", borderRadius: 7,
+                                    fontSize: TYPE_SCALE.xs, fontWeight: 600,
+                                    padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md,
                                     cursor: "pointer",
-                                    background: isDark ? "rgba(201,168,76,0.22)" : "rgba(196,124,0,0.16)",
-                                    border: isDark ? "0.5px solid rgba(201,168,76,0.45)" : "0.5px solid rgba(196,124,0,0.35)",
-                                    color: isDark ? "#C9A84C" : "#7a4a00",
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                    transition: "all 0.12s",
+                                    background: isDark ? COLOR.gold.glow : "rgba(196,124,0,0.16)",
+                                    border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.35)",
+                                    color: isDark ? COLOR.gold.base : "#7a4a00",
+                                    fontFamily: FONT.sans,
+                                    transition: `all ${TIMING.instant}`,
                                 }}
                             >
                                 Continue
@@ -906,27 +906,27 @@ export default function ChatPage() {
                             <button
                                 onClick={() => setCorpusWarning(null)}
                                 style={{
-                                    fontSize: 11, fontWeight: 500,
-                                    padding: "4px 10px", borderRadius: 7,
+                                    fontSize: TYPE_SCALE.xs, fontWeight: 500,
+                                    padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md,
                                     cursor: "pointer",
-                                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.18)",
-                                    border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.35)",
-                                    color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                    transition: "all 0.12s",
+                                    background: isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
+                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    fontFamily: FONT.sans,
+                                    transition: `all ${TIMING.instant}`,
                                 }}
                             >
                                 Cancel
                             </button>
                         </div>
                         <label style={{
-                            fontSize: 10, opacity: 0.55, cursor: "pointer",
-                            display: "flex", alignItems: "center", gap: 4,
-                            fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                            fontSize: TYPE_SCALE.xs, opacity: 0.55, cursor: "pointer",
+                            display: "flex", alignItems: "center", gap: SPACE['1'],
+                            fontFamily: FONT.sans,
                         }}>
                             <input
                                 type="checkbox"
-                                style={{width: 12, height: 12, cursor: "pointer"}}
+                                style={{width: SPACE['3'], height: SPACE['3'], cursor: "pointer"}}
                                 onChange={(e) => {
                                     setHideCorpusWarning(e.target.checked)
                                     localStorage.setItem("neolex_hide_corpus_warning", e.target.checked ? "1" : "")
@@ -948,13 +948,13 @@ export default function ChatPage() {
                             style={{overflow: "hidden", flexShrink: 0}}
                         >
                             <div style={{
-                                padding: "10px 20px",
+                                padding: `${SPACE['3']}px ${SPACE['5']}px`,
                                 background: isDark ? "rgba(255,80,60,0.10)" : "rgba(180,40,20,0.07)",
                                 borderBottom: isDark ? "0.5px solid rgba(255,80,60,0.25)" : "0.5px solid rgba(180,40,20,0.20)",
-                                fontSize: 12,
+                                fontSize: TYPE_SCALE.sm,
                                 color: isDark ? "rgba(255,140,122,0.90)" : "#7a2010",
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                display: "flex", alignItems: "center", gap: 8,
+                                fontFamily: FONT.sans,
+                                display: "flex", alignItems: "center", gap: SPACE['2'],
                             }}>
                                 <span>Maximum 2 jurisdictions per conversation. Start a new chat to use a different corpus.</span>
                                 <button
@@ -963,14 +963,14 @@ export default function ChatPage() {
                                         setCorpusBlocked(false)
                                     }}
                                     style={{
-                                        fontSize: 11, fontWeight: 600,
-                                        padding: "4px 10px", borderRadius: 7,
+                                        fontSize: TYPE_SCALE.xs, fontWeight: 600,
+                                        padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md,
                                         cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap",
                                         background: isDark ? "rgba(255,80,60,0.18)" : "rgba(180,40,20,0.12)",
                                         border: isDark ? "0.5px solid rgba(255,80,60,0.35)" : "0.5px solid rgba(180,40,20,0.25)",
                                         color: isDark ? "rgba(255,140,122,0.90)" : "#7a2010",
-                                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                        transition: "all 0.12s",
+                                        fontFamily: FONT.sans,
+                                        transition: `all ${TIMING.instant}`,
                                     }}
                                 >
                                     New chat
@@ -983,28 +983,27 @@ export default function ChatPage() {
                 {/* Czech law selector pills — toggle via country pill click */}
                 {jurisdiction === "cz" && lawPaneOpen && availableLaws.length > 0 && (
                     <div style={{
-                        padding: isMobile ? "5px 12px" : "5px 22px",
-                        borderBottom: isDark ? "0.5px solid rgba(255,255,255,0.08)" : "0.5px solid rgba(255,255,255,0.22)",
+                        padding: isMobile ? `${SPACE['1']}px ${SPACE['3']}px` : `${SPACE['1']}px ${SPACE['6']}px`,
+                        borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.bgSubtle}`,
                         display: "flex",
                         alignItems: "center",
-                        gap: isMobile ? 3 : 4,
+                        gap: isMobile ? 3 : SPACE['1'],
                         overflowX: "auto",
                         flexShrink: 0,
                         scrollbarWidth: "none",
                         WebkitOverflowScrolling: "touch",
-                        background: isDark ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)",
+                        background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                     }}>
                         <span style={{
-                            fontSize: 9, fontWeight: 600, textTransform: "uppercase",
+                            fontSize: TYPE_SCALE.xs, fontWeight: 600, textTransform: "uppercase",
                             letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0,
-                            color: isDark ? "rgba(255,255,255,0.30)" : "rgba(46,31,8,0.35)",
-                            fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                            fontFamily: FONT.sans,
                         }}>
                             {selectedLaws.length === availableLaws.length ? "All" : `${selectedLaws.length}/${availableLaws.length}`}
                         </span>
                         {availableLaws.map((law) => {
                             const isActive = selectedLaws.includes(law.id)
-                            const accentColor = "#d4af37"
                             return (
                                 <button
                                     key={law.id}
@@ -1050,32 +1049,32 @@ export default function ChatPage() {
                                     onContextMenu={(e) => e.preventDefault()}
                                     title={law.name_en}
                                     style={{
-                                        fontSize: isMobile ? 9 : 10, fontWeight: isActive ? 700 : 500,
-                                        padding: isMobile ? "2px 6px" : "2px 8px", borderRadius: 5,
+                                        fontSize: TYPE_SCALE.xs, fontWeight: isActive ? 700 : 500,
+                                        padding: isMobile ? `2px ${SPACE['2']}px` : `2px ${SPACE['2']}px`, borderRadius: RADIUS.sm,
                                         cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                                         userSelect: "none", WebkitUserSelect: "none",
                                         background: isActive
-                                            ? isDark ? "rgba(201,168,76,0.75)" : "rgba(196,124,0,0.65)"
-                                            : isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.12)",
+                                            ? COLOR.gold.solid
+                                            : isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)",
                                         border: isActive
-                                            ? isDark ? "0.5px solid rgba(201,168,76,0.80)" : "0.5px solid rgba(196,124,0,0.75)"
-                                            : isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.28)",
+                                            ? `0.5px solid ${COLOR.gold.border}`
+                                            : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.28)",
                                         color: isActive
-                                            ? "rgba(255,255,255,0.95)"
-                                            : isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)",
-                                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                        transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                            ? TEXT_DARK.primary
+                                            : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        fontFamily: FONT.sans,
+                                        transition: `all ${TIMING.fast} ${EASE.spring}`,
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!isActive) {
-                                            e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.22)"
-                                            e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.40)"
+                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgSubtle
+                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isActive) {
-                                            e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.12)"
-                                            e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)"
+                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)"
+                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : "rgba(255,255,255,0.28)"
                                         }
                                     }}
                                 >
@@ -1088,15 +1087,15 @@ export default function ChatPage() {
                                 onClick={() => setSelectedLaws(availableLaws.map(l => l.id))}
                                 title="Select all laws"
                                 style={{
-                                    fontSize: isMobile ? 8 : 9, fontWeight: 500,
-                                    padding: isMobile ? "2px 5px" : "2px 7px", borderRadius: 5,
+                                    fontSize: TYPE_SCALE.xs, fontWeight: 500,
+                                    padding: `2px ${SPACE['2']}px`, borderRadius: RADIUS.sm,
                                     cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                                     userSelect: "none", WebkitUserSelect: "none",
-                                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)",
-                                    border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.30)",
-                                    color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.50)",
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                    transition: "all 0.12s",
+                                    background: isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)",
+                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    fontFamily: FONT.sans,
+                                    transition: `all ${TIMING.instant}`,
                                 }}
                             >
                                 All
@@ -1106,7 +1105,7 @@ export default function ChatPage() {
                 )}
 
                 {/* Messages */}
-                <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? "14px 12px 90px" : "22px 24px", minHeight: 0}}>
+                <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? `${SPACE['4']}px ${SPACE['3']}px 90px` : `${SPACE['6']}px ${SPACE['6']}px`, minHeight: 0}}>
                     {messages.length === 0 ? (
                         <>
                             <EmptyState
@@ -1121,7 +1120,7 @@ export default function ChatPage() {
                         messages.map((m, idx) => (
                             <motion.div
                                 key={m.id}
-                                initial={{opacity: 0, y: 12, scale: 0.98}}
+                                initial={{opacity: 0, y: SPACE['3'], scale: 0.98}}
                                 animate={{opacity: 1, y: 0, scale: 1}}
                                 transition={{
                                     type: "spring",
@@ -1147,24 +1146,24 @@ export default function ChatPage() {
 
                     {showFollowUps && (
                         <div className="mb-4 animate-fade-in-up">
-                            <div style={{display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px"}}>
+                            <div style={{display: "flex", gap: SPACE['2'], overflowX: "auto", paddingBottom: SPACE['1']}}>
                                 {FOLLOWUP_SUGGESTIONS.slice(0, 3).map((suggestion) => (
                                     <button key={suggestion} onClick={() => onSend(suggestion)} style={{
-                                        flexShrink: 0, fontSize: "11px", padding: "6px 14px",
-                                        borderRadius: "9999px", cursor: "pointer",
-                                        background: isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)",
-                                        border: isDark ? "1px solid rgba(255,255,255,0.18)" : "1px solid rgba(255,255,255,0.55)",
-                                        color: isDark ? "rgba(255,255,255,0.72)" : "#5a3a08",
-                                        transition: "all 0.15s ease",
-                                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                        flexShrink: 0, fontSize: TYPE_SCALE.xs, padding: `${SPACE['2']}px ${SPACE['4']}px`,
+                                        borderRadius: RADIUS.full, cursor: "pointer",
+                                        background: isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.28)",
+                                        border: isDark ? `1px solid ${GLASS.dark.border}` : `1px solid ${GLASS.light.border}`,
+                                        color: isDark ? TEXT_DARK.secondary : "#5a3a08",
+                                        transition: `all ${TIMING.fast}`,
+                                        fontFamily: FONT.sans,
                                     }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = isDark ? "rgba(201,168,76,0.18)" : "rgba(233,196,106,0.28)"
-                                                e.currentTarget.style.color = isDark ? "#C9A84C" : "#7a3800"
+                                                e.currentTarget.style.background = isDark ? COLOR.gold.tint : "rgba(233,196,106,0.28)"
+                                                e.currentTarget.style.color = isDark ? COLOR.gold.base : "#7a3800"
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)"
-                                                e.currentTarget.style.color = isDark ? "rgba(255,255,255,0.72)" : "#5a3a08"
+                                                e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.28)"
+                                                e.currentTarget.style.color = isDark ? TEXT_DARK.secondary : "#5a3a08"
                                             }}
                                     >
                                         {suggestion}
@@ -1176,12 +1175,12 @@ export default function ChatPage() {
 
                     {error && (
                         <div style={{
-                            fontSize: "13px", textAlign: "center", marginTop: "8px", marginBottom: "16px",
-                            borderRadius: "12px", padding: "12px 16px",
+                            fontSize: TYPE_SCALE.sm, textAlign: "center", marginTop: SPACE['2'], marginBottom: SPACE['4'],
+                            borderRadius: RADIUS.lg, padding: `${SPACE['3']}px ${SPACE['4']}px`,
                             color: isDark ? "#ff8c7a" : "#8b3520",
                             background: isDark ? "rgba(255,100,80,0.10)" : "rgba(139,53,32,0.10)",
                             border: isDark ? "1px solid rgba(255,100,80,0.22)" : "1px solid rgba(139,53,32,0.22)",
-                            display: "flex", alignItems: "center", justifyContent: "center", gap: "12px",
+                            display: "flex", alignItems: "center", justifyContent: "center", gap: SPACE['3'],
                             flexWrap: "wrap",
                         }}>
                             <span>{error}</span>
@@ -1191,12 +1190,12 @@ export default function ChatPage() {
                                     router.replace("/")
                                 }}
                                 style={{
-                                    fontSize: "12px", fontWeight: 600, padding: "5px 12px",
-                                    borderRadius: "8px", cursor: "pointer",
+                                    fontSize: TYPE_SCALE.sm, fontWeight: 600, padding: `${SPACE['1']}px ${SPACE['3']}px`,
+                                    borderRadius: RADIUS.md, cursor: "pointer",
                                     background: isDark ? "rgba(255,100,80,0.20)" : "rgba(139,53,32,0.14)",
                                     border: isDark ? "1px solid rgba(255,100,80,0.40)" : "1px solid rgba(139,53,32,0.35)",
                                     color: isDark ? "#ff8c7a" : "#8b3520",
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                    fontFamily: FONT.sans,
                                 }}
                             >
                                 Sign in
@@ -1207,15 +1206,16 @@ export default function ChatPage() {
 
                 {/* Input */}
                 <div style={{
-                    padding: isMobile ? "12px 12px 18px" : "12px 22px 16px", borderTop: "0.5px solid rgba(255,255,255,0.28)",
-                    flexShrink: 0, background: "rgba(255,255,255,0.04)"
+                    padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px ${SPACE['5']}px` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
+                    borderTop: `0.5px solid ${GLASS.dark.border}`,
+                    flexShrink: 0, background: GLASS.dark.bgSubtle,
                 }}>
                     <ChatInput onSend={onSend} disabled={isStreaming} onFocusRef={inputFocusRef}/>
                     <p style={{
-                        fontSize: isMobile ? 9 : 10,
-                        color: isDark ? "rgba(255,255,255,0.32)" : "rgba(46,31,8,0.35)",
-                        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                        margin: "8px 0 0",
+                        fontSize: TYPE_SCALE.xs,
+                        color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                        fontFamily: FONT.sans,
+                        margin: `${SPACE['2']}px 0 0`,
                         textAlign: "center",
                         lineHeight: 1,
                     }}>
@@ -1265,24 +1265,24 @@ export default function ChatPage() {
                     >
                         {/* Mobile drag handle */}
                         {isMobile && (
-                            <div style={{display: "flex", justifyContent: "center", padding: "8px 0 0"}}>
+                            <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
                                 <div style={{
-                                    width: 36, height: 4, borderRadius: 2,
-                                    background: isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.20)",
+                                    width: 36, height: SPACE['1'], borderRadius: 2,
+                                    background: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
                                 }}/>
                             </div>
                         )}
                         {/* Panel header */}
                         <div style={{
-                            padding: isMobile ? "10px 16px" : "14px 22px",
-                            borderBottom: "0.5px solid rgba(255,255,255,0.30)",
+                            padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
+                            borderBottom: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0, background: "rgba(255,255,255,0.06)",
+                            flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                         }}>
               <span style={{
-                  fontSize: "12px", fontWeight: 600,
-                  color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
-                  fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                  fontSize: TYPE_SCALE.sm, fontWeight: 600,
+                  color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                  fontFamily: FONT.sans,
                   textTransform: "uppercase", letterSpacing: "0.10em"
               }}>
                 Source Document
@@ -1290,12 +1290,12 @@ export default function ChatPage() {
                             <button
                                 onClick={() => setPreviewIndex(null)}
                                 style={{
-                                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)",
-                                    border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.50)",
+                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
                                     cursor: "pointer",
-                                    padding: isMobile ? 6 : 4,
-                                    color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)",
-                                    borderRadius: 8,
+                                    padding: isMobile ? SPACE['2'] : SPACE['1'],
+                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    borderRadius: RADIUS.md,
                                     display: "flex"
                                 }}
                             >
@@ -1304,7 +1304,7 @@ export default function ChatPage() {
                         </div>
 
                         {/* FakePdf fills remaining height */}
-                        <div style={{flex: 1, padding: "16px", minHeight: 0, overflow: "hidden"}}>
+                        <div style={{flex: 1, padding: SPACE['4'], minHeight: 0, overflow: "hidden"}}>
                             <div style={{height: "100%", position: "relative"}}>
                                 <FakePdf
                                     scenario={previewScenarios[previewIndex!]}
@@ -1315,20 +1315,20 @@ export default function ChatPage() {
 
                         {/* Ask button */}
                         <div style={{
-                            padding: isMobile ? "12px 20px 80px" : "12px 20px 16px",
-                            borderTop: "0.5px solid rgba(255,255,255,0.28)",
-                            flexShrink: 0, background: "rgba(255,255,255,0.04)"
+                            padding: isMobile ? `${SPACE['3']}px ${SPACE['5']}px 80px` : `${SPACE['3']}px ${SPACE['5']}px ${SPACE['4']}px`,
+                            borderTop: `0.5px solid ${GLASS.dark.border}`,
+                            flexShrink: 0, background: GLASS.dark.bgSubtle,
                         }}>
                             <button
                                 onClick={() => onSend(presetQuestions[previewIndex!].full)}
                                 style={{
-                                    width: "100%", padding: "11px", borderRadius: 14,
+                                    width: "100%", padding: SPACE['3'], borderRadius: RADIUS.xl,
                                     background: "#5c2e08", color: "#fff8ee",
                                     border: "none", cursor: "pointer",
-                                    fontSize: "13px", fontWeight: 600,
-                                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                    fontSize: TYPE_SCALE.sm, fontWeight: 600,
+                                    fontFamily: FONT.sans,
                                     boxShadow: "0 2px 12px rgba(92,46,8,0.30)",
-                                    transition: "opacity 0.14s",
+                                    transition: `opacity ${TIMING.fast}`,
                                 }}
                                 onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
                                 onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
@@ -1380,29 +1380,29 @@ export default function ChatPage() {
                     >
                         {/* Mobile drag handle */}
                         {isMobile && (
-                            <div style={{display: "flex", justifyContent: "center", padding: "8px 0 0"}}>
+                            <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
                                 <div style={{
-                                    width: 36, height: 4, borderRadius: 2,
-                                    background: isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.20)",
+                                    width: 36, height: SPACE['1'], borderRadius: 2,
+                                    background: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
                                 }}/>
                             </div>
                         )}
                         {/* Panel header */}
                         <div style={{
-                            padding: isMobile ? "10px 16px" : "14px 22px",
-                            borderBottom: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.30)",
+                            padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
+                            borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0, background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+                            flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                         }}>
               <span style={{
-                  fontSize: "12px", fontWeight: 700, textTransform: "uppercase",
+                  fontSize: TYPE_SCALE.sm, fontWeight: 700, textTransform: "uppercase",
                   letterSpacing: "0.12em",
-                  color: isDark ? "rgba(201,168,76,0.80)" : "#7a4a00",
-                  fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                  color: isDark ? COLOR.gold.base : "#7a4a00",
+                  fontFamily: FONT.sans,
               }}>
                 Source Grounding
               </span>
-                            <div style={{display: "flex", alignItems: "center", gap: 4}}>
+                            <div style={{display: "flex", alignItems: "center", gap: SPACE['1']}}>
                                 {/* Layout toggle buttons — hide on mobile since it's full-screen */}
                                 {!isMobile && (["chat", "split", "source"] as const).map((mode) => (
                                     <button
@@ -1411,36 +1411,36 @@ export default function ChatPage() {
                                         title={mode === "chat" ? "Chat focused" : mode === "split" ? "Equal split" : "Sources focused"}
                                         style={{
                                             display: "flex", alignItems: "center", gap: 1,
-                                            padding: "3px 5px", borderRadius: 5,
+                                            padding: `3px ${SPACE['1']}px`, borderRadius: RADIUS.sm,
                                             background: layoutMode === mode
-                                                ? isDark ? "rgba(201,168,76,0.18)" : "rgba(196,124,0,0.14)"
-                                                : isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.18)",
+                                                ? isDark ? COLOR.gold.tint : "rgba(196,124,0,0.14)"
+                                                : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
                                             border: layoutMode === mode
-                                                ? isDark ? "0.5px solid rgba(201,168,76,0.35)" : "0.5px solid rgba(196,124,0,0.30)"
-                                                : isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.40)",
+                                                ? isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.30)"
+                                                : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.40)",
                                             cursor: "pointer",
-                                            transition: "all 0.12s",
+                                            transition: `all ${TIMING.instant}`,
                                         }}
                                     >
                                         {/* Left rectangle (chat) */}
                                         <span style={{
                                             display: "block",
-                                            width: mode === "chat" ? 10 : mode === "split" ? 7 : 4,
+                                            width: mode === "chat" ? 10 : mode === "split" ? 7 : SPACE['1'],
                                             height: 10, borderRadius: 1.5,
                                             background: layoutMode === mode
-                                                ? isDark ? "rgba(201,168,76,0.70)" : "rgba(196,124,0,0.55)"
-                                                : isDark ? "rgba(255,255,255,0.25)" : "rgba(46,31,8,0.25)",
-                                            transition: "all 0.12s",
+                                                ? isDark ? COLOR.gold.solid : "rgba(196,124,0,0.55)"
+                                                : isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                            transition: `all ${TIMING.instant}`,
                                         }}/>
                                         {/* Right rectangle (sources) */}
                                         <span style={{
                                             display: "block",
-                                            width: mode === "chat" ? 4 : mode === "split" ? 7 : 10,
+                                            width: mode === "chat" ? SPACE['1'] : mode === "split" ? 7 : 10,
                                             height: 10, borderRadius: 1.5,
                                             background: layoutMode === mode
-                                                ? isDark ? "rgba(201,168,76,0.70)" : "rgba(196,124,0,0.55)"
-                                                : isDark ? "rgba(255,255,255,0.25)" : "rgba(46,31,8,0.25)",
-                                            transition: "all 0.12s",
+                                                ? isDark ? COLOR.gold.solid : "rgba(196,124,0,0.55)"
+                                                : isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                            transition: `all ${TIMING.instant}`,
                                         }}/>
                                     </button>
                                 ))}
@@ -1449,11 +1449,11 @@ export default function ChatPage() {
                                     style={{
                                         display: "flex", alignItems: "center", justifyContent: "center",
                                         width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
-                                        borderRadius: 8, marginLeft: 4,
-                                        background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)",
-                                        border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.50)",
+                                        borderRadius: RADIUS.md, marginLeft: SPACE['1'],
+                                        background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                        border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
                                         cursor: "pointer",
-                                        color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)",
+                                        color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
                                     }}
                                 >
                                     <X size={isMobile ? 16 : 14} strokeWidth={2}/>
@@ -1507,26 +1507,26 @@ export default function ChatPage() {
                     >
                         {/* Mobile drag handle */}
                         {isMobile && (
-                            <div style={{display: "flex", justifyContent: "center", padding: "8px 0 0"}}>
+                            <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
                                 <div style={{
-                                    width: 36, height: 4, borderRadius: 2,
-                                    background: isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.20)",
+                                    width: 36, height: SPACE['1'], borderRadius: 2,
+                                    background: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
                                 }}/>
                             </div>
                         )}
                         {/* Panel header */}
                         <div style={{
-                            padding: isMobile ? "10px 16px" : "14px 16px",
-                            borderBottom: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.30)",
+                            padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['4']}px`,
+                            borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.06)",
+                            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                         }}>
                             <span style={{
-                                fontSize: 11, fontWeight: 700, textTransform: "uppercase",
+                                fontSize: TYPE_SCALE.xs, fontWeight: 700, textTransform: "uppercase",
                                 letterSpacing: "0.12em",
-                                color: isDark ? "rgba(201,168,76,0.80)" : "#7a4a00",
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                color: isDark ? COLOR.gold.base : "#7a4a00",
+                                fontFamily: FONT.sans,
                             }}>
                                 Sources ({documentIndex.length})
                             </span>
@@ -1535,11 +1535,11 @@ export default function ChatPage() {
                                 style={{
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
-                                    borderRadius: 8,
-                                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.25)",
-                                    border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.50)",
+                                    borderRadius: RADIUS.md,
+                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
                                     cursor: "pointer",
-                                    color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)",
+                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
                                 }}
                             >
                                 <X size={isMobile ? 16 : 14} strokeWidth={2}/>

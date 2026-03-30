@@ -1,31 +1,85 @@
 "use client";
 
-import {useState, useEffect} from "react";
-import {useRouter} from "next/navigation";
+import {Suspense, useState, useEffect, useCallback} from "react";
+import {useRouter, useSearchParams} from "next/navigation";
 import {useTheme} from "next-themes";
 import {CheckCircle} from "lucide-react";
 
 const fontStack =
     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 
+const REDIRECT_SECONDS = 5;
+
 export default function BillingSuccessPage() {
+    return (
+        <Suspense>
+            <BillingSuccessContent />
+        </Suspense>
+    );
+}
+
+function BillingSuccessContent() {
     const {resolvedTheme} = useTheme();
     const [mounted, setMounted] = useState(false);
+    const [countdown, setCountdown] = useState(REDIRECT_SECONDS);
+    const [planName, setPlanName] = useState<string | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
+    // Sync subscription from Stripe (fallback if webhook hasn't arrived yet),
+    // then fetch billing status to display the correct plan name.
+    useEffect(() => {
+        const sessionId = searchParams.get("session_id");
+        if (!sessionId) return;
+
+        const apiBase = process.env.NEXT_PUBLIC_SSE_URL ?? "";
+
+        // First sync subscription from Stripe, then get billing status
+        fetch(`${apiBase}/stripe/sync-subscription`, {
+            method: "POST",
+            credentials: "include",
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        })
+            .catch(() => {
+                // Sync failed — the webhook may have already handled it
+            })
+            .finally(() => {
+                fetch(`${apiBase}/stripe/billing-status`, {credentials: "include"})
+                    .then((r) => r.json())
+                    .then((data) => {
+                        if (data.plan && data.plan !== "free") {
+                            setPlanName(
+                                data.plan.charAt(0).toUpperCase() + data.plan.slice(1),
+                            );
+                        }
+                    })
+                    .catch(() => {
+                        // Ignore — we'll show a generic message
+                    });
+            });
+    }, [searchParams]);
+
     const isDark = mounted && resolvedTheme === "dark";
 
-    // Auto-redirect after 5 seconds
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            router.push("/chat");
-        }, 5000);
-        return () => clearTimeout(timer);
+    const goToChat = useCallback(() => {
+        router.push("/chat");
     }, [router]);
+
+    // Countdown timer with actual decrementing display
+    useEffect(() => {
+        if (countdown <= 0) {
+            goToChat();
+            return;
+        }
+        const timer = setInterval(() => {
+            setCountdown((prev) => prev - 1);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [countdown, goToChat]);
 
     const glassCard: React.CSSProperties = {
         background: isDark
@@ -120,7 +174,7 @@ export default function BillingSuccessPage() {
                         lineHeight: 1.5,
                     }}
                 >
-                    Your Vitreon Legal Pro subscription is now active.
+                    Your Vitreon Legal {planName ?? ""}  subscription is now active.
                 </p>
 
                 {/* Go to Chat button */}
@@ -161,7 +215,7 @@ export default function BillingSuccessPage() {
                         marginTop: "16px",
                     }}
                 >
-                    Redirecting to chat in 5 seconds...
+                    Redirecting to chat in {countdown} second{countdown !== 1 ? "s" : ""}...
                 </p>
             </div>
         </div>

@@ -199,6 +199,7 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                     ConversationMessage.conversation_id == cid,
                 )
                 .order_by(ConversationMessage.created_at.asc())
+                .limit(500)
             )
             rows = result.all()
             return [
@@ -276,7 +277,7 @@ async def save_turn(
                 conversation_id=cid,
                 user_id=uid,
                 role="assistant",
-                content=answer[:4000],
+                content=answer[:8000],
             ))
             await session.commit()
     except Exception:

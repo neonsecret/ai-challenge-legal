@@ -1,14 +1,15 @@
 "use client";
 
 import {useState, useEffect} from "react";
-import {Moon, Sun, Monitor, LogOut, User, Loader2} from "lucide-react";
+import {Moon, Sun, Monitor, LogOut, User, Loader2, ChevronDown} from "lucide-react";
 import {useTheme} from "next-themes";
 import {useRouter} from "next/navigation";
 import {useI18n} from "@/lib/i18n";
+import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/design-tokens";
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
 
-const fontStack = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
+const fontStack = FONT.sans;
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -30,6 +31,10 @@ export default function SettingsPage() {
     const [user, setUser] = useState<UserInfo | null>(null);
     const [userLoading, setUserLoading] = useState(true);
     const [loggingOut, setLoggingOut] = useState(false);
+    const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
         setMounted(true);
@@ -53,6 +58,37 @@ export default function SettingsPage() {
         }
 
         router.push("/");
+    };
+
+    const deleteEmailMatches =
+        user != null &&
+        deleteConfirmEmail.toLowerCase() === user.email.toLowerCase();
+
+    const handleDeleteAccount = async () => {
+        if (!deleteEmailMatches) return;
+        setDeleting(true);
+        setDeleteError(null);
+        try {
+            const res = await fetch(`${API}/auth/delete-account`, {
+                method: "DELETE",
+                credentials: "include",
+                headers: {"X-Requested-With": "XMLHttpRequest"},
+            });
+            if (!res.ok && res.status !== 204) {
+                const body = await res.json().catch(() => null);
+                setDeleteError(
+                    body?.detail || body?.message || `Deletion failed (${res.status})`
+                );
+                setDeleting(false);
+                return;
+            }
+            // Clear all localStorage and redirect to landing
+            localStorage.clear();
+            router.push("/");
+        } catch {
+            setDeleteError("Cannot reach the server. Please try again.");
+            setDeleting(false);
+        }
     };
 
     const themeOptions: { value: ThemeOption; labelKey: string; icon: React.ReactNode }[] = [
@@ -328,6 +364,202 @@ export default function SettingsPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Delete account — collapsed by default, subtle link */}
+                {user && (
+                    <div style={{
+                        marginTop: SPACE["4"],
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                    }}>
+                        {!showDeleteConfirm ? (
+                            <button
+                                onClick={() => setShowDeleteConfirm(true)}
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: SPACE["1"],
+                                    background: "none",
+                                    border: "none",
+                                    padding: `${SPACE["2"]}px ${SPACE["3"]}px`,
+                                    fontSize: TYPE_SCALE.xs,
+                                    fontFamily: fontStack,
+                                    fontWeight: 400,
+                                    color: isDark ? "rgba(255,255,255,0.30)" : "rgba(46,31,8,0.35)",
+                                    cursor: "pointer",
+                                    transition: `color ${TIMING.fast}`,
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = isDark
+                                        ? "rgba(255,255,255,0.50)"
+                                        : "rgba(46,31,8,0.55)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = isDark
+                                        ? "rgba(255,255,255,0.30)"
+                                        : "rgba(46,31,8,0.35)";
+                                }}
+                            >
+                                {t("settings.delete_account")}
+                                <ChevronDown size={12}/>
+                            </button>
+                        ) : (
+                            <div style={{
+                                ...glassCard,
+                                width: "100%",
+                            }}>
+                                <div style={cardBody}>
+                                    <div style={{display: "flex", flexDirection: "column", gap: SPACE["4"]}}>
+                                        <div>
+                                            <p style={{
+                                                fontSize: TYPE_SCALE.sm,
+                                                fontWeight: 500,
+                                                color: isDark ? "rgba(255,255,255,0.60)" : "rgba(46,31,8,0.60)",
+                                                fontFamily: fontStack,
+                                                margin: 0,
+                                                lineHeight: 1.5,
+                                            }}>
+                                                {t("settings.delete_irreversible")}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <label style={labelStyleDyn}>
+                                                {t("settings.delete_type_email")}
+                                            </label>
+                                            <input
+                                                type="email"
+                                                value={deleteConfirmEmail}
+                                                onChange={(e) => {
+                                                    setDeleteConfirmEmail(e.target.value);
+                                                    setDeleteError(null);
+                                                }}
+                                                placeholder={user.email}
+                                                autoComplete="off"
+                                                style={{
+                                                    width: "100%",
+                                                    padding: `${SPACE["3"]}px ${SPACE["4"]}px`,
+                                                    borderRadius: RADIUS.lg,
+                                                    fontSize: TYPE_SCALE.sm,
+                                                    fontFamily: fontStack,
+                                                    background: isDark
+                                                        ? "rgba(255,255,255,0.06)"
+                                                        : "rgba(255,255,255,0.40)",
+                                                    border: isDark
+                                                        ? "0.5px solid rgba(255,255,255,0.14)"
+                                                        : "0.5px solid rgba(255,255,255,0.40)",
+                                                    color: isDark
+                                                        ? "rgba(255,255,255,0.88)"
+                                                        : "#1e1208",
+                                                    outline: "none",
+                                                    boxSizing: "border-box",
+                                                }}
+                                            />
+                                        </div>
+
+                                        {deleteError && (
+                                            <p style={{
+                                                fontSize: TYPE_SCALE.xs,
+                                                color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
+                                                fontFamily: fontStack,
+                                                margin: 0,
+                                            }}>
+                                                {deleteError}
+                                            </p>
+                                        )}
+
+                                        <div style={{
+                                            display: "flex",
+                                            gap: SPACE["3"],
+                                            alignSelf: "flex-start",
+                                        }}>
+                                            <button
+                                                onClick={handleDeleteAccount}
+                                                disabled={!deleteEmailMatches || deleting}
+                                                style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    gap: SPACE["2"],
+                                                    padding: `${SPACE["3"]}px ${SPACE["5"]}px`,
+                                                    borderRadius: RADIUS.lg,
+                                                    fontSize: TYPE_SCALE.sm,
+                                                    fontWeight: 600,
+                                                    fontFamily: fontStack,
+                                                    background: deleteEmailMatches
+                                                        ? (isDark
+                                                            ? "rgba(255,255,255,0.10)"
+                                                            : "rgba(46,31,8,0.08)")
+                                                        : (isDark
+                                                            ? "rgba(255,255,255,0.04)"
+                                                            : "rgba(255,255,255,0.15)"),
+                                                    border: deleteEmailMatches
+                                                        ? (isDark
+                                                            ? "0.5px solid rgba(255,255,255,0.25)"
+                                                            : "0.5px solid rgba(46,31,8,0.20)")
+                                                        : (isDark
+                                                            ? "0.5px solid rgba(255,255,255,0.08)"
+                                                            : "0.5px solid rgba(255,255,255,0.25)"),
+                                                    color: deleteEmailMatches
+                                                        ? (isDark ? "rgba(255,255,255,0.75)" : "rgba(46,31,8,0.70)")
+                                                        : (isDark
+                                                            ? "rgba(255,255,255,0.20)"
+                                                            : "rgba(46,31,8,0.25)"),
+                                                    cursor: deleteEmailMatches && !deleting
+                                                        ? "pointer"
+                                                        : "not-allowed",
+                                                    opacity: deleting ? 0.5 : 1,
+                                                    transition: `all ${TIMING.fast}`,
+                                                }}
+                                            >
+                                                {deleting ? (
+                                                    <>
+                                                        <Loader2 size={14} style={{animation: "spin 1s linear infinite"}}/>
+                                                        {t("settings.deleting")}
+                                                    </>
+                                                ) : (
+                                                    t("settings.delete_permanently")
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setShowDeleteConfirm(false);
+                                                    setDeleteConfirmEmail("");
+                                                    setDeleteError(null);
+                                                }}
+                                                disabled={deleting}
+                                                style={{
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    padding: `${SPACE["3"]}px ${SPACE["5"]}px`,
+                                                    borderRadius: RADIUS.lg,
+                                                    fontSize: TYPE_SCALE.sm,
+                                                    fontWeight: 500,
+                                                    fontFamily: fontStack,
+                                                    background: isDark
+                                                        ? "rgba(255,255,255,0.06)"
+                                                        : "rgba(255,255,255,0.25)",
+                                                    border: isDark
+                                                        ? "0.5px solid rgba(255,255,255,0.14)"
+                                                        : "0.5px solid rgba(255,255,255,0.35)",
+                                                    color: isDark
+                                                        ? "rgba(255,255,255,0.55)"
+                                                        : "rgba(46,31,8,0.60)",
+                                                    cursor: deleting ? "not-allowed" : "pointer",
+                                                    transition: `opacity ${TIMING.fast}`,
+                                                }}
+                                            >
+                                                {t("settings.cancel")}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
             </div>
         </div>

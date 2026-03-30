@@ -667,6 +667,44 @@ export default function LoginPage() {
                                     ? "Sign In"
                                     : "Create Account"}
                         </button>
+
+                        {/* Terms & Privacy (register only) */}
+                        {mode === "register" && (
+                            <p
+                                style={{
+                                    textAlign: "center",
+                                    marginTop: 12,
+                                    fontSize: "11px",
+                                    lineHeight: "1.5",
+                                    color: mutedText,
+                                    fontFamily: fontStack,
+                                }}
+                            >
+                                By creating an account, you agree to our{" "}
+                                <a
+                                    href="/terms"
+                                    style={{
+                                        color: accentColor,
+                                        textDecoration: "none",
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    Terms of Service
+                                </a>{" "}
+                                and{" "}
+                                <a
+                                    href="/privacy"
+                                    style={{
+                                        color: accentColor,
+                                        textDecoration: "none",
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    Privacy Policy
+                                </a>
+                                .
+                            </p>
+                        )}
                     </form>
 
                     {/* Bottom link */}

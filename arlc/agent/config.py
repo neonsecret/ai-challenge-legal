@@ -18,6 +18,10 @@ MAX_HISTORY_MESSAGES: int = int(os.environ.get("AGENT_MAX_HISTORY", "10"))  # 5 
 # --- Web search ---
 WEB_SEARCH_MAX_RESULTS: int = int(os.environ.get("AGENT_WEB_SEARCH_MAX", "3"))
 WEB_SEARCH_ENABLED: bool = os.environ.get("AGENT_WEB_SEARCH_ENABLED", "true").lower() == "true"
+MAX_WEB_SOURCES: int = int(os.environ.get("AGENT_MAX_WEB_SOURCES", "15"))
+
+# --- Timeouts ---
+AGENT_TIMEOUT_SECONDS: int = int(os.environ.get("AGENT_TIMEOUT_SECONDS", "120"))
 
 # --- LLM ---
 LLM_MODEL: str = os.environ.get("AGENT_LLM_MODEL", "claude-sonnet-4-6")

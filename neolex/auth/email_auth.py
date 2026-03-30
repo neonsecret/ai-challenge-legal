@@ -1,20 +1,31 @@
-"""Email/password auth routes: register, login, verify-email, forgot/reset password, data export."""
+"""Email/password auth routes: register, login, verify-email, forgot/reset password, data export, account deletion."""
 import hashlib
+import logging
 import secrets
+import shutil
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 import bcrypt
-from sqlalchemy import select
+from sqlalchemy import delete as sql_delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from neolex.auth.email_service import send_password_reset_email, send_verification_email
 from neolex.auth.session import create_session, get_current_user, _set_session_cookie
 from neolex.config import settings
-from neolex.db.models import AuthToken, ConversationDocs, ConversationMessage, Session, User
+from neolex.db.models import (
+    AuthToken,
+    ConversationDocs,
+    ConversationMessage,
+    Invoice,
+    Session,
+    Subscription,
+    User,
+)
 from neolex.db.postgres import get_db
 from neolex.schemas.auth import (
     ForgotPasswordRequest,
@@ -22,6 +33,8 @@ from neolex.schemas.auth import (
     RegisterRequest,
     ResetPasswordRequest,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -115,6 +128,9 @@ async def verify_email(token: str, request: Request, db: AsyncSession = Depends(
     user.email_verified = True
     user.last_login = now
 
+    # Invalidate existing sessions to prevent session fixation
+    await db.execute(sql_delete(Session).where(Session.user_id == user.id))
+
     ip = getattr(request.client, "host", None)
     raw_session = await create_session(user, db, ip=ip, user_agent=request.headers.get("user-agent"))
 
@@ -167,7 +183,8 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
 
 
 @router.post("/reset-password")
-async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def reset_password(body: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    await _auth_rate_check(request, "reset")
     now = datetime.now(timezone.utc)
     result = await db.execute(
         select(AuthToken).where(
@@ -198,7 +215,7 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
 
     # Invalidate all existing sessions
     from neolex.db.models import Session as DBSession
-    sessions = (await db.execute(select(DBSession).where(DBSession.user_id == user.id))).scalars()
+    sessions = (await db.execute(select(DBSession).where(DBSession.user_id == user.id))).scalars().all()
     for s in sessions:
         await db.delete(s)
 
@@ -273,3 +290,198 @@ async def export_my_data(
         "conversations": conversations,
         "conversation_docs": conversation_docs,
     }
+
+
+# ---------------------------------------------------------------------------
+# Account deletion (GDPR Article 17 — right to erasure)
+# ---------------------------------------------------------------------------
+
+
+@router.delete("/delete-account", status_code=204)
+async def delete_account(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Permanently delete the authenticated user's account and all associated data.
+
+    This is irreversible. It cancels any active Stripe subscription, removes
+    all conversations, documents, sessions, tokens, invoices, uploaded corpora
+    files, audit records, and finally the user record itself.
+    """
+    user_id = user.id
+    client_slug = str(user_id)
+
+    # 1. Cancel active Stripe subscriptions
+    await _cancel_stripe_subscriptions(user, db)
+
+    # 2. Delete conversation messages
+    await db.execute(
+        sql_delete(ConversationMessage).where(ConversationMessage.user_id == user_id)
+    )
+
+    # 3. Delete conversation docs
+    await db.execute(
+        sql_delete(ConversationDocs).where(ConversationDocs.user_id == user_id)
+    )
+
+    # 4. Delete subscriptions (DB records)
+    await db.execute(
+        sql_delete(Subscription).where(Subscription.user_id == user_id)
+    )
+
+    # 5. Delete invoices
+    await db.execute(
+        sql_delete(Invoice).where(Invoice.user_id == user_id)
+    )
+
+    # 6. Delete sessions
+    await db.execute(
+        sql_delete(Session).where(Session.user_id == user_id)
+    )
+
+    # 7. Delete auth tokens
+    await db.execute(
+        sql_delete(AuthToken).where(AuthToken.user_id == user_id)
+    )
+
+    # 8. Delete uploaded corpus files and audit DB records
+    await _delete_client_data(client_slug)
+
+    # 8b. Delete audit log entries (queries, events) linked to this user's API keys
+    await _delete_user_audit_logs(client_slug)
+
+    # 9. Delete the user record
+    await db.execute(
+        sql_delete(User).where(User.id == user_id)
+    )
+
+    await db.commit()
+    logger.info("Account deleted: user_id=%s", user_id)
+
+    # 10. Clear the session cookie
+    response = Response(status_code=204)
+    response.delete_cookie(
+        settings.session_cookie_name,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=not settings.dev_mode,
+    )
+    return response
+
+
+async def _delete_user_audit_logs(client_slug: str) -> None:
+    """Delete audit log entries (queries, events, api_keys) for a user.
+
+    The operational tables (queries, events, api_keys) use key_hash to link
+    records. We collect all key_hashes belonging to this client_slug, then
+    delete queries and events referencing those hashes, and finally the keys
+    themselves. This ensures full GDPR erasure of audit data.
+    """
+    try:
+        from neolex.db.audit import get_audit_db
+        from neolex.db.operational_models import ApiKey, Event, Query
+        from sqlalchemy import delete as sa_delete, select as sa_select
+
+        async with get_audit_db() as audit_db:
+            session = audit_db._session
+
+            # 1. Collect all key_hashes for this client
+            result = await session.execute(
+                sa_select(ApiKey.key_hash).where(ApiKey.client_slug == client_slug)
+            )
+            key_hashes = [row[0] for row in result.all()]
+
+            if key_hashes:
+                # 2. Delete queries referencing these key_hashes
+                del_queries = await session.execute(
+                    sa_delete(Query).where(Query.key_hash.in_(key_hashes))
+                )
+                # 3. Delete events referencing these key_hashes
+                del_events = await session.execute(
+                    sa_delete(Event).where(Event.key_hash.in_(key_hashes))
+                )
+                logger.info(
+                    "Deleted %d queries and %d events for client %s",
+                    del_queries.rowcount, del_events.rowcount, client_slug,
+                )
+
+            # 4. Delete the API keys themselves
+            del_keys = await session.execute(
+                sa_delete(ApiKey).where(ApiKey.client_slug == client_slug)
+            )
+            logger.info("Deleted %d API keys for client %s", del_keys.rowcount, client_slug)
+    except Exception:
+        logger.exception("Failed to delete audit logs for client %s", client_slug)
+
+
+async def _cancel_stripe_subscriptions(user: User, db: AsyncSession) -> None:
+    """Cancel all active Stripe subscriptions for the user."""
+    if not user.stripe_customer_id:
+        return
+
+    result = await db.execute(
+        select(Subscription).where(
+            Subscription.user_id == user.id,
+            Subscription.status.in_(["active", "trialing", "past_due"]),
+        )
+    )
+    active_subs = result.scalars().all()
+
+    import stripe
+    stripe.api_key = settings.stripe_secret_key
+
+    for sub in active_subs:
+        try:
+            stripe.Subscription.cancel(sub.stripe_subscription_id)
+            logger.info(
+                "Cancelled Stripe subscription %s for user %s",
+                sub.stripe_subscription_id, user.id,
+            )
+        except Exception:
+            logger.exception(
+                "Failed to cancel Stripe subscription %s for user %s",
+                sub.stripe_subscription_id, user.id,
+            )
+
+
+async def _delete_client_data(client_slug: str) -> None:
+    """Delete uploaded corpus files from disk and audit DB records.
+
+    CRITICAL: validates the path stays within data/clients/ to prevent
+    directory traversal attacks. Never deletes built-in indexes (DIFC, Czech).
+    """
+    # Validate client_slug: must be a UUID-like string, no path separators
+    if "/" in client_slug or "\\" in client_slug or ".." in client_slug:
+        logger.error("Refusing to delete data for suspicious client_slug: %s", client_slug)
+        return
+
+    clients_root = Path(settings.data_dir).resolve() / "clients"
+    client_dir = (clients_root / client_slug).resolve()
+
+    # Path traversal guard: ensure resolved path is under data/clients/
+    if not str(client_dir).startswith(str(clients_root)):
+        logger.error(
+            "Path traversal detected: client_dir=%s not under %s",
+            client_dir, clients_root,
+        )
+        return
+
+    # Delete audit DB records for this client
+    try:
+        from neolex.db.audit import get_audit_db
+        async with get_audit_db() as audit_db:
+            docs = await audit_db.list_documents(client_slug)
+            for doc in docs:
+                await audit_db.delete_document(doc["doc_id"], client_slug)
+    except Exception:
+        logger.exception("Failed to clean audit records for client %s", client_slug)
+
+    # Delete the entire client directory (docs + index)
+    if client_dir.exists():
+        try:
+            shutil.rmtree(str(client_dir))
+            logger.info("Deleted client directory: %s", client_dir)
+        except Exception:
+            logger.exception("Failed to delete client directory: %s", client_dir)

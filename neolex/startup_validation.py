@@ -109,7 +109,7 @@ def validate_startup(data_dir: str) -> None:
         if not _s.stripe_secret_key:
             errors.append("STRIPE_SECRET_KEY must be set when STRIPE_ENABLED=true")
         if not _s.stripe_webhook_secret:
-            warnings.append("  STRIPE_WEBHOOK_SECRET not set — webhook signature verification will fail")
+            errors.append("STRIPE_WEBHOOK_SECRET must be set when STRIPE_ENABLED=true")
 
     # --- Check recommended env vars ---
     for var, reason in _RECOMMENDED_ENV_VARS:

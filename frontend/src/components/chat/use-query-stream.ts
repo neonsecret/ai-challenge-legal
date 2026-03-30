@@ -46,7 +46,8 @@ function formatStatus(raw: string): string | null {
         retrieving: "Searching legal documents...",
         reranking: "Evaluating relevance...",
     }
-    return LABELS[raw] ?? raw
+    // Unknown status — return null to avoid leaking internal stage names
+    return LABELS[raw] ?? null
 }
 
 /**
@@ -274,6 +275,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 // Auth OK — start polling for the completed answer
                                 setState(prev => ({
                                     ...prev,
+                                    isStreaming: false,
                                     streamingStatus: "Reconnecting \u2014 answer still processing...",
                                 }))
                                 pollForAnswer(convId)
@@ -291,6 +293,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             if (convId) {
                                 setState(prev => ({
                                     ...prev,
+                                    isStreaming: false,
                                     streamingStatus: "Reconnecting \u2014 answer still processing...",
                                 }))
                                 pollForAnswer(convId)

@@ -191,9 +191,27 @@ async def create_checkout_session(
         )
 
     if not user.stripe_customer_id:
-        customer = stripe.Customer.create(email=user.email, name=user.name or user.email)
+        try:
+            customer = stripe.Customer.create(email=user.email, name=user.name or user.email)
+        except stripe.StripeError:
+            logger.exception("Failed to create Stripe customer for user %s", user.id)
+            raise HTTPException(status_code=502, detail="Could not reach payment provider. Please try again.")
         user.stripe_customer_id = customer.id
         await db.commit()
+
+    # Check for existing active subscription to handle upgrade/switch correctly.
+    # Store old subscription ID in checkout metadata so _on_checkout_completed
+    # can cancel it once the new subscription is active — prevents double billing.
+    metadata: dict[str, str] = {"plan": body.plan, "interval": body.interval}
+    result = await db.execute(
+        select(Subscription)
+        .where(Subscription.user_id == user.id, Subscription.status == "active")
+        .order_by(Subscription.created_at.desc())
+        .limit(1)
+    )
+    old_sub = result.scalar_one_or_none()
+    if old_sub:
+        metadata["previous_subscription_id"] = old_sub.stripe_subscription_id
 
     session = stripe.checkout.Session.create(
         customer=user.stripe_customer_id,
@@ -201,7 +219,7 @@ async def create_checkout_session(
         mode="subscription",
         success_url=f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
         cancel_url=f"{settings.frontend_url}/billing",
-        metadata={"plan": body.plan, "interval": body.interval},
+        metadata=metadata,
     )
     return JSONResponse({"url": session.url})
 
@@ -213,11 +231,13 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
     try:
         event = stripe.Webhook.construct_event(payload, sig, settings.stripe_webhook_secret)
-    except stripe.error.SignatureVerificationError:
+    except stripe.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Invalid Stripe signature")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
 
     # Idempotency guard — skip already-processed webhook events.
-    event_id = event.get("id", "")
+    event_id = event.id
     if event_id in _processed_events:
         logger.info("Duplicate webhook event %s, skipping", event_id)
         return JSONResponse({"status": "duplicate"})
@@ -225,8 +245,24 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     while len(_processed_events) > _MAX_PROCESSED:
         _processed_events.popitem(last=False)  # LRU eviction — removes oldest
 
-    etype = event["type"]
-    data = event["data"]["object"]
+    etype = event.type
+    # Convert StripeObject to plain dict so handlers can use .get() safely.
+    # Recursively convert via _serialize helper to handle Decimal values.
+    def _serialize(obj):
+        if hasattr(obj, "to_dict"):
+            return {k: _serialize(v) for k, v in obj.to_dict().items()}
+        if isinstance(obj, list):
+            return [_serialize(i) for i in obj]
+        if isinstance(obj, dict):
+            return {k: _serialize(v) for k, v in obj.items()}
+        try:
+            from decimal import Decimal
+            if isinstance(obj, Decimal):
+                return float(obj)
+        except ImportError:
+            pass
+        return obj
+    data = _serialize(event.data.object)
 
     if etype == "checkout.session.completed":
         await _on_checkout_completed(data, db)
@@ -252,8 +288,117 @@ async def customer_portal(user: User = Depends(get_current_user)):
     return JSONResponse({"url": portal.url})
 
 
+@router.post("/sync-subscription")
+async def sync_subscription(
+        user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+):
+    """Sync subscription status from Stripe — fallback when webhooks fail.
+
+    Looks up the customer's active subscription directly via the Stripe API
+    and updates the local DB accordingly.
+    """
+    if not user.stripe_customer_id:
+        raise HTTPException(status_code=400, detail="No billing account linked")
+
+    try:
+        subs = stripe.Subscription.list(customer=user.stripe_customer_id, status="active", limit=1)
+    except Exception:
+        logger.exception("Failed to query Stripe subscriptions for user %s", user.id)
+        raise HTTPException(status_code=502, detail="Could not reach Stripe")
+
+    if not subs.data:
+        # No active subscription on Stripe — ensure DB reflects that
+        if user.subscription_status not in (None, "free", "canceled"):
+            user.subscription_status = "free"
+            user.max_corpora = 0
+            await db.commit()
+            logger.info("Sync: user %s has no active Stripe subscription, set to free", user.id)
+        return JSONResponse({"synced": True, "plan": "free"})
+
+    sub = subs.data[0]
+    price_id = sub.items.data[0].price.id
+    plan = _plan_from_price(price_id)
+
+    if user.subscription_status != plan:
+        user.subscription_status = plan
+        user.max_corpora = _max_corpora_for_plan(plan)
+        user.daily_queries_used = 0
+        await db.commit()
+        logger.info("Sync: user %s subscription updated to %s (price %s)", user.id, plan, price_id)
+
+    return JSONResponse({"synced": True, "plan": plan})
+
+
+@router.post("/cancel-subscription")
+async def cancel_subscription(
+        user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+):
+    """Cancel the user's Stripe subscription at end of billing period.
+
+    Does NOT revoke access immediately — the user keeps their plan until
+    the current period ends, at which point the ``customer.subscription.deleted``
+    webhook fires and the status is set to ``canceled``.
+    """
+    if not settings.stripe_enabled:
+        raise HTTPException(status_code=503, detail="Billing not enabled yet")
+
+    # Look up the user's active Subscription record in the local DB
+    result = await db.execute(
+        select(Subscription)
+        .where(Subscription.user_id == user.id, Subscription.status == "active")
+        .order_by(Subscription.created_at.desc())
+        .limit(1)
+    )
+    sub_record = result.scalar_one_or_none()
+
+    if not sub_record:
+        raise HTTPException(status_code=400, detail="No active subscription")
+
+    # Tell Stripe to cancel at the end of the current billing period
+    try:
+        stripe_sub = stripe.Subscription.modify(
+            sub_record.stripe_subscription_id,
+            cancel_at_period_end=True,
+        )
+    except Exception:
+        logger.exception(
+            "Failed to cancel Stripe subscription %s for user %s",
+            sub_record.stripe_subscription_id, user.id,
+        )
+        raise HTTPException(status_code=502, detail="Could not reach Stripe")
+
+    # Update local record to reflect pending cancellation
+    sub_record.cancel_at_period_end = True
+    sub_record.updated_at = datetime.now(timezone.utc)
+
+    # Sync period_end from Stripe response (item-level in API 2025+)
+    items_data = stripe_sub.items.data
+    if items_data:
+        period_end_ts = getattr(items_data[0], "current_period_end", None)
+        if period_end_ts:
+            sub_record.current_period_end = datetime.fromtimestamp(
+                period_end_ts, tz=timezone.utc
+            )
+
+    await db.commit()
+    logger.info(
+        "User %s scheduled cancellation for subscription %s at period end",
+        user.id, sub_record.stripe_subscription_id,
+    )
+
+    return JSONResponse({
+        "status": "canceled_at_period_end",
+        "period_end": sub_record.current_period_end.isoformat() if sub_record.current_period_end else None,
+    })
+
+
 @router.get("/billing-status")
-async def billing_status(user: User = Depends(get_current_user)):
+async def billing_status(
+        user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+):
     """Return full plan info including usage counters and limits."""
     status = user.subscription_status
 
@@ -322,6 +467,21 @@ async def billing_status(user: User = Depends(get_current_user)):
     corpora_used = 0
     corpora_limit = limits["max_corpora"]
 
+    # Look up active subscription for cancellation info
+    cancel_at_period_end = False
+    current_period_end: str | None = None
+    if effective_plan != "free":
+        sub_result = await db.execute(
+            select(Subscription)
+            .where(Subscription.user_id == user.id, Subscription.status == "active")
+            .order_by(Subscription.created_at.desc())
+            .limit(1)
+        )
+        active_sub = sub_result.scalar_one_or_none()
+        if active_sub:
+            cancel_at_period_end = active_sub.cancel_at_period_end
+            current_period_end = active_sub.current_period_end.isoformat() if active_sub.current_period_end else None
+
     return JSONResponse({
         "subscription_status": effective_plan,
         "plan": effective_plan,
@@ -334,6 +494,9 @@ async def billing_status(user: User = Depends(get_current_user)):
         "monthly_queries_limit": monthly_queries_limit,
         "corpora_used": corpora_used,
         "corpora_limit": corpora_limit,
+        # Cancellation state
+        "cancel_at_period_end": cancel_at_period_end,
+        "current_period_end": current_period_end,
         # Nested for any future consumers
         "usage": usage,
         "limits": {
@@ -362,9 +525,41 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
     if not user:
         return
 
-    sub = stripe.Subscription.retrieve(subscription_id)
-    price_id = sub["items"]["data"][0]["price"]["id"]
+    try:
+        sub = stripe.Subscription.retrieve(subscription_id)
+    except stripe.StripeError:
+        logger.exception("Failed to retrieve subscription %s", subscription_id)
+        return
+    item = sub.items.data[0]
+    price_id = item.price.id
     plan = _plan_from_price(price_id)
+
+    # Cancel the previous subscription if this is an upgrade/switch.
+    # The old subscription ID is stored in checkout metadata by create_checkout_session.
+    metadata = session.get("metadata") or {}
+    prev_sub_id = metadata.get("previous_subscription_id")
+    if prev_sub_id:
+        try:
+            stripe.Subscription.cancel(prev_sub_id)
+            logger.info(
+                "Canceled previous subscription %s for user %s (upgrade to %s)",
+                prev_sub_id, user.id, plan,
+            )
+            # Mark the old DB record as canceled
+            old_result = await db.execute(
+                select(Subscription).where(Subscription.stripe_subscription_id == prev_sub_id)
+            )
+            old_sub_record = old_result.scalar_one_or_none()
+            if old_sub_record:
+                old_sub_record.status = "canceled"
+                old_sub_record.updated_at = datetime.now(timezone.utc)
+        except Exception:
+            logger.error(
+                "BILLING: Failed to cancel old subscription %s during upgrade for user %s. "
+                "User may be double-billed. Manual intervention required.",
+                prev_sub_id, user.id, exc_info=True,
+            )
+            # Don't block the new subscription activation — user paid for it
 
     # Update user to the new plan
     user.subscription_status = plan
@@ -376,15 +571,34 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
         hour=0, minute=0, second=0, microsecond=0
     )
 
-    db.add(Subscription(
-        user_id=user.id,
-        stripe_subscription_id=subscription_id,
-        stripe_price_id=price_id,
-        status="active",
-        current_period_start=datetime.fromtimestamp(sub["current_period_start"], tz=timezone.utc),
-        current_period_end=datetime.fromtimestamp(sub["current_period_end"], tz=timezone.utc),
-        cancel_at_period_end=sub.get("cancel_at_period_end", False),
-    ))
+    # Period fields live on the subscription item, not the top-level sub (Stripe API 2025+)
+    period_start = getattr(item, "current_period_start", None) or sub.start_date
+    period_end = getattr(item, "current_period_end", None) or getattr(sub, "current_period_end", None) or sub.start_date
+
+    # Guard against duplicate Subscription rows (e.g. webhook replay after restart).
+    existing_result = await db.execute(
+        select(Subscription).where(Subscription.stripe_subscription_id == subscription_id)
+    )
+    existing_sub = existing_result.scalar_one_or_none()
+    if existing_sub:
+        # Update existing record instead of inserting a duplicate
+        existing_sub.status = "active"
+        existing_sub.stripe_price_id = price_id
+        existing_sub.current_period_start = datetime.fromtimestamp(period_start, tz=timezone.utc)
+        existing_sub.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc)
+        existing_sub.cancel_at_period_end = getattr(sub, "cancel_at_period_end", False)
+        existing_sub.updated_at = datetime.now(timezone.utc)
+    else:
+        db.add(Subscription(
+            user_id=user.id,
+            stripe_subscription_id=subscription_id,
+            stripe_price_id=price_id,
+            status="active",
+            current_period_start=datetime.fromtimestamp(period_start, tz=timezone.utc),
+            current_period_end=datetime.fromtimestamp(period_end, tz=timezone.utc),
+            cancel_at_period_end=getattr(sub, "cancel_at_period_end", False),
+        ))
+
     await db.commit()
     logger.info("User %s subscribed to %s plan (price %s)", user.id, plan, price_id)
 
@@ -397,17 +611,34 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
         return
 
     stripe_status = sub["status"]  # active | past_due | canceled | unpaid
-    price_id = sub["items"]["data"][0]["price"]["id"] if sub.get("items", {}).get("data") else None
+    items_data = sub.get("items", {}).get("data", [])
+    first_item = items_data[0] if items_data else {}
+    price_id = first_item.get("price", {}).get("id") if first_item else None
 
     if stripe_status == "canceled":
-        # Subscription deleted — revert to canceled, clean up corpora
-        user.subscription_status = "canceled"
-        user.max_corpora = 0
-        await db.commit()
-        # Fire-and-forget corpus cleanup (with error logging)
-        task = asyncio.create_task(_delete_user_corpora(user))
-        task.add_done_callback(lambda t: logger.error("Corpus cleanup failed: %s", t.exception()) if not t.cancelled() and t.exception() else None)
-        logger.info("User %s subscription canceled, corpora cleanup scheduled", user.id)
+        # Before revoking access, check if the user has another active subscription.
+        # This happens during upgrades: old sub is canceled, but new one is already active.
+        other_active = await db.execute(
+            select(Subscription).where(
+                Subscription.user_id == user.id,
+                Subscription.status == "active",
+                Subscription.stripe_subscription_id != sub["id"],
+            ).limit(1)
+        )
+        if other_active.scalar_one_or_none():
+            logger.info(
+                "User %s subscription %s canceled, but another active subscription exists — not revoking access",
+                user.id, sub["id"],
+            )
+        else:
+            # No other active subscription — revert to canceled, clean up corpora
+            user.subscription_status = "canceled"
+            user.max_corpora = 0
+            await db.commit()
+            # Fire-and-forget corpus cleanup (with error logging)
+            task = asyncio.create_task(_delete_user_corpora(user))
+            task.add_done_callback(lambda t: logger.error("Corpus cleanup failed: %s", t.exception()) if not t.cancelled() and t.exception() else None)
+            logger.info("User %s subscription canceled, corpora cleanup scheduled", user.id)
     elif stripe_status in ("active",):
         # Plan may have changed (upgrade/downgrade)
         plan = _plan_from_price(price_id) if price_id else user.subscription_status
@@ -425,7 +656,13 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
     if existing:
         existing.status = stripe_status
         existing.cancel_at_period_end = sub.get("cancel_at_period_end", False)
-        existing.current_period_end = datetime.fromtimestamp(sub["current_period_end"], tz=timezone.utc)
+        # Period fields may be at item level (Stripe API 2025+) or top level (legacy)
+        period_end = (
+            first_item.get("current_period_end")
+            or sub.get("current_period_end")
+        )
+        if period_end:
+            existing.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc)
         existing.updated_at = datetime.now(timezone.utc)
         if price_id:
             existing.stripe_price_id = price_id
@@ -434,14 +671,22 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
 
 
 async def _on_payment_failed(invoice: dict, db: AsyncSession) -> None:
+    """Log payment failure but do NOT revoke access immediately.
+
+    Stripe retries failed payments automatically. Access revocation is handled
+    by ``customer.subscription.updated`` (status=past_due) and
+    ``customer.subscription.deleted`` (status=canceled) webhooks, which fire
+    after Stripe's retry cycle is exhausted. Revoking here would prematurely
+    lock out users on the first transient payment failure.
+    """
     customer_id = invoice.get("customer")
     result = await db.execute(select(User).where(User.stripe_customer_id == customer_id))
     user = result.scalar_one_or_none()
     if user:
-        user.subscription_status = "canceled"
-        user.max_corpora = 0
-        await db.commit()
-        logger.warning("Payment failed for user %s, set to canceled", user.id)
+        logger.warning(
+            "Payment failed for user %s (invoice %s) — access preserved pending Stripe retry cycle",
+            user.id, invoice.get("id"),
+        )
 
 
 async def _on_invoice_paid(invoice: dict, db: AsyncSession) -> None:
@@ -450,6 +695,13 @@ async def _on_invoice_paid(invoice: dict, db: AsyncSession) -> None:
     user = result.scalar_one_or_none()
     if not user:
         return
+
+    # Upsert check — prevent duplicate Invoice rows on webhook replay
+    existing = (await db.execute(
+        select(Invoice).where(Invoice.stripe_invoice_id == invoice["id"])
+    )).scalar_one_or_none()
+    if existing:
+        return  # Already processed
 
     db.add(Invoice(
         user_id=user.id,

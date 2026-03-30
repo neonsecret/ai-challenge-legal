@@ -1,6 +1,6 @@
 "use client"
 
-import {useState} from "react"
+import {useState, useMemo} from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
@@ -11,8 +11,13 @@ import {SourcesPanel} from "@/components/chat/sources-panel"
 import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
 import {AgentTrace} from "@/components/chat/agent-trace"
+import {
+    FONT, TYPE_SCALE, SPACE, COLOR, TEXT_DARK, TEXT_LIGHT,
+    ANSWER_CARD, RADIUS,
+} from "@/lib/design-tokens"
 
 export type {Source} from "@/components/chat/use-query-stream"
+type Source = import("@/components/chat/use-query-stream").Source
 
 // ─── Citation patterns ────────────────────────────────────────────────────────
 
@@ -29,14 +34,6 @@ const DOC_REF_PATTERN = /\[DOC-(\d+)\]/g
  * MDAST text nodes with custom `citationRef` nodes. These pass through to the
  * HAST stage (via `remarkRehypeOptions.passThrough`) where the rehype plugin
  * converts them to renderable `<citationbutton>` elements.
- *
- * Using `findAndReplace` from mdast-util-find-and-replace ensures correct
- * traversal of inline contexts (paragraphs, list items, blockquotes, etc.),
- * so citations embedded anywhere in the text are found and replaced.
- *
- * The returned objects are cast to `PhrasingContent` to satisfy the library's
- * type constraint; at runtime they carry `type: "citationRef"` which the
- * downstream rehype plugin recognises.
  */
 function remarkInlineCitations() {
     return (tree: import("mdast").Root) => {
@@ -68,8 +65,6 @@ function remarkInlineCitations() {
  */
 function rehypeInlineCitations() {
     return (tree: import("hast").Root) => {
-        // `citationRef` nodes are not standard HAST, but they were passed through
-        // from MDAST as raw objects. Visit them by type string.
         visit(tree, "citationRef", (node: import("hast").Node, index, parent) => {
             if (!parent || index == null) return
 
@@ -129,29 +124,79 @@ const DARK_PROSE = [
     "prose-blockquote:border-l-[#C9A84C] prose-blockquote:text-[rgba(255,255,255,0.70)] prose-blockquote:bg-[rgba(201,168,76,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
-// ─── Shared citation button style ─────────────────────────────────────────────
+// ─── Superscript helpers ─────────────────────────────────────────────────────
 
-function citationButtonStyle(isDark: boolean, resolvable: boolean): React.CSSProperties {
+const SUPERSCRIPT_DIGITS = ['\u2070', '\u00B9', '\u00B2', '\u00B3', '\u2074', '\u2075', '\u2076', '\u2077', '\u2078', '\u2079']
+
+function toSuperscript(n: number): string {
+    return String(n).split('').map(d => SUPERSCRIPT_DIGITS[parseInt(d, 10)]).join('')
+}
+
+// ─── Cited source collection ─────────────────────────────────────────────────
+
+interface CitedEntry {
+    footnoteNum: number
+    docId: string
+    title: string
+    page?: number
+}
+
+/** Pre-scan answer content for citation markers, return ordered cited sources. */
+function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
+    const cited = new Map<number, CitedEntry>()
+
+    // [DOC-N] references (agent pipeline)
+    for (const m of content.matchAll(/\[DOC-(\d+)\]/g)) {
+        const n = parseInt(m[1], 10)
+        const idx = n - 1
+        if (idx >= 0 && idx < sources.length && !cited.has(n)) {
+            cited.set(n, {
+                footnoteNum: n,
+                docId: sources[idx].doc_id,
+                title: sources[idx].title || sources[idx].doc_id,
+                page: sources[idx].page_numbers[0],
+            })
+        }
+    }
+
+    // [[source:ID:PAGE]] references (deterministic pipeline)
+    for (const m of content.matchAll(/\[\[source:([^:\]]+):(\d+)\]\]/g)) {
+        const docId = m[1]
+        const page = parseInt(m[2], 10)
+        const srcIdx = sources.findIndex(s =>
+            s.doc_id === docId || s.doc_id.startsWith(docId) || docId.startsWith(s.doc_id)
+        )
+        if (srcIdx >= 0) {
+            const n = srcIdx + 1
+            if (!cited.has(n)) {
+                cited.set(n, {
+                    footnoteNum: n,
+                    docId: sources[srcIdx].doc_id,
+                    title: sources[srcIdx].title || sources[srcIdx].doc_id,
+                    page,
+                })
+            }
+        }
+    }
+
+    return [...cited.values()].sort((a, b) => a.footnoteNum - b.footnoteNum)
+}
+
+// ─── Footnote style ──────────────────────────────────────────────────────────
+
+function footnoteStyle(resolvable: boolean): React.CSSProperties {
     return {
-        display: "inline-flex",
-        alignItems: "center",
-        verticalAlign: "middle",
-        gap: 3,
-        padding: "1px 7px",
-        borderRadius: 999,
-        fontSize: 11,
-        fontWeight: 600,
-        fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-        lineHeight: 1.6,
+        fontSize: 10,
+        verticalAlign: "super",
+        color: COLOR.gold.base,
         cursor: resolvable ? "pointer" : "not-allowed",
-        margin: "0 2px",
-        background: isDark ? "rgba(201,168,76,0.15)" : "rgba(196,124,0,0.10)",
-        border: isDark ? "0.5px solid rgba(201,168,76,0.40)" : "0.5px solid rgba(196,124,0,0.30)",
-        color: isDark ? "#C9A84C" : "#7a4a00",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-        transition: "background 0.12s",
         opacity: resolvable ? 1 : 0.35,
+        fontWeight: 600,
+        lineHeight: 1,
+        background: "none",
+        border: "none",
+        padding: "0 1px",
+        fontFamily: FONT.sans,
     }
 }
 
@@ -160,12 +205,12 @@ function citationButtonStyle(isDark: boolean, resolvable: boolean): React.CSSPro
 interface ChatMessageProps {
     role: "user" | "assistant"
     content: string | null
-    sources?: import("@/components/chat/use-query-stream").Source[]
+    sources?: Source[]
     isStreaming?: boolean
     confidence?: number | null
     streamingStatus?: string | null
     trace?: string[]
-    onSourceClick?: (answer: string, sources: import("@/components/chat/use-query-stream").Source[], focusDocId?: string, focusPage?: number) => void
+    onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
     isDark?: boolean
 }
 
@@ -183,6 +228,14 @@ export function ChatMessage({
     isDark = false,
 }: ChatMessageProps) {
     const [copied, setCopied] = useState(false)
+
+    // Pre-collect cited sources for the References section
+    const citedSources = useMemo(
+        () => (content && sources.length > 0 && !isStreaming)
+            ? collectCitedSources(content, sources)
+            : [],
+        [content, sources, isStreaming],
+    )
 
     const handleCopy = () => {
         if (!content) return
@@ -218,35 +271,26 @@ export function ChatMessage({
     }
 
     // ── Assistant message ─────────────────────────────────────────────────────
-    const answerGlass = isDark ? {
-        background: "rgba(255,255,255,0.07)",
-        backdropFilter: "blur(48px) saturate(180%)",
-        WebkitBackdropFilter: "blur(48px) saturate(180%)",
-        border: "0.5px solid rgba(255,255,255,0.14)",
-        borderRadius: "16px",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
-    } : {
-        background: "rgba(255,252,242,0.52)",
-        backdropFilter: "blur(32px) saturate(140%)",
-        WebkitBackdropFilter: "blur(32px) saturate(140%)",
-        border: "1px solid rgba(255,255,255,0.65)",
-        borderRadius: "16px",
-        boxShadow: "0 2px 16px rgba(100,50,0,0.08), inset 0 1.5px 0 rgba(255,255,255,0.85)",
+
+    const answerCardStyle: React.CSSProperties = {
+        background: isDark ? ANSWER_CARD.dark.bg : ANSWER_CARD.light.bg,
+        border: `0.5px solid ${isDark ? ANSWER_CARD.dark.border : ANSWER_CARD.light.border}`,
+        borderRadius: RADIUS.xl,
+        fontFamily: FONT.sans,
     }
 
     const labelStyle = {
-        fontSize: "10px",
+        fontSize: 10,
         textTransform: "uppercase" as const,
         letterSpacing: "0.14em",
-        color: isDark ? "rgba(255,255,255,0.35)" : "#7a5a20",
-        margin: "0 0 8px",
+        color: isDark ? TEXT_DARK.tertiary : "#7a5a20",
+        margin: `0 0 ${SPACE[2]}px`,
         fontWeight: 600,
     }
 
     /**
-     * Custom React component registered for the `citationbutton` HAST element
-     * emitted by rehypeInlineCitations. Renders inline gold citation pills.
-     * Hidden while streaming to avoid flicker on partial citation tokens.
+     * Custom React component for `citationbutton` elements.
+     * Renders superscript footnote numbers. Hidden while streaming.
      */
     function CitationButtonComponent({
         citationkind,
@@ -264,21 +308,26 @@ export function ChatMessage({
         if (citationkind === "source") {
             const resolvedDocId = docid ?? ""
             const resolvedPage = page ?? 0
-            const resolvable = sources.some(s =>
+            const srcIdx = sources.findIndex(s =>
                 s.doc_id === resolvedDocId ||
                 s.doc_id.startsWith(resolvedDocId) ||
                 resolvedDocId.startsWith(s.doc_id)
             )
+            const resolvable = srcIdx >= 0
+            const footnoteNum = srcIdx + 1
             return (
                 <button
                     onClick={resolvable ? (e) => {
                         e.stopPropagation()
                         onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
                     } : undefined}
-                    title={resolvable ? undefined : "Source not found in retrieved documents"}
-                    style={citationButtonStyle(isDark, resolvable)}
+                    title={resolvable
+                        ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
+                        : "Source not found in retrieved documents"
+                    }
+                    style={footnoteStyle(resolvable)}
                 >
-                    p.{resolvedPage}
+                    {toSuperscript(footnoteNum)}
                 </button>
             )
         }
@@ -295,12 +344,12 @@ export function ChatMessage({
                         onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
                     } : undefined}
                     title={resolvable
-                        ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` · p.${pageNum}` : ""}`
+                        ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={citationButtonStyle(isDark, resolvable)}
+                    style={footnoteStyle(resolvable)}
                 >
-                    §{refindex}
+                    {toSuperscript(refindex ?? 0)}
                 </button>
             )
         }
@@ -310,49 +359,36 @@ export function ChatMessage({
 
     return (
         <div className="mb-7 animate-fade-in-up">
-            {sources.length > 0 && (
-                <SourcesPanel
-                    sources={sources}
-                    onSourceClick={(source) => onSourceClick?.(content ?? "", sources, source.doc_id, source.page_numbers[0])}
-                    isDark={isDark}
-                />
-            )}
-
             <p style={labelStyle}>Answer</p>
 
-            <div style={answerGlass}>
-                <div className="p-4">
+            {/* Answer card */}
+            <div style={answerCardStyle}>
+                <div style={{padding: SPACE[4]}}>
                     {content ? (
                         <div className="group relative">
                             <div className={isDark ? DARK_PROSE : WARM_PROSE}>
-                                {/*
-                                  * Single ReactMarkdown instance with remark + rehype plugins
-                                  * that handle citation markers inline, fixing the block-break
-                                  * issue caused by the previous split-and-interleave approach.
-                                  *
-                                  * Pipeline:
-                                  *   remarkInlineCitations  → text nodes → citationRef MDAST nodes
-                                  *   remarkRehypeOptions    → passThrough: ["citationRef"]
-                                  *   rehypeInlineCitations  → citationRef → <citationbutton> HAST elements
-                                  *   components.citationbutton → CitationButtonComponent (React)
-                                  */}
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm, remarkInlineCitations]}
                                     rehypePlugins={[rehypeInlineCitations]}
                                     remarkRehypeOptions={{
-                                        // "citationRef" is a custom node type not in the standard MDAST
-                                        // union; the cast is intentional — passThrough accepts any string.
                                         passThrough: ["citationRef" as import("mdast").Nodes["type"]],
                                     }}
                                     components={{
+                                        h2: ({node: _node, children, ...props}) => (
+                                            <h2 {...props} style={{fontSize: TYPE_SCALE.lg, fontFamily: FONT.sans}}>{children}</h2>
+                                        ),
+                                        h3: ({node: _node, children, ...props}) => (
+                                            <h3 {...props} style={{fontSize: TYPE_SCALE.md, fontFamily: FONT.sans}}>{children}</h3>
+                                        ),
                                         strong: ({node: _node, children, ...props}) => (
                                             <strong {...props}>{children}</strong>
                                         ),
-                                        a: ({node: _node, children, href, ...props}) => (
-                                            <a {...props} href={href} target="_blank" rel="noopener noreferrer">
+                                        a: ({node: _node, children, href, ...props}) => {
+                                            const safe = href && /^https?:\/\//i.test(href) ? href : undefined
+                                            return <a {...props} href={safe} target="_blank" rel="noopener noreferrer">
                                                 {children}
                                             </a>
-                                        ),
+                                        },
                                         // @ts-expect-error — citationbutton is a custom element from our rehype plugin
                                         citationbutton: CitationButtonComponent,
                                     }}
@@ -381,15 +417,75 @@ export function ChatMessage({
                     ) : isStreaming ? (
                         <StreamingStatus status={streamingStatus} isDark={isDark}/>
                     ) : (
-                        <p className="text-sm italic" style={{color: isDark ? "rgba(255,255,255,0.40)" : "#7a5a20"}}>
+                        <p style={{
+                            fontSize: TYPE_SCALE.sm,
+                            fontStyle: "italic",
+                            color: isDark ? TEXT_DARK.tertiary : "#7a5a20",
+                            margin: 0,
+                        }}>
                             No response
                         </p>
                     )}
                 </div>
+
+                {/* References — inside the answer card, at the bottom */}
+                {citedSources.length > 0 && (
+                    <div style={{
+                        padding: `${SPACE[3]}px ${SPACE[4]}px ${SPACE[4]}px`,
+                        borderTop: `1px solid ${isDark ? ANSWER_CARD.dark.border : ANSWER_CARD.light.border}`,
+                        background: isDark ? ANSWER_CARD.dark.footnoteBg : ANSWER_CARD.light.footnoteBg,
+                        borderRadius: `0 0 ${RADIUS.xl}px ${RADIUS.xl}px`,
+                    }}>
+                        <div style={{display: "flex", flexDirection: "column", gap: SPACE[1]}}>
+                            {citedSources.map((entry) => (
+                                <button
+                                    key={entry.footnoteNum}
+                                    onClick={() => onSourceClick?.(
+                                        content ?? "",
+                                        sources,
+                                        entry.docId,
+                                        entry.page,
+                                    )}
+                                    style={{
+                                        display: "block",
+                                        fontSize: TYPE_SCALE.xs,
+                                        color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        fontFamily: FONT.sans,
+                                        background: "none",
+                                        border: "none",
+                                        padding: 0,
+                                        cursor: "pointer",
+                                        textAlign: "left",
+                                        lineHeight: 1.5,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.color = COLOR.gold.base
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.color = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+                                    }}
+                                >
+                                    {toSuperscript(entry.footnoteNum)} {entry.title}{entry.page ? ` (p. ${entry.page})` : ""}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
+            {/* Source chips — below the answer card */}
+            {sources.length > 0 && (
+                <div style={{marginTop: SPACE[3]}}>
+                    <SourcesPanel
+                        sources={sources}
+                        onSourceClick={(source) => onSourceClick?.(content ?? "", sources, source.doc_id, source.page_numbers[0])}
+                        isDark={isDark}
+                    />
+                </div>
+            )}
+
             {confidence != null && !isStreaming && (
-                <div className="mt-2 animate-fade-in-up">
+                <div style={{marginTop: SPACE[2]}} className="animate-fade-in-up">
                     <ConfidenceBadge confidence={confidence} isDark={isDark}/>
                 </div>
             )}

@@ -125,7 +125,13 @@ async def logout(request: Request, db: AsyncSession = Depends(get_db)):
             await db.commit()
 
     response = RedirectResponse(url=settings.frontend_url)
-    response.delete_cookie(settings.session_cookie_name, path="/")
+    response.delete_cookie(
+        settings.session_cookie_name,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=not settings.dev_mode,
+    )
     return response
 
 

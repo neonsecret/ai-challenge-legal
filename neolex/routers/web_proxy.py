@@ -10,6 +10,7 @@ from __future__ import annotations
 import ipaddress
 import logging
 import re
+import socket
 import time
 from urllib.parse import urlparse
 
@@ -56,6 +57,17 @@ def _validate_url(url: str) -> str:
 
     if _is_private_ip(hostname):
         raise HTTPException(status_code=400, detail="Private/local URLs are not allowed")
+
+    # DNS resolution check: resolve hostname and verify all IPs are public
+    # to prevent SSRF via DNS rebinding or domains pointing to internal IPs
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        raise HTTPException(status_code=400, detail="Could not resolve hostname")
+    for info in infos:
+        ip = info[4][0]
+        if _is_private_ip(ip):
+            raise HTTPException(status_code=400, detail="Private/local URLs are not allowed")
 
     return url
 
@@ -259,21 +271,35 @@ async def proxy_web_content(
         if now - ts < _CACHE_TTL_SECONDS:
             return cached_result
 
-    # Fetch the page
+    # Fetch the page (redirects disabled to prevent SSRF redirect bypass)
+    _MAX_REDIRECTS = 5
     try:
         async with httpx.AsyncClient(
             timeout=_FETCH_TIMEOUT_SECONDS,
-            follow_redirects=True,
-            max_redirects=5,
+            follow_redirects=False,
         ) as client:
-            response = await client.get(
-                url,
-                headers={
-                    "User-Agent": "Mozilla/5.0 (compatible; VitreonBot/1.0)",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-                    "Accept-Language": "en-US,en;q=0.9",
-                },
-            )
+            _headers = {
+                "User-Agent": "Mozilla/5.0 (compatible; VitreonBot/1.0)",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
+            response = await client.get(url, headers=_headers)
+
+            # Manually follow redirects with URL validation
+            for _ in range(_MAX_REDIRECTS):
+                if response.status_code not in (301, 302, 303, 307, 308):
+                    break
+                redirect_url = response.headers.get("location")
+                if not redirect_url:
+                    break
+                # Resolve relative redirects
+                if redirect_url.startswith("/"):
+                    parsed_orig = urlparse(url)
+                    redirect_url = f"{parsed_orig.scheme}://{parsed_orig.netloc}{redirect_url}"
+                # Validate the redirect target against SSRF rules
+                redirect_url = _validate_url(redirect_url)
+                response = await client.get(redirect_url, headers=_headers)
+
             response.raise_for_status()
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timed out fetching the page")

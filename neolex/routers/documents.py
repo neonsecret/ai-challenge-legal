@@ -179,6 +179,14 @@ async def upload_document(
             detail=f"Unsupported file type '{ct}'. Only application/pdf is accepted.",
         )
 
+    # --- Early Content-Length guard (reject before buffering) ---
+    cl = request.headers.get("content-length")
+    try:
+        if cl and int(cl) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
+    except (ValueError, TypeError):
+        pass  # Malformed Content-Length header — let the actual size check handle it
+
     # --- Read and validate ---
     content = await file.read()
 
@@ -344,6 +352,14 @@ async def upload_zip(
             status_code=415,
             detail=f"Unsupported file type '{ct}'. Expected a ZIP archive.",
         )
+
+    # --- Early Content-Length guard (reject before buffering) ---
+    cl = request.headers.get("content-length")
+    try:
+        if cl and int(cl) > MAX_ZIP_BYTES:
+            raise HTTPException(status_code=413, detail="File too large")
+    except (ValueError, TypeError):
+        pass  # Malformed Content-Length header — let the actual size check handle it
 
     # --- Read ZIP bytes ---
     zip_bytes = await file.read()
@@ -560,6 +576,10 @@ async def delete_doc(
         key_row: dict = Depends(get_api_key),
 ) -> DocumentDeleteResponse:
     """Delete a document from the client's corpus and trigger reindex."""
+    # Validate doc_id format (same pattern as PDF endpoint)
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
+        raise HTTPException(status_code=400, detail="Invalid doc_id format")
+
     client_slug = key_row["client_slug"]
 
     # Check document belongs to this client (cross-client isolation)

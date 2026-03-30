@@ -3,7 +3,7 @@
 AuditDB is the single interface for all operational database operations.
 It is accessed through the get_audit_db() async context manager.
 """
-import datetime
+import datetime as _dt
 import json
 from contextlib import asynccontextmanager
 
@@ -52,7 +52,7 @@ class AuditDB:
             client_slug: str,
             scope: str = "query",
     ) -> int:
-        ts = datetime.datetime.utcnow().isoformat()
+        ts = _dt.datetime.now(_dt.timezone.utc).isoformat()
         key = ApiKey(
             name=name,
             key_hash=key_hash,
@@ -92,7 +92,7 @@ class AuditDB:
         )
         key = result.scalar_one_or_none()
         if key:
-            key.last_used = datetime.datetime.utcnow().isoformat()
+            key.last_used = _dt.datetime.now(_dt.timezone.utc).isoformat()
 
     # --- Audit log writes (append-only) ---
 
@@ -110,7 +110,7 @@ class AuditDB:
     ) -> None:
         self._session.add(
             Query(
-                ts=datetime.datetime.utcnow().isoformat(),
+                ts=_dt.datetime.now(_dt.timezone.utc).isoformat(),
                 key_hash=key_hash,
                 question=question,
                 answer_text=answer_text,
@@ -133,7 +133,7 @@ class AuditDB:
     ) -> None:
         self._session.add(
             Event(
-                ts=datetime.datetime.utcnow().isoformat(),
+                ts=_dt.datetime.now(_dt.timezone.utc).isoformat(),
                 key_hash=key_hash,
                 event_type=event_type,
                 detail_json=json.dumps(detail),

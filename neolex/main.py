@@ -86,7 +86,6 @@ async def _cleanup_expired() -> None:
     from neolex.db.postgres import AsyncSessionLocal
 
     while True:
-        await asyncio.sleep(3600)  # Every hour
         try:
             async with AsyncSessionLocal() as db:
                 now = datetime.now(timezone.utc)
@@ -125,6 +124,7 @@ async def _cleanup_expired() -> None:
                 )
         except Exception:
             logger.exception("Periodic cleanup failed")
+        await asyncio.sleep(3600)  # Every hour
 
 
 @asynccontextmanager
@@ -193,6 +193,10 @@ async def lifespan(app: FastAPI):
     cleanup_task = getattr(app.state, "cleanup_task", None)
     if cleanup_task and not cleanup_task.done():
         cleanup_task.cancel()
+    # Dispose the SQLAlchemy async engine to release all pooled connections
+    from neolex.db.postgres import engine as pg_engine
+    await pg_engine.dispose()
+    logger.info("PostgreSQL engine disposed.")
     app.state.ready = False
 
 

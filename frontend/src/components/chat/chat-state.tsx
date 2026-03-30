@@ -130,6 +130,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const streamingMessagesRef = useRef<Message[]>([])
     /** Mirror of currentSessionId for use in callbacks that need the latest value without re-creating closures. */
     const currentSessionIdRef = useRef<string | null>(null)
+    /** Mirror of sessions for use in handleSend without adding sessions to its dependency array. */
+    const sessionsRef = useRef(sessions)
+    sessionsRef.current = sessions
     /** When true, the next messages change is from loading an existing session, not from new message activity. */
     const loadingSessionRef = useRef<boolean>(false)
     const {jurisdiction} = useJurisdiction()
@@ -138,6 +141,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
     // ── Mount: load from localStorage (client-only, runs once) ──
     useEffect(() => {
+        let cancelled = false
         const loaded = loadSessions()
         const lastId = loadCurrentSessionId()
         const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
@@ -198,6 +202,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         for (const convId of interruptedIds) {
             ;(async () => {
                 for (let attempt = 0; attempt < 36; attempt++) {
+                    if (cancelled) return
                     try {
                         const r = await fetch(`${API}/api/v1/conversations/${encodeURIComponent(convId)}/last-answer`, {
                             credentials: "include",
@@ -205,7 +210,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                         if (r.ok) {
                             const data = await r.json()
                             if (data?.answer) {
-                                applyRecovery(convId, data.answer)
+                                if (!cancelled) applyRecovery(convId, data.answer)
                                 return
                             }
                         }
@@ -219,37 +224,41 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         // not in localStorage (e.g. after logout/login or TTL expiry).
         // localStorage sessions are preferred (they have streaming state, sources, etc).
         ;(async () => {
+            if (cancelled) return
             try {
                 const r = await fetch(`${API}/api/v1/conversations`, {credentials: "include"})
-                if (!r.ok) return
+                if (!r.ok || cancelled) return
                 const data = await r.json()
                 const backendConvs: Array<{id: string; title: string; last_message_at: string; message_count: number}> =
                     data?.conversations ?? []
                 if (backendConvs.length === 0) return
 
-                setSessions(prev => {
-                    const localIds = new Set(prev.map(s => s.id))
-                    const newFromBackend: ChatSession[] = backendConvs
-                        .filter(bc => !localIds.has(bc.id))
-                        .map(bc => {
-                            const ts = bc.last_message_at ? new Date(bc.last_message_at).getTime() : Date.now()
-                            return {
-                                id: bc.id,
-                                title: bc.title,
-                                messages: [],  // lazy-loaded when user clicks
-                                createdAt: ts,
-                                lastMessageAt: ts,
-                                corpora: [],
-                                backendOnly: true,
-                            }
-                        })
-                    if (newFromBackend.length === 0) return prev
-                    return sortSessions([...prev, ...newFromBackend]).slice(0, MAX_SESSIONS)
-                })
+                if (!cancelled) {
+                    setSessions(prev => {
+                        const localIds = new Set(prev.map(s => s.id))
+                        const newFromBackend: ChatSession[] = backendConvs
+                            .filter(bc => !localIds.has(bc.id))
+                            .map(bc => {
+                                const ts = bc.last_message_at ? new Date(bc.last_message_at).getTime() : Date.now()
+                                return {
+                                    id: bc.id,
+                                    title: bc.title,
+                                    messages: [],  // lazy-loaded when user clicks
+                                    createdAt: ts,
+                                    lastMessageAt: ts,
+                                    corpora: [],
+                                    backendOnly: true,
+                                }
+                            })
+                        if (newFromBackend.length === 0) return prev
+                        return sortSessions([...prev, ...newFromBackend]).slice(0, MAX_SESSIONS)
+                    })
+                }
             } catch { /* network error — not critical, localStorage sessions still work */ }
         })()
 
         setHydrated(true)
+        return () => { cancelled = true }
     }, [])
 
     // ── Streaming sync effects ──
@@ -452,7 +461,8 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
         // Check corpus limit: max 2 distinct corpora per conversation
         const convId = currentSessionId ?? `chat-${Date.now()}`
-        const session = sessions.find(s => s.id === convId)
+        const currentSessions = sessionsRef.current
+        const session = currentSessions.find(s => s.id === convId)
         const existingCorpora = session?.corpora ?? []
         if (existingCorpora.length >= 2 && !existingCorpora.includes(corpus)) {
             // Blocked — max 2 corpora per conversation
@@ -484,7 +494,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         const laws = jurisdiction === "cz" && selectedLaws.length > 0 ? selectedLaws : undefined
         stream.sendQuery(question, corpus, convId, laws, useInternet)
         return "ok" as const
-    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, sessions, useInternet])
+    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, useInternet])
 
     const currentCorpora = sessions.find(s => s.id === currentSessionId)?.corpora ?? []
 

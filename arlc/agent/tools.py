@@ -157,14 +157,22 @@ def execute_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) ->
         return []
 
 
+_WEB_SNIPPET_MAX_CHARS = 500
+
+
 def format_web_results(results: list[dict]) -> str:
-    """Format web search results for the LLM context."""
+    """Format web search results for the LLM context.
+
+    Snippets are truncated to 500 chars to limit context usage and wrapped
+    in <web_content> tags to prevent prompt injection from web sources.
+    """
     if not results:
         return "No web results found."
     parts = []
     for r in results:
-        parts.append(f"[WEB: \"{r['title']}\"]({r['url']})\n{r['snippet']}")
-    return "\n---\n".join(parts)
+        snippet = (r['snippet'] or "")[:_WEB_SNIPPET_MAX_CHARS]
+        parts.append(f"[WEB: \"{r['title']}\"]({r['url']})\n{snippet}")
+    return "<web_content>\n" + "\n---\n".join(parts) + "\n</web_content>"
 
 
 def verify_source_relevance(

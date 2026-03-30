@@ -36,6 +36,8 @@ interface BillingStatus {
   corpora_used: number;
   corpora_limit: number;
   has_stripe_customer: boolean;
+  cancel_at_period_end: boolean;
+  current_period_end: string | null;
 }
 
 interface PlanConfig {
@@ -60,6 +62,7 @@ export default function BillingPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [interval, setInterval_] = useState<BillingInterval>("monthly");
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -130,6 +133,49 @@ export default function BillingPage() {
     } catch {
       setError(t("billing.error_portal"));
       setActionLoading(null);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    setActionLoading("cancel");
+    try {
+      const res = await fetch(`${API}/stripe/cancel-subscription`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) throw new Error(t("billing.cancel_error"));
+      const data = await res.json();
+      // Update local billing state to reflect pending cancellation
+      if (billing) {
+        setBilling({
+          ...billing,
+          cancel_at_period_end: true,
+          current_period_end: data.period_end,
+        });
+      }
+      setShowCancelConfirm(false);
+    } catch {
+      setError(t("billing.cancel_error"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const formatPeriodEnd = (isoDate: string | null): string => {
+    if (!isoDate) return "";
+    try {
+      return new Date(isoDate).toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    } catch {
+      return isoDate;
     }
   };
 
@@ -628,7 +674,7 @@ export default function BillingPage() {
           )}
 
           {/* Action buttons */}
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             {billing.plan === "free" && isExhausted && (
               <button
                 onClick={() => handleUpgrade("starter")}
@@ -658,6 +704,190 @@ export default function BillingPage() {
               </button>
             )}
           </div>
+
+          {/* Cancel subscription / pending cancellation */}
+          {billing.plan !== "free" && billing.has_stripe_customer && (
+            <div style={{ marginTop: "16px" }}>
+              {billing.cancel_at_period_end ? (
+                /* Already scheduled for cancellation */
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "10px 14px",
+                    borderRadius: "12px",
+                    background: isDark
+                      ? "rgba(251,191,36,0.06)"
+                      : "rgba(217,119,6,0.05)",
+                    border: isDark
+                      ? "0.5px solid rgba(251,191,36,0.15)"
+                      : "0.5px solid rgba(217,119,6,0.12)",
+                  }}
+                >
+                  <AlertTriangle
+                    size={14}
+                    style={{
+                      color: isDark ? "#fbbf24" : "#d97706",
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      color: isDark ? "#fbbf24" : "#d97706",
+                      fontFamily: fontStack,
+                    }}
+                  >
+                    {t("billing.cancel_pending").replace(
+                      "{date}",
+                      formatPeriodEnd(billing.current_period_end)
+                    )}
+                  </span>
+                </div>
+              ) : (
+                /* Show cancel link or inline confirmation */
+                <>
+                  {!showCancelConfirm ? (
+                    <button
+                      onClick={() => setShowCancelConfirm(true)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        fontFamily: fontStack,
+                        color: isDark
+                          ? "rgba(255,255,255,0.30)"
+                          : "rgba(46,31,8,0.40)",
+                        textDecoration: "underline",
+                        textUnderlineOffset: "2px",
+                        transition: "color 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = isDark
+                          ? "rgba(255,255,255,0.50)"
+                          : "rgba(46,31,8,0.60)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = isDark
+                          ? "rgba(255,255,255,0.30)"
+                          : "rgba(46,31,8,0.40)";
+                      }}
+                    >
+                      {t("billing.cancel_subscription")}
+                    </button>
+                  ) : (
+                    <div
+                      style={{
+                        padding: "14px 16px",
+                        borderRadius: "12px",
+                        background: isDark
+                          ? "rgba(248,113,113,0.06)"
+                          : "rgba(220,38,38,0.04)",
+                        border: isDark
+                          ? "0.5px solid rgba(248,113,113,0.15)"
+                          : "0.5px solid rgba(220,38,38,0.10)",
+                      }}
+                    >
+                      <p
+                        style={{
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          color: isDark
+                            ? "rgba(255,255,255,0.80)"
+                            : "#1e1208",
+                          fontFamily: fontStack,
+                          margin: "0 0 6px 0",
+                        }}
+                      >
+                        {t("billing.cancel_confirm_title")}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "12px",
+                          color: isDark
+                            ? "rgba(255,255,255,0.50)"
+                            : "rgba(46,31,8,0.60)",
+                          fontFamily: fontStack,
+                          margin: "0 0 14px 0",
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {t("billing.cancel_confirm_body").replace(
+                          "{date}",
+                          formatPeriodEnd(billing.current_period_end)
+                        )}
+                      </p>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "8px",
+                          alignItems: "center",
+                        }}
+                      >
+                        <button
+                          onClick={handleCancelSubscription}
+                          disabled={actionLoading !== null}
+                          style={{
+                            background: isDark
+                              ? "rgba(248,113,113,0.12)"
+                              : "rgba(220,38,38,0.08)",
+                            border: isDark
+                              ? "0.5px solid rgba(248,113,113,0.25)"
+                              : "0.5px solid rgba(220,38,38,0.18)",
+                            borderRadius: "8px",
+                            padding: "7px 16px",
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            fontFamily: fontStack,
+                            color: isDark ? "#f87171" : "#dc2626",
+                            cursor:
+                              actionLoading === "cancel"
+                                ? "wait"
+                                : "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "5px",
+                            opacity:
+                              actionLoading === "cancel" ? 0.7 : 1,
+                            transition: "opacity 0.15s ease",
+                          }}
+                        >
+                          {actionLoading === "cancel" && (
+                            <Loader2
+                              size={13}
+                              className="animate-spin"
+                            />
+                          )}
+                          {t("billing.cancel_confirm_yes")}
+                        </button>
+                        <button
+                          onClick={() => setShowCancelConfirm(false)}
+                          disabled={actionLoading !== null}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: "7px 12px",
+                            fontSize: "12px",
+                            fontWeight: 500,
+                            fontFamily: fontStack,
+                            color: isDark
+                              ? "rgba(255,255,255,0.45)"
+                              : "rgba(46,31,8,0.50)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t("billing.cancel_confirm_no")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-DEFAULT_RETENTION_DAYS = 365
+DEFAULT_RETENTION_DAYS = 90
 
 # Tables subject to retention purging (append-only audit tables only).
 # The `api_keys` and `documents` tables are NOT purged by this policy.

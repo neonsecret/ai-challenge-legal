@@ -53,6 +53,7 @@ from arlc.agent.config import (
     MAX_ACCUMULATED_DOCS,
     MAX_HISTORY_MESSAGES,
     MAX_SEARCHES_PER_TURN,
+    MAX_WEB_SOURCES,
     WEB_SEARCH_ENABLED,
 )
 from arlc.agent.prompts import build_system_prompt
@@ -264,14 +265,17 @@ def build_agent_graph():
                    len(updated_docs), MAX_ACCUMULATED_DOCS, len(new_docs_all),
                    max(0, len(state["accumulated_docs"]) + len(new_docs_all) - MAX_ACCUMULATED_DOCS))
 
-        # Merge web sources from this search with any from prior iterations
-        updated_web_sources = state.get("web_sources", []) + new_web_sources
+        # Merge web sources from this search with any from prior iterations, capped
+        updated_web_sources = (state.get("web_sources", []) + new_web_sources)[:MAX_WEB_SOURCES]
+
+        # Count actual tool calls dispatched (not just node invocations)
+        tool_call_count = len(last_msg.tool_calls)
 
         return {
             "messages": results_msgs,
             "accumulated_docs": updated_docs,
             "web_sources": updated_web_sources,
-            "search_count": state["search_count"] + 1,
+            "search_count": state["search_count"] + tool_call_count,
         }
 
     def should_continue(state: AgentState) -> str:
