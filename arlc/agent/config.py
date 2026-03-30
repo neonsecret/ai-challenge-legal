@@ -21,5 +21,5 @@ WEB_SEARCH_ENABLED: bool = os.environ.get("AGENT_WEB_SEARCH_ENABLED", "true").lo
 
 # --- LLM ---
 LLM_MODEL: str = os.environ.get("AGENT_LLM_MODEL", "claude-sonnet-4-6")
-LLM_MODEL_FAST: str = os.environ.get("AGENT_LLM_MODEL_FAST", "claude-haiku-4-5-20251001")
+LLM_MODEL_FAST: str = os.environ.get("AGENT_LLM_MODEL_FAST", "claude-haiku-4-5")
 LLM_MAX_TOKENS: int = int(os.environ.get("AGENT_LLM_MAX_TOKENS", "4096"))
