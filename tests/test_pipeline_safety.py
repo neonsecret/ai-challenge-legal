@@ -73,6 +73,15 @@ class TestSSRFPrivateIPBlocking:
     def test_blocks_169_254_link_local(self):
         assert _is_private_ip("169.254.1.1") is True
 
+    def test_blocks_cgnat_range(self):
+        # RFC 6598 Shared Address Space — includes Tailscale IPs like 100.98.x.x
+        assert _is_private_ip("100.64.0.1") is True
+        assert _is_private_ip("100.98.171.97") is True  # RTX 3070 address
+        assert _is_private_ip("100.127.255.255") is True
+
+    def test_blocks_zero_address(self):
+        assert _is_private_ip("0.0.0.0") is True
+
     def test_blocks_dot_local_domain(self):
         assert _is_private_ip("myhost.local") is True
 

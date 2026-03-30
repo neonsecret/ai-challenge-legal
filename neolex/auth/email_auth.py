@@ -63,6 +63,12 @@ async def _auth_rate_check(request: Request, action: str) -> None:
     except Exception:
         # Fallback: in-memory rate limiting when audit DB is unavailable
         now = time.monotonic()
+        # Evict stale buckets periodically to prevent unbounded growth
+        if len(_fallback_rates) > 5_000:
+            stale = [k for k, v in _fallback_rates.items()
+                     if not v or all(now - t >= _FALLBACK_WINDOW for t in v)]
+            for k in stale:
+                del _fallback_rates[k]
         attempts = _fallback_rates[bucket]
         attempts[:] = [t for t in attempts if now - t < _FALLBACK_WINDOW]
         if len(attempts) >= _FALLBACK_MAX:

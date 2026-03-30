@@ -39,10 +39,12 @@ async def create_session(
     Evicts the oldest sessions when the per-user cap is reached.
     Commits the transaction — caller must NOT commit again after this.
     """
-    # Evict oldest sessions if at or above the per-user cap
+    # Evict oldest sessions if at or above the per-user cap.
+    # FOR UPDATE serializes concurrent login requests for the same user.
     result = await db.execute(
         select(DBSession).where(DBSession.user_id == user.id)
         .order_by(DBSession.created_at.asc())
+        .with_for_update()
     )
     existing = result.scalars().all()
     if len(existing) >= MAX_SESSIONS_PER_USER:

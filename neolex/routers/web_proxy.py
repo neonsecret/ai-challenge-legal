@@ -63,8 +63,10 @@ def _is_private_ip(hostname: str) -> bool:
     """
     try:
         addr = ipaddress.ip_address(hostname.strip("[]"))
-        return (addr.is_private or addr.is_reserved or addr.is_loopback
-                or addr.is_link_local or addr.is_multicast)
+        # Use `not is_global` to block ALL non-routable addresses including
+        # CGNAT 100.64.0.0/10 (which Python doesn't classify as private).
+        # Also block unspecified (0.0.0.0, ::) explicitly.
+        return not addr.is_global or addr.is_unspecified
     except ValueError:
         # Not a raw IP — could be a domain name. We check common private patterns.
         lower = hostname.lower().strip("[]")
