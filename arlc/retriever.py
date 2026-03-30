@@ -1,5 +1,6 @@
 """Retrieve relevant document chunks for a question using hybrid search."""
 
+import functools
 import logging
 import re
 import os
@@ -1331,6 +1332,7 @@ def _doc_fusion_select(
         question: str,
         max_docs: int = 3,
         answer_type: str = "",
+        cached_query_emb=None,
 ) -> list[str] | None:
     """Select target documents using multi-signal fusion.
 
@@ -1405,7 +1407,7 @@ def _doc_fusion_select(
         bm25_std_doc_scores[d] /= max_bm25_std
 
     # --- Signal 2 & 3: Dense embedding scores + RRF ---
-    query_emb = embed_query(question)
+    query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
     if _use_faiss():
         dense_n = min(fusion_top_k, _faiss_count())
         vector_results = _search_faiss(query_emb, top_k=dense_n)
@@ -1651,7 +1653,7 @@ def _extract_article_filter(question: str) -> str | None:
     return None
 
 
-def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_type: str = "", corpus: str = "difc") -> list[dict]:
+def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_type: str = "", corpus: str = "difc", cached_query_emb=None) -> list[dict]:
     """
     Hybrid retrieval: keyword match + BM25 + vector search with RRF.
 
@@ -1734,11 +1736,12 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                 keyword_chunks = _prescore_keyword_chunks(question, keyword_chunks, top_n=30)
 
         # Also get vector search results to supplement
+        _kw_query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
         if _use_faiss():
-            vector_results = _search_faiss(embed_query(question), top_k=max(n_results, 15))
+            vector_results = _search_faiss(_kw_query_emb, top_k=max(n_results, 15))
         else:
             vector_results = collection.query(
-                query_embeddings=[embed_query(question)],
+                query_embeddings=[_kw_query_emb],
                 n_results=max(n_results, 15),
                 include=["documents", "metadatas", "distances"],
             )
@@ -1810,7 +1813,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                     bm25_ranking.append(corpus_ids[idx])
 
         # Original query embedding
-        query_emb = embed_query(question)
+        query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
         if _use_faiss():
             vector_results = _search_faiss(query_emb, top_k=top_k)
         else:
@@ -1914,6 +1917,16 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
 # Page-level retrieval (new pipeline)
 # ---------------------------------------------------------------------------
 
+@functools.lru_cache(maxsize=20)
+def _open_pdf_cached(pdf_path: str):
+    """Cache open pymupdf Document handles to avoid repeated open/close.
+
+    With 4-15 page extractions per query from the same PDF, caching avoids
+    4-15 redundant open/close cycles per document.
+    """
+    return pymupdf.open(pdf_path)
+
+
 def _extract_page_text(doc_id: str, page_number: int) -> str:
     """Extract full text from a specific page of a PDF document.
 
@@ -1923,17 +1936,13 @@ def _extract_page_text(doc_id: str, page_number: int) -> str:
     pdf_path = os.path.join(DOCUMENTS_DIR, f"{doc_id}.pdf")
     if not os.path.exists(pdf_path):
         return ""
-    doc = None
     try:
-        doc = pymupdf.open(pdf_path)
+        doc = _open_pdf_cached(pdf_path)
         if page_number < 1 or page_number > len(doc):
             return ""
         return doc[page_number - 1].get_text().strip()
     except Exception:
         return ""
-    finally:
-        if doc is not None:
-            doc.close()
 
 
 _METADATA_QUESTION_PATTERNS = re.compile(
@@ -1954,6 +1963,7 @@ def _retrieve_pages_simple(
         corpus: str = "czech",
         on_status=None,
         laws: list[str] | None = None,
+        cached_query_emb=None,
 ) -> list[PageResult]:
     """Simplified retrieval for non-DIFC corpora: FAISS vector search + cross-encoder reranking.
 
@@ -1962,7 +1972,7 @@ def _retrieve_pages_simple(
     print(f"[retriever] simple retrieval for corpus={corpus!r}")
     if on_status:
         on_status("retrieving:searching corpus")
-    query_emb = embed_query(question)
+    query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
     top_k = min(100, _faiss_count(corpus=corpus))  # 100 candidates for better recall on large corpora
     if on_status:
         on_status("retrieving:searching corpus")
@@ -2068,11 +2078,16 @@ def retrieve_pages(
     corpus : str
         Corpus to search. "difc" (default) or "czech".
     """
+    # Pre-compute query embedding ONCE to avoid redundant HTTP calls to
+    # the embedding server (~3s each). Threaded to all sub-functions.
+    # HyDE and query variant embeddings use different text — not cached here.
+    _question_emb = embed_query(question)
+
     # ── Non-DIFC corpus: simplified vector-only retrieval path ──
     # Czech and other non-DIFC corpora use FAISS vector search + cross-encoder reranking.
     # They don't have BM25 indexes, routing metadata, or DIFC-specific heuristics.
     if corpus != "difc":
-        return _retrieve_pages_simple(question, max_per_doc, max_total, corpus=corpus, on_status=on_status, laws=laws)
+        return _retrieve_pages_simple(question, max_per_doc, max_total, corpus=corpus, on_status=on_status, laws=laws, cached_query_emb=_question_emb)
 
     # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
     # Apply per-answer-type retrieval config if available, using caller's values as overrides
@@ -2095,13 +2110,13 @@ def retrieve_pages(
             effective_mpd = 1
         results = _retrieve_pages_targeted(question, target_doc_ids, effective_mpd, max_total, answer_type,
                                            boost_pages=boost_pages, case_doc_groups=case_doc_groups,
-                                           on_status=on_status)
+                                           on_status=on_status, cached_query_emb=_question_emb)
         best_score = max((r.score for r in results), default=0.0)
         if best_score < 0.4:
             if on_status:
                 on_status("retrieving:broadening search")
             print(f"[retriever] low-confidence targeted ({best_score:.3f} < 0.40), adding fallback")
-            fb_results = _retrieve_pages_fallback(question, max_per_doc=1, max_total=1, answer_type=answer_type)
+            fb_results = _retrieve_pages_fallback(question, max_per_doc=1, max_total=1, answer_type=answer_type, cached_query_emb=_question_emb)
             seen = {}
             for r in results + fb_results:
                 key = (r.doc_id, r.page_number)
@@ -2111,7 +2126,7 @@ def retrieve_pages(
     else:
         if on_status:
             on_status("retrieving:searching corpus")
-        results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type)
+        results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb)
 
     if on_status and results:
         on_status(f"retrieving:found {len(results)} pages")
@@ -2265,6 +2280,7 @@ def _retrieve_pages_targeted(
         boost_pages: dict[str, int] | None = None,
         case_doc_groups: dict[str, list[str]] | None = None,
         on_status=None,
+        cached_query_emb=None,
 ) -> list[PageResult]:
     """Retrieve pages by reranking all chunks from target documents."""
     # Small-doc full inclusion: for documents with ≤8 pages, skip reranking and
@@ -2329,7 +2345,10 @@ def _retrieve_pages_targeted(
     # Pre-cache query embedding and BM25 tokenization before the per-document
     # loop. Both are pure functions of `question` — recomputing inside the loop
     # wastes ~200ms per document on embedding and ~50ms on tokenization.
-    _cached_query_emb = embed_query(question) if not PAGE_RANK_USE_BM25 else None
+    if not PAGE_RANK_USE_BM25:
+        _cached_query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
+    else:
+        _cached_query_emb = None
     _cached_q_tokens = legal_tokenize_queries(question) if PAGE_RANK_BM25_INJECTION else None
 
     if on_status:
@@ -2387,7 +2406,11 @@ def _retrieve_pages_targeted(
             # (Technique 2). Query BM25 on the full corpus, filter to this doc's chunks,
             # inject up to BM25_INJECTION_K candidates not already in the dense pool.
             # CE still provides all final scores — BM25 only expands the candidate set.
-            if PAGE_RANK_BM25_INJECTION:
+            # Only run BM25 injection when the CE pool doesn't already cover
+            # all document chunks — if it does, injection can't add anything new.
+            # Saves ~0.25s per small-to-medium document (most DIFC docs have
+            # <100 chunks and pool=50-100 covers them).
+            if PAGE_RANK_BM25_INJECTION and _ce_pool_size < len(doc_chunks):
                 try:
                     _bm25_idx, _bm25_ids = build_bm25_index()
                     _q_tokens = _cached_q_tokens
@@ -2696,10 +2719,11 @@ def _retrieve_pages_fallback(
         max_per_doc: int,
         max_total: int,
         answer_type: str,
+        cached_query_emb=None,
 ) -> list[PageResult]:
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
     # Use existing hybrid retrieval to get ranked chunks — pass answer_type for per-type depth
-    chunks = retrieve(question, n_results=25, use_hyde=False, answer_type=answer_type)
+    chunks = retrieve(question, n_results=25, use_hyde=False, answer_type=answer_type, cached_query_emb=cached_query_emb)
 
     if not chunks:
         return []
