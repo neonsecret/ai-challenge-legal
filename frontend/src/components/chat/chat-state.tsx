@@ -601,6 +601,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     }, [newChat, stream.isStreaming, stream.abort])
 
     const handleSend = useCallback((question: string): "ok" | "blocked" => {
+        // Block new queries while one is still streaming
+        if (stream.isStreaming) return "blocked"
+
         const corpus = jurisdictionToCorpus(jurisdiction)
         if (!corpus) return "blocked"  // safety: at least one corpus required
 
