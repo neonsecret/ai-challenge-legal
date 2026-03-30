@@ -1,0 +1,280 @@
+{
+  "benchmark": "accuracy_v2",
+  "timestamp": "2026-03-30T09:22:30",
+  "config": {
+    "use_agent": false,
+    "timeout": 180,
+    "pipeline": "deterministic",
+    "endpoint": "/api/v1/query/stream (SSE)"
+  },
+  "difc": {
+    "results": [
+      {
+        "question": "What is the probationary period under DIFC Employment Law?",
+        "expected_keyword": "probat",
+        "answer_preview": "Under the **DIFC Employment Law (DIFC Law No. 2 of 2019)**, the maximum probationary period is **six (6) months**. **Article 14(2)(l)** states that an Employment Contract shall include: 'any applicable probation period up to a maximum of six (6) months, except in circumstances where the Employee is ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 38.11,
+        "error": false,
+        "full_answer_length": 1206,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "Can an employer make deductions from an employee's salary in DIFC?",
+        "expected_keyword": "deduct",
+        "answer_preview": "An employer in the DIFC can only make deductions from an employee's salary (Remuneration) under the limited circumstances set out in **Article 20(1)** of **DIFC Employment Law No. 2 of 2019**. The default position is a prohibition: the Article states that \"An Employer shall not deduct from an Employ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 22.32,
+        "error": false,
+        "full_answer_length": 2458,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "What is the definition of 'good faith' under DIFC Law of Obligations?",
+        "expected_keyword": "good faith",
+        "answer_preview": "The **DIFC Law of Obligations (DIFC Law No. 5 of 2005)** does not provide a standalone general definition of \"good faith.\" The term is not included among the defined terms in **Schedule 1** of the Law. However, the concept appears in several specific contexts:\n\n- In the insurance context, **Article ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 46.59,
+        "error": false,
+        "full_answer_length": 1578,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "How is a partnership formed under DIFC law?",
+        "expected_keyword": "partner",
+        "answer_preview": "answer below.\n\n\nUnder DIFC law, partnerships are formed through two distinct regimes depending on type:\n\n**General Partnership:** **Article 8** of the **General Partnership Law 2004** defines a General Partnership as \"the relationship which exists between two or more persons jointly carrying on any ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 23.28,
+        "error": false,
+        "full_answer_length": 2114,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "What are the disclosure requirements for DIFC companies?",
+        "expected_keyword": "disclos",
+        "answer_preview": "DIFC companies under the **Companies Law, DIFC Law No. 5 of 2018** are subject to extensive disclosure requirements spanning multiple areas:\n\n**1. Filing with the Registrar:**\n- **Article 19(3)** states that \"A copy of every resolution or agreement to which this Article applies... shall be submitted",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 73.67,
+        "error": false,
+        "full_answer_length": 4477,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "What constitutes force majeure under DIFC contract law?",
+        "expected_keyword": "force majeure",
+        "answer_preview": "Compose answer.\n\n\nForce majeure under DIFC contract law is governed by **Article 82** of **DIFC Law No. 6 of 2004 (Contract Law)**. Article 82(1) states that: \"Except with respect to a mere obligation to pay, non-performance by a party is excused if that party proves that the non-performance was due",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 38.42,
+        "error": false,
+        "full_answer_length": 2021,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "What are the rules on assignment of contracts in DIFC?",
+        "expected_keyword": "assign",
+        "answer_preview": "Compose answer.\n\n\nThe rules on assignment of contracts in the DIFC are set out in **Part 9 (Articles 92–103)** of **DIFC Law No. 6 of 2004 (Contract Law)**. **Article 92(1)** states that: \"An assignment of a contractual right is a transfer by virtue of which the assignor's right to performance by th",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 47.88,
+        "error": false,
+        "full_answer_length": 3235,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "How does DIFC law handle unjust enrichment?",
+        "expected_keyword": "enrich",
+        "answer_preview": "- The Law does not specify a limitation period for unjust enrichment claims (Part 2's limitation in Article 22 applies to contract claims).\n- The Law does not define what constitutes \"unjust enrichment\" beyond the basic formulation.\n- The Law does not specify the procedure for bringing an unjust enr",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 21.1,
+        "error": false,
+        "full_answer_length": 1554,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "What are the arbitration provisions in DIFC?",
+        "expected_keyword": "arbitrat",
+        "answer_preview": "The **DIFC Arbitration Law (DIFC Law No. 1 of 2008)** provides a comprehensive arbitration framework organized into four main parts covering 44 articles and a Schedule.\n\n**Article 7** on scope states that: 'this Law shall apply where the Seat of the Arbitration is the DIFC,' with certain provisions ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 27.38,
+        "error": false,
+        "full_answer_length": 2337,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "What is the minimum annual leave entitlement in DIFC?",
+        "expected_keyword": "leave",
+        "answer_preview": "The minimum annual leave (Vacation Leave) entitlement in the DIFC is **20 Work Days** per Vacation Leave Year. **Article 27(1)** of the **DIFC Employment Law No. 2 of 2019** states that: \"Subject to Article 30, an Employee who has been employed for at least ninety (90) days is entitled to paid Vacat",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 17.72,
+        "error": false,
+        "full_answer_length": 1513,
+        "confidence": "high",
+        "num_sources": 1
+      }
+    ],
+    "keyword_accuracy": "10/10",
+    "keyword_pct": 100,
+    "citation_rate": "10/10",
+    "citation_pct": 100,
+    "avg_time_s": 35.65,
+    "total_time_s": 356.47,
+    "errors": 0
+  },
+  "czech": {
+    "results": [
+      {
+        "question": "Jaká je minimální mzda v České republice?",
+        "expected_keyword": "mzd",
+        "answer_preview": "The provided document does not address or contain any information regarding the minimum wage in the Czech Republic (minimální mzda v České republice). The document is **Annex G** of **DIFCA Consultation Paper No. 4 of 2023**, which is a comment form for the **Proposed Digital Assets Law and Related ",
+        "keyword_match": 1,
+        "has_citation": 0,
+        "time_s": 14.37,
+        "error": false,
+        "full_answer_length": 652,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "Co je to dědická smlouva?",
+        "expected_keyword": "dědic",
+        "answer_preview": "Dědická smlouva je jedním ze tří důvodů dědění podle českého občanského zákoníku. **§ 1476** states: \"Dědí se na základě dědické smlouvy, ze závěti nebo ze zákona.\" **§ 1582 odst. 1** states: \"Dědickou smlouvou povolává zůstavitel druhou smluvní stranu nebo třetí osobu za dědice nebo odkazovníka a d",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 7.99,
+        "error": false,
+        "full_answer_length": 505,
+        "confidence": "high",
+        "num_sources": 3
+      },
+      {
+        "question": "Jaké jsou podmínky pro práci přesčas?",
+        "expected_keyword": "přesčas",
+        "answer_preview": "Práce přesčas je možná jen výjimečně a za stanovených podmínek. **§ 93 odst. 1** zákoníku práce states: \"Práci přesčas je možné konat jen výjimečně.\" **§ 93 odst. 2** states that zaměstnavatel může práci přesčas nařídit \"jen z vážných provozních důvodů\" a nařízená práce přesčas nesmí činit více než ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 12.75,
+        "error": false,
+        "full_answer_length": 593,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "Co je to výhrada vlastnického práva?",
+        "expected_keyword": "vlastnick",
+        "answer_preview": "Výhrada vlastnického práva je vedlejší ujednání při kupní smlouvě, které zajišťuje, že vlastnické právo k prodávané věci přechází na kupujícího až po splnění určité podmínky (typicky zaplacení kupní ceny). **§ 2134** **občanského zákoníku** [[source:obcansky_zakonik_021:2134]] stanoví podmínky účinn",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 8.34,
+        "error": false,
+        "full_answer_length": 604,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "Jaké jsou povinnosti jednatele s.r.o.?",
+        "expected_keyword": "jednatel",
+        "answer_preview": "Povinnosti jednatele s.r.o. zahrnují jak povinnosti správní, tak zákaz konkurence. **§ 196** zákona o obchodních korporacích [[source:zakon_obch_korporace:196]] states that: \"Jednatel zajišťuje řádné vedení předepsané evidence a účetnictví, vedení seznamu společníků a na žádost informuje společníky ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 10.89,
+        "error": false,
+        "full_answer_length": 1016,
+        "confidence": "high",
+        "num_sources": 3
+      },
+      {
+        "question": "Co je to smluvní pokuta?",
+        "expected_keyword": "pokut",
+        "answer_preview": "Smluvní pokuta je zajišťovací institut upravený v **Části čtvrté, Hlavě I, Dílu 8 občanského zákoníku**. Ze zdrojových ustanovení vyplývá, že jde o smluvní ujednání sankční povahy za porušení smluvní povinnosti. **§ 2050** [[source:obcansky_zakonik_020:2050]] states that: \"Je-li ujednána smluvní pok",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 9.55,
+        "error": false,
+        "full_answer_length": 720,
+        "confidence": "high",
+        "num_sources": 3
+      },
+      {
+        "question": "Jaká je lhůta pro podání daňového přiznání?",
+        "expected_keyword": "daňov",
+        "answer_preview": "Základní lhůta pro podání daňového přiznání u daní vyměřovaných za zdaňovací období nejméně 12 měsíců je **3 měsíce** po uplynutí zdaňovacího období. **§ 136 odst. 1 daňového řádu** [[source:danovy_rad_00144:136]] states that: > \"Daňové přiznání u daní vyměřovaných za zdaňovací období, které činí ne",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 14.15,
+        "error": false,
+        "full_answer_length": 849,
+        "confidence": "high",
+        "num_sources": 1
+      },
+      {
+        "question": "Co je to věcné břemeno?",
+        "expected_keyword": "břemen",
+        "answer_preview": "Věcné břemeno je institut věcného práva upravený v **části třetí, hlavě II, dílu 5** občanského zákoníku, konkrétně v **oddílu 2** nazvaném „Věcná břemena\" [[source:obcansky_zakonik_012:1256]]. Věcná břemena zahrnují **služebnosti** (pododdíl 1) a **reálná břemena**. Jedná se o práva, která omezují ",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 10.38,
+        "error": false,
+        "full_answer_length": 895,
+        "confidence": "high",
+        "num_sources": 3
+      },
+      {
+        "question": "Jaké jsou podmínky pro rozvázání pracovního poměru ve zkušební době?",
+        "expected_keyword": "zkušebn",
+        "answer_preview": "Podmínky pro rozvázání pracovního poměru ve zkušební době jsou upraveny v **§ 66 zákoníku práce** [[source:zakonik_prace_00069:66]], který states that:\n\n> \"Zaměstnavatel i zaměstnanec mohou zrušit pracovní poměr ve zkušební době z jakéhokoliv důvodu nebo bez uvedení důvodu.\"\n\nKlíčové podmínky:\n- **P",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 14.7,
+        "error": false,
+        "full_answer_length": 989,
+        "confidence": "high",
+        "num_sources": 3
+      },
+      {
+        "question": "Jak se stanoví výše nemocenské?",
+        "expected_keyword": "nemocen",
+        "answer_preview": "Výše nemocenského se stanoví jako procentní podíl denního vyměřovacího základu, odstupňovaný podle délky trvání dočasné pracovní neschopnosti nebo nařízené karantény. **§ 29 odst. 1** zákona o nemocenském pojištění stanoví, že výše nemocenského za kalendářní den činí:\n\n- **60 %** denního vyměřovacíh",
+        "keyword_match": 1,
+        "has_citation": 1,
+        "time_s": 29.38,
+        "error": false,
+        "full_answer_length": 1029,
+        "confidence": "high",
+        "num_sources": 1
+      }
+    ],
+    "keyword_accuracy": "10/10",
+    "keyword_pct": 100,
+    "citation_rate": "9/10",
+    "citation_pct": 90,
+    "avg_time_s": 13.25,
+    "total_time_s": 132.5,
+    "errors": 0
+  },
+  "totals": {
+    "keyword_accuracy": "20/20",
+    "keyword_pct": 100,
+    "citation_rate": "19/20",
+    "citation_pct": 95,
+    "avg_time_s": 24.45,
+    "total_time_s": 488.97
+  }
+}
