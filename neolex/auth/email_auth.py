@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
@@ -44,7 +44,15 @@ async def _auth_rate_check(request: Request, action: str) -> None:
         pass  # Non-fatal — don't block auth if rate DB is unavailable
 
 
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _verify_password(password: str, password_hash: str) -> bool:
+    try:
+        return bcrypt.checkpw(password.encode(), password_hash.encode())
+    except Exception:
+        return False
 
 
 def _hash(token: str) -> str:
@@ -62,7 +70,7 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     now = datetime.now(timezone.utc)
     user = User(
         email=body.email,
-        password_hash=_pwd.hash(body.password),
+        password_hash=_hash_password(body.password),
         name=body.name,
         email_verified=False,
         subscription_status="free",
@@ -121,7 +129,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
 
-    if not user or not user.password_hash or not _pwd.verify(body.password, user.password_hash):
+    if not user or not user.password_hash or not _verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not user.email_verified:
@@ -176,7 +184,7 @@ async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(
     auth_token.used_at = now
     result2 = await db.execute(select(User).where(User.id == auth_token.user_id))
     user = result2.scalar_one()
-    user.password_hash = _pwd.hash(body.new_password)
+    user.password_hash = _hash_password(body.new_password)
 
     # Invalidate all other unused reset tokens for this user
     from sqlalchemy import update as sql_update

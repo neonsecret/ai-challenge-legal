@@ -3,6 +3,7 @@
 import {useState, useEffect} from "react";
 import {useRouter} from "next/navigation";
 import {useTheme} from "next-themes";
+import {motion, AnimatePresence} from "motion/react";
 import {useAuth} from "@/lib/use-auth";
 
 const fontStack =
@@ -326,23 +327,32 @@ export default function LoginPage() {
                     >
             Vitreon Legal
           </span>
-                    <span
-                        style={{
-                            fontSize: "13px",
-                            color: mutedText,
-                            marginTop: 4,
-                        }}
-                    >
-            {mode === "login"
-                ? "Sign in to your account"
-                : "Create your account"}
-          </span>
+                    <AnimatePresence mode="wait">
+                        <motion.span
+                            key={mode + "-subtitle"}
+                            initial={{opacity: 0, y: 4}}
+                            animate={{opacity: 1, y: 0}}
+                            exit={{opacity: 0, y: -4}}
+                            transition={{duration: 0.12, ease: "easeInOut"}}
+                            style={{
+                                fontSize: "13px",
+                                color: mutedText,
+                                marginTop: 4,
+                                display: "block",
+                            }}
+                        >
+                            {mode === "login"
+                                ? "Sign in to your account"
+                                : "Create your account"}
+                        </motion.span>
+                    </AnimatePresence>
                 </div>
 
                 {/* Tab switch */}
                 <div
                     style={{
                         display: "flex",
+                        position: "relative",
                         margin: "20px 32px 0",
                         background: isDark
                             ? "rgba(255,255,255,0.05)"
@@ -354,6 +364,32 @@ export default function LoginPage() {
                             : "0.5px solid rgba(255,255,255,0.30)",
                     }}
                 >
+                    {/* Sliding indicator pill */}
+                    <motion.div
+                        layoutId="auth-tab-indicator"
+                        style={{
+                            position: "absolute",
+                            top: 3,
+                            bottom: 3,
+                            width: "calc(50% - 3px)",
+                            borderRadius: "8px",
+                            background: isDark
+                                ? "rgba(201,168,76,0.18)"
+                                : "rgba(255,255,255,0.55)",
+                            boxShadow: isDark
+                                ? "0 1px 4px rgba(0,0,0,0.20)"
+                                : "0 1px 4px rgba(100,50,0,0.10)",
+                        }}
+                        animate={{
+                            left: mode === "login" ? 3 : "calc(50% + 0px)",
+                        }}
+                        transition={{
+                            type: "spring",
+                            stiffness: 500,
+                            damping: 35,
+                            mass: 0.8,
+                        }}
+                    />
                     {(["login", "register"] as Mode[]).map((m) => (
                         <button
                             key={m}
@@ -367,25 +403,16 @@ export default function LoginPage() {
                                 borderRadius: "8px",
                                 border: "none",
                                 cursor: "pointer",
-                                transition: "all 0.15s ease",
-                                background:
-                                    mode === m
-                                        ? isDark
-                                            ? "rgba(201,168,76,0.18)"
-                                            : "rgba(255,255,255,0.55)"
-                                        : "transparent",
+                                position: "relative",
+                                zIndex: 1,
+                                background: "transparent",
+                                transition: "color 0.15s ease",
                                 color:
                                     mode === m
                                         ? accentColor
                                         : isDark
                                             ? "rgba(255,255,255,0.40)"
                                             : "rgba(46,31,8,0.45)",
-                                boxShadow:
-                                    mode === m
-                                        ? isDark
-                                            ? "0 1px 4px rgba(0,0,0,0.20)"
-                                            : "0 1px 4px rgba(100,50,0,0.10)"
-                                        : "none",
                             }}
                         >
                             {m === "login" ? "Sign In" : "Sign Up"}
@@ -509,6 +536,14 @@ export default function LoginPage() {
                         </div>
                     )}
 
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={mode}
+                            initial={{opacity: 0, y: 6}}
+                            animate={{opacity: 1, y: 0}}
+                            exit={{opacity: 0, y: -6}}
+                            transition={{duration: 0.15, ease: "easeInOut"}}
+                        >
                     <form onSubmit={handleSubmit}>
                         <div
                             style={{
@@ -686,6 +721,8 @@ export default function LoginPage() {
                             </>
                         )}
                     </p>
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
             </div>
         </div>

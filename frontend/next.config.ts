@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
                             scriptSrc,
                             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                             "font-src 'self' https://fonts.gstatic.com",
-                            "img-src 'self' data: blob: https://lh3.googleusercontent.com",
+                            "img-src 'self' data: blob: https://lh3.googleusercontent.com https://icons.duckduckgo.com",
                             connectSrc,
                             workerSrc,
                             frameSrc,

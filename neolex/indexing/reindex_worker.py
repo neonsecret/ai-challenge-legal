@@ -194,10 +194,12 @@ def _run_arlc_indexing(
         indexer.FAISS_INDEX_PATH = str(index_dir / "faiss_index.bin")
         indexer.FAISS_METADATA_PATH = str(index_dir / "faiss_metadata.json")
 
-        if hasattr(indexer, "build_faiss_index"):
+        if hasattr(indexer, "build_index"):
+            indexer.build_index()
+        elif hasattr(indexer, "build_faiss_index"):
             indexer.build_faiss_index()
         else:
-            raise AttributeError("build_faiss_index not found in arlc.indexing.indexer")
+            raise AttributeError("build_index not found in arlc.indexing.indexer")
     finally:
         indexer.DOCUMENTS_DIR = original_docs_dir
         indexer.FAISS_INDEX_PATH = original_faiss_path
@@ -246,8 +248,9 @@ async def run_reindex_job(
             ),
         )
 
-        # Mark all documents as indexed in their sidecar meta files
+        # Mark all documents as indexed in sidecar meta files + audit DB
         import json
+        from neolex.db.audit import get_audit_db
 
         for meta_path in docs_dir.glob("*.meta"):
             try:
@@ -255,6 +258,18 @@ async def run_reindex_job(
                 mark_indexed(client_slug, meta["doc_id"])
             except Exception:
                 pass
+
+        # Update indexed flag in audit database
+        try:
+            async with get_audit_db() as audit_db:
+                for meta_path in docs_dir.glob("*.meta"):
+                    try:
+                        meta = json.loads(meta_path.read_text())
+                        await audit_db.mark_document_indexed(meta["doc_id"], client_slug)
+                    except Exception:
+                        pass
+        except Exception as e:
+            logger.warning("Failed to update indexed flags in audit DB: %s", e)
 
         logger.info(
             "Reindex job %s complete: %d docs indexed for client %s (chunks_skipped=%d)",

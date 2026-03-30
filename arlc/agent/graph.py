@@ -181,6 +181,7 @@ def build_agent_graph():
 
         results_msgs: list[ToolMessage] = []
         new_docs_all: list[SourceDocument] = []
+        new_web_sources: list[dict] = []
 
         for tc in last_msg.tool_calls:
             query = tc["args"].get("query", "")
@@ -193,6 +194,14 @@ def build_agent_graph():
 
             # --- Web search tool ---
             if tc["name"] == "search_web":
+                # Check per-request internet toggle (defaults to True when absent)
+                if not state.get("use_internet", True):
+                    logger.info("[agent] web search skipped (use_internet=False): query=\"%s\"", query[:60])
+                    results_msgs.append(ToolMessage(
+                        content="Web search is disabled for this conversation. Use search_legal_corpus instead.",
+                        tool_call_id=tc["id"],
+                    ))
+                    continue
                 if on_status:
                     on_status("retrieving:searching the web")
                 web_results = execute_web_search(query)
@@ -201,6 +210,8 @@ def build_agent_graph():
                            query[:60], len(web_results))
                 results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
                 # Web results don't go into accumulated_docs (they're not corpus docs)
+                # but we track them separately for source citations
+                new_web_sources.extend(web_results)
                 continue
 
             # --- Corpus search tool (default) ---
@@ -241,13 +252,25 @@ def build_agent_graph():
             doc_text = format_search_results(new_docs, offset=offset)
             results_msgs.append(ToolMessage(content=doc_text, tool_call_id=tc["id"]))
 
-        updated_docs = (state["accumulated_docs"] + new_docs_all)[:MAX_ACCUMULATED_DOCS]
-        logger.info("[agent] accumulated: %d docs total (cap=%d)",
-                   len(updated_docs), MAX_ACCUMULATED_DOCS)
+        # Merge new docs with existing, prioritising new over old when at cap.
+        # New docs always get included; oldest accumulated docs are evicted if needed.
+        combined = state["accumulated_docs"] + new_docs_all
+        if len(combined) > MAX_ACCUMULATED_DOCS:
+            overflow = len(combined) - MAX_ACCUMULATED_DOCS
+            updated_docs = state["accumulated_docs"][overflow:] + new_docs_all
+        else:
+            updated_docs = combined
+        logger.info("[agent] accumulated: %d docs total (cap=%d, new=%d, evicted=%d)",
+                   len(updated_docs), MAX_ACCUMULATED_DOCS, len(new_docs_all),
+                   max(0, len(state["accumulated_docs"]) + len(new_docs_all) - MAX_ACCUMULATED_DOCS))
+
+        # Merge web sources from this search with any from prior iterations
+        updated_web_sources = state.get("web_sources", []) + new_web_sources
 
         return {
             "messages": results_msgs,
             "accumulated_docs": updated_docs,
+            "web_sources": updated_web_sources,
             "search_count": state["search_count"] + 1,
         }
 
@@ -322,6 +345,7 @@ async def run_agent_turn(
     conversation_id: str = "",
     on_status: Callable[[str], None] | None = None,
     on_token: Callable[[str], None] | None = None,
+    use_internet: bool = True,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -349,11 +373,13 @@ async def run_agent_turn(
     initial_state: AgentState = {
         "messages": messages,
         "accumulated_docs": accumulated_docs or [],
+        "web_sources": [],
         "corpus": corpus,
         "selected_laws": selected_laws or [],
         "search_count": 0,
         "user_id": user_id,
         "conversation_id": conversation_id,
+        "use_internet": use_internet,
         "_on_status": on_status,  # passed through state for search_node
     }
 
@@ -362,6 +388,7 @@ async def run_agent_turn(
     # --- Streaming state ---
     final_answer_parts: list[str] = []
     final_docs: list[SourceDocument] = accumulated_docs or []
+    final_web_sources: list[dict] = []
     final_search_count = 0
     reason_count = 0
     # Track whether the current reason call has produced tool calls.
@@ -449,6 +476,7 @@ async def run_agent_turn(
             output = event.get("data", {}).get("output", {})
             if isinstance(output, dict):
                 final_docs = output.get("accumulated_docs", final_docs)
+                final_web_sources = output.get("web_sources", final_web_sources)
                 final_search_count = output.get("search_count", 0)
 
     # Assemble the final answer from streamed tokens
@@ -468,6 +496,21 @@ async def run_agent_turn(
         {"doc_id": d["doc_id"], "page_numbers": [d["page"]], "text": d.get("text", "")}
         for d in final_docs
     ]
+
+    # Add web sources with a "web:" prefix to distinguish them from corpus docs
+    seen_urls: set[str] = set()
+    for ws in final_web_sources:
+        url = ws.get("url", "")
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+        sources.append({
+            "doc_id": f"web:{url[:80]}",
+            "page_numbers": [],
+            "text": ws.get("snippet", ""),
+            "url": url,
+            "title": ws.get("title", ""),
+        })
 
     # Post-processing: page verification (DIFC only).
     # Checks that cited pages actually support the answer.  If a page has

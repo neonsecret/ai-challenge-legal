@@ -3,7 +3,7 @@
 import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, type ReactNode} from "react"
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
-import {SquarePen, History, Trash2, BookOpen} from "lucide-react"
+import {SquarePen, History, Trash2, BookOpen, Globe} from "lucide-react"
 import {useTheme} from "next-themes"
 import {ChatInput} from "@/components/chat/chat-input"
 import {ChatMessage, type Source} from "@/components/chat/chat-message"
@@ -180,6 +180,7 @@ export default function ChatPage() {
     const {
         messages, activeAssistantId,
         selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
+        useInternet, setUseInternet,
         stream, handleSend,
         sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
     } = useChatState()
@@ -433,7 +434,7 @@ export default function ChatPage() {
                                                     cursor: "pointer",
                                                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                                     fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                                    transition: "all 0.12s",
+                                                    transition: "background 0.12s, border-color 0.12s, box-shadow 0.12s, color 0.12s",
                                                     fontWeight: isActive ? 600 : 400,
                                                 }}
                                                 onMouseEnter={e => {
@@ -458,16 +459,25 @@ export default function ChatPage() {
                                                 {s.title}
                                             </button>
                                             <button
+                                                onPointerDown={(e) => {
+                                                    e.stopPropagation()
+                                                    e.preventDefault()
+                                                }}
+                                                onMouseDown={(e) => {
+                                                    e.stopPropagation()
+                                                }}
                                                 onClick={(e) => {
-                                                    e.stopPropagation();
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
                                                     deleteSession(s.id)
                                                 }}
                                                 title="Delete chat"
-                                                className="opacity-0 group-hover:opacity-100"
+                                                className="opacity-0 group-hover:opacity-100 no-press-scale"
                                                 style={{
                                                     position: "absolute",
                                                     right: 6,
                                                     top: "50%",
+                                                    /* Negate the global button:active scale by always including translateY centering */
                                                     transform: "translateY(-50%)",
                                                     display: "flex",
                                                     alignItems: "center",
@@ -479,8 +489,10 @@ export default function ChatPage() {
                                                     border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.45)",
                                                     cursor: "pointer",
                                                     color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.40)",
-                                                    transition: "opacity 0.12s, background 0.12s",
+                                                    transition: "opacity 0.12s, background 0.12s, color 0.12s",
                                                     padding: 0,
+                                                    zIndex: 1,
+                                                    flexShrink: 0,
                                                 }}
                                                 onMouseEnter={e => {
                                                     e.currentTarget.style.background = isDark ? "rgba(255,80,60,0.18)" : "rgba(200,50,30,0.12)"
@@ -656,14 +668,14 @@ export default function ChatPage() {
                                         cursor: isEnabled ? "pointer" : "not-allowed",
                                         opacity: isEnabled ? 1 : 0.38,
                                         background: isActive
-                                            ? isDark ? `${accentColor}38` : `${accentColor}22`
+                                            ? isDark ? "rgba(201,168,76,0.75)" : "rgba(196,124,0,0.65)"
                                             : isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)",
                                         border: isActive
-                                            ? `0.5px solid ${accentColor}66`
+                                            ? isDark ? "0.5px solid rgba(201,168,76,0.80)" : "0.5px solid rgba(196,124,0,0.75)"
                                             : isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.32)",
                                         color: isActive
-                                            ? accentColor
-                                            : isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)",
+                                            ? "rgba(255,255,255,0.95)"
+                                            : isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.55)",
                                         fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
                                         transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
                                         whiteSpace: "nowrap",
@@ -730,6 +742,35 @@ export default function ChatPage() {
                                 {currentCorpora.join(" + ")}
                             </span>
                         )}
+                        {/* Internet toggle — teal accent to distinguish from gold jurisdiction pills */}
+                        <button
+                            onClick={() => setUseInternet(prev => !prev)}
+                            title={useInternet ? "Web search enabled — click to disable" : "Web search disabled — click to enable"}
+                            style={{
+                                display: "inline-flex", alignItems: "center", gap: 3,
+                                padding: isMobile ? "2px 6px" : "3px 8px", borderRadius: 6,
+                                fontSize: isMobile ? 9 : 10, fontWeight: useInternet ? 700 : 500, lineHeight: 1,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                background: useInternet
+                                    ? isDark ? "rgba(56,178,172,0.14)" : "rgba(0,128,128,0.10)"
+                                    : isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)",
+                                border: useInternet
+                                    ? isDark ? "0.5px solid rgba(56,178,172,0.35)" : "0.5px solid rgba(0,128,128,0.25)"
+                                    : isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.32)",
+                                color: useInternet
+                                    ? isDark ? "#38B2AC" : "#0d7377"
+                                    : isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.45)",
+                                cursor: "pointer",
+                                transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                                userSelect: "none",
+                                WebkitUserSelect: "none",
+                                whiteSpace: "nowrap",
+                                flexShrink: 0,
+                            }}
+                        >
+                            <Globe size={10} strokeWidth={useInternet ? 2 : 1.5}/>
+                            Internet
+                        </button>
                     </div>
                     {/* History toggle + Sources toggle + New chat */}
                     <button
@@ -1014,14 +1055,14 @@ export default function ChatPage() {
                                         cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                                         userSelect: "none", WebkitUserSelect: "none",
                                         background: isActive
-                                            ? isDark ? `${accentColor}38` : `${accentColor}22`
+                                            ? isDark ? "rgba(201,168,76,0.75)" : "rgba(196,124,0,0.65)"
                                             : isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.12)",
                                         border: isActive
-                                            ? `0.5px solid ${accentColor}66`
+                                            ? isDark ? "0.5px solid rgba(201,168,76,0.80)" : "0.5px solid rgba(196,124,0,0.75)"
                                             : isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.28)",
                                         color: isActive
-                                            ? accentColor
-                                            : isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.42)",
+                                            ? "rgba(255,255,255,0.95)"
+                                            : isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)",
                                         fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
                                         transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
                                     }}
@@ -1171,9 +1212,12 @@ export default function ChatPage() {
                 }}>
                     <ChatInput onSend={onSend} disabled={isStreaming} onFocusRef={inputFocusRef}/>
                     <p style={{
-                        fontSize: 10, textAlign: "center", margin: "6px 0 0",
-                        color: isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.25)",
+                        fontSize: isMobile ? 9 : 10,
+                        color: isDark ? "rgba(255,255,255,0.32)" : "rgba(46,31,8,0.35)",
                         fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                        margin: "8px 0 0",
+                        textAlign: "center",
+                        lineHeight: 1,
                     }}>
                         For research purposes only. Not legal advice.
                     </p>

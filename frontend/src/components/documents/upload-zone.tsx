@@ -1,22 +1,26 @@
 "use client";
 
 import {useRef, useState, useCallback, useEffect} from "react";
-import {Upload, FileText, X} from "lucide-react";
+import {Upload, FileText, X, CheckCircle} from "lucide-react";
 import {useTheme} from "next-themes";
 import {useI18n} from "@/lib/i18n";
+import type {ZipUploadResult} from "@/components/documents/use-documents";
 
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_ZIP_SIZE = 200 * 1024 * 1024; // 200MB
 
 interface UploadZoneProps {
     onUpload: (file: File) => Promise<unknown>;
     uploadProgress: number | null;
+    zipResult?: ZipUploadResult | null;
 }
 
-export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
+export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [isHovering, setIsHovering] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [zipBanner, setZipBanner] = useState<ZipUploadResult | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const {resolvedTheme} = useTheme();
@@ -25,12 +29,26 @@ export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
     const isDark = mounted && resolvedTheme === "dark";
     const {t} = useI18n();
 
-    const validate = (file: File): string | null => {
-        if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
-            return t("documents.upload_pdf_only");
+    // Show ZIP result banner when zipResult prop changes
+    useEffect(() => {
+        if (zipResult) {
+            setZipBanner(zipResult);
+            const timer = setTimeout(() => setZipBanner(null), 5000);
+            return () => clearTimeout(timer);
         }
-        if (file.size > MAX_SIZE) {
+    }, [zipResult]);
+
+    const validate = (file: File): string | null => {
+        const isPdf = file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+        const isZip = file.type.includes("zip") || file.name.toLowerCase().endsWith(".zip");
+        if (!isPdf && !isZip) {
+            return t("documents.upload_pdf_or_zip_only");
+        }
+        if (isPdf && file.size > MAX_SIZE) {
             return `${t("documents.upload_too_large")} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+        }
+        if (isZip && file.size > MAX_ZIP_SIZE) {
+            return `${t("documents.upload_zip_too_large")} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
         }
         return null;
     };
@@ -38,6 +56,7 @@ export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
     const handleFile = useCallback(
         async (file: File) => {
             setValidationError(null);
+            setZipBanner(null);
             const err = validate(file);
             if (err) {
                 setValidationError(err);
@@ -121,7 +140,7 @@ export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
             <input
                 ref={inputRef}
                 type="file"
-                accept=".pdf,application/pdf"
+                accept=".pdf,application/pdf,.zip,application/zip,application/x-zip-compressed"
                 style={{display: "none"}}
                 onChange={handleInputChange}
             />
@@ -221,7 +240,7 @@ export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
                                 margin: 0,
                             }}
                         >
-                            {t("documents.upload_drop")}{" "}
+                            {t("documents.upload_drop_v2")}{" "}
                             <span
                                 style={{
                                     color: isDark ? "#C9A84C" : "#c47c00",
@@ -239,7 +258,7 @@ export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
                                 marginTop: "4px",
                             }}
                         >
-                            {t("documents.upload_hint")}
+                            {t("documents.upload_hint_v2")}
                         </p>
                     </div>
                 </div>
@@ -281,6 +300,59 @@ export function UploadZone({onUpload, uploadProgress}: UploadZoneProps) {
                         onClick={(e) => {
                             e.stopPropagation();
                             setValidationError(null);
+                        }}
+                    >
+                        <X size={12}/>
+                    </button>
+                </div>
+            )}
+
+            {zipBanner && (
+                <div
+                    style={{
+                        position: "absolute",
+                        bottom: "12px",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        background: isDark ? "rgba(201,168,76,0.12)" : "rgba(212,168,67,0.12)",
+                        border: isDark
+                            ? "0.5px solid rgba(201,168,76,0.30)"
+                            : "0.5px solid rgba(212,168,67,0.35)",
+                        borderRadius: "8px",
+                        padding: "5px 12px",
+                        fontSize: "11px",
+                        color: isDark ? "#C9A84C" : "#9a7a2a",
+                        whiteSpace: "nowrap",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <CheckCircle size={12} style={{flexShrink: 0}}/>
+                    <span>
+                        {t("documents.zip_result").replace("{count}", String(zipBanner.uploaded_count))}
+                        {zipBanner.skipped_count > 0 && (
+                            <>
+                                {" \u00b7 "}
+                                {t("documents.zip_skipped").replace("{count}", String(zipBanner.skipped_count))}
+                            </>
+                        )}
+                    </span>
+                    <button
+                        style={{
+                            marginLeft: "4px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                            color: isDark ? "#C9A84C" : "#9a7a2a",
+                            display: "flex",
+                            alignItems: "center",
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setZipBanner(null);
                         }}
                     >
                         <X size={12}/>

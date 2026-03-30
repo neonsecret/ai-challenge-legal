@@ -101,12 +101,53 @@ def format_search_results(docs: list[SourceDocument], offset: int = 0) -> str:
     return "\n---\n".join(parts)
 
 
-def execute_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> list[dict]:
-    """Search the web via DuckDuckGo. Returns list of {title, url, snippet}."""
+_BLOCKED_DOMAINS = {
+    "instagram.com", "facebook.com", "twitter.com", "x.com", "tiktok.com",
+    "linkedin.com", "youtube.com", "reddit.com", "pinterest.com",
+    "t.me", "telegram.org", "vk.com", "ok.ru",
+}
+
+
+def _is_useful_result(r: dict) -> bool:
+    """Return False for social media, empty results, or clearly irrelevant pages."""
+    url = r.get("href", "") or r.get("url", "")
+    snippet = r.get("body", "") or r.get("snippet", "")
+
+    if not url or not snippet:
+        return False
+
+    from urllib.parse import urlparse
     try:
-        from duckduckgo_search import DDGS
+        domain = urlparse(url).netloc.lstrip("www.")
+    except Exception:
+        return False
+
+    # Block social media
+    if any(domain == bd or domain.endswith("." + bd) for bd in _BLOCKED_DOMAINS):
+        return False
+
+    # Require at least 50 chars of snippet content
+    if len(snippet.strip()) < 50:
+        return False
+
+    return True
+
+
+def execute_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) -> list[dict]:
+    """Search the web via DuckDuckGo. Returns list of {title, url, snippet}.
+
+    Uses the ``ddgs`` package (successor to ``duckduckgo_search``).
+    Filters out social media profiles, empty results, and other noise.
+    """
+    try:
+        from ddgs import DDGS
+        # Fetch more than needed to account for filtered-out results
+        fetch_count = max_results * 3
         with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=max_results))
+            raw = list(ddgs.text(query, max_results=fetch_count))
+        useful = [r for r in raw if _is_useful_result(r)]
+        results = useful[:max_results]
+        logger.info("[web-search] fetched %d, kept %d after filtering", len(raw), len(results))
         return [
             {"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")}
             for r in results
@@ -122,7 +163,7 @@ def format_web_results(results: list[dict]) -> str:
         return "No web results found."
     parts = []
     for r in results:
-        parts.append(f"[WEB: \"{r['title']}\"]\nURL: {r['url']}\n{r['snippet']}")
+        parts.append(f"[WEB: \"{r['title']}\"]({r['url']})\n{r['snippet']}")
     return "\n---\n".join(parts)
 
 

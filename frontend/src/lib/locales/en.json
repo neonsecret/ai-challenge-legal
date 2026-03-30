@@ -125,10 +125,16 @@
   "documents.documents": "documents",
   "documents.legal_index_library": "Legal Index Library",
   "documents.upload_drop": "Drop a PDF here, or",
+  "documents.upload_drop_v2": "Drop PDFs or a ZIP here, or",
   "documents.upload_browse": "browse",
   "documents.upload_hint": "PDF only \u00b7 max 50 MB",
+  "documents.upload_hint_v2": "PDF or ZIP \u00b7 max 50 MB per PDF \u00b7 max 200 MB per ZIP",
   "documents.upload_pdf_only": "Only PDF files are allowed",
+  "documents.upload_pdf_or_zip_only": "Only PDF or ZIP files are allowed",
   "documents.upload_too_large": "File exceeds 50MB limit",
+  "documents.upload_zip_too_large": "ZIP file exceeds 200MB limit",
+  "documents.zip_result": "Uploaded {count} PDFs",
+  "documents.zip_skipped": "{count} files skipped (not PDF)",
   "documents.no_documents": "No documents yet",
   "documents.upload_to_start": "Upload a PDF above to get started",
   "documents.confirm_yes": "Yes",
@@ -151,5 +157,8 @@
   "documents.index_switching_future": "Index switching will be available in a future release.",
   "documents.library_title": "Legal Index Library",
   "documents.library_subtitle": "Pre-built indexes for specific jurisdictions \u2014 no upload required",
-  "documents.library_footer": "Pre-built indexes will be selectable from the chat interface once available."
+  "documents.library_footer": "Pre-built indexes will be selectable from the chat interface once available.",
+  "documents.upgrade_required": "Upgrade to Upload Documents",
+  "documents.upgrade_description": "Document uploads are available on paid plans. Upgrade to Starter or higher to upload your own PDFs and build custom research corpora.",
+  "documents.upgrade_button": "View Plans"
 }

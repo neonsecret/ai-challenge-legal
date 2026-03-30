@@ -1,12 +1,13 @@
 """Document management endpoints — Phase 3.
 
 Routes:
-    POST   /api/v1/documents          — upload PDF (DOC-01, DOC-02, DOC-03, DOC-04)
-    GET    /api/v1/documents           — list documents (DOC-06)
-    DELETE /api/v1/documents/{doc_id}  — delete document + trigger reindex (DOC-07)
-    POST   /api/v1/documents/reindex   — manually trigger reindex
+    POST   /api/v1/documents              — upload PDF (DOC-01, DOC-02, DOC-03, DOC-04)
+    POST   /api/v1/documents/upload-zip   — upload ZIP of PDFs (batch upload)
+    GET    /api/v1/documents              — list documents (DOC-06)
+    DELETE /api/v1/documents/{doc_id}     — delete document + trigger reindex (DOC-07)
+    POST   /api/v1/documents/reindex      — manually trigger reindex
     GET    /api/v1/documents/reindex/{job_id} — poll reindex status (DOC-05)
-    GET    /api/v1/documents/{doc_id}/pdf      — serve raw PDF for source viewer
+    GET    /api/v1/documents/{doc_id}/pdf — serve raw PDF for source viewer
 """
 from __future__ import annotations
 
@@ -23,28 +24,112 @@ def _log_task_exception(task: asyncio.Task) -> None:
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.config import settings
 
 from neolex.auth.middleware import get_api_key
 from neolex.db.audit import get_audit_db
+from neolex.db.models import User
+from neolex.db.postgres import get_db
 from neolex.schemas.documents import (
     DocumentDeleteResponse,
     DocumentListResponse,
     DocumentMeta,
     DocumentUploadResponse,
     ReindexJobResponse,
+    ZipUploadResponse,
+    ZipUploadResult,
 )
 from neolex.services.document_manager import (
     MAX_UPLOAD_BYTES,
+    MAX_ZIP_BYTES,
     client_docs_dir,
     delete_document,
+    extract_zip_safely,
     save_doc_meta,
     save_upload,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
+
+# ---------------------------------------------------------------------------
+# Plan-based upload limits
+# ---------------------------------------------------------------------------
+
+_PLAN_MAX_CORPORA: dict[str, int] = {
+    "free": 0,
+    "trial": 0,
+    "starter": settings.starter_max_corpora,
+    "pro": settings.pro_max_corpora,
+    "enterprise": settings.enterprise_max_corpora,
+}
+
+_PLAN_MAX_DOCS: dict[str, int] = {
+    "free": 0,
+    "trial": 0,
+    "starter": settings.starter_max_docs_per_corpus,
+    "pro": settings.pro_max_docs_per_corpus,
+    "enterprise": settings.enterprise_max_docs_per_corpus,
+}
+
+_PLAN_MAX_SIZE_MB: dict[str, int] = {
+    "free": 0,
+    "trial": 0,
+    "starter": settings.starter_max_corpus_size_mb,
+    "pro": settings.pro_max_corpus_size_mb,
+    "enterprise": settings.enterprise_max_corpus_size_mb,
+}
+
+
+async def _enforce_upload_limits(
+    user: User, content_size: int, db_audit,
+) -> None:
+    """Check subscription plan limits for document uploads.
+
+    Raises 403 for free-tier users and 429 when paid-plan limits are exceeded.
+    """
+    status = user.subscription_status
+
+    # Free / trial users cannot upload at all
+    if status in ("free", "trial"):
+        raise HTTPException(
+            status_code=403,
+            detail="Document uploads require a paid plan. Please upgrade to Starter or higher.",
+        )
+
+    # Unknown / canceled plans
+    max_docs = _PLAN_MAX_DOCS.get(status)
+    if max_docs is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Active subscription required for document uploads.",
+        )
+
+    # Enforce per-corpus document count limit
+    client_slug = str(user.id)
+    rows = await db_audit.list_documents(client_slug)
+    current_count = len(rows)
+
+    if current_count >= max_docs:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Document limit reached ({max_docs} documents on {status.title()} plan). "
+                   f"Upgrade your plan for more capacity.",
+        )
+
+    # Enforce per-corpus total size limit
+    max_size_bytes = _PLAN_MAX_SIZE_MB[status] * 1024 * 1024
+    current_size = sum(r.get("size_bytes", 0) for r in rows)
+    if current_size + content_size > max_size_bytes:
+        max_mb = _PLAN_MAX_SIZE_MB[status]
+        raise HTTPException(
+            status_code=429,
+            detail=f"Corpus size limit reached ({max_mb} MB on {status.title()} plan). "
+                   f"Delete existing documents or upgrade your plan.",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -57,9 +142,11 @@ async def upload_document(
         request: Request,
         file: UploadFile = File(...),
         key_row: dict = Depends(get_api_key),
+        db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
     """Upload a PDF document into the client's private corpus.
 
+    - Checks subscription plan limits → 403 for free tier, 429 when exceeded
     - Validates MIME type (PDF only) → 415 on mismatch
     - Validates file size (≤50MB) → 413 on oversize
     - Saves to data/clients/<slug>/docs/
@@ -67,11 +154,20 @@ async def upload_document(
     """
     client_slug = key_row["client_slug"]
 
+    # --- Enforce subscription plan limits ---
+    user_id = key_row.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
     # --- Validate content type ---
     ct = (file.content_type or "").lower()
     if ct not in ("application/pdf",):
-        async with get_audit_db() as db:
-            await db.log_event(
+        async with get_audit_db() as audit_db:
+            await audit_db.log_event(
                 key_hash=key_row["key_hash"],
                 event_type="upload",
                 detail={"filename": file.filename, "status": "rejected_type", "content_type": ct},
@@ -86,10 +182,14 @@ async def upload_document(
     # --- Read and validate ---
     content = await file.read()
 
+    # Check plan limits (needs content size for corpus size enforcement)
+    async with get_audit_db() as audit_db:
+        await _enforce_upload_limits(user, len(content), audit_db)
+
     # Reject empty files
     if len(content) == 0:
-        async with get_audit_db() as db:
-            await db.log_event(
+        async with get_audit_db() as audit_db:
+            await audit_db.log_event(
                 key_hash=key_row["key_hash"],
                 event_type="upload",
                 detail={"filename": file.filename, "status": "rejected_empty"},
@@ -102,8 +202,8 @@ async def upload_document(
         )
 
     if len(content) > MAX_UPLOAD_BYTES:
-        async with get_audit_db() as db:
-            await db.log_event(
+        async with get_audit_db() as audit_db:
+            await audit_db.log_event(
                 key_hash=key_row["key_hash"],
                 event_type="upload",
                 detail={
@@ -130,8 +230,8 @@ async def upload_document(
     except ValueError as exc:
         # Invalid PDF magic bytes or size guard
         status_code = 413 if "too large" in str(exc) else 415
-        async with get_audit_db() as db:
-            await db.log_event(
+        async with get_audit_db() as audit_db:
+            await audit_db.log_event(
                 key_hash=key_row["key_hash"],
                 event_type="upload",
                 detail={"filename": file.filename, "status": "rejected_invalid", "error": str(exc)},
@@ -141,8 +241,8 @@ async def upload_document(
         raise HTTPException(status_code=status_code, detail=str(exc))
 
     # --- Persist to document registry (DB) ---
-    async with get_audit_db() as db:
-        await db.register_document(
+    async with get_audit_db() as audit_db:
+        await audit_db.register_document(
             doc_id=meta["doc_id"],
             client_slug=client_slug,
             filename=meta["filename"],
@@ -165,8 +265,8 @@ async def upload_document(
     task.add_done_callback(_log_task_exception)
 
     # --- Audit log ---
-    async with get_audit_db() as db:
-        await db.log_event(
+    async with get_audit_db() as audit_db:
+        await audit_db.log_event(
             key_hash=key_row["key_hash"],
             event_type="upload",
             detail={
@@ -194,6 +294,223 @@ async def upload_document(
         size_bytes=meta["size_bytes"],
         client_slug=client_slug,
         upload_ts=meta["upload_ts"],
+        job_id=job_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/documents/upload-zip
+# ---------------------------------------------------------------------------
+
+_VALID_ZIP_CONTENT_TYPES = frozenset({
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/x-zip",
+})
+
+
+@router.post("/upload-zip", response_model=ZipUploadResponse, status_code=201)
+async def upload_zip(
+    request: Request,
+    file: UploadFile = File(...),
+    key_row: dict = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> ZipUploadResponse:
+    """Upload a ZIP archive containing multiple PDFs.
+
+    - Extracts PDFs safely (zip bomb protection, path traversal checks)
+    - Registers each valid PDF into the client's corpus
+    - Triggers a single background reindex job
+    - Returns per-file results (uploaded / skipped / error)
+    """
+    client_slug = key_row["client_slug"]
+
+    # --- Auth: resolve user ---
+    user_id = key_row.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Authentication required")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required")
+
+    # --- Validate content type ---
+    ct = (file.content_type or "").lower()
+    fname = (file.filename or "").lower()
+    if ct not in _VALID_ZIP_CONTENT_TYPES and not (
+        ct == "application/octet-stream" and fname.endswith(".zip")
+    ):
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{ct}'. Expected a ZIP archive.",
+        )
+
+    # --- Read ZIP bytes ---
+    zip_bytes = await file.read()
+    if len(zip_bytes) == 0:
+        raise HTTPException(status_code=400, detail="File is empty (0 bytes).")
+    if len(zip_bytes) > MAX_ZIP_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"ZIP file too large ({len(zip_bytes)} bytes). "
+                   f"Maximum is {MAX_ZIP_BYTES // (1024 * 1024)} MB.",
+        )
+
+    # --- Extract safely (runs sync I/O in thread) ---
+    try:
+        valid_pdfs, skipped_files = await asyncio.to_thread(
+            extract_zip_safely, zip_bytes,
+        )
+    except ValueError as exc:
+        async with get_audit_db() as audit_db:
+            await audit_db.log_event(
+                key_hash=key_row["key_hash"],
+                event_type="upload_zip",
+                detail={
+                    "filename": file.filename,
+                    "status": "rejected_extraction",
+                    "error": str(exc),
+                },
+                ip=getattr(request.client, "host", None),
+                user_agent=request.headers.get("user-agent"),
+            )
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    if not valid_pdfs and not skipped_files:
+        raise HTTPException(status_code=400, detail="ZIP archive is empty.")
+
+    # --- Pre-check plan limits BEFORE saving any files ---
+    total_new_size = sum(len(data) for _, data in valid_pdfs)
+    new_count = len(valid_pdfs)
+
+    status = user.subscription_status
+    if status in ("free", "trial"):
+        raise HTTPException(
+            status_code=403,
+            detail="Document uploads require a paid plan. Please upgrade to Starter or higher.",
+        )
+
+    max_docs = _PLAN_MAX_DOCS.get(status)
+    if max_docs is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Active subscription required for document uploads.",
+        )
+
+    async with get_audit_db() as audit_db:
+        existing_rows = await audit_db.list_documents(client_slug)
+    existing_count = len(existing_rows)
+    existing_size = sum(r.get("size_bytes", 0) for r in existing_rows)
+
+    if existing_count + new_count > max_docs:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Would exceed document limit ({max_docs} on {status.title()} plan). "
+                   f"You have {existing_count} documents and are trying to add {new_count}.",
+        )
+
+    max_size_bytes = _PLAN_MAX_SIZE_MB[status] * 1024 * 1024
+    if existing_size + total_new_size > max_size_bytes:
+        max_mb = _PLAN_MAX_SIZE_MB[status]
+        raise HTTPException(
+            status_code=429,
+            detail=f"Would exceed corpus size limit ({max_mb} MB on {status.title()} plan). "
+                   f"Delete existing documents or upgrade your plan.",
+        )
+
+    # --- Save each valid PDF ---
+    file_results: list[ZipUploadResult] = []
+    uploaded_doc_ids: list[str] = []
+    total_uploaded_bytes = 0
+
+    for pdf_name, pdf_bytes in valid_pdfs:
+        try:
+            meta = await asyncio.to_thread(
+                save_upload, client_slug, pdf_name, pdf_bytes,
+            )
+        except ValueError as exc:
+            file_results.append(ZipUploadResult(
+                filename=pdf_name,
+                status="error",
+                size_bytes=len(pdf_bytes),
+                error=str(exc),
+            ))
+            continue
+
+        # Register in document DB
+        async with get_audit_db() as audit_db:
+            await audit_db.register_document(
+                doc_id=meta["doc_id"],
+                client_slug=client_slug,
+                filename=meta["filename"],
+                size_bytes=meta["size_bytes"],
+                upload_ts=meta["upload_ts"],
+            )
+
+        # Write sidecar .meta
+        await asyncio.to_thread(save_doc_meta, client_slug, meta)
+
+        uploaded_doc_ids.append(meta["doc_id"])
+        total_uploaded_bytes += meta["size_bytes"]
+        file_results.append(ZipUploadResult(
+            filename=meta["filename"],
+            doc_id=meta["doc_id"],
+            status="uploaded",
+            size_bytes=meta["size_bytes"],
+        ))
+
+    # --- Append skipped files to results ---
+    for skipped_name, reason in skipped_files:
+        file_results.append(ZipUploadResult(
+            filename=skipped_name,
+            status=reason,
+        ))
+
+    # --- Trigger ONE reindex job (only if we uploaded at least 1 file) ---
+    job_id: str | None = None
+    if uploaded_doc_ids:
+        from neolex.indexing.reindex_worker import create_job, run_reindex_job
+
+        job_id = await create_job(client_slug)
+        task = asyncio.create_task(
+            run_reindex_job(job_id, client_slug, app=request.app),
+            name=f"reindex-{job_id[:8]}",
+        )
+        task.add_done_callback(_log_task_exception)
+
+    # --- Audit log ---
+    async with get_audit_db() as audit_db:
+        await audit_db.log_event(
+            key_hash=key_row["key_hash"],
+            event_type="upload_zip",
+            detail={
+                "zip_filename": file.filename,
+                "uploaded_count": len(uploaded_doc_ids),
+                "skipped_count": len(skipped_files),
+                "total_size_bytes": total_uploaded_bytes,
+                "doc_ids": uploaded_doc_ids,
+                "job_id": job_id,
+                "status": "accepted",
+            },
+            ip=getattr(request.client, "host", None),
+            user_agent=request.headers.get("user-agent"),
+        )
+
+    uploaded_count = len(uploaded_doc_ids)
+    skipped_count = len(file_results) - uploaded_count
+    logger.info(
+        "ZIP upload: %d uploaded, %d skipped for client %s — job %s",
+        uploaded_count,
+        skipped_count,
+        client_slug,
+        job_id,
+    )
+
+    return ZipUploadResponse(
+        uploaded_count=uploaded_count,
+        skipped_count=skipped_count,
+        total_size_bytes=total_uploaded_bytes,
+        files=file_results,
         job_id=job_id,
     )
 

@@ -6,7 +6,6 @@
   "nav.sign_in": "Anmelden",
   "nav.sign_out": "Abmelden",
   "nav.get_started": "Loslegen",
-
   "chat.what_can_i_help": "Wobei kann ich Ihnen helfen?",
   "chat.ask_question": "Diese Frage stellen",
   "chat.new_chat": "Neuer Chat",
@@ -14,7 +13,6 @@
   "chat.placeholder": "Geben Sie Ihre Rechtsfrage ein...",
   "chat.no_chats_yet": "Noch keine Chats",
   "chat.copy_answer": "Antwort kopieren",
-
   "billing.free": "Kostenlos",
   "billing.starter": "Starter",
   "billing.pro": "Pro",
@@ -76,7 +74,6 @@
   "billing.price_free": "Kostenlos",
   "billing.interval_mo": "Mo",
   "billing.interval_2wk": "2Wo",
-
   "settings.title": "Einstellungen",
   "settings.subtitle": "Konto und Einstellungen verwalten",
   "settings.account": "Konto",
@@ -90,31 +87,26 @@
   "settings.not_signed_in": "Nicht angemeldet",
   "settings.sign_in": "Anmelden",
   "settings.plan": "Plan",
-  "settings.about": "\u00dcber",
+  "settings.about": "Über",
   "settings.application": "Anwendung",
   "settings.version": "Version",
   "settings.backend": "Backend",
-  "settings.health_check": "Statuspr\u00fcfung",
+  "settings.health_check": "Statusprüfung",
   "settings.loading": "Laden...",
-
   "auth.continue_with_google": "Weiter mit Google",
   "auth.sign_in": "Anmelden",
   "auth.create_account": "Konto erstellen",
   "auth.email": "E-Mail",
   "auth.password": "Passwort",
   "auth.forgot_password": "Passwort vergessen?",
-
   "status.processing": "Ihre Frage wird verarbeitet...",
   "status.routing": "Weiterleitung an relevante Dokumente...",
   "status.searching": "Durchsuche Rechtskorpus...",
   "status.composing": "Antwort wird erstellt...",
-
   "misc.source_document": "Quelldokument",
-  "misc.source_grounding": "Quellenbegr\u00fcndung",
-
+  "misc.source_grounding": "Quellenbegründung",
   "theme_toggle.light": "Hell",
   "theme_toggle.dark": "Dunkel",
-
   "documents.title": "Dokumente",
   "documents.subtitle": "Eigene PDFs hochladen oder einen vorbereiteten Rechtsindex verwenden",
   "documents.your_documents": "Ihre Dokumente",
@@ -126,7 +118,7 @@
   "documents.legal_index_library": "Rechtsindex-Bibliothek",
   "documents.upload_drop": "PDF hierher ziehen oder",
   "documents.upload_browse": "durchsuchen",
-  "documents.upload_hint": "Nur PDF \u00b7 max. 50 MB",
+  "documents.upload_hint": "Nur PDF · max. 50 MB",
   "documents.upload_pdf_only": "Nur PDF-Dateien sind erlaubt",
   "documents.upload_too_large": "Datei überschreitet das 50-MB-Limit",
   "documents.no_documents": "Noch keine Dokumente",
@@ -150,6 +142,9 @@
   "documents.index_status_checking": "Wird geprüft...",
   "documents.index_switching_future": "Index-Wechsel wird in einer zukünftigen Version verfügbar sein.",
   "documents.library_title": "Rechtsindex-Bibliothek",
-  "documents.library_subtitle": "Vorgefertigte Indizes für bestimmte Rechtssysteme \u2014 kein Upload erforderlich",
-  "documents.library_footer": "Vorgefertigte Indizes können aus der Chat-Oberfläche ausgewählt werden, sobald sie verfügbar sind."
+  "documents.library_subtitle": "Vorgefertigte Indizes für bestimmte Rechtssysteme — kein Upload erforderlich",
+  "documents.library_footer": "Vorgefertigte Indizes können aus der Chat-Oberfläche ausgewählt werden, sobald sie verfügbar sind.",
+  "documents.upgrade_required": "Upgrade zum Hochladen von Dokumenten",
+  "documents.upgrade_description": "Dokumenten-Uploads sind in kostenpflichtigen Plänen verfügbar. Upgraden Sie auf Starter oder höher, um eigene PDFs hochzuladen und individuelle Recherche-Korpora zu erstellen.",
+  "documents.upgrade_button": "Pläne ansehen"
 }

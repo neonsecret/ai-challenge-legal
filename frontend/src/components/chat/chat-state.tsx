@@ -21,11 +21,15 @@ export interface ChatSession {
     title: string
     messages: Message[]
     createdAt: number
+    /** Timestamp of last message activity (send/receive). Used for sidebar sort order. */
+    lastMessageAt: number
     corpora: string[]
+    /** True when this session was loaded from backend and messages haven't been fetched yet. */
+    backendOnly?: boolean
 }
 
 const MAX_SESSIONS = 20
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000
+const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000
 
 /** Get user-scoped localStorage key to prevent cross-account session leaks. */
 function _userKey(base: string): string {
@@ -43,10 +47,10 @@ function loadSessions(): ChatSession[] {
         if (!raw) return []
         const all: ChatSession[] = JSON.parse(raw)
         const now = Date.now()
-        // Normalize: ensure corpora field exists (backward compat with pre-corpora sessions)
+        // Normalize: ensure corpora/lastMessageAt fields exist (backward compat)
         return all
-            .filter(s => (now - s.createdAt) < SESSION_TTL_MS)
-            .map(s => ({...s, corpora: s.corpora ?? []}))
+            .filter(s => (now - (s.lastMessageAt ?? s.createdAt)) < SESSION_TTL_MS)
+            .map(s => ({...s, corpora: s.corpora ?? [], lastMessageAt: s.lastMessageAt ?? s.createdAt}))
     } catch {
         return []
     }
@@ -54,7 +58,10 @@ function loadSessions(): ChatSession[] {
 
 function saveSessions(sessions: ChatSession[]) {
     try {
-        localStorage.setItem(_userKey("neolex_chat_sessions"), JSON.stringify(sessions.slice(0, MAX_SESSIONS)))
+        // Don't persist backend-only stubs (empty messages) to localStorage —
+        // they'll be re-fetched from the backend on next mount anyway.
+        const persistable = sessions.filter(s => !s.backendOnly)
+        localStorage.setItem(_userKey("neolex_chat_sessions"), JSON.stringify(persistable.slice(0, MAX_SESSIONS)))
     } catch { /* ignore */ }
 }
 
@@ -66,6 +73,11 @@ function saveCurrentSessionId(id: string | null) {
     const key = _userKey("neolex_current_session")
     if (id) localStorage.setItem(key, id)
     else localStorage.removeItem(key)
+}
+
+/** Sort sessions by lastMessageAt descending (most recent message activity first). */
+function sortSessions(sessions: ChatSession[]): ChatSession[] {
+    return sessions.slice().sort((a, b) => b.lastMessageAt - a.lastMessageAt)
 }
 
 function titleFromMessages(msgs: Message[]): string {
@@ -85,6 +97,8 @@ interface ChatState {
     setSelectedCorpus: (c: string) => void
     selectedLaws: string[]
     setSelectedLaws: React.Dispatch<React.SetStateAction<string[]>>
+    useInternet: boolean
+    setUseInternet: React.Dispatch<React.SetStateAction<boolean>>
     stream: UseQueryStreamReturn
     handleSend: (question: string) => "ok" | "blocked"
     sessions: ChatSession[]
@@ -101,6 +115,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const [messages, setMessages] = useState<Message[]>([])
     const [selectedCorpus, setSelectedCorpus] = useState("DIFC Law")
     const [selectedLaws, setSelectedLaws] = useState<string[]>([])
+    const [useInternet, setUseInternet] = useState(true)
     const [sessions, setSessions] = useState<ChatSession[]>([])
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
     // Hydration gate: false during SSR and first client render.
@@ -113,6 +128,10 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const wasStreamingRef = useRef<boolean>(false)
     const streamingSessionIdRef = useRef<string | null>(null)
     const streamingMessagesRef = useRef<Message[]>([])
+    /** Mirror of currentSessionId for use in callbacks that need the latest value without re-creating closures. */
+    const currentSessionIdRef = useRef<string | null>(null)
+    /** When true, the next messages change is from loading an existing session, not from new message activity. */
+    const loadingSessionRef = useRef<boolean>(false)
     const {jurisdiction} = useJurisdiction()
 
     const stream = useQueryStream()
@@ -137,12 +156,13 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 ),
             }
         })
-        setSessions(patched)
+        setSessions(sortSessions(patched))
 
-        // Restore current session messages
+        // Restore current session messages (not new activity — just rehydration)
         if (lastId) {
             const session = patched.find(s => s.id === lastId)
             if (session) {
+                loadingSessionRef.current = true
                 setMessages(session.messages)
                 setCurrentSessionId(lastId)
             }
@@ -195,6 +215,40 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             })()
         }
 
+        // Merge conversations from backend — adds sessions that exist in DB but
+        // not in localStorage (e.g. after logout/login or TTL expiry).
+        // localStorage sessions are preferred (they have streaming state, sources, etc).
+        ;(async () => {
+            try {
+                const r = await fetch(`${API}/api/v1/conversations`, {credentials: "include"})
+                if (!r.ok) return
+                const data = await r.json()
+                const backendConvs: Array<{id: string; title: string; last_message_at: string; message_count: number}> =
+                    data?.conversations ?? []
+                if (backendConvs.length === 0) return
+
+                setSessions(prev => {
+                    const localIds = new Set(prev.map(s => s.id))
+                    const newFromBackend: ChatSession[] = backendConvs
+                        .filter(bc => !localIds.has(bc.id))
+                        .map(bc => {
+                            const ts = bc.last_message_at ? new Date(bc.last_message_at).getTime() : Date.now()
+                            return {
+                                id: bc.id,
+                                title: bc.title,
+                                messages: [],  // lazy-loaded when user clicks
+                                createdAt: ts,
+                                lastMessageAt: ts,
+                                corpora: [],
+                                backendOnly: true,
+                            }
+                        })
+                    if (newFromBackend.length === 0) return prev
+                    return sortSessions([...prev, ...newFromBackend]).slice(0, MAX_SESSIONS)
+                })
+            } catch { /* network error — not critical, localStorage sessions still work */ }
+        })()
+
         setHydrated(true)
     }, [])
 
@@ -239,14 +293,16 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 if (saveable.length > 0) {
                     setSessions(prev => {
                         const existing = prev.find(s => s.id === streamSessionId)
+                        const now = Date.now()
                         const session: ChatSession = {
                             id: streamSessionId,
                             title: titleFromMessages(saveable),
                             messages: saveable,
-                            createdAt: existing?.createdAt ?? Date.now(),
+                            createdAt: existing?.createdAt ?? now,
+                            lastMessageAt: now,
                             corpora: existing?.corpora ?? [],
                         }
-                        return [session, ...prev.filter(s => s.id !== streamSessionId)].slice(0, MAX_SESSIONS)
+                        return sortSessions([session, ...prev.filter(s => s.id !== streamSessionId)]).slice(0, MAX_SESSIONS)
                     })
                 }
             } else {
@@ -274,6 +330,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         saveCurrentSessionId(currentSessionId)
     }, [currentSessionId, hydrated])
 
+    // Keep ref in sync so callbacks always read the latest value
+    currentSessionIdRef.current = currentSessionId
+
     useEffect(() => {
         if (!hydrated) return
         if (messages.length === 0) return
@@ -281,16 +340,34 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         const id = currentSessionId ?? `chat-${Date.now()}`
         if (!currentSessionId) setCurrentSessionId(id)
 
+        // Check if this messages update is from loading an existing session
+        const isLoading = loadingSessionRef.current
+        if (isLoading) loadingSessionRef.current = false
+
         setSessions(prev => {
             const existing = prev.find(s => s.id === id)
+            const now = Date.now()
+            // Only update lastMessageAt for genuine new message activity,
+            // NOT when loading/viewing an existing session.
+            const isNewActivity = !isLoading && (!existing || messages.length > existing.messages.length)
+            const lastMessageAt = isNewActivity
+                ? now
+                : (existing?.lastMessageAt ?? existing?.createdAt ?? now)
             const session: ChatSession = {
                 id,
                 title: titleFromMessages(messages),
                 messages,
-                createdAt: existing?.createdAt ?? Date.now(),
+                createdAt: existing?.createdAt ?? now,
+                lastMessageAt,
                 corpora: existing?.corpora ?? [],
             }
-            return [session, ...prev.filter(s => s.id !== id)].slice(0, MAX_SESSIONS)
+            if (existing) {
+                // Update in-place, then re-sort only if lastMessageAt changed
+                const updated = prev.map(s => s.id === id ? session : s)
+                return isNewActivity ? sortSessions(updated) : updated
+            }
+            // Brand new session — insert and sort
+            return sortSessions([session, ...prev]).slice(0, MAX_SESSIONS)
         })
     }, [messages, currentSessionId, hydrated])
 
@@ -300,13 +377,49 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         if (stream.isStreaming && currentSessionId) {
             streamingMessagesRef.current = messages.slice()
         }
+        loadingSessionRef.current = true
         setSessions(prev => {
             const session = prev.find(s => s.id === id)
             if (session) {
-                setMessages(session.messages)
-                setCurrentSessionId(id)
-                if (!stream.isStreaming) {
-                    activeAssistantId.current = null
+                if (session.backendOnly) {
+                    // Session from backend with no local messages — fetch from server
+                    setMessages([])
+                    setCurrentSessionId(id)
+                    if (!stream.isStreaming) {
+                        activeAssistantId.current = null
+                    }
+                    const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+                    ;(async () => {
+                        try {
+                            const r = await fetch(
+                                `${API}/api/v1/conversations/${encodeURIComponent(id)}/messages`,
+                                {credentials: "include"},
+                            )
+                            if (!r.ok) return
+                            const data = await r.json()
+                            const msgs: Message[] = (data?.messages ?? []).map(
+                                (m: {role: string; content: string; created_at: string}, i: number) => ({
+                                    id: `${m.role}-loaded-${i}`,
+                                    role: m.role as "user" | "assistant",
+                                    content: m.content,
+                                    sources: [],
+                                })
+                            )
+                            if (msgs.length > 0) {
+                                loadingSessionRef.current = true
+                                setMessages(msgs)
+                                setSessions(prev2 => prev2.map(s =>
+                                    s.id === id ? {...s, messages: msgs, backendOnly: false} : s
+                                ))
+                            }
+                        } catch { /* network error — session stays empty */ }
+                    })()
+                } else {
+                    setMessages(session.messages)
+                    setCurrentSessionId(id)
+                    if (!stream.isStreaming) {
+                        activeAssistantId.current = null
+                    }
                 }
             }
             return prev
@@ -322,8 +435,16 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
     const deleteSession = useCallback((id: string) => {
         setSessions(prev => prev.filter(s => s.id !== id))
-        if (currentSessionId === id) newChat()
-    }, [currentSessionId, newChat])
+        // Use ref to always read the latest currentSessionId, avoiding stale closures
+        if (currentSessionIdRef.current === id) newChat()
+        // Fire-and-forget: tell the backend to delete persisted conversation data
+        const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+        fetch(`${API}/api/v1/conversations/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+            credentials: "include",
+            headers: {"X-Requested-With": "XMLHttpRequest"},
+        }).catch(() => {})
+    }, [newChat])
 
     const handleSend = useCallback((question: string): "ok" | "blocked" => {
         const corpus = jurisdictionToCorpus(jurisdiction)
@@ -361,9 +482,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             {id: assistantId, role: "assistant", content: null, sources: [], confidence: null},
         ])
         const laws = jurisdiction === "cz" && selectedLaws.length > 0 ? selectedLaws : undefined
-        stream.sendQuery(question, corpus, convId, laws)
+        stream.sendQuery(question, corpus, convId, laws, useInternet)
         return "ok" as const
-    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, sessions])
+    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, sessions, useInternet])
 
     const currentCorpora = sessions.find(s => s.id === currentSessionId)?.corpora ?? []
 
@@ -371,6 +492,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         <ChatStateContext.Provider value={{
             messages, setMessages, activeAssistantId, traceRef, wasStreamingRef,
             selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
+            useInternet, setUseInternet,
             stream, handleSend,
             sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
         }}>

@@ -30,6 +30,7 @@ from neolex.routers import query as query_router
 from neolex.routers import admin as admin_router
 from neolex.routers import documents as documents_router
 from neolex.routers import stripe_router
+from neolex.routers import web_proxy as web_proxy_router
 from neolex.auth import oauth as oauth_router
 from neolex.auth import email_auth as email_auth_router
 from neolex.startup_validation import validate_startup
@@ -290,3 +291,4 @@ app.include_router(documents_router.router)
 app.include_router(oauth_router.router)
 app.include_router(email_auth_router.router)
 app.include_router(stripe_router.router)
+app.include_router(web_proxy_router.router)

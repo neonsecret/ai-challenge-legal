@@ -82,4 +82,6 @@ class AgentState(TypedDict):
     search_count: int
     user_id: str
     conversation_id: str
+    web_sources: NotRequired[list[dict]]
+    use_internet: NotRequired[bool]
     _on_status: NotRequired[Callable[[str], None] | None]

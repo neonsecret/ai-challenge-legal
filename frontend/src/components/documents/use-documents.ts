@@ -18,6 +18,22 @@ export interface ReindexJob {
     completed_at?: string;
 }
 
+export interface ZipFileResult {
+    filename: string;
+    doc_id: string | null;
+    status: string;
+    size_bytes: number;
+    error: string | null;
+}
+
+export interface ZipUploadResult {
+    uploaded_count: number;
+    skipped_count: number;
+    total_size_bytes: number;
+    files: ZipFileResult[];
+    job_id: string | null;
+}
+
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 
@@ -91,6 +107,63 @@ export function useDocuments() {
         [fetchDocuments]
     );
 
+    const uploadZip = useCallback(
+        async (file: File): Promise<ZipUploadResult | null> => {
+            setUploadProgress(0);
+            setError(null);
+            try {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                const xhr = new XMLHttpRequest();
+                const result = await new Promise<ZipUploadResult>((resolve, reject) => {
+                    xhr.upload.addEventListener("progress", (e) => {
+                        if (e.lengthComputable) {
+                            setUploadProgress(Math.round((e.loaded / e.total) * 100));
+                        }
+                    });
+                    xhr.addEventListener("load", () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            resolve(JSON.parse(xhr.responseText));
+                        } else {
+                            try {
+                                const err = JSON.parse(xhr.responseText);
+                                reject(new Error(err.detail ?? `Upload failed: ${xhr.status}`));
+                            } catch {
+                                reject(new Error(`Upload failed: ${xhr.status}`));
+                            }
+                        }
+                    });
+                    xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
+                    xhr.open("POST", `${API_BASE}/documents/upload-zip`);
+                    xhr.withCredentials = true;
+                    xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+                    xhr.send(formData);
+                });
+
+                await fetchDocuments();
+                return result;
+            } catch (e) {
+                setError(e instanceof Error ? e.message : "Upload failed");
+                return null;
+            } finally {
+                setUploadProgress(null);
+            }
+        },
+        [fetchDocuments]
+    );
+
+    const uploadFile = useCallback(
+        async (file: File): Promise<Document | ZipUploadResult | null> => {
+            const isZip = file.type.includes("zip") || file.name.toLowerCase().endsWith(".zip");
+            if (isZip) {
+                return uploadZip(file);
+            }
+            return uploadDocument(file);
+        },
+        [uploadDocument, uploadZip]
+    );
+
     const deleteDocument = useCallback(
         async (documentId: string): Promise<boolean> => {
             setError(null);
@@ -155,6 +228,8 @@ export function useDocuments() {
         reindexJob,
         fetchDocuments,
         uploadDocument,
+        uploadZip,
+        uploadFile,
         deleteDocument,
         triggerReindex,
     };

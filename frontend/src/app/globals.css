@@ -199,7 +199,7 @@ button, a[href] {
     will-change: transform;
 }
 
-button:active:not(:disabled) {
+button:active:not(:disabled):not(.no-press-scale) {
     transform: scale(0.96) !important;
 }
 
@@ -363,22 +363,22 @@ button:active:not(:disabled) {
 @keyframes page-out {
     from {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
     }
     to {
         opacity: 0;
-        transform: translateY(-4px);
+        transform: translateY(-4px) translateZ(0);
     }
 }
 
 @keyframes page-in {
     from {
         opacity: 0;
-        transform: translateY(4px);
+        transform: translateY(4px) translateZ(0);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
     }
 }
 
@@ -535,7 +535,7 @@ button:active:not(:disabled) {
         background: rgba(255, 255, 255, 0.09);
         border-color: rgba(255, 255, 255, 0.16);
         color: rgba(255, 255, 255, 0.85);
-        transition: all 0.15s ease;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
     &:active {
@@ -560,7 +560,7 @@ button:active:not(:disabled) {
         background: rgba(201, 168, 76, 0.14);
         border-color: rgba(201, 168, 76, 0.45);
         color: #C9A84C;
-        transition: all 0.15s ease;
+        transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
     &:active {
@@ -681,15 +681,22 @@ button:active:not(:disabled) {
 
 @keyframes float-down {
     0%, 100% {
-        transform: translateY(0);
+        transform: translateY(0) translateZ(0);
         opacity: 0.5;
     }
     50% {
-        transform: translateY(4px);
+        transform: translateY(4px) translateZ(0);
         opacity: 1;
     }
 }
 
 .animate-float-down {
     animation: float-down 1.4s ease-in-out infinite;
+}
+
+/* GPU-accelerated layer — apply to animated elements for smooth 60fps */
+.gpu-accelerated {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }

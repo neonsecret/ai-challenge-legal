@@ -283,6 +283,7 @@ async def query_stream(
                         selected_laws=body.laws,
                         on_status=on_status_async,
                         on_token=on_token_async,
+                        use_internet=body.use_internet,
                     )
                 else:
                     # ---- Deterministic pipeline path (unchanged) ----
@@ -422,3 +423,54 @@ async def get_last_answer(
     if not last_assistant:
         raise HTTPException(status_code=404, detail="No answer found")
     return {"answer": last_assistant["content"]}
+
+
+@router.get("/conversations")
+async def list_conversations(
+    key_row: dict = Depends(get_api_key),
+):
+    """Return the authenticated user's recent conversations.
+
+    Each entry contains:
+    - id: the conversation UUID (string)
+    - title: first user message, truncated to 80 chars
+    - last_message_at: ISO timestamp of the most recent message
+    - message_count: total messages in the conversation
+    """
+    from neolex.services.conversation import list_user_conversations
+
+    user_id = key_row["user_id"]
+    return {"conversations": await list_user_conversations(user_id)}
+
+
+@router.delete("/conversations/{conversation_id}", status_code=204)
+async def delete_conversation(
+    conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
+    key_row: dict = Depends(get_api_key),
+):
+    """Delete all messages and docs for a conversation owned by the authenticated user."""
+    from neolex.services.conversation import delete_conversation as do_delete
+
+    user_id = key_row["user_id"]
+    deleted = await do_delete(user_id, conversation_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+
+@router.get("/conversations/{conversation_id}/messages")
+async def get_conversation_messages(
+    conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
+    key_row: dict = Depends(get_api_key),
+):
+    """Return all messages for a specific conversation.
+
+    Used by the frontend to hydrate a conversation that exists in the backend
+    but is missing from localStorage (e.g. after logout/login or TTL expiry).
+    """
+    from neolex.services.conversation import load_full_conversation
+
+    user_id = key_row["user_id"]
+    messages = await load_full_conversation(user_id, conversation_id)
+    if not messages:
+        raise HTTPException(status_code=404, detail="No messages found")
+    return {"messages": messages}

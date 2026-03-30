@@ -143,12 +143,9 @@ export function useAuth(): {
         } catch {
             // swallow — we clear local state regardless
         }
-        // Clear all user-scoped session data on logout
-        const uid = localStorage.getItem("neolex_uid");
-        if (uid) {
-            localStorage.removeItem(`neolex_chat_sessions_${uid}`);
-            localStorage.removeItem(`neolex_current_session_${uid}`);
-        }
+        // Keep chat sessions in localStorage — they're user-scoped via neolex_uid
+        // prefix so there's no cross-account leak risk. When a different user logs
+        // in, they get their own scoped keys.
         localStorage.removeItem("neolex_uid");
         setState({user: null, loading: false, error: null});
     }, []);

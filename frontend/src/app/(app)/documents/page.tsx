@@ -1,25 +1,29 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useState, useCallback} from "react";
 import {useTheme} from "next-themes";
+import Link from "next/link";
 import {UploadZone} from "@/components/documents/upload-zone";
 import {FolderView} from "@/components/documents/folder-view";
 import {ReindexButton} from "@/components/documents/reindex-button";
 import {IndexInfoPanel} from "@/components/documents/index-info-panel";
 import {LegalIndexLibrary} from "@/components/documents/legal-index-library";
 import {useDocuments} from "@/components/documents/use-documents";
+import {useAuth} from "@/lib/use-auth";
 import {useI18n} from "@/lib/i18n";
 
 export default function DocumentsPage() {
     const {resolvedTheme} = useTheme();
     const [mounted, setMounted] = useState(false);
     const {t} = useI18n();
+    const {user} = useAuth();
 
     useEffect(() => {
         setMounted(true);
     }, []);
 
     const isDark = mounted && resolvedTheme === "dark";
+    const isFreeTier = !user || user.subscription_status === "free" || user.max_corpora === 0;
 
     const {
         documents,
@@ -28,10 +32,21 @@ export default function DocumentsPage() {
         uploadProgress,
         reindexJob,
         fetchDocuments,
-        uploadDocument,
+        uploadFile,
         deleteDocument,
         triggerReindex,
     } = useDocuments();
+
+    const [zipResult, setZipResult] = useState<import("@/components/documents/use-documents").ZipUploadResult | null>(null);
+
+    const handleUpload = useCallback(async (file: File) => {
+        const result = await uploadFile(file);
+        // If this was a ZIP upload, show the result banner
+        if (result && "uploaded_count" in result) {
+            setZipResult(result);
+        }
+        return result;
+    }, [uploadFile]);
 
     useEffect(() => {
         fetchDocuments();
@@ -133,25 +148,123 @@ export default function DocumentsPage() {
                     {t("documents.your_documents")}
                 </h2>
 
-                {/* Upload section */}
-                <div style={{...glassCard, marginBottom: "16px"}}>
-                    <div style={{...cardHeaderSep, padding: "16px 20px"}}>
-                        <h3
-                            style={{
-                                fontSize: "14px",
-                                fontWeight: 600,
-                                color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-                                margin: 0,
-                                fontFamily: fontStack,
-                            }}
-                        >
-                            {t("documents.upload_document")}
-                        </h3>
+                {/* Upload section — gated by plan */}
+                {isFreeTier ? (
+                    <div style={{...glassCard, marginBottom: "16px"}}>
+                        <div style={{padding: "24px 20px", textAlign: "center"}}>
+                            <div
+                                style={{
+                                    width: "40px",
+                                    height: "40px",
+                                    margin: "0 auto 12px",
+                                    borderRadius: "12px",
+                                    background: isDark
+                                        ? "rgba(255,255,255,0.06)"
+                                        : "rgba(46,31,8,0.06)",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke={isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)"}
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                            </div>
+                            <h3
+                                style={{
+                                    fontSize: "15px",
+                                    fontWeight: 600,
+                                    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+                                    margin: "0 0 6px",
+                                    fontFamily: fontStack,
+                                }}
+                            >
+                                {t("documents.upgrade_required")}
+                            </h3>
+                            <p
+                                style={{
+                                    fontSize: "13px",
+                                    lineHeight: 1.5,
+                                    color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.55)",
+                                    margin: "0 0 16px",
+                                    maxWidth: "420px",
+                                    marginLeft: "auto",
+                                    marginRight: "auto",
+                                }}
+                            >
+                                {t("documents.upgrade_description")}
+                            </p>
+                            <Link
+                                href="/billing"
+                                style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "6px",
+                                    padding: "8px 20px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    fontFamily: fontStack,
+                                    color: isDark ? "#fff" : "#fff",
+                                    background: isDark
+                                        ? "rgba(255,255,255,0.12)"
+                                        : "rgba(46,31,8,0.80)",
+                                    border: isDark
+                                        ? "0.5px solid rgba(255,255,255,0.18)"
+                                        : "0.5px solid rgba(46,31,8,0.15)",
+                                    borderRadius: "10px",
+                                    textDecoration: "none",
+                                    cursor: "pointer",
+                                    transition: "opacity 0.15s",
+                                }}
+                            >
+                                {t("documents.upgrade_button")}
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <line x1="5" y1="12" x2="19" y2="12"/>
+                                    <polyline points="12 5 19 12 12 19"/>
+                                </svg>
+                            </Link>
+                        </div>
                     </div>
-                    <div style={{padding: "16px 20px"}}>
-                        <UploadZone onUpload={uploadDocument} uploadProgress={uploadProgress}/>
+                ) : (
+                    <div style={{...glassCard, marginBottom: "16px"}}>
+                        <div style={{...cardHeaderSep, padding: "16px 20px"}}>
+                            <h3
+                                style={{
+                                    fontSize: "14px",
+                                    fontWeight: 600,
+                                    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+                                    margin: 0,
+                                    fontFamily: fontStack,
+                                }}
+                            >
+                                {t("documents.upload_document")}
+                            </h3>
+                        </div>
+                        <div style={{padding: "16px 20px"}}>
+                            <UploadZone onUpload={handleUpload} uploadProgress={uploadProgress} zipResult={zipResult}/>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Collections / folder view */}
                 <div style={glassCard}>

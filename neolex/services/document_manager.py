@@ -13,7 +13,9 @@ import hashlib
 import os
 import re
 import shutil
+import stat
 import uuid
+import zipfile
 from pathlib import Path
 
 from neolex.config import settings
@@ -24,6 +26,12 @@ from neolex.config import settings
 
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB (DOC-02)
 PDF_MAGIC = b"%PDF"  # First 4 bytes of every valid PDF file
+
+# ZIP upload limits
+MAX_ZIP_BYTES = 200 * 1024 * 1024  # 200 MB max ZIP file size
+MAX_ZIP_FILES = 100  # Max files in a ZIP
+MAX_ZIP_EXTRACTED_BYTES = 500 * 1024 * 1024  # 500 MB max total extracted
+MAX_COMPRESSION_RATIO = 100  # Max compression ratio per file
 
 
 # ---------------------------------------------------------------------------
@@ -156,3 +164,129 @@ def get_document_path(client_slug: str, doc_id: str) -> Path | None:
     docs_dir = client_docs_dir(client_slug)
     matches = list(docs_dir.glob(f"{doc_id}_*"))
     return matches[0] if matches else None
+
+
+# ---------------------------------------------------------------------------
+# ZIP extraction
+# ---------------------------------------------------------------------------
+
+
+def extract_zip_safely(
+    zip_bytes: bytes,
+    max_files: int = MAX_ZIP_FILES,
+    max_total_bytes: int = MAX_ZIP_EXTRACTED_BYTES,
+) -> tuple[list[tuple[str, bytes]], list[tuple[str, str]]]:
+    """Extract PDFs from a ZIP archive with comprehensive security checks.
+
+    Returns ``(valid_pdfs, skipped_files)`` where:
+    - *valid_pdfs*: list of ``(filename, pdf_bytes)`` tuples
+    - *skipped_files*: list of ``(filename, reason)`` tuples
+
+    Raises :class:`ValueError` for zip bombs, path traversal, encrypted
+    archives, or archives exceeding *max_files*.
+    """
+    import io
+
+    if not zipfile.is_zipfile(io.BytesIO(zip_bytes)):
+        raise ValueError("Uploaded file is not a valid ZIP archive.")
+
+    valid_pdfs: list[tuple[str, bytes]] = []
+    skipped_files: list[tuple[str, str]] = []
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
+        entries = zf.infolist()
+
+        # --- Max file count ---
+        if len(entries) > max_files:
+            raise ValueError(
+                f"ZIP contains {len(entries)} entries (max {max_files}). "
+                f"Split into smaller archives."
+            )
+
+        total_extracted = 0
+
+        for info in entries:
+            name = info.filename
+
+            # --- Directory entries ---
+            if name.endswith("/"):
+                continue
+
+            # --- Path traversal ---
+            if ".." in name or name.startswith("/"):
+                raise ValueError(
+                    f"Unsafe path detected in ZIP entry: '{name}'. "
+                    f"Archive may contain a path traversal attack."
+                )
+
+            # --- Symlinks (Unix external_attr: upper 16 bits contain mode) ---
+            unix_mode = (info.external_attr >> 16) & 0xFFFF
+            if unix_mode and stat.S_ISLNK(unix_mode):
+                skipped_files.append((os.path.basename(name), "skipped_symlink"))
+                continue
+
+            # --- Nested ZIPs ---
+            basename = os.path.basename(name)
+            if basename.lower().endswith(".zip"):
+                skipped_files.append((basename, "skipped_nested_zip"))
+                continue
+
+            # --- Compression ratio check (pre-extraction) ---
+            if info.compress_size > 0:
+                ratio = info.file_size / info.compress_size
+                if ratio > MAX_COMPRESSION_RATIO:
+                    raise ValueError(
+                        f"Suspicious compression ratio ({ratio:.0f}:1) for "
+                        f"'{basename}'. Possible zip bomb."
+                    )
+
+            # --- Total extracted size guard (pre-extraction estimate) ---
+            if total_extracted + info.file_size > max_total_bytes:
+                raise ValueError(
+                    f"Total extracted size would exceed {max_total_bytes // (1024 * 1024)} MB. "
+                    f"Possible zip bomb or archive too large."
+                )
+
+            # --- Extract bytes ---
+            try:
+                data = zf.read(info)
+            except RuntimeError as exc:
+                # Encrypted / password-protected entry
+                if "password" in str(exc).lower() or "encrypted" in str(exc).lower():
+                    raise ValueError(
+                        "ZIP archive contains encrypted entries. "
+                        "Password-protected archives are not supported."
+                    ) from exc
+                raise
+
+            # --- Post-extraction size verification ---
+            total_extracted += len(data)
+            if total_extracted > max_total_bytes:
+                raise ValueError(
+                    f"Total extracted size exceeds {max_total_bytes // (1024 * 1024)} MB. "
+                    f"Possible zip bomb or archive too large."
+                )
+
+            # --- Non-PDF files ---
+            if not basename.lower().endswith(".pdf"):
+                skipped_files.append((basename, "skipped_not_pdf"))
+                continue
+
+            # --- PDF magic bytes ---
+            if not data.startswith(PDF_MAGIC):
+                skipped_files.append((basename, "skipped_invalid"))
+                continue
+
+            # --- Empty files ---
+            if len(data) == 0:
+                skipped_files.append((basename, "skipped_empty"))
+                continue
+
+            # --- Individual file size limit ---
+            if len(data) > MAX_UPLOAD_BYTES:
+                skipped_files.append((basename, "skipped_too_large"))
+                continue
+
+            valid_pdfs.append((basename, data))
+
+    return valid_pdfs, skipped_files

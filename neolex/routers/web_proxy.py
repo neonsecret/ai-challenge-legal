@@ -1,0 +1,308 @@
+"""Proxy endpoint for fetching and extracting readable text from web pages.
+
+Used by the frontend grounding panel to display web search result previews.
+Fetches pages server-side to avoid CORS issues and extracts main content
+using BeautifulSoup (available as a transitive dependency via docling).
+"""
+
+from __future__ import annotations
+
+import ipaddress
+import logging
+import re
+import time
+from urllib.parse import urlparse
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from neolex.auth.middleware import get_api_key
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api/v1/proxy")
+
+# Simple in-memory cache: url -> (timestamp, result_dict)
+_cache: dict[str, tuple[float, dict]] = {}
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+_CACHE_MAX_SIZE = 50
+_CONTENT_MAX_CHARS = 10_000
+_FETCH_TIMEOUT_SECONDS = 10
+
+
+def _is_private_ip(hostname: str) -> bool:
+    """Check if a hostname resolves to a private/reserved IP address."""
+    try:
+        addr = ipaddress.ip_address(hostname)
+        return addr.is_private or addr.is_reserved or addr.is_loopback
+    except ValueError:
+        # Not a raw IP — could be a domain name. We check common private patterns.
+        lower = hostname.lower()
+        return lower in ("localhost",) or lower.endswith(".local") or lower.endswith(".internal")
+
+
+def _validate_url(url: str) -> str:
+    """Validate and normalize a URL. Raises HTTPException on invalid input."""
+    if not url or len(url) > 2048:
+        raise HTTPException(status_code=400, detail="Invalid URL")
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
+
+    hostname = parsed.hostname or ""
+    if not hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL: no hostname")
+
+    if _is_private_ip(hostname):
+        raise HTTPException(status_code=400, detail="Private/local URLs are not allowed")
+
+    return url
+
+
+def _is_link_heavy(tag) -> bool:
+    """Return True if a tag's text is >50% composed of link text (navigation/archive)."""
+    total_text = tag.get_text(strip=True)
+    if len(total_text) < 50:
+        return False
+    link_text = "".join(a.get_text(strip=True) for a in tag.find_all("a"))
+    return len(link_text) > len(total_text) * 0.5
+
+
+def _collapse_repetitive_lines(text: str) -> str:
+    """Collapse consecutive lines that follow a repetitive pattern.
+
+    Detects runs of 4+ lines matching patterns like "N. čtvrtletí YYYY" or
+    similar dated archive listings and replaces them with a short summary.
+    """
+    lines = text.split("\n")
+    result: list[str] = []
+    i = 0
+    while i < len(lines):
+        # Look for runs of short, structurally similar lines (likely archive links)
+        run_start = i
+        # A "repetitive" line: short (<80 chars), contains a year (4 digits)
+        while (
+            i < len(lines)
+            and len(lines[i].strip()) < 80
+            and re.search(r"\b(19|20)\d{2}\b", lines[i])
+            and lines[i].strip()
+        ):
+            i += 1
+        run_length = i - run_start
+        if run_length >= 4:
+            # Collapse the run
+            result.append(f"[{run_length} archive entries omitted]")
+        else:
+            # Not a run — emit lines normally
+            for j in range(run_start, i):
+                result.append(lines[j])
+            if i < len(lines):
+                result.append(lines[i])
+                i += 1
+            continue
+    return "\n".join(result)
+
+
+# CSS class/id patterns that indicate non-content elements
+_JUNK_CLASS_PATTERNS = re.compile(
+    r"sidebar|menu|breadcrumb|pagination|related|archive|social|cookie|newsletter|"
+    r"subscribe|signup|sign-up|promo|banner|popup|modal|comment|share|widget|"
+    r"toolbar|masthead|topbar|bottombar",
+    re.IGNORECASE,
+)
+
+
+def _extract_text_bs4(html: str) -> tuple[str, str]:
+    """Extract readable text and title from HTML using BeautifulSoup.
+
+    Returns (title, content) tuple.
+    """
+    try:
+        from bs4 import BeautifulSoup, Tag
+
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Extract title
+        title = ""
+        title_tag = soup.find("title")
+        if title_tag:
+            title = title_tag.get_text(strip=True)
+
+        # 1. Remove script, style, nav, footer, header, aside, noscript tags
+        for tag in soup.find_all(
+            ["script", "style", "nav", "footer", "header", "aside", "noscript", "iframe", "svg"]
+        ):
+            tag.decompose()
+
+        # 2. Remove elements with ARIA roles that indicate non-content
+        for role in ("navigation", "complementary", "contentinfo", "banner", "search"):
+            for tag in soup.find_all(attrs={"role": role}):
+                tag.decompose()
+
+        # 3. Remove elements whose class or id matches junk patterns.
+        # Collect matching tags first, then decompose — avoids AttributeError
+        # when a decomposed parent invalidates child tags still in the iterator.
+        junk_tags = []
+        for tag in soup.find_all(True):
+            if not isinstance(tag, Tag):
+                continue
+            if tag.attrs is None:
+                continue
+            classes = " ".join(tag.get("class", []))
+            tag_id = tag.get("id", "") or ""
+            if _JUNK_CLASS_PATTERNS.search(classes) or _JUNK_CLASS_PATTERNS.search(tag_id):
+                junk_tags.append(tag)
+        for tag in junk_tags:
+            tag.decompose()
+
+        # 4. Remove link-heavy block elements (likely nav/archive listings)
+        for tag in soup.find_all(["div", "section", "ul", "ol"]):
+            if isinstance(tag, Tag) and _is_link_heavy(tag):
+                tag.decompose()
+
+        # 5. Find main content area with better scoring
+        content_root = None
+
+        # Prefer <article> first (most specific), then <main>, then [role=main]
+        content_root = soup.find("article") or soup.find("main") or soup.find(attrs={"role": "main"})
+
+        if not content_root:
+            # Heuristic: find the div with the most direct text content
+            body = soup.find("body") or soup
+            best_div = None
+            best_text_len = 0
+            for div in body.find_all("div", recursive=True):
+                if not isinstance(div, Tag):
+                    continue
+                # Get direct text length (excluding nested divs' text to avoid
+                # always picking the outermost wrapper)
+                direct_text = div.find_all(string=True, recursive=False)
+                p_text = "".join(
+                    p.get_text(strip=True) for p in div.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "blockquote"])
+                )
+                text_len = len(p_text) + sum(len(t.strip()) for t in direct_text)
+                if text_len > best_text_len:
+                    best_text_len = text_len
+                    best_div = div
+
+            if best_div and best_text_len > 200:
+                content_root = best_div
+            else:
+                content_root = body
+
+        text = content_root.get_text(separator="\n", strip=True)
+
+        # 6. Clean up excessive whitespace
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r"[ \t]{2,}", " ", text)
+
+        # 7. Collapse repetitive archive-style line runs
+        text = _collapse_repetitive_lines(text)
+
+        # 8. Final cleanup of any blank line runs introduced by collapsing
+        text = re.sub(r"\n{3,}", "\n\n", text)
+
+        return title, text.strip()
+    except ImportError:
+        # bs4 not available — fall back to regex stripping
+        return _extract_text_regex(html)
+
+
+def _extract_text_regex(html: str) -> tuple[str, str]:
+    """Fallback text extraction using regex when bs4 is unavailable."""
+    # Extract title
+    title_match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    title = title_match.group(1).strip() if title_match else ""
+
+    # Strip tags
+    text = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<style[^>]*>.*?</style>", "", text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r"<[^>]+>", "\n", text)
+    text = re.sub(r"&[a-z]+;", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = re.sub(r"[ \t]{2,}", " ", text)
+
+    return title, text.strip()
+
+
+def _evict_cache() -> None:
+    """Evict expired entries and trim to max size."""
+    now = time.monotonic()
+    expired = [k for k, (ts, _) in _cache.items() if now - ts > _CACHE_TTL_SECONDS]
+    for k in expired:
+        del _cache[k]
+
+    # If still over limit, remove oldest entries
+    if len(_cache) > _CACHE_MAX_SIZE:
+        by_age = sorted(_cache.items(), key=lambda x: x[1][0])
+        for k, _ in by_age[: len(_cache) - _CACHE_MAX_SIZE]:
+            del _cache[k]
+
+
+@router.get("/web-content")
+async def proxy_web_content(
+    url: str = Query(..., description="URL to fetch and extract content from"),
+    key_row: dict = Depends(get_api_key),
+):
+    """Fetch a web page and return extracted readable text content.
+
+    Used by the frontend grounding panel for web source previews.
+    Requires authentication via session cookie.
+    """
+    url = _validate_url(url)
+
+    # Check cache
+    now = time.monotonic()
+    if url in _cache:
+        ts, cached_result = _cache[url]
+        if now - ts < _CACHE_TTL_SECONDS:
+            return cached_result
+
+    # Fetch the page
+    try:
+        async with httpx.AsyncClient(
+            timeout=_FETCH_TIMEOUT_SECONDS,
+            follow_redirects=True,
+            max_redirects=5,
+        ) as client:
+            response = await client.get(
+                url,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; VitreonBot/1.0)",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
+            )
+            response.raise_for_status()
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Timed out fetching the page")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=502, detail=f"Remote server returned {e.response.status_code}")
+    except httpx.HTTPError as e:
+        logger.warning("[web-proxy] fetch failed for %s: %s", url[:80], e)
+        raise HTTPException(status_code=502, detail="Failed to fetch the page")
+
+    # Check content type — only process HTML
+    content_type = response.headers.get("content-type", "")
+    if "html" not in content_type.lower() and "xml" not in content_type.lower():
+        raise HTTPException(status_code=400, detail="URL does not point to an HTML page")
+
+    html = response.text
+    title, content = _extract_text_bs4(html)
+
+    # Truncate content to limit
+    if len(content) > _CONTENT_MAX_CHARS:
+        content = content[:_CONTENT_MAX_CHARS] + "\n\n[Content truncated]"
+
+    result = {
+        "url": url,
+        "title": title or urlparse(url).hostname or "",
+        "content": content,
+    }
+
+    # Cache the result
+    _evict_cache()
+    _cache[url] = (now, result)
+
+    return result

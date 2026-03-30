@@ -37,12 +37,18 @@ class QueryRequest(BaseModel):
     # deterministic pipeline.  The SSE event protocol is identical — the frontend
     # does not need to know which path is active.
     use_agent: bool = Field(default=False)
+    # When False, the agent will not use the web search tool.
+    # The tool is still bound to the LLM (graph is a singleton), but the
+    # search_node returns a "disabled" message instead of executing the search.
+    use_internet: bool = Field(default=True, description="Enable web search tool for the LLM")
 
 
 class SourceCitation(BaseModel):
     doc_id: str
     page_numbers: list[int]
     text: str | None = None  # source text for non-PDF corpora (Czech)
+    url: str | None = None  # web source URL
+    title: str | None = None  # web source title
 
 
 class QueryResponse(BaseModel):
@@ -72,6 +78,8 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
             doc_id=cp["doc_id"],
             page_numbers=cp.get("page_numbers", []),
             text=cp.get("text"),
+            url=cp.get("url"),
+            title=cp.get("title"),
         )
         for cp in result.get("chunk_pages", [])
     ]

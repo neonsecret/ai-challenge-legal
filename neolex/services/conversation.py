@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, func, case
 
 from neolex.db.models import ConversationMessage
 from neolex.db.postgres import AsyncSessionLocal
@@ -125,6 +125,128 @@ async def save_accumulated_docs(
             await session.commit()
     except Exception:
         logger.exception("Failed to save accumulated docs for conv=%s", conversation_id)
+
+
+async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
+    """Return the user's most recent conversations with metadata.
+
+    Each dict contains: id, title, last_message_at, message_count.
+    Ordered by most recent message first. Title is the first user message
+    truncated to 80 characters.
+    """
+    try:
+        uid = uuid.UUID(str(user_id))
+        async with AsyncSessionLocal() as session:
+            # Subquery: per-conversation aggregates
+            stmt = (
+                select(
+                    ConversationMessage.conversation_id,
+                    func.count().label("message_count"),
+                    func.max(ConversationMessage.created_at).label("last_message_at"),
+                    # First user message as title (MIN created_at among user messages)
+                    func.min(
+                        case(
+                            (ConversationMessage.role == "user", ConversationMessage.content),
+                            else_=None,
+                        )
+                    ).label("first_user_content"),
+                )
+                .where(ConversationMessage.user_id == uid)
+                .group_by(ConversationMessage.conversation_id)
+                .order_by(func.max(ConversationMessage.created_at).desc())
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            rows = result.all()
+
+            conversations = []
+            for row in rows:
+                title = row.first_user_content or "New chat"
+                if len(title) > 80:
+                    title = title[:80] + "..."
+                conversations.append({
+                    "id": str(row.conversation_id),
+                    "title": title,
+                    "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None,
+                    "message_count": row.message_count,
+                })
+            return conversations
+    except Exception:
+        logger.exception("Failed to list conversations for user=%s", user_id)
+        return []
+
+
+async def load_full_conversation(user_id: str, conversation_id: str) -> list[dict]:
+    """Load ALL messages for a user+conversation (no limit).
+
+    Returns messages as dicts with: role, content, created_at.
+    Used by the frontend to hydrate a conversation from the backend.
+    """
+    if not conversation_id:
+        return []
+    try:
+        uid = uuid.UUID(str(user_id))
+        cid = _to_conv_uuid(conversation_id)
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(
+                    ConversationMessage.role,
+                    ConversationMessage.content,
+                    ConversationMessage.created_at,
+                )
+                .where(
+                    ConversationMessage.user_id == uid,
+                    ConversationMessage.conversation_id == cid,
+                )
+                .order_by(ConversationMessage.created_at.asc())
+            )
+            rows = result.all()
+            return [
+                {
+                    "role": row.role,
+                    "content": row.content,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                }
+                for row in rows
+            ]
+    except Exception:
+        logger.exception("Failed to load full conversation for conv=%s", conversation_id)
+        return []
+
+
+async def delete_conversation(user_id: str, conversation_id: str) -> bool:
+    """Delete all messages and accumulated docs for a user's conversation.
+
+    Returns True if anything was deleted, False otherwise.
+    """
+    if not conversation_id:
+        return False
+    try:
+        uid = uuid.UUID(str(user_id))
+        cid = _to_conv_uuid(conversation_id)
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import delete as sql_delete
+            from neolex.db.models import ConversationDocs
+
+            # Delete messages
+            msg_result = await session.execute(
+                sql_delete(ConversationMessage).where(
+                    ConversationMessage.user_id == uid,
+                    ConversationMessage.conversation_id == cid,
+                )
+            )
+            # Delete accumulated docs
+            await session.execute(
+                sql_delete(ConversationDocs).where(
+                    ConversationDocs.user_id == uid,
+                    ConversationDocs.conversation_id == cid,
+                )
+            )
+            await session.commit()
+            return msg_result.rowcount > 0
+    except Exception:
+        logger.exception("Failed to delete conversation conv=%s", conversation_id)
+        return False
 
 
 async def save_turn(

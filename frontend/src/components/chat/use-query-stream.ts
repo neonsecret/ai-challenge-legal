@@ -7,22 +7,44 @@ import {fetchEventSource} from "@microsoft/fetch-event-source"
 // SSE goes direct to backend — CORS configured via ALLOWED_ORIGINS.
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
-/** Map backend stage codes to user-friendly labels. */
-function formatStatus(raw: string): string {
-    const LABELS: Record<string, string> = {
-        processing: "Processing your question...",
-        routing: "Routing to relevant documents...",
-        retrieving: "Searching legal corpus...",
-        reranking: "Re-ranking with cross-encoder...",
-    }
-    if (raw.startsWith("answering")) {
-        const n = raw.split(":")[1]
-        return n && n !== "0" ? `Composing answer from ${n} passages...` : "Composing answer..."
-    }
-    // Real-time retrieval sub-steps: "retrieving:vector search (50 candidates)" etc.
-    if (raw.startsWith("retrieving:")) {
-        const detail = raw.slice("retrieving:".length)
+/** Map backend stage codes to user-friendly labels.
+ *  Returns null for statuses that should be hidden (e.g. agent:done). */
+function formatStatus(raw: string): string | null {
+    // ── Agent lifecycle ──
+    if (raw === "agent:done") return null
+    if (raw === "agent:thinking") return "Analyzing your question..."
+    if (raw.startsWith("agent:")) {
+        // Unknown agent sub-status — strip prefix and capitalize
+        const detail = raw.slice("agent:".length).trim()
         return detail.charAt(0).toUpperCase() + detail.slice(1) + "..."
+    }
+
+    // ── Answering (N is internal source count, not useful for display) ──
+    if (raw.startsWith("answering")) return "Writing answer..."
+
+    // ── Retrieval sub-steps ──
+    if (raw.startsWith("retrieving:")) {
+        const detail = raw.slice("retrieving:".length).trim()
+
+        // Map known retrieval sub-steps to friendlier text
+        if (/searching\s+corpus/i.test(detail)) return "Searching legal documents..."
+        if (/searching\s+the\s+web/i.test(detail)) return "Searching the web..."
+
+        // "found N new sources" — capitalize but no trailing ellipsis (past-tense)
+        if (/^found\s/i.test(detail)) {
+            return detail.charAt(0).toUpperCase() + detail.slice(1)
+        }
+
+        // Other retrieval details — capitalize and add ellipsis
+        return detail.charAt(0).toUpperCase() + detail.slice(1) + "..."
+    }
+
+    // ── Top-level stages ──
+    const LABELS: Record<string, string> = {
+        processing: "Processing...",
+        routing: "Routing to relevant documents...",
+        retrieving: "Searching legal documents...",
+        reranking: "Evaluating relevance...",
     }
     return LABELS[raw] ?? raw
 }
@@ -54,6 +76,8 @@ export interface Source {
     doc_id: string
     page_numbers: number[]
     text?: string | null  // source text for non-PDF corpora (Czech)
+    url?: string | null   // web source URL
+    title?: string | null // web source title
 }
 
 interface StreamState {
@@ -66,7 +90,7 @@ interface StreamState {
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[]) => void
+    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean) => void
     clearError: () => void
 }
 
@@ -131,7 +155,7 @@ export function useQueryStream(): UseQueryStreamReturn {
     }, [router])
 
     const sendQuery = useCallback(
-        (question: string, corpus?: string, conversationId?: string, laws?: string[]) => {
+        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean) => {
             // Abort any existing SSE connection
             if (abortRef.current) {
                 abortRef.current.abort()
@@ -165,6 +189,9 @@ export function useQueryStream(): UseQueryStreamReturn {
                     conversation_id: conversationId ?? null,
                     // Czech law corpus filter — only sent when user selects specific laws.
                     ...(laws && laws.length > 0 ? {laws} : {}),
+                    // Agent is the production path — deterministic pipeline is for benchmarks only.
+                    use_agent: true,
+                    use_internet: useInternet ?? true,
                 }),
                 credentials: "include",  // sends HttpOnly cookie automatically
                 signal: ctrl.signal,
@@ -203,7 +230,11 @@ export function useQueryStream(): UseQueryStreamReturn {
                             const data = JSON.parse(ev.data)
                             const raw = data.status || data.message
                             if (raw) {
-                                setState((prev) => ({...prev, streamingStatus: formatStatus(raw)}))
+                                const friendly = formatStatus(raw)
+                                // null means "hide this status" (e.g. agent:done)
+                                if (friendly !== null) {
+                                    setState((prev) => ({...prev, streamingStatus: friendly}))
+                                }
                             }
                         } else if (ev.event === "error") {
                             const data = JSON.parse(ev.data)

@@ -63,6 +63,31 @@ class DocumentDeleteResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# ZIP upload
+# ---------------------------------------------------------------------------
+
+
+class ZipUploadResult(BaseModel):
+    """Result for a single file extracted from a ZIP."""
+
+    filename: str
+    doc_id: str | None = None
+    status: str  # "uploaded", "skipped_not_pdf", "skipped_too_large", "skipped_invalid", "error"
+    size_bytes: int = 0
+    error: str | None = None
+
+
+class ZipUploadResponse(BaseModel):
+    """Returned by POST /api/v1/documents/upload-zip."""
+
+    uploaded_count: int
+    skipped_count: int
+    total_size_bytes: int
+    files: list[ZipUploadResult]
+    job_id: str | None = Field(None, description="Reindex job ID — only set if at least 1 file uploaded")
+
+
+# ---------------------------------------------------------------------------
 # Reindex job
 # ---------------------------------------------------------------------------
 
