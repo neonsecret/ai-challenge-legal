@@ -576,13 +576,18 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     }, [stream.isStreaming, currentSessionId, messages])
 
     const newChat = useCallback(() => {
+        if (stream.isStreaming) stream.abort()
         setMessages([])
         setCurrentSessionId(null)
         activeAssistantId.current = null
         traceRef.current = []
-    }, [])
+    }, [stream.isStreaming, stream.abort])
 
     const deleteSession = useCallback((id: string) => {
+        // If deleting the session that's currently streaming, abort the SSE stream first
+        if (currentSessionIdRef.current === id && stream.isStreaming) {
+            stream.abort()
+        }
         setSessions(prev => prev.filter(s => s.id !== id))
         // Use ref to always read the latest currentSessionId, avoiding stale closures
         if (currentSessionIdRef.current === id) newChat()
@@ -593,7 +598,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             credentials: "include",
             headers: {"X-Requested-With": "XMLHttpRequest"},
         }).catch(() => {})
-    }, [newChat])
+    }, [newChat, stream.isStreaming, stream.abort])
 
     const handleSend = useCallback((question: string): "ok" | "blocked" => {
         const corpus = jurisdictionToCorpus(jurisdiction)

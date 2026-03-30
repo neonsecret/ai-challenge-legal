@@ -163,40 +163,18 @@ def _format_reranker_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]
 def _init_local_reranker():
     """Create the local llama-server reranker (cached).
 
-    Priority: local llama-server on port 8089 > PyTorch fallback.
-    llama-server with Metal is ~20x faster than PyTorch MPS for the 0.6B model.
+    Uses llama-server on port 8089 exclusively — no PyTorch fallback.
+    llama-server with Metal is ~20x faster than PyTorch MPS.
+    If llama-server is unavailable, reranking is skipped (unranked results).
     """
     global _local_reranker
     if _local_reranker is not None:
         return _local_reranker
 
-    # Try local llama-server first (much faster than PyTorch MPS)
     local_reranker_url = os.environ.get("RERANKER_LOCAL_URL", "http://localhost:8089")
-    try:
-        from arlc.qwen3_reranker import LlamaServerReranker
-        _local_reranker = LlamaServerReranker(url=local_reranker_url)
-        logger.info("Using local llama-server reranker at %s", local_reranker_url)
-        return _local_reranker
-    except Exception as e:
-        logger.warning("Local llama-server reranker at %s unavailable (%s), falling back to PyTorch", local_reranker_url, e)
-
-    # PyTorch fallback (slow MPS but always works)
-    if _is_qwen_reranker():
-        from arlc.qwen3_reranker import Qwen3Reranker
-        _local_reranker = Qwen3Reranker(
-            model_name=RERANKER_MODEL,
-            instruction=RERANKER_INSTRUCTION,
-        )
-    else:
-        import torch
-        from sentence_transformers import CrossEncoder
-        device = (
-            'cuda' if torch.cuda.is_available()
-            else 'mps' if torch.backends.mps.is_available()
-            else 'cpu'
-        )
-        device = os.environ.get("RERANKER_DEVICE", device)
-        _local_reranker = CrossEncoder(RERANKER_MODEL, max_length=1024, device=device)
+    from arlc.qwen3_reranker import LlamaServerReranker
+    _local_reranker = LlamaServerReranker(url=local_reranker_url)
+    logger.info("Using local llama-server reranker at %s", local_reranker_url)
     return _local_reranker
 
 

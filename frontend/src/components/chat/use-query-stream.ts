@@ -2,7 +2,7 @@
 
 import {useState, useCallback, useRef} from "react"
 import {useRouter} from "next/navigation"
-import {fetchEventSource} from "@microsoft/fetch-event-source"
+import {createParser} from "eventsource-parser"
 
 // SSE goes direct to backend — CORS configured via ALLOWED_ORIGINS.
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
@@ -93,6 +93,7 @@ interface StreamState {
 export interface UseQueryStreamReturn extends StreamState {
     sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean) => void
     clearError: () => void
+    abort: () => void
 }
 
 export function useQueryStream(): UseQueryStreamReturn {
@@ -111,6 +112,22 @@ export function useQueryStream(): UseQueryStreamReturn {
 
     const clearError = useCallback(() => {
         setState((prev) => ({...prev, error: null}))
+    }, [])
+
+    const abort = useCallback(() => {
+        if (abortRef.current) {
+            abortRef.current.abort()
+            abortRef.current = null
+        }
+        tokenBufRef.current = ""
+        setState({
+            answer: null,
+            sources: [],
+            confidence: null,
+            isStreaming: false,
+            streamingStatus: null,
+            error: null,
+        })
     }, [])
 
     /** Poll the backend for a completed answer after SSE connection drops.
@@ -178,145 +195,199 @@ export function useQueryStream(): UseQueryStreamReturn {
             const ctrl = new AbortController()
             abortRef.current = ctrl
 
-            fetchEventSource(`${API_BASE}/api/v1/query/stream`, {
-                method: "POST",
-                headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
-                body: JSON.stringify({
-                    question,
-                    answer_type: "free_text",
-                    corpus: corpus ?? "difc",
-                    // Opaque session pointer — server loads history from DB.
-                    // History content never travels in the request body.
-                    conversation_id: conversationId ?? null,
-                    // Czech law corpus filter — only sent when user selects specific laws.
-                    ...(laws && laws.length > 0 ? {laws} : {}),
-                    // Agent is the production path — deterministic pipeline is for benchmarks only.
-                    use_agent: true,
-                    use_internet: useInternet ?? true,
-                }),
-                credentials: "include",  // sends HttpOnly cookie automatically
-                signal: ctrl.signal,
+            // --- Event processing ---
 
-                onopen: async (response) => {
-                    if (response.status === 401 || response.status === 403) {
-                        clearSessionAndRedirect(router)
-                        throw new Error("auth")
-                    }
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`)
-                    }
-                },
-
-                onmessage: (ev) => {
-                    try {
-                        if (ev.event === "token") {
-                            const data = JSON.parse(ev.data)
-                            if (typeof data.text === "string") {
-                                tokenBufRef.current += data.text
-                                const visible = extractAnswerContent(tokenBufRef.current)
-                                if (visible !== null) {
-                                    setState((prev) => ({...prev, answer: visible, streamingStatus: null}))
-                                }
+            const processEvent = (eventType: string, data: string) => {
+                try {
+                    if (eventType === "token") {
+                        const parsed = JSON.parse(data)
+                        if (typeof parsed.text === "string") {
+                            tokenBufRef.current += parsed.text
+                            const visible = extractAnswerContent(tokenBufRef.current)
+                            if (visible !== null) {
+                                setState((prev) => ({...prev, answer: visible, streamingStatus: null}))
                             }
-                        } else if (ev.event === "answer") {
-                            const data = JSON.parse(ev.data)
-                            setState((prev) => ({
+                        }
+                    } else if (eventType === "answer") {
+                        const parsed = JSON.parse(data)
+                        setState((prev) => ({
+                            ...prev,
+                            answer: parsed.answer ?? prev.answer,
+                            sources: parsed.sources ?? [],
+                            confidence: parsed.confidence ?? null,
+                            streamingStatus: null,
+                        }))
+                    } else if (eventType === "status") {
+                        const parsed = JSON.parse(data)
+                        const raw = parsed.status || parsed.message
+                        if (raw) {
+                            const friendly = formatStatus(raw)
+                            // null means "hide this status" (e.g. agent:done)
+                            if (friendly !== null) {
+                                setState((prev) => ({...prev, streamingStatus: friendly}))
+                            }
+                        }
+                    } else if (eventType === "error") {
+                        const parsed = JSON.parse(data)
+                        ctrl.abort()
+                        abortRef.current = null
+                        setState((prev) => ({
+                            ...prev,
+                            isStreaming: false,
+                            streamingStatus: null,
+                            error: parsed.detail || parsed.error || "Query failed. Please try again.",
+                        }))
+                    } else if (eventType === "done") {
+                        ctrl.abort()
+                        abortRef.current = null
+                        tokenBufRef.current = ""
+                        setState((prev) => ({
+                            ...prev,
+                            isStreaming: false,
+                            streamingStatus: null,
+                            error: prev.answer ? null : "No answer received. Please try again.",
+                        }))
+                    }
+                } catch {
+                    // ignore parse errors for individual events
+                }
+            }
+
+            const handleConnectionError = () => {
+                abortRef.current = null
+                const convId = conversationIdRef.current
+                // Check if auth expired first
+                fetch(`${API_BASE}/auth/me`, {method: "GET", credentials: "include"})
+                    .then((res) => {
+                        if (res.status === 401 || res.status === 403) {
+                            clearSessionAndRedirect(router)
+                        } else if (convId) {
+                            // Auth OK — start polling for the completed answer
+                            setState(prev => ({
                                 ...prev,
-                                answer: data.answer ?? prev.answer,
-                                sources: data.sources ?? [],
-                                confidence: data.confidence ?? null,
-                                streamingStatus: null,
+                                isStreaming: false,
+                                streamingStatus: "Reconnecting \u2014 answer still processing...",
                             }))
-                        } else if (ev.event === "status") {
-                            const data = JSON.parse(ev.data)
-                            const raw = data.status || data.message
-                            if (raw) {
-                                const friendly = formatStatus(raw)
-                                // null means "hide this status" (e.g. agent:done)
-                                if (friendly !== null) {
-                                    setState((prev) => ({...prev, streamingStatus: friendly}))
-                                }
-                            }
-                        } else if (ev.event === "error") {
-                            const data = JSON.parse(ev.data)
-                            ctrl.abort()
-                            abortRef.current = null
-                            setState((prev) => ({
+                            pollForAnswer(convId)
+                        } else {
+                            setState(prev => ({
                                 ...prev,
                                 isStreaming: false,
                                 streamingStatus: null,
-                                error: data.detail || data.error || "Query failed. Please try again.",
-                            }))
-                        } else if (ev.event === "done") {
-                            ctrl.abort()
-                            abortRef.current = null
-                            tokenBufRef.current = ""
-                            setState((prev) => ({
-                                ...prev,
-                                isStreaming: false,
-                                streamingStatus: null,
-                                error: prev.answer ? null : "No answer received. Please try again.",
+                                error: prev.answer ? null : "Connection error. Please try again.",
                             }))
                         }
-                    } catch {
-                        // ignore parse errors
+                    })
+                    .catch(() => {
+                        // Network totally down — still try polling if we have a convId
+                        if (convId) {
+                            setState(prev => ({
+                                ...prev,
+                                isStreaming: false,
+                                streamingStatus: "Reconnecting \u2014 answer still processing...",
+                            }))
+                            pollForAnswer(convId)
+                        } else {
+                            setState(prev => ({
+                                ...prev,
+                                isStreaming: false,
+                                streamingStatus: null,
+                                error: prev.answer ? null : "Connection error. Please try again.",
+                            }))
+                        }
+                    })
+            }
+
+            ;(async () => {
+                try {
+                    const response = await fetch(`${API_BASE}/api/v1/query/stream`, {
+                        method: "POST",
+                        headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
+                        body: JSON.stringify({
+                            question,
+                            answer_type: "free_text",
+                            corpus: corpus ?? "difc",
+                            // Opaque session pointer — server loads history from DB.
+                            // History content never travels in the request body.
+                            conversation_id: conversationId ?? null,
+                            // Czech law corpus filter — only sent when user selects specific laws.
+                            ...(laws && laws.length > 0 ? {laws} : {}),
+                            // Agent is the production path — deterministic pipeline is for benchmarks only.
+                            use_agent: true,
+                            use_internet: useInternet ?? true,
+                        }),
+                        credentials: "include",  // sends HttpOnly cookie automatically
+                        signal: ctrl.signal,
+                    })
+
+                    if (response.status === 401 || response.status === 403) {
+                        clearSessionAndRedirect(router)
+                        return
                     }
-                },
+                    if (!response.ok) {
+                        // Try to extract error detail from JSON body
+                        let detail = `HTTP ${response.status}`
+                        try {
+                            const errBody = await response.json()
+                            detail = errBody.detail || errBody.error || detail
+                        } catch { /* body not JSON */ }
+                        setState(prev => ({
+                            ...prev,
+                            isStreaming: false,
+                            streamingStatus: null,
+                            error: detail,
+                        }))
+                        return
+                    }
 
-                onerror: (err) => {
-                    abortRef.current = null
-                    const convId = conversationIdRef.current
-                    // Check if auth expired first
-                    fetch(`${API_BASE}/auth/me`, {method: "GET", credentials: "include"})
-                        .then((res) => {
-                            if (res.status === 401 || res.status === 403) {
-                                clearSessionAndRedirect(router)
-                            } else if (convId) {
-                                // Auth OK — start polling for the completed answer
-                                setState(prev => ({
-                                    ...prev,
-                                    isStreaming: false,
-                                    streamingStatus: "Reconnecting \u2014 answer still processing...",
-                                }))
-                                pollForAnswer(convId)
-                            } else {
-                                setState(prev => ({
-                                    ...prev,
-                                    isStreaming: false,
-                                    streamingStatus: null,
-                                    error: prev.answer ? null : "Connection error. Please try again.",
-                                }))
-                            }
-                        })
-                        .catch(() => {
-                            // Network totally down — still try polling if we have a convId
-                            if (convId) {
-                                setState(prev => ({
-                                    ...prev,
-                                    isStreaming: false,
-                                    streamingStatus: "Reconnecting \u2014 answer still processing...",
-                                }))
-                                pollForAnswer(convId)
-                            } else {
-                                setState(prev => ({
-                                    ...prev,
-                                    isStreaming: false,
-                                    streamingStatus: null,
-                                    error: prev.answer ? null : "Connection error. Please try again.",
-                                }))
-                            }
-                        })
-                    // Don't auto-retry — let the user decide (or polling will recover)
-                    throw err
-                },
+                    if (!response.body) {
+                        setState(prev => ({
+                            ...prev,
+                            isStreaming: false,
+                            streamingStatus: null,
+                            error: "No response stream available.",
+                        }))
+                        return
+                    }
 
-                openWhenHidden: true,  // keep streaming when tab is in background
-            }).catch(() => {
-                // fetchEventSource throws when aborted or on fatal error — already handled above
-            })
+                    // --- Use eventsource-parser for robust SSE parsing ---
+                    // This replaces the manual \n\n-splitting parser that silently
+                    // failed on chunked boundaries and multi-line data fields.
+                    const parser = createParser({
+                        onEvent(event) {
+                            processEvent(event.event ?? "message", event.data)
+                        },
+                    })
+
+                    const reader = response.body.getReader()
+                    const decoder = new TextDecoder()
+
+                    while (true) {
+                        const {done, value} = await reader.read()
+                        if (done) break
+                        parser.feed(decoder.decode(value, {stream: true}))
+                    }
+
+                    // Stream ended normally — if no "done" event was received, finalize
+                    if (abortRef.current) {
+                        abortRef.current = null
+                        tokenBufRef.current = ""
+                        setState((prev) => ({
+                            ...prev,
+                            isStreaming: false,
+                            streamingStatus: null,
+                            error: prev.answer ? null : "No answer received. Please try again.",
+                        }))
+                    }
+                } catch (err: unknown) {
+                    // AbortError is expected when user cancels — ignore it
+                    if (err instanceof DOMException && err.name === "AbortError") return
+                    handleConnectionError()
+                }
+            })()
         },
         [router, pollForAnswer]
     )
 
-    return {...state, sendQuery, clearError}
+    return {...state, sendQuery, clearError, abort}
 }
