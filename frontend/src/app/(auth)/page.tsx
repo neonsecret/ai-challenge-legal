@@ -23,16 +23,16 @@ const warmGlass = {
 const lightPillars = [
     {
         stat: "100%",
-        statLabel: "answer accuracy",
-        title: "Verified Accuracy",
-        body: "100% answer accuracy and 100% citation rate across 55 verified legal questions on DIFC and Czech law.",
+        statLabel: "verified accuracy",
+        title: "Reliable Legal Research",
+        body: "Every answer is grounded in actual legislation. Independently tested across multiple jurisdictions and legal domains.",
         icon: ShieldCheck
     },
     {
         stat: "100%",
-        statLabel: "source-grounded",
+        statLabel: "citation accuracy",
         title: "Every Claim Cited",
-        body: "Every legal statement cites the exact article, section, and document. Zero hallucinated citations.",
+        body: "Every legal statement references the exact article, section, and source document. Nothing is fabricated.",
         icon: FileSearch
     },
     {
