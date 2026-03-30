@@ -240,6 +240,8 @@ export default function ChatPage() {
 
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const inputFocusRef = useRef<(() => void) | null>(null)
+    /** Ref attached to the last assistant message wrapper, used for scroll-to-top-of-answer. */
+    const lastAssistantRef = useRef<HTMLDivElement>(null)
     /** Track whether the user is near the bottom of the scroll area.
      *  Updated on scroll events; used to decide if auto-scroll should fire. */
     const isNearBottomRef = useRef(true)
@@ -356,14 +358,33 @@ export default function ChatPage() {
         return () => el.removeEventListener("scroll", onScroll)
     }, [])
 
-    // Auto-scroll: always scroll when a new message is added (user sent a question),
-    // otherwise only scroll when the user is already near the bottom.
+    // Auto-scroll: when a new message is added (user sent a question), scroll to the
+    // top of the latest assistant message so the answer heading is visible. During
+    // streaming, only scroll if the user is already near the bottom to avoid
+    // fighting manual scrolling.
     useEffect(() => {
         const el = scrollAreaRef.current
         if (!el) return
         const newMessageAdded = messages.length > prevMessageCountRef.current
         prevMessageCountRef.current = messages.length
-        if (newMessageAdded || isNearBottomRef.current) {
+
+        if (newMessageAdded) {
+            // New message just appeared — scroll to show it.
+            // For user messages, scroll to bottom so the input stays visible.
+            // For assistant messages, scroll to the top of the answer card.
+            const lastMsg = messages.at(-1)
+            if (lastMsg?.role === "assistant" && lastAssistantRef.current) {
+                // Use requestAnimationFrame to wait for the DOM to update
+                requestAnimationFrame(() => {
+                    lastAssistantRef.current?.scrollIntoView({
+                        block: "start",
+                        behavior: "smooth",
+                    })
+                })
+            } else {
+                el.scrollTop = el.scrollHeight
+            }
+        } else if (isNearBottomRef.current) {
             el.scrollTop = el.scrollHeight
         }
     }, [messages])
@@ -1339,9 +1360,13 @@ export default function ChatPage() {
                             />
                         </>
                     ) : (
-                        messages.map((m, idx) => (
+                        messages.map((m, idx) => {
+                            // Attach ref to the last assistant message for scroll-to-top
+                            const isLastAssistant = m.role === "assistant" && idx === messages.length - 1
+                            return (
                             <motion.div
                                 key={m.id}
+                                ref={isLastAssistant ? lastAssistantRef : undefined}
                                 initial={{opacity: 0, y: SPACE['3'], scale: 0.98}}
                                 animate={{opacity: 1, y: 0, scale: 1}}
                                 transition={{
@@ -1365,7 +1390,8 @@ export default function ChatPage() {
                                     isDark={isDark}
                                 />
                             </motion.div>
-                        ))
+                            )
+                        })
                     )}
 
                     {showFollowUps && (

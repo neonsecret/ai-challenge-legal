@@ -184,19 +184,35 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
 
 // ─── Footnote style ──────────────────────────────────────────────────────────
 
-function footnoteStyle(resolvable: boolean): React.CSSProperties {
+function footnoteStyle(resolvable: boolean, isDark: boolean): React.CSSProperties {
     return {
-        fontSize: 10,
-        verticalAlign: "super",
-        color: COLOR.gold.base,
-        cursor: resolvable ? "pointer" : "not-allowed",
-        opacity: resolvable ? 1 : 0.35,
-        fontWeight: 600,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: TYPE_SCALE.xs,
         lineHeight: 1,
-        background: "none",
-        border: "none",
-        padding: "0 1px",
+        fontWeight: 700,
         fontFamily: FONT.sans,
+        color: resolvable
+            ? isDark ? COLOR.gold.base : "#7a4a00"
+            : isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+        background: resolvable
+            ? isDark ? "rgba(201,168,76,0.14)" : "rgba(196,124,0,0.10)"
+            : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
+        border: `0.5px solid ${resolvable
+            ? isDark ? "rgba(201,168,76,0.30)" : "rgba(196,124,0,0.25)"
+            : isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)"
+        }`,
+        borderRadius: RADIUS.sm,
+        padding: `0 ${SPACE[1]}px`,
+        minWidth: SPACE[4],
+        height: SPACE[4],
+        cursor: resolvable ? "pointer" : "not-allowed",
+        verticalAlign: "middle",
+        position: "relative",
+        top: -1,
+        margin: "0 1px",
+        transition: `background 0.15s, border-color 0.15s, color 0.15s`,
     }
 }
 
@@ -309,6 +325,24 @@ export function ChatMessage({
     }) {
         if (isStreaming) return null
 
+        const hoverHandlers = {
+            onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
+                e.currentTarget.style.background = isDark
+                    ? "rgba(201,168,76,0.28)"
+                    : "rgba(196,124,0,0.20)"
+                e.currentTarget.style.borderColor = isDark
+                    ? "rgba(201,168,76,0.50)"
+                    : "rgba(196,124,0,0.40)"
+                e.currentTarget.style.color = isDark ? COLOR.gold.base : "#5c2e08"
+            },
+            onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
+                const style = footnoteStyle(true, isDark)
+                e.currentTarget.style.background = style.background as string
+                e.currentTarget.style.borderColor = ""
+                e.currentTarget.style.color = style.color as string
+            },
+        }
+
         if (citationkind === "source") {
             const resolvedDocId = docid ?? ""
             const resolvedPage = page ?? 0
@@ -329,9 +363,10 @@ export function ChatMessage({
                         ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={footnoteStyle(resolvable)}
+                    style={footnoteStyle(resolvable, isDark)}
+                    {...(resolvable ? hoverHandlers : {})}
                 >
-                    {toSuperscript(footnoteNum)}
+                    {footnoteNum}
                 </button>
             )
         }
@@ -351,9 +386,10 @@ export function ChatMessage({
                         ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={footnoteStyle(resolvable)}
+                    style={footnoteStyle(resolvable, isDark)}
+                    {...(resolvable ? hoverHandlers : {})}
                 >
-                    {toSuperscript(refindex ?? 0)}
+                    {refindex ?? 0}
                 </button>
             )
         }
