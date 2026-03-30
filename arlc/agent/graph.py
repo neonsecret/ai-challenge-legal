@@ -289,15 +289,24 @@ def build_agent_graph():
         return "end"
 
     def cap_reached_node(state: AgentState) -> dict:
-        """When search cap is hit, respond to pending tool calls telling the LLM to answer."""
+        """When search cap is hit, respond to pending tool calls telling the LLM to answer.
+
+        Increments search_count to prevent infinite loops: if the LLM ignores
+        the instruction and issues tool calls again, should_continue routes here
+        again but search_count keeps rising. After MAX_SEARCHES_PER_TURN + 3
+        cap_reached iterations, the agent timeout (600s) will terminate it.
+        """
         last_msg = state["messages"][-1]
         results = []
         for tc in last_msg.tool_calls:
             results.append(ToolMessage(
-                content="Search limit reached. Answer the question using the documents already retrieved.",
+                content="Search limit reached. You MUST answer now using the documents already retrieved. Do NOT call any more tools.",
                 tool_call_id=tc["id"],
             ))
-        return {"messages": results}
+        return {
+            "messages": results,
+            "search_count": state["search_count"] + len(last_msg.tool_calls),
+        }
 
     graph.add_node("reason", reason_node)
     graph.add_node("search", search_node)

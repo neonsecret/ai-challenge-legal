@@ -504,17 +504,21 @@ def _faiss_chunk_id_to_pos(corpus: str = "difc") -> dict[str, int]:
 
     Used by _dense_page_scores() to reconstruct pre-computed embeddings
     from the FAISS index instead of re-embedding through the model.
+    Thread-safe via double-checked locking with _faiss_lock.
     """
     cache_attr = f"_cid_pos_map_{corpus}"
     if hasattr(_faiss_chunk_id_to_pos, cache_attr):
         return getattr(_faiss_chunk_id_to_pos, cache_attr)
-    _, metadata = _load_faiss(corpus=corpus)
-    pos_map = {}
-    for i, entry in enumerate(metadata):
-        cid = entry.get("chunk_id", f"{entry['doc_id']}_{entry['page']}")
-        pos_map[cid] = i
-    setattr(_faiss_chunk_id_to_pos, cache_attr, pos_map)
-    return pos_map
+    with _faiss_lock:
+        if hasattr(_faiss_chunk_id_to_pos, cache_attr):
+            return getattr(_faiss_chunk_id_to_pos, cache_attr)
+        _, metadata = _load_faiss(corpus=corpus)
+        pos_map = {}
+        for i, entry in enumerate(metadata):
+            cid = entry.get("chunk_id", f"{entry['doc_id']}_{entry['page']}")
+            pos_map[cid] = i
+        setattr(_faiss_chunk_id_to_pos, cache_attr, pos_map)
+        return pos_map
 
 
 def _use_faiss(corpus: str = "difc") -> bool:
