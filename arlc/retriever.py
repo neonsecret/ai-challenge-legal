@@ -1929,7 +1929,7 @@ def _retrieve_pages_simple(
     if on_status:
         on_status("retrieving:searching corpus")
     query_emb = embed_query(question)
-    top_k = min(50, _faiss_count(corpus=corpus))
+    top_k = min(100, _faiss_count(corpus=corpus))  # 100 candidates for better recall on large corpora
     if on_status:
         on_status("retrieving:searching corpus")
     vector_results = _search_faiss(query_emb, top_k=top_k, corpus=corpus)
