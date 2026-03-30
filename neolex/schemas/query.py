@@ -12,7 +12,7 @@ class QueryRequest(BaseModel):
         default="free_text",
         pattern=r"^(boolean|number|name|names|date|free_text)$",
     )
-    corpus: str = Field(default="difc", pattern=r"^(difc|czech)$")
+    corpus: str = Field(default="difc", pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     # Optional list of Czech law prefixes to restrict retrieval to specific laws.
     # E.g. ["zakonik_prace", "obcansky_zakonik"]. Empty or None = all laws.
     laws: list[str] | None = Field(default=None)

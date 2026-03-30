@@ -10,19 +10,20 @@ interface ReindexButtonProps {
 }
 
 const STATUS_KEY: Record<ReindexJob["status"], string> = {
-    queued: "documents.reindex_queued",
-    processing: "documents.reindex_processing",
+    pending: "documents.reindex_queued",
+    running: "documents.reindex_processing",
     complete: "documents.reindex_complete",
+    complete_with_warnings: "documents.reindex_complete",
     failed: "documents.reindex_failed",
 };
 
 const STATUS_STYLE: Record<ReindexJob["status"], React.CSSProperties> = {
-    queued: {
+    pending: {
         background: "rgba(196,124,0,0.15)",
         color: "#7a4a00",
         border: "0.5px solid rgba(196,124,0,0.30)",
     },
-    processing: {
+    running: {
         background: "rgba(53,118,174,0.14)",
         color: "#1a3f6e",
         border: "0.5px solid rgba(53,118,174,0.30)",
@@ -32,6 +33,11 @@ const STATUS_STYLE: Record<ReindexJob["status"], React.CSSProperties> = {
         color: "rgba(46,31,8,0.60)",
         border: "0.5px solid rgba(46,31,8,0.15)",
     },
+    complete_with_warnings: {
+        background: "rgba(196,124,0,0.10)",
+        color: "rgba(196,124,0,0.70)",
+        border: "0.5px solid rgba(196,124,0,0.25)",
+    },
     failed: {
         background: "rgba(139,53,32,0.12)",
         color: "#8b3520",
@@ -40,7 +46,7 @@ const STATUS_STYLE: Record<ReindexJob["status"], React.CSSProperties> = {
 };
 
 const isActive = (status: ReindexJob["status"]) =>
-    status === "queued" || status === "processing";
+    status === "pending" || status === "running";
 
 export function ReindexButton({onReindex, job}: ReindexButtonProps) {
     const running = job ? isActive(job.status) : false;
@@ -84,7 +90,7 @@ export function ReindexButton({onReindex, job}: ReindexButtonProps) {
               />
           )}
                     {t(STATUS_KEY[job.status])}
-                    {job.status === "processing" && job.progress != null && (
+                    {job.status === "running" && job.progress != null && (
                         <span
                             style={{
                                 marginLeft: "2px",

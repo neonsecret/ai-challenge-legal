@@ -17,8 +17,15 @@ import {JURISDICTIONS, JURISDICTION_ORDER, jurisdictionToCorpus, type Jurisdicti
 import {useIsMobile} from "@/hooks/use-mobile"
 import {useDocumentIndex} from "@/components/chat/use-document-index"
 import {DocumentIndex} from "@/components/chat/document-index"
-import {X} from "lucide-react"
+import {X, ChevronDown, FolderOpen, Upload} from "lucide-react"
 import {FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE, TEXT_DARK, TEXT_LIGHT} from "@/lib/design-tokens"
+
+interface CorpusEntry {
+    name: string
+    corpus_id: string
+    doc_count: number
+    indexed: boolean
+}
 
 // Error boundary to prevent grounding panel crashes from taking down the whole page
 class GroundingErrorBoundary extends Component<
@@ -202,7 +209,10 @@ export default function ChatPage() {
     const [corpusWarning, setCorpusWarning] = useState<{corpus: string, jurisdiction: Jurisdiction} | null>(null)
     const [corpusBlocked, setCorpusBlocked] = useState(false)
     const [hideCorpusWarning, setHideCorpusWarning] = useState(false)
-    const customInputRef = useRef<HTMLInputElement>(null)
+    const [corporaDropdownOpen, setCorporaDropdownOpen] = useState(false)
+    const [availableCorpora, setAvailableCorpora] = useState<CorpusEntry[]>([])
+    const [corporaLoading, setCorporaLoading] = useState(false)
+    const corporaDropdownRef = useRef<HTMLDivElement>(null)
     const {resolvedTheme} = useTheme()
     const [mounted, setMounted] = useState(false)
     useEffect(() => setMounted(true), [])
@@ -263,17 +273,55 @@ export default function ChatPage() {
 
     // Load custom corpus name and corpus warning preference from localStorage
     useEffect(() => {
-        const stored = localStorage.getItem("neolex_custom_corpus")
-        if (stored) setCustomCorpus(stored)
+        const storedName = localStorage.getItem("neolex_custom_corpus_name")
+        if (storedName) setCustomCorpus(storedName)
         setHideCorpusWarning(localStorage.getItem("neolex_hide_corpus_warning") === "1")
     }, [])
 
-    // Auto-focus custom input when switching to custom jurisdiction
+    // Fetch available corpora when custom jurisdiction is selected
+    const fetchCorpora = useCallback(() => {
+        const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+        setCorporaLoading(true)
+        fetch(`${sseBase}/api/v1/corpora`, {credentials: "include"})
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (data?.corpora) {
+                    setAvailableCorpora(data.corpora)
+                    // Auto-select the first corpus if none selected yet
+                    const storedId = localStorage.getItem("neolex_custom_corpus")
+                    if (!storedId && data.corpora.length > 0) {
+                        const first = data.corpora[0]
+                        setCustomCorpus(first.name)
+                        localStorage.setItem("neolex_custom_corpus", first.corpus_id)
+                        localStorage.setItem("neolex_custom_corpus_name", first.name)
+                    }
+                }
+            })
+            .catch(() => {})
+            .finally(() => setCorporaLoading(false))
+    }, [])
+
+    // Open dropdown and fetch corpora when switching to custom jurisdiction
     useEffect(() => {
         if (jurisdiction === "custom") {
-            setTimeout(() => customInputRef.current?.focus(), 50)
+            fetchCorpora()
+            setCorporaDropdownOpen(true)
+        } else {
+            setCorporaDropdownOpen(false)
         }
-    }, [jurisdiction])
+    }, [jurisdiction, fetchCorpora])
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        if (!corporaDropdownOpen) return
+        const handler = (e: MouseEvent) => {
+            if (corporaDropdownRef.current && !corporaDropdownRef.current.contains(e.target as Node)) {
+                setCorporaDropdownOpen(false)
+            }
+        }
+        document.addEventListener("mousedown", handler)
+        return () => document.removeEventListener("mousedown", handler)
+    }, [corporaDropdownOpen])
 
     // Reset preview when jurisdiction changes
     useEffect(() => {
@@ -572,7 +620,8 @@ export default function ChatPage() {
                             const isActive = jurisdiction === key
                             const isEnabled = key === "difc" || key === "cz" || key === "custom"
                             const hasLawPane = key === "cz" && availableLaws.length > 0
-                            return (
+                            // Wrap "custom" pill in a relative container so the dropdown anchors to it
+                            const pillButton = (
                                 <button
                                     key={key}
                                     disabled={!isEnabled}
@@ -589,6 +638,10 @@ export default function ChatPage() {
                                         if (currentCorpora.length === 0 || currentCorpora.includes(newCorpus)) {
                                             if (isActive && hasLawPane) {
                                                 setLawPaneOpen(o => !o)
+                                            } else if (isActive && key === "custom") {
+                                                // Toggle corpus dropdown when re-clicking active "Custom" pill
+                                                if (!corporaDropdownOpen) fetchCorpora()
+                                                setCorporaDropdownOpen(o => !o)
                                             } else {
                                                 setJurisdiction(key)
                                                 if (hasLawPane) setLawPaneOpen(true)
@@ -663,6 +716,7 @@ export default function ChatPage() {
                                         }
                                     }}
                                     style={{
+                                        display: "inline-flex", alignItems: "center", gap: 2,
                                         fontSize: TYPE_SCALE.xs, fontWeight: isActive ? 700 : 500,
                                         padding: isMobile ? `2px ${SPACE['2']}px` : `3px ${SPACE['2']}px`, borderRadius: RADIUS.sm,
                                         cursor: isEnabled ? "pointer" : "not-allowed",
@@ -684,52 +738,187 @@ export default function ChatPage() {
                                     }}
                                 >
                                     {config.name}
+                                    {key === "custom" && isActive && (
+                                        <ChevronDown
+                                            size={9}
+                                            strokeWidth={2}
+                                            style={{
+                                                marginLeft: 2,
+                                                flexShrink: 0,
+                                                transform: corporaDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
+                                                transition: `transform ${TIMING.fast} ${EASE.out}`,
+                                            }}
+                                        />
+                                    )}
                                 </button>
                             )
+
+                            if (key === "custom") {
+                                return (
+                                    <div key={key} ref={corporaDropdownRef} style={{position: "relative"}}>
+                                        {pillButton}
+                                        <AnimatePresence>
+                                            {corporaDropdownOpen && jurisdiction === "custom" && (
+                                                <motion.div
+                                                    initial={{opacity: 0, y: -4, scale: 0.96}}
+                                                    animate={{opacity: 1, y: 0, scale: 1}}
+                                                    exit={{opacity: 0, y: -4, scale: 0.96}}
+                                                    transition={{duration: 0.15, ease: [0.32, 0.72, 0, 1]}}
+                                                    style={{
+                                                        position: "absolute",
+                                                        top: "calc(100% + 4px)",
+                                                        left: 0,
+                                                        zIndex: 50,
+                                                        minWidth: 200,
+                                                        maxWidth: 280,
+                                                        borderRadius: RADIUS.lg,
+                                                        background: isDark ? "rgba(15,22,35,0.85)" : "rgba(255,252,242,0.90)",
+                                                        backdropFilter: GLASS.dark.blur,
+                                                        WebkitBackdropFilter: GLASS.dark.blur,
+                                                        border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
+                                                        boxShadow: isDark
+                                                            ? `${GLASS.dark.innerGlow}, 0 12px 40px rgba(0,0,0,0.45)`
+                                                            : `${GLASS.light.innerGlow}, 0 12px 40px rgba(100,50,0,0.15)`,
+                                                        overflow: "hidden",
+                                                    }}
+                                                >
+                                                    {corporaLoading ? (
+                                                        <div style={{
+                                                            padding: `${SPACE['3']}px ${SPACE['4']}px`,
+                                                            fontSize: TYPE_SCALE.xs,
+                                                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                            fontFamily: FONT.sans,
+                                                            textAlign: "center",
+                                                        }}>
+                                                            Loading...
+                                                        </div>
+                                                    ) : availableCorpora.length > 0 ? (
+                                                        <>
+                                                            <div style={{
+                                                                padding: `${SPACE['2']}px ${SPACE['3']}px`,
+                                                                borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                                            }}>
+                                                                <span style={{
+                                                                    fontSize: TYPE_SCALE.xs,
+                                                                    fontWeight: 600,
+                                                                    textTransform: "uppercase",
+                                                                    letterSpacing: "0.08em",
+                                                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                                    fontFamily: FONT.sans,
+                                                                }}>
+                                                                    Your corpora
+                                                                </span>
+                                                            </div>
+                                                            {availableCorpora.map((c) => {
+                                                                const storedCorpusId = typeof window !== "undefined" ? localStorage.getItem("neolex_custom_corpus") : null
+                                                                const isSelected = storedCorpusId === c.corpus_id
+                                                                return (
+                                                                    <button
+                                                                        key={c.corpus_id}
+                                                                        onClick={() => {
+                                                                            setCustomCorpus(c.name)
+                                                                            localStorage.setItem("neolex_custom_corpus", c.corpus_id)
+                                                                            localStorage.setItem("neolex_custom_corpus_name", c.name)
+                                                                            setCorporaDropdownOpen(false)
+                                                                        }}
+                                                                        style={{
+                                                                            display: "flex",
+                                                                            alignItems: "center",
+                                                                            gap: SPACE['2'],
+                                                                            width: "100%",
+                                                                            padding: `${SPACE['2']}px ${SPACE['3']}px`,
+                                                                            textAlign: "left",
+                                                                            cursor: "pointer",
+                                                                            fontSize: TYPE_SCALE.xs,
+                                                                            fontWeight: isSelected ? 600 : 400,
+                                                                            fontFamily: FONT.sans,
+                                                                            background: isSelected
+                                                                                ? isDark ? COLOR.gold.tint : "rgba(201,168,76,0.12)"
+                                                                                : "transparent",
+                                                                            border: "none",
+                                                                            color: isSelected
+                                                                                ? isDark ? COLOR.gold.base : "#7a4a00"
+                                                                                : isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                                                                            transition: `background ${TIMING.instant}, color ${TIMING.instant}`,
+                                                                        }}
+                                                                        onMouseEnter={(e) => {
+                                                                            if (!isSelected) {
+                                                                                e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgHover
+                                                                            }
+                                                                        }}
+                                                                        onMouseLeave={(e) => {
+                                                                            if (!isSelected) {
+                                                                                e.currentTarget.style.background = "transparent"
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        <FolderOpen size={12} strokeWidth={1.5} style={{flexShrink: 0, opacity: 0.65}}/>
+                                                                        <div style={{flex: 1, minWidth: 0}}>
+                                                                            <div style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                                                                {c.name}
+                                                                            </div>
+                                                                            <div style={{
+                                                                                fontSize: 10,
+                                                                                color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                                                marginTop: 1,
+                                                                            }}>
+                                                                                {c.doc_count} {c.doc_count === 1 ? "document" : "documents"}
+                                                                            </div>
+                                                                        </div>
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </>
+                                                    ) : (
+                                                        <div style={{
+                                                            padding: `${SPACE['4']}px ${SPACE['4']}px`,
+                                                            textAlign: "center",
+                                                        }}>
+                                                            <Upload size={16} strokeWidth={1.5} style={{
+                                                                margin: "0 auto 6px",
+                                                                color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                            }}/>
+                                                            <p style={{
+                                                                fontSize: TYPE_SCALE.xs,
+                                                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                                                fontFamily: FONT.sans,
+                                                                margin: 0,
+                                                                lineHeight: 1.4,
+                                                            }}>
+                                                                No indexed corpora yet
+                                                            </p>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setCorporaDropdownOpen(false)
+                                                                    router.push("/documents")
+                                                                }}
+                                                                style={{
+                                                                    marginTop: SPACE['2'],
+                                                                    fontSize: TYPE_SCALE.xs,
+                                                                    fontWeight: 600,
+                                                                    padding: `${SPACE['1']}px ${SPACE['3']}px`,
+                                                                    borderRadius: RADIUS.md,
+                                                                    cursor: "pointer",
+                                                                    background: isDark ? COLOR.gold.tint : "rgba(201,168,76,0.12)",
+                                                                    border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(201,168,76,0.30)",
+                                                                    color: isDark ? COLOR.gold.base : "#7a4a00",
+                                                                    fontFamily: FONT.sans,
+                                                                    transition: `all ${TIMING.instant}`,
+                                                                }}
+                                                            >
+                                                                Upload documents
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                )
+                            }
+
+                            return pillButton
                         })}
-                        {/* Custom corpus name input — visible when "Custom" is selected */}
-                        {jurisdiction === "custom" && (
-                            <input
-                                ref={customInputRef}
-                                type="text"
-                                value={customCorpus}
-                                placeholder="difc"
-                                maxLength={40}
-                                onChange={(e) => {
-                                    const val = e.target.value
-                                    setCustomCorpus(val)
-                                }}
-                                onBlur={() => {
-                                    const val = customCorpus.trim() || "difc"
-                                    setCustomCorpus(val)
-                                    localStorage.setItem("neolex_custom_corpus", val)
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        const val = customCorpus.trim() || "difc"
-                                        setCustomCorpus(val)
-                                        localStorage.setItem("neolex_custom_corpus", val)
-                                        ;(e.target as HTMLInputElement).blur()
-                                    }
-                                }}
-                                style={{
-                                    fontSize: TYPE_SCALE.xs,
-                                    fontWeight: 500,
-                                    padding: isMobile ? `2px ${SPACE['2']}px` : `3px ${SPACE['2']}px`,
-                                    borderRadius: RADIUS.sm,
-                                    maxWidth: 120,
-                                    minWidth: 60,
-                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                    border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(212,175,55,0.45)",
-                                    color: isDark ? TEXT_DARK.primary : TEXT_LIGHT.secondary,
-                                    outline: "none",
-                                    fontFamily: FONT.mono,
-                                    backdropFilter: "blur(8px)",
-                                    WebkitBackdropFilter: "blur(8px)",
-                                    transition: `all ${TIMING.fast} ${EASE.spring}`,
-                                }}
-                            />
-                        )}
                         {/* Active corpora indicator */}
                         {currentCorpora.length > 0 && (
                             <span style={{

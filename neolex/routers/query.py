@@ -27,6 +27,12 @@ def _log_task_exception(task: asyncio.Task) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Corpus access control
+# ---------------------------------------------------------------------------
+
+_BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech"})
+
+# ---------------------------------------------------------------------------
 # Plan-based query rate limiting
 # ---------------------------------------------------------------------------
 
@@ -123,7 +129,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
 async def query(
         request: Request,
         body: QueryRequest,
-        corpus: Annotated[str, Query(pattern=r"^(difc|czech)$")] = "difc",
+        corpus: Annotated[str, Query(pattern=r"^[a-zA-Z0-9_-]{1,64}$")] = "difc",
         key_row: dict = Depends(get_api_key),
         db: AsyncSession = Depends(get_db),
 ) -> QueryResponse:
@@ -144,6 +150,11 @@ async def query(
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required")
     await _enforce_query_limit(user, db)
+
+    # Validate corpus access: built-in corpora are open, custom corpora must belong to the user
+    if corpus not in _BUILTIN_CORPORA:
+        if corpus != key_row["client_slug"]:
+            raise HTTPException(status_code=403, detail="Access denied to this corpus")
 
     if not getattr(request.app.state, "ready", False):
         raise HTTPException(
@@ -235,6 +246,11 @@ async def query_stream(
     user_id = key_row["user_id"]
     conversation_id = body.conversation_id
     corpus = body.corpus
+
+    # Validate corpus access: built-in corpora are open, custom corpora must belong to the user
+    if corpus not in _BUILTIN_CORPORA:
+        if corpus != key_row["client_slug"]:
+            raise HTTPException(status_code=403, detail="Access denied to this corpus")
 
     async def event_generator():
         # Unified queue for status, token, and done events.
@@ -392,6 +408,36 @@ async def query_stream(
         yield {"event": "done", "data": ""}
 
     return EventSourceResponse(event_generator(), ping=15)
+
+
+@router.get("/corpora")
+async def list_corpora(
+    key_row: dict = Depends(get_api_key),
+):
+    """Return the list of searchable custom corpora for the authenticated user.
+
+    Checks for FAISS indexes under data/clients/{client_slug}/index/.
+    Returns {"corpora": [{"name": "My Documents", "corpus_id": "<client_slug>", "indexed": true}]}
+    """
+    from pathlib import Path
+
+    client_slug = key_row["client_slug"]
+    index_dir = Path(settings.data_dir) / "clients" / client_slug / "index"
+    faiss_path = index_dir / "faiss_index.bin"
+
+    corpora: list[dict] = []
+    if faiss_path.exists():
+        # Count documents for display
+        docs_dir = Path(settings.data_dir) / "clients" / client_slug / "docs"
+        doc_count = len(list(docs_dir.glob("*.pdf"))) if docs_dir.exists() else 0
+        corpora.append({
+            "name": "My Documents",
+            "corpus_id": client_slug,
+            "doc_count": doc_count,
+            "indexed": True,
+        })
+
+    return {"corpora": corpora}
 
 
 @router.get("/laws")

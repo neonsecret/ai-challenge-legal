@@ -3,6 +3,7 @@
 import {useState, useCallback} from "react";
 
 export interface Document {
+    /** Backend returns `doc_id`; we normalize to `document_id` on fetch. */
     document_id: string;
     filename: string;
     size_bytes: number;
@@ -12,7 +13,7 @@ export interface Document {
 
 export interface ReindexJob {
     job_id: string;
-    status: "queued" | "processing" | "complete" | "failed";
+    status: "pending" | "running" | "complete" | "complete_with_warnings" | "failed";
     progress?: number;
     started_at?: string;
     completed_at?: string;
@@ -53,7 +54,15 @@ export function useDocuments() {
             });
             if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
             const data = await res.json();
-            setDocuments(data.documents ?? []);
+            // Normalize backend field names (doc_id → document_id, upload_ts → uploaded_at)
+            const docs = (data.documents ?? []).map((d: Record<string, unknown>) => ({
+                document_id: d.doc_id ?? d.document_id ?? "",
+                filename: d.filename ?? "",
+                size_bytes: d.size_bytes ?? 0,
+                uploaded_at: d.upload_ts ?? d.uploaded_at ?? "",
+                indexed: d.indexed ?? false,
+            }));
+            setDocuments(docs);
         } catch (e) {
             setError(e instanceof Error ? e.message : "Failed to load documents");
         } finally {
@@ -78,7 +87,14 @@ export function useDocuments() {
                     });
                     xhr.addEventListener("load", () => {
                         if (xhr.status >= 200 && xhr.status < 300) {
-                            resolve(JSON.parse(xhr.responseText));
+                            const raw = JSON.parse(xhr.responseText);
+                            resolve({
+                                document_id: raw.doc_id ?? raw.document_id ?? "",
+                                filename: raw.filename ?? "",
+                                size_bytes: raw.size_bytes ?? 0,
+                                uploaded_at: raw.upload_ts ?? raw.uploaded_at ?? "",
+                                indexed: raw.indexed ?? false,
+                            });
                         } else {
                             try {
                                 const err = JSON.parse(xhr.responseText);
@@ -89,7 +105,7 @@ export function useDocuments() {
                         }
                     });
                     xhr.addEventListener("error", () => reject(new Error("Network error during upload")));
-                    xhr.open("POST", `${API_BASE}/documents/upload`);
+                    xhr.open("POST", `${API_BASE}/documents`);
                     xhr.withCredentials = true;
                     xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
                     xhr.send(formData);
@@ -210,7 +226,7 @@ export function useDocuments() {
                 if (!res.ok) return;
                 const job: ReindexJob = await res.json();
                 setReindexJob(job);
-                if (job.status !== "complete" && job.status !== "failed") {
+                if (job.status !== "complete" && job.status !== "complete_with_warnings" && job.status !== "failed") {
                     setTimeout(poll, 2000);
                 }
             } catch {

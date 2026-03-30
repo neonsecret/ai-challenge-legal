@@ -346,7 +346,7 @@ def _load_faiss(corpus: str = "difc"):
     import re as _re
 
     # Validate corpus name to prevent path traversal (e.g. "../../etc/passwd")
-    if not _re.match(r"^[a-z0-9_-]+$", corpus):
+    if not _re.match(r"^[a-zA-Z0-9_-]+$", corpus):
         raise ValueError(f"Invalid corpus name: {corpus!r}")
 
     global _faiss_index, _faiss_metadata, _faiss_corpus_cache
@@ -359,9 +359,17 @@ def _load_faiss(corpus: str = "difc"):
         idx_path = FAISS_INDEX_PATH
         meta_path = FAISS_METADATA_PATH
     else:
-        # Dynamic corpus: look for data/faiss_{corpus}.bin
-        idx_path = f"data/faiss_{corpus}.bin"
-        meta_path = f"data/faiss_{corpus}.json"
+        # Client-uploaded corpus: look for data/clients/{corpus}/index/
+        import os as _os
+        client_idx = f"data/clients/{corpus}/index/faiss_index.bin"
+        client_meta = f"data/clients/{corpus}/index/faiss_metadata.json"
+        if _os.path.exists(client_idx):
+            idx_path = client_idx
+            meta_path = client_meta
+        else:
+            # Legacy fallback: data/faiss_{corpus}.bin
+            idx_path = f"data/faiss_{corpus}.bin"
+            meta_path = f"data/faiss_{corpus}.json"
 
     # Check multi-corpus cache first
     if corpus in _faiss_corpus_cache:

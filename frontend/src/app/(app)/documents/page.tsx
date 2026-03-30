@@ -312,7 +312,7 @@ export default function DocumentsPage() {
                                 {t("documents.collections_subtitle")}
                             </p>
                         </div>
-                        <ReindexButton onReindex={triggerReindex} job={reindexJob}/>
+                        {/* Reindex button removed — indexing happens automatically after upload */}
                     </div>
                     <div style={{padding: "16px 20px"}}>
                         <FolderView
