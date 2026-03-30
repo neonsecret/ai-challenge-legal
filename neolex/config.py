@@ -40,7 +40,7 @@ Environment variables:
     STRIPE_ENABLED              Enable Stripe billing (default: false)
     FRONTEND_URL                Frontend base URL (default: http://localhost:3000)
     BACKEND_URL                 Backend base URL for email links (default: http://localhost:8000)
-    DEV_MODE                    Disable secure cookies for local dev (default: true)
+    DEV_MODE                    Disable secure cookies for local dev (default: false)
 """
 import os
 

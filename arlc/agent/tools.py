@@ -194,6 +194,8 @@ def format_web_results(results: list[dict]) -> str:
     parts = []
     for r in results:
         snippet = (r['snippet'] or "")[:_WEB_SNIPPET_MAX_CHARS]
+        # Escape closing tags to prevent prompt injection via tag boundary escape
+        snippet = snippet.replace("</web_content>", "&lt;/web_content&gt;")
         parts.append(f"[WEB: \"{r['title']}\"]({r['url']})\n{snippet}")
     return "<web_content>\n" + "\n---\n".join(parts) + "\n</web_content>"
 

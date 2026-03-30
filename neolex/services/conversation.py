@@ -71,7 +71,6 @@ async def load_accumulated_docs(user_id: str, conversation_id: str) -> list[dict
     if not conversation_id:
         return []
     try:
-        import json as _json
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
@@ -102,7 +101,6 @@ async def save_accumulated_docs(
     if not conversation_id or not docs:
         return
     try:
-        import json as _json
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         docs_str = _json.dumps(docs, ensure_ascii=False)

@@ -96,7 +96,7 @@ class FormatGuardian:
                 question=question
             ))
             return result
-        except:
+        except (ValueError, TypeError, AttributeError):
             return value
 
     def fix_number(self, value: Any, question_id: str, answer_type: str, question: str) -> Any:

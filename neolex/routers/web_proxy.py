@@ -55,13 +55,19 @@ def _url_has_auth_params(url: str) -> bool:
 
 
 def _is_private_ip(hostname: str) -> bool:
-    """Check if a hostname resolves to a private/reserved IP address."""
+    """Check if a hostname resolves to a private/reserved IP address.
+
+    Handles IPv4, IPv6 (including ``::1``, ``fe80::`` link-local, and
+    IPv4-mapped ``::ffff:127.0.0.1``), and common private domain names.
+    Strips ``[]`` brackets from IPv6 literal hostnames before parsing.
+    """
     try:
-        addr = ipaddress.ip_address(hostname)
-        return addr.is_private or addr.is_reserved or addr.is_loopback
+        addr = ipaddress.ip_address(hostname.strip("[]"))
+        return (addr.is_private or addr.is_reserved or addr.is_loopback
+                or addr.is_link_local or addr.is_multicast)
     except ValueError:
         # Not a raw IP — could be a domain name. We check common private patterns.
-        lower = hostname.lower()
+        lower = hostname.lower().strip("[]")
         return lower in ("localhost",) or lower.endswith(".local") or lower.endswith(".internal")
 
 
@@ -347,7 +353,16 @@ async def proxy_web_content(
     if "html" not in content_type.lower() and "xml" not in content_type.lower():
         raise HTTPException(status_code=400, detail="URL does not point to an HTML page")
 
-    html = response.text
+    # Guard against oversized responses to prevent memory exhaustion.
+    # Check Content-Length header first (fast path), then verify actual body size.
+    MAX_HTML_BYTES = 5 * 1024 * 1024  # 5 MB
+    content_length = response.headers.get("content-length")
+    if content_length and int(content_length) > MAX_HTML_BYTES:
+        raise HTTPException(status_code=400, detail="Page too large to process")
+    raw_bytes = response.content  # httpx loads content; check size after
+    if len(raw_bytes) > MAX_HTML_BYTES:
+        raise HTTPException(status_code=400, detail="Page too large to process")
+    html = raw_bytes.decode(response.encoding or "utf-8", errors="replace")
     title, content = _extract_text_bs4(html)
 
     # Truncate content to limit

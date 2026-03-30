@@ -18,7 +18,8 @@ from dotenv import load_dotenv
 # CrossEncoder is used only when RERANKER_MODEL is not a Qwen model (non-default).
 # Both are imported lazily inside their respective factory functions so that the
 # default Qwen3-Reranker + llama-server path has no hard sentence_transformers dependency.
-from sentence_transformers import SentenceTransformer
+# SentenceTransformer imported lazily inside get_embedding_model() to avoid
+# loading PyTorch when the default llama-server path is used.
 
 load_dotenv()
 
@@ -210,11 +211,13 @@ def _demote_remote_reranker():
 
     Called when the remote reranker fails mid-query. Prevents subsequent
     calls from waiting for TCP timeouts on an unreachable host.
+    Uses _reranker_lock to avoid racing with get_reranker() initialization.
     """
     global _reranker
-    if _local_reranker is not None and _reranker is not _local_reranker:
-        logger.warning("Circuit breaker: demoting remote reranker to local for remaining queries")
-        _reranker = _local_reranker
+    with _reranker_lock:
+        if _local_reranker is not None and _reranker is not _local_reranker:
+            logger.warning("Circuit breaker: demoting remote reranker to local for remaining queries")
+            _reranker = _local_reranker
 
 
 def get_local_reranker():
@@ -301,6 +304,7 @@ def get_embedding_model():
                         else 'cpu'
                     )
                     model_kwargs = {"trust_remote_code": True} if _is_arctic_model() else {}
+                    from sentence_transformers import SentenceTransformer
                     _embedding_model = SentenceTransformer(
                         EMBEDDING_MODEL, device=device, **model_kwargs
                     )
@@ -331,10 +335,8 @@ def _load_faiss(corpus: str = "difc"):
     corpus : str
         Which corpus index to load. "difc" (default) or "czech".
     """
-    import re as _re
-
     # Validate corpus name to prevent path traversal (e.g. "../../etc/passwd")
-    if not _re.match(r"^[a-zA-Z0-9_-]+$", corpus):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", corpus):
         raise ValueError(f"Invalid corpus name: {corpus!r}")
 
     global _faiss_index, _faiss_metadata, _faiss_corpus_cache
@@ -933,8 +935,7 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
 
     # Extract quoted section phrases (e.g., "IT IS HEREBY ORDERED THAT") — chunks containing
     # these phrases get a strong boost so section-specific questions find the right page
-    import re as _re
-    _section_quotes = _re.findall(r"'([^']{10,})'|\"([^\"]{10,})\"", question)
+    _section_quotes = re.findall(r"'([^']{10,})'|\"([^\"]{10,})\"", question)
     _section_phrase = (_section_quotes[0][0] or _section_quotes[0][1]).strip().lower() if _section_quotes else ""
 
     # General question terms (stopwords removed)

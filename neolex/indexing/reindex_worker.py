@@ -289,7 +289,7 @@ async def run_reindex_job(
             job_id,
             status="failed",
             completed_at=datetime.datetime.utcnow().isoformat(),
-            error=str(exc),
+            error="Indexing failed. Please try again or contact support.",
         )
 
 

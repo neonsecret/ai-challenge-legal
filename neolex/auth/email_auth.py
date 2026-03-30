@@ -4,6 +4,7 @@ import logging
 import secrets
 import shutil
 import time
+from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -38,6 +39,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+# In-memory fallback for rate limiting when the audit DB is unavailable.
+# Keyed by "auth_{action}:{ip}", values are lists of time.monotonic() timestamps.
+_fallback_rates: dict[str, list[float]] = defaultdict(list)
+_FALLBACK_WINDOW = 300  # 5 minutes
+_FALLBACK_MAX = 10
+
 
 async def _auth_rate_check(request: Request, action: str) -> None:
     """Per-IP rate limiter for auth endpoints (10 attempts / 5 min)."""
@@ -54,7 +61,13 @@ async def _auth_rate_check(request: Request, action: str) -> None:
     except HTTPException:
         raise
     except Exception:
-        pass  # Non-fatal — don't block auth if rate DB is unavailable
+        # Fallback: in-memory rate limiting when audit DB is unavailable
+        now = time.monotonic()
+        attempts = _fallback_rates[bucket]
+        attempts[:] = [t for t in attempts if now - t < _FALLBACK_WINDOW]
+        if len(attempts) >= _FALLBACK_MAX:
+            raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
+        attempts.append(now)
 
 
 def _hash_password(password: str) -> str:

@@ -24,6 +24,9 @@ def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+MAX_SESSIONS_PER_USER = 10
+
+
 async def create_session(
         user: User,
         db: AsyncSession,
@@ -33,8 +36,20 @@ async def create_session(
 ) -> str:
     """Insert a session row and return the raw token (goes into the cookie).
 
+    Evicts the oldest sessions when the per-user cap is reached.
     Commits the transaction — caller must NOT commit again after this.
     """
+    # Evict oldest sessions if at or above the per-user cap
+    result = await db.execute(
+        select(DBSession).where(DBSession.user_id == user.id)
+        .order_by(DBSession.created_at.asc())
+    )
+    existing = result.scalars().all()
+    if len(existing) >= MAX_SESSIONS_PER_USER:
+        for s in existing[:len(existing) - MAX_SESSIONS_PER_USER + 1]:
+            await db.delete(s)
+        await db.flush()
+
     token = generate_token()
     expires_at = datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days)
     session = DBSession(

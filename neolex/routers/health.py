@@ -6,10 +6,13 @@ GET /health/ready  — readiness probe: checks pipeline + DB are ready (for k8s/
 """
 from __future__ import annotations
 
+import logging
 import time
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -94,9 +97,10 @@ async def readiness(request: Request):
         async with get_audit_db() as db:
             await db.ping()
     except Exception as exc:
+        logger.warning("Readiness check: DB unreachable: %s", exc)
         return JSONResponse(
             status_code=503,
-            content={"status": "not_ready", "reason": "db_unreachable", "detail": str(exc)},
+            content={"status": "not_ready", "reason": "db_unreachable"},
         )
 
     return {"status": "ready"}

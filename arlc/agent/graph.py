@@ -284,15 +284,30 @@ def build_agent_graph():
         if hasattr(last, "tool_calls") and last.tool_calls:
             if state["search_count"] >= MAX_SEARCHES_PER_TURN:
                 logger.warning("[agent] hit search cap (%d), forcing answer", MAX_SEARCHES_PER_TURN)
-                return "end"
+                return "cap_reached"
             return "search"
         return "end"
 
+    def cap_reached_node(state: AgentState) -> dict:
+        """When search cap is hit, respond to pending tool calls telling the LLM to answer."""
+        last_msg = state["messages"][-1]
+        results = []
+        for tc in last_msg.tool_calls:
+            results.append(ToolMessage(
+                content="Search limit reached. Answer the question using the documents already retrieved.",
+                tool_call_id=tc["id"],
+            ))
+        return {"messages": results}
+
     graph.add_node("reason", reason_node)
     graph.add_node("search", search_node)
+    graph.add_node("cap_reached", cap_reached_node)
     graph.set_entry_point("reason")
-    graph.add_conditional_edges("reason", should_continue, {"search": "search", "end": END})
+    graph.add_conditional_edges("reason", should_continue, {
+        "search": "search", "cap_reached": "cap_reached", "end": END,
+    })
     graph.add_edge("search", "reason")
+    graph.add_edge("cap_reached", "reason")
 
     return graph.compile()
 

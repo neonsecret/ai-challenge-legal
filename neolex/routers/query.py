@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -17,6 +18,9 @@ from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_r
 from neolex.services.pipeline import run_single_question
 
 logger = logging.getLogger(__name__)
+
+# Regex for extracting (current/total) progress from status strings
+_PROGRESS_RE = re.compile(r"\((\d+)/(\d+)\)")
 router = APIRouter(prefix="/api/v1")
 
 
@@ -109,8 +113,11 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
         await db.refresh(user)
 
     if daily_limit == UNLIMITED_DAILY_QUERIES:
-        # Unlimited plan (enterprise) — increment for tracking, no cap enforced
-        user.daily_queries_used += 1
+        # Unlimited plan (enterprise) — atomic increment for tracking, no cap enforced
+        await db.execute(
+            sql_update(User).where(User.id == user.id)
+            .values(daily_queries_used=User.daily_queries_used + 1)
+        )
         await db.commit()
     elif daily_limit > 0:
         result = await db.execute(
@@ -317,9 +324,6 @@ async def query_stream(
             _schedule_coroutine(update_pipeline_job_status(
                 pipeline_job_id, status=coarse, status_detail=stage,
             ))
-
-        import re
-        _PROGRESS_RE = re.compile(r"\((\d+)/(\d+)\)")
 
         def on_status(stage: str):
             # Extract structured progress (current/total) from status strings

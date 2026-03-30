@@ -303,7 +303,9 @@ def _format_document_context(docs: list[SourceDocument]) -> str:
     parts: list[str] = [preamble]
     for i, doc in enumerate(docs, start=1):
         header = f"[DOC-{i}] {doc['doc_id']} (page {doc['page']})"
-        parts.append(f"{header}\n<document_content>\n{doc['text']}\n</document_content>")
+        # Escape closing tags to prevent prompt injection via tag boundary escape
+        text = doc['text'].replace("</document_content>", "&lt;/document_content&gt;")
+        parts.append(f"{header}\n<document_content>\n{text}\n</document_content>")
 
     return "\n---\n".join(parts)
 
