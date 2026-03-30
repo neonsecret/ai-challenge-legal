@@ -28,6 +28,7 @@ type BillingInterval = "monthly" | "biweekly";
 
 interface BillingStatus {
   plan: PlanTier;
+  subscription_status?: string;
   monthly_queries_used: number;
   monthly_queries_limit: number;
   daily_queries_used: number;

@@ -87,7 +87,9 @@ class Settings:
     starter_max_corpora: int = int(os.environ.get("STARTER_MAX_CORPORA", "2"))
     pro_daily_limit: int = int(os.environ.get("PRO_DAILY_LIMIT", "200"))
     pro_max_corpora: int = int(os.environ.get("PRO_MAX_CORPORA", "5"))
-    enterprise_daily_limit: int = int(os.environ.get("ENTERPRISE_DAILY_LIMIT", "0"))  # 0 = unlimited
+    # Enterprise daily limit: 0 is the sentinel for "unlimited" (no cap enforced).
+    # This convention is relied upon by UNLIMITED_DAILY_QUERIES in neolex.routers.query.
+    enterprise_daily_limit: int = int(os.environ.get("ENTERPRISE_DAILY_LIMIT", "0"))
     enterprise_max_corpora: int = int(os.environ.get("ENTERPRISE_MAX_CORPORA", "20"))
 
     # --- Per-corpus document/size limits ---

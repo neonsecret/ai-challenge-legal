@@ -36,10 +36,14 @@ _BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech"})
 # Plan-based query rate limiting
 # ---------------------------------------------------------------------------
 
+# Daily query limits per paid plan. A value of 0 means unlimited (enterprise).
+# This sentinel is checked explicitly in _enforce_query_limit() below.
+UNLIMITED_DAILY_QUERIES = 0
+
 _PLAN_DAILY_LIMITS: dict[str, int] = {
     "starter": settings.starter_daily_limit,
     "pro": settings.pro_daily_limit,
-    "enterprise": settings.enterprise_daily_limit,  # 0 = unlimited
+    "enterprise": settings.enterprise_daily_limit,  # UNLIMITED_DAILY_QUERIES (0) = unlimited
 }
 
 
@@ -90,7 +94,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
         await db.commit()
         return
 
-    # Paid plans: daily limit (enterprise 0 = unlimited)
+    # Paid plans: daily limit (UNLIMITED_DAILY_QUERIES means no cap)
     daily_limit = _PLAN_DAILY_LIMITS.get(status, 0)
 
     # Reset daily counter if before today
@@ -104,8 +108,11 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
         await db.commit()
         await db.refresh(user)
 
-    # Enterprise (daily_limit == 0) means unlimited
-    if daily_limit > 0:
+    if daily_limit == UNLIMITED_DAILY_QUERIES:
+        # Unlimited plan (enterprise) — increment for tracking, no cap enforced
+        user.daily_queries_used += 1
+        await db.commit()
+    elif daily_limit > 0:
         result = await db.execute(
             sql_update(User)
             .where(User.id == user.id, User.daily_queries_used < daily_limit)
@@ -118,10 +125,6 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
                 status_code=429,
                 detail=f"Daily limit reached ({daily_limit}/day on {status.title()}). Resets at midnight UTC.",
             )
-        await db.commit()
-    else:
-        # Unlimited — just increment for tracking
-        user.daily_queries_used += 1
         await db.commit()
 
 
@@ -441,7 +444,7 @@ async def list_corpora(
 
 
 @router.get("/laws")
-async def list_laws():
+async def list_laws(key_row: dict = Depends(get_api_key)):
     """Return the available Czech law corpus entries for the law selector UI."""
     return {"laws": [
         {"id": "obcansky_zakonik", "name": "Občanský zákoník", "name_en": "Civil Code"},

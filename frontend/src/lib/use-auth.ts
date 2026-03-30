@@ -9,6 +9,7 @@ export interface User {
     email: string;
     name: string | null;
     avatar_url: string | null;
+    plan?: string;
     subscription_status: string;
     monthly_queries_used: number;
     max_corpora: number;

@@ -24,11 +24,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/proxy")
 
 # Simple in-memory cache: url -> (timestamp, result_dict)
+# Design decision: the cache is keyed by URL only (not per-user) because this
+# proxy is exclusively for public web search result pages.  The endpoint is
+# auth-gated, so only authenticated users can reach it, and we validate that
+# URLs are public (no private IPs).  URLs that contain authentication tokens in
+# query parameters are never cached (see _url_has_auth_params below).
 _cache: dict[str, tuple[float, dict]] = {}
 _CACHE_TTL_SECONDS = 300  # 5 minutes
 _CACHE_MAX_SIZE = 50
 _CONTENT_MAX_CHARS = 10_000
 _FETCH_TIMEOUT_SECONDS = 10
+
+# Query-parameter names that suggest the URL carries authentication material.
+# URLs matching these are fetched but never cached to avoid leaking tokens to
+# other users.
+_AUTH_PARAM_NAMES = frozenset({"token", "key", "secret", "password", "api_key", "apikey", "access_token"})
+
+
+def _url_has_auth_params(url: str) -> bool:
+    """Return True if the URL query string contains likely auth tokens."""
+    parsed = urlparse(url)
+    if not parsed.query:
+        return False
+    # Parse query params (lowercase keys for case-insensitive matching)
+    for part in parsed.query.split("&"):
+        name = part.split("=", 1)[0].lower()
+        if name in _AUTH_PARAM_NAMES:
+            return True
+    return False
 
 
 def _is_private_ip(hostname: str) -> bool:
@@ -59,7 +82,16 @@ def _validate_url(url: str) -> str:
         raise HTTPException(status_code=400, detail="Private/local URLs are not allowed")
 
     # DNS resolution check: resolve hostname and verify all IPs are public
-    # to prevent SSRF via DNS rebinding or domains pointing to internal IPs
+    # to prevent SSRF via DNS rebinding or domains pointing to internal IPs.
+    #
+    # Accepted residual risk (TOCTOU): A DNS record could change between this
+    # check and the actual HTTP connection. This is acceptable because:
+    #   1. The endpoint is auth-gated — only paying/authenticated users can reach it.
+    #   2. Redirect targets are also validated via _validate_url(), closing the
+    #      most common SSRF bypass.
+    #   3. The timing window is extremely narrow (milliseconds).
+    #   4. Exploiting this would require the attacker to control a DNS server
+    #      and time the rebind precisely during the request.
     try:
         infos = socket.getaddrinfo(hostname, None)
     except socket.gaierror:
@@ -263,10 +295,11 @@ async def proxy_web_content(
     Requires authentication via session cookie.
     """
     url = _validate_url(url)
+    skip_cache = _url_has_auth_params(url)
 
-    # Check cache
+    # Check cache (skip for URLs that contain auth tokens)
     now = time.monotonic()
-    if url in _cache:
+    if not skip_cache and url in _cache:
         ts, cached_result = _cache[url]
         if now - ts < _CACHE_TTL_SECONDS:
             return cached_result
@@ -327,8 +360,9 @@ async def proxy_web_content(
         "content": content,
     }
 
-    # Cache the result
-    _evict_cache()
-    _cache[url] = (now, result)
+    # Cache the result (skip for URLs carrying auth tokens)
+    if not skip_cache:
+        _evict_cache()
+        _cache[url] = (now, result)
 
     return result
