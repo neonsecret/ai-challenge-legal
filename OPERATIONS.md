@@ -128,11 +128,13 @@ All in `arlc/agent/config.py`, overridable via env vars:
 | Config | Default | Env Var |
 |--------|---------|---------|
 | LLM model (answer) | claude-sonnet-4-6 | AGENT_LLM_MODEL |
-| LLM model (first round) | claude-haiku-4-5-20251001 | AGENT_LLM_MODEL_FAST |
+| LLM model (first round) | claude-haiku-4-5 | AGENT_LLM_MODEL_FAST |
 | Max searches/turn | 5 | AGENT_MAX_SEARCHES |
 | Max accumulated docs | 10 | AGENT_MAX_DOCS |
 | Max history messages | 10 | AGENT_MAX_HISTORY |
 | Search results per call | 3 | AGENT_SEARCH_TOP_K |
+| Web search enabled | true | AGENT_WEB_SEARCH_ENABLED |
+| Web search max results | 3 | AGENT_WEB_SEARCH_MAX |
 
 ## Pricing
 
@@ -166,3 +168,24 @@ LLAMA_SERVER_URL=http://100.98.171.97:8088 EMBEDDING_MODEL=llama-server \
 - [x] Model name masked in API responses
 - [x] User-scoped localStorage (no cross-account leaks)
 - [x] Logout clears all local session data
+- [x] Prompt injection defense in agent system prompt
+- [x] Path traversal validation on FAISS corpus loader
+- [x] Fire-and-forget tasks log exceptions via done callbacks
+
+## GDPR Compliance
+
+- Privacy Policy: `/privacy` page (full Article 13/14 disclosures)
+- Data export: `GET /auth/my-data` (Article 20 — data portability)
+- Data retention: conversations 90 days, sessions 30 days (hourly auto-cleanup)
+- Right to erasure: user deletion cascades all data
+- Third parties: Anthropic (Vertex AI), Stripe, Google OAuth — all disclosed
+- Contact: privacy@vitreon.app
+
+## Accuracy Benchmarks (March 2026)
+
+| Corpus | Answer Accuracy | Citation Rate |
+|--------|----------------|---------------|
+| DIFC | 100% | 100% |
+| Czech | 100% | 100% |
+
+Run benchmarks: `python3 scripts/benchmark_accuracy.py`

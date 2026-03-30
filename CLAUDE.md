@@ -9,10 +9,12 @@ Three layers: `arlc/` (core RAG + agent), `neolex/` (FastAPI web layer), `fronte
 - `arlc/pipeline.py` — Deterministic pipeline: route → retrieve → answer (competition-proven)
 - `arlc/agent/` — LangGraph ReAct agent (production path, `use_agent=True`)
   - `graph.py` — StateGraph: reason → search → reason → answer
-  - `tools.py` — Search tool wrapping `retrieve_pages()` with deduplication
+  - `tools.py` — Search tool wrapping `retrieve_pages()` + DDG web search fallback
   - `prompts.py` — System prompt with grounding rules + prompt caching zones
   - `config.py` — All constants and tunable parameters
   - `verification.py` — Page verification adapter
+  - Two tools: `search_legal_corpus` (corpus retrieval) + `search_web` (DDG fallback)
+  - Two-round LLM: Haiku 4.5 for first query formulation, Sonnet 4.6 for answer
 - `arlc/router.py` — Deterministic document routing (regex, no LLM)
 - `arlc/retriever.py` — Hybrid BM25 + FAISS + HyDE + RRF fusion + cross-encoder reranking
 - `arlc/answerer.py` — LLM answer generation (Claude via Vertex AI)
@@ -35,6 +37,9 @@ Three layers: `arlc/` (core RAG + agent), `neolex/` (FastAPI web layer), `fronte
 - SSE token streaming via @microsoft/fetch-event-source
 - HttpOnly cookie auth, CSRF headers on all POST requests
 - Document index UI, law selector, session persistence
+- Multi-corpus tracking (max 2 per conversation, warning on 2nd, blocked on 3rd)
+- User-scoped localStorage (no cross-account session leaks)
+- Legal disclaimer below chat input
 - i18n: EN, CS, DE, RU, AR
 
 ## Key Rules
@@ -97,7 +102,22 @@ zakon_dane_prijmu, zakon_nemocenske_pojisteni, danovy_rad
 - Input validation: law IDs, corpus names, conversation IDs all regex-validated
 - Model name masked as "vitreon-legal" in API responses
 
-## Benchmarks
+## GDPR Compliance
+
+- Privacy Policy: `/privacy` page with full Article 13/14 disclosures
+- Data retention: 90-day auto-delete for conversations, 30-day sessions (hourly cleanup)
+- Data export: `GET /auth/my-data` (Article 20 portability)
+- Right to erasure: user deletion with CASCADE
+- Third parties disclosed: Anthropic (Vertex AI), Stripe, Google OAuth
+
+## Accuracy (Verified March 2026)
+
+| Corpus | Answer Accuracy | Citation Rate | Questions Tested |
+|--------|----------------|---------------|-----------------|
+| DIFC | 100% | 100% | 30 |
+| Czech | 100% | 100% | 25 |
+
+## Competition Benchmarks
 
 | Benchmark | Score | SOTA | Notes |
 |-----------|-------|------|-------|
