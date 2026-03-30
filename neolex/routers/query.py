@@ -255,28 +255,75 @@ async def query_stream(
         if corpus != key_row["client_slug"]:
             raise HTTPException(status_code=403, detail="Access denied to this corpus")
 
+    # Create pipeline job for persistent status tracking
+    from neolex.services.conversation import (
+        create_pipeline_job,
+        update_pipeline_job_status,
+        complete_pipeline_job,
+        fail_pipeline_job,
+    )
+    pipeline_job_id = await create_pipeline_job(user_id, conversation_id or "", body.question)
+
     async def event_generator():
         # Unified queue for status, token, and done events.
         queue: asyncio.Queue = asyncio.Queue()
         loop = asyncio.get_event_loop()
 
-        # Callback wiring: the deterministic pipeline runs partly in threads
-        # (asyncio.to_thread), so its callbacks need call_soon_threadsafe.
-        # The LangGraph agent is fully async — plain put_nowait suffices.
-        # We define both flavours and pick inside _run_pipeline().
+        # Callback wiring: both the deterministic pipeline and the LangGraph
+        # agent may invoke callbacks from either the event-loop thread (async
+        # code) or from worker threads (sync graph nodes, asyncio.to_thread).
+        # A single pair of universal callbacks detects the execution context
+        # and dispatches correctly — no caller needs to choose a flavour.
 
-        def on_status_threadsafe(stage: str):
-            loop.call_soon_threadsafe(queue.put_nowait, ("status", stage))
+        def _in_event_loop() -> bool:
+            """Return True if the current thread is running the event loop."""
+            try:
+                return asyncio.get_running_loop() is loop
+            except RuntimeError:
+                return False
 
-        def on_token_threadsafe(text: str):
-            # Called from asyncio.to_thread — must be thread-safe.
-            loop.call_soon_threadsafe(queue.put_nowait, ("token", text))
+        def _enqueue(item: tuple) -> None:
+            """Put an item on the SSE queue from any thread."""
+            if _in_event_loop():
+                queue.put_nowait(item)
+            else:
+                loop.call_soon_threadsafe(queue.put_nowait, item)
 
-        def on_status_async(stage: str):
-            queue.put_nowait(("status", stage))
+        def _schedule_coroutine(coro) -> None:
+            """Schedule a coroutine as a fire-and-forget task from any thread."""
+            if _in_event_loop():
+                t = asyncio.create_task(coro)
+                t.add_done_callback(_log_task_exception)
+            else:
+                # From a worker thread: schedule task creation on the event loop.
+                # Use asyncio.run_coroutine_threadsafe which is the proper API for
+                # submitting coroutines from foreign threads.
+                future = asyncio.run_coroutine_threadsafe(coro, loop)
+                future.add_done_callback(
+                    lambda f: logger.error("Background task failed: %s", f.exception())
+                    if not f.cancelled() and f.exception() else None
+                )
 
-        def on_token_async(text: str):
-            queue.put_nowait(("token", text))
+        def _update_job_status_detail(stage: str):
+            """Fire-and-forget: persist status to pipeline_jobs for SSE recovery."""
+            if not pipeline_job_id:
+                return
+            coarse = "processing"
+            lower = stage.lower()
+            if "retriev" in lower or "search" in lower or "ranking" in lower:
+                coarse = "searching"
+            elif "answer" in lower or "writing" in lower:
+                coarse = "answering"
+            _schedule_coroutine(update_pipeline_job_status(
+                pipeline_job_id, status=coarse, status_detail=stage,
+            ))
+
+        def on_status(stage: str):
+            _enqueue(("status", stage))
+            _update_job_status_detail(stage)
+
+        def on_token(text: str):
+            _enqueue(("token", text))
 
         # Emit initial connection status
         yield {"event": "status", "data": json.dumps({"status": "processing"})}
@@ -302,8 +349,8 @@ async def query_stream(
                             user_id=user_id,
                             conversation_id=conversation_id,
                             selected_laws=body.laws,
-                            on_status=on_status_async,
-                            on_token=on_token_async,
+                            on_status=on_status,
+                            on_token=on_token,
                             use_internet=body.use_internet,
                         ),
                         timeout=AGENT_TIMEOUT_SECONDS,
@@ -317,8 +364,8 @@ async def query_stream(
                         route_fn=state.route_fn,
                         retrieve_fn=state.retrieve_fn,
                         answer_fn=state.answer_fn,
-                        on_status=on_status_threadsafe,
-                        on_token=on_token_threadsafe,
+                        on_status=on_status,
+                        on_token=on_token,
                         corpus=corpus,
                         user_id=user_id,
                         conversation_id=conversation_id,
@@ -347,8 +394,11 @@ async def query_stream(
                 elif event_type == "done":
                     break
         except asyncio.CancelledError:
-            task.cancel()
-            logger.info("SSE client disconnected during pipeline execution")
+            # Client disconnected (page reload, network drop) — do NOT cancel the
+            # pipeline task. Let it finish so the answer is saved to the DB.
+            # The frontend will recover it via GET /conversations/{id}/status
+            # polling on next page load.
+            logger.info("SSE client disconnected — pipeline continues in background")
             return
 
         # Handle pipeline errors
@@ -356,6 +406,13 @@ async def query_stream(
             logger.info("SSE pipeline cancelled")
             return
         if isinstance(pipeline_error, (asyncio.TimeoutError, TimeoutError)):
+            # Persist timeout status for frontend polling recovery
+            if pipeline_job_id:
+                t = asyncio.create_task(fail_pipeline_job(
+                    pipeline_job_id, status="timeout",
+                    detail="Query exceeded time limit. Please try a simpler question.",
+                ))
+                t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
@@ -364,6 +421,13 @@ async def query_stream(
             return
         if pipeline_error is not None:
             logger.exception("SSE pipeline error: %s", pipeline_error)
+            # Persist failure status for frontend polling recovery
+            if pipeline_job_id:
+                t = asyncio.create_task(fail_pipeline_job(
+                    pipeline_job_id, status="failed",
+                    detail="An internal error occurred. Please try again.",
+                ))
+                t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
@@ -398,9 +462,25 @@ async def query_stream(
                 ))
                 task.add_done_callback(_log_task_exception)
 
+            # Persist completion to pipeline_jobs for frontend polling recovery
+            if pipeline_job_id:
+                t = asyncio.create_task(complete_pipeline_job(
+                    pipeline_job_id,
+                    answer=str(response.answer) if response.answer is not None else "",
+                    sources_json=sources_json,
+                    confidence=response.confidence,
+                ))
+                t.add_done_callback(_log_task_exception)
+
             yield {"event": "answer", "data": response.model_dump_json()}
         except Exception as exc:
             logger.exception("SSE post-processing error: %s", exc)
+            if pipeline_job_id:
+                t = asyncio.create_task(fail_pipeline_job(
+                    pipeline_job_id, status="failed",
+                    detail="An internal error occurred. Please try again.",
+                ))
+                t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
@@ -428,6 +508,7 @@ async def list_corpora(
     index_dir = Path(settings.data_dir) / "clients" / client_slug / "index"
     faiss_path = index_dir / "faiss_index.bin"
 
+    logger.info("[corpora] client_slug=%s, checking %s (exists=%s)", client_slug, faiss_path, faiss_path.exists())
     corpora: list[dict] = []
     if faiss_path.exists():
         # Count documents for display
@@ -444,7 +525,7 @@ async def list_corpora(
 
 
 @router.get("/laws")
-async def list_laws(key_row: dict = Depends(get_api_key)):
+async def list_laws():
     """Return the available Czech law corpus entries for the law selector UI."""
     return {"laws": [
         {"id": "obcansky_zakonik", "name": "Občanský zákoník", "name_en": "Civil Code"},
@@ -486,6 +567,30 @@ async def get_last_answer(
     if not last_assistant:
         raise HTTPException(status_code=404, detail="No answer found")
     return {"answer": last_assistant["content"]}
+
+
+@router.get("/conversations/{conversation_id}/status")
+async def get_pipeline_status(
+    conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
+    key_row: dict = Depends(get_api_key),
+):
+    """Return the latest pipeline job status for a conversation.
+
+    Used by the frontend to poll for pipeline progress after SSE connection
+    drops (page reload, chat switch, network interruption). The pipeline
+    continues in the background and updates status in the pipeline_jobs table.
+
+    Returns:
+    - 200 with status object (processing/searching/answering/complete/failed/timeout)
+    - 404 if no pipeline job found for this conversation
+    """
+    from neolex.services.conversation import get_pipeline_job_status
+
+    user_id = key_row["user_id"]
+    result = await get_pipeline_job_status(user_id, conversation_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="No pipeline job found")
+    return result
 
 
 @router.get("/conversations")

@@ -101,17 +101,50 @@ class Settings:
     enterprise_max_corpus_size_mb: int = int(os.environ.get("ENTERPRISE_MAX_CORPUS_SIZE_MB", "10000"))
 
     # --- Stripe ---
-    stripe_secret_key: str = os.environ.get("STRIPE_SECRET_KEY", "")
-    stripe_publishable_key: str = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
-    stripe_webhook_secret: str = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+    # STRIPE_MODE: "test" (default) or "live". When "live", uses STRIPE_LIVE_SECRET_KEY instead.
+    stripe_mode: str = os.environ.get("STRIPE_MODE", "test")
+
+    @property
+    def stripe_secret_key(self) -> str:
+        if self.stripe_mode == "live":
+            return os.environ.get("STRIPE_LIVE_SECRET_KEY", "")
+        return os.environ.get("STRIPE_SECRET_KEY", "")
+
+    @property
+    def stripe_publishable_key(self) -> str:
+        if self.stripe_mode == "live":
+            return os.environ.get("STRIPE_LIVE_PUBLISHABLE_KEY", "")
+        return os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+
+    @property
+    def stripe_webhook_secret(self) -> str:
+        if self.stripe_mode == "live":
+            return os.environ.get("STRIPE_LIVE_WEBHOOK_SECRET", "")
+        return os.environ.get("STRIPE_WEBHOOK_SECRET", "")
     stripe_enabled: bool = os.environ.get("STRIPE_ENABLED", "").lower() in ("1", "true", "yes")
 
     # --- Stripe Price IDs (per plan + interval) ---
-    stripe_price_starter_monthly: str = os.environ.get("STRIPE_PRICE_STARTER_MONTHLY", "")
+    # Automatically selects live or test price IDs based on STRIPE_MODE.
+    @property
+    def stripe_price_starter_monthly(self) -> str:
+        if self.stripe_mode == "live":
+            return os.environ.get("STRIPE_LIVE_PRICE_STARTER_MONTHLY", "")
+        return os.environ.get("STRIPE_PRICE_STARTER_MONTHLY", "")
+
+    @property
+    def stripe_price_pro_monthly(self) -> str:
+        if self.stripe_mode == "live":
+            return os.environ.get("STRIPE_LIVE_PRICE_PRO_MONTHLY", "")
+        return os.environ.get("STRIPE_PRICE_PRO_MONTHLY", "")
+
+    @property
+    def stripe_price_enterprise_monthly(self) -> str:
+        if self.stripe_mode == "live":
+            return os.environ.get("STRIPE_LIVE_PRICE_ENTERPRISE_MONTHLY", "")
+        return os.environ.get("STRIPE_PRICE_ENTERPRISE_MONTHLY", "")
+
     stripe_price_starter_biweekly: str = os.environ.get("STRIPE_PRICE_STARTER_BIWEEKLY", "")
-    stripe_price_pro_monthly: str = os.environ.get("STRIPE_PRICE_PRO_MONTHLY", "")
     stripe_price_pro_biweekly: str = os.environ.get("STRIPE_PRICE_PRO_BIWEEKLY", "")
-    stripe_price_enterprise_monthly: str = os.environ.get("STRIPE_PRICE_ENTERPRISE_MONTHLY", "")
     stripe_price_enterprise_biweekly: str = os.environ.get("STRIPE_PRICE_ENTERPRISE_BIWEEKLY", "")
 
     # --- URLs ---

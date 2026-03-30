@@ -222,3 +222,42 @@ class ConversationDocs(Base):
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
+
+
+class PipelineJob(Base):
+    """Tracks in-flight pipeline jobs so the frontend can poll status after SSE drops.
+
+    One row per query submission. Updated as the pipeline progresses through
+    stages: processing -> searching -> answering -> complete/failed/timeout.
+    Frontend polls GET /conversations/{id}/status to recover state after reload.
+    """
+
+    __tablename__ = "pipeline_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    conversation_id: Mapped[str] = mapped_column(String, nullable=False)
+    question: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="processing"
+    )  # processing | searching | answering | complete | failed | timeout
+    status_detail: Mapped[str | None] = mapped_column(String)
+    answer: Mapped[str | None] = mapped_column(String)
+    sources_json: Mapped[str | None] = mapped_column(String)
+    confidence: Mapped[str | None] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        Index("ix_pipeline_job_user_conv", "user_id", "conversation_id"),
+    )

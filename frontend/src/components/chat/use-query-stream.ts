@@ -9,7 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
 /** Map backend stage codes to user-friendly labels.
  *  Returns null for statuses that should be hidden (e.g. agent:done). */
-function formatStatus(raw: string): string | null {
+export function formatStatus(raw: string): string | null {
     // ── Agent lifecycle ──
     if (raw === "agent:done") return null
     if (raw === "agent:thinking") return "Analyzing your question..."

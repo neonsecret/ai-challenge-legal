@@ -41,9 +41,25 @@ const CZ_QUESTIONS: PresetQuestion[] = [
     },
 ]
 
+const CUSTOM_QUESTIONS: PresetQuestion[] = [
+    {
+        before: "Summarize the key provisions in ",
+        law: "my uploaded documents",
+        after: "",
+        full: "Summarize the key provisions in my uploaded documents",
+    },
+    {
+        before: "What obligations does ",
+        law: "this agreement",
+        after: " impose on the parties?",
+        full: "What obligations does this agreement impose on the parties?",
+    },
+]
+
 const QUESTIONS_BY_JURISDICTION: Record<string, PresetQuestion[]> = {
     difc: DIFC_QUESTIONS,
     cz: CZ_QUESTIONS,
+    custom: CUSTOM_QUESTIONS,
 }
 
 export function getPresetQuestions(jurisdiction: Jurisdiction): PresetQuestion[] {

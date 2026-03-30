@@ -425,7 +425,7 @@ async def scrape_law_page(
                     file_size=size,
                     file_hash=file_hash(dest),
                     status=status,
-                    scraped_at=datetime.now(datetime.timezone.utc).isoformat(),
+                    scraped_at=datetime.now(tz=timezone.utc).isoformat(),
                 )
                 docs.append(doc)
                 stats.laws_downloaded += 1

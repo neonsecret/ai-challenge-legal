@@ -573,8 +573,8 @@ export default function ChatPage() {
                 minHeight: 0,
                 minWidth: 0,
                 position: "relative",
-                overflow: "clip",
-                contain: "layout style",
+                overflow: "hidden",
+                contain: "style",
                 transition: `all ${TIMING.slow} ${EASE.out}`,
                 ...makeGlassPanel(isDark),
             }}>
@@ -584,6 +584,7 @@ export default function ChatPage() {
                     borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                     display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
                     background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                    overflow: "visible", position: "relative", zIndex: 10,
                 }}>
                     <div style={{
                         width: isMobile ? 26 : 30, height: isMobile ? 26 : 30, borderRadius: isMobile ? RADIUS.md : RADIUS.lg,
@@ -632,18 +633,24 @@ export default function ChatPage() {
                                         }
                                         if (!isEnabled) return
 
+                                        // Custom pill always opens the dropdown (no corpus check needed — just UI)
+                                        if (key === "custom") {
+                                            if (!isActive) setJurisdiction(key)
+                                            if (!corporaDropdownOpen) fetchCorpora()
+                                            setCorporaDropdownOpen(o => !o)
+                                            setLawPaneOpen(false)
+                                            return
+                                        }
+
                                         const newCorpus = jurisdictionToCorpus(key)
 
                                         // Already in this chat's corpora, or new chat — just switch
                                         if (currentCorpora.length === 0 || currentCorpora.includes(newCorpus)) {
                                             if (isActive && hasLawPane) {
                                                 setLawPaneOpen(o => !o)
-                                            } else if (isActive && key === "custom") {
-                                                // Toggle corpus dropdown when re-clicking active "Custom" pill
-                                                if (!corporaDropdownOpen) fetchCorpora()
-                                                setCorporaDropdownOpen(o => !o)
                                             } else {
                                                 setJurisdiction(key)
+                                                setCorporaDropdownOpen(false)
                                                 if (hasLawPane) setLawPaneOpen(true)
                                                 else setLawPaneOpen(false)
                                             }
@@ -737,7 +744,9 @@ export default function ChatPage() {
                                         WebkitUserSelect: "none",
                                     }}
                                 >
-                                    {config.name}
+                                    {key === "custom" && isActive && customCorpus
+                                        ? (customCorpus.length > 14 ? customCorpus.slice(0, 14) + "…" : customCorpus)
+                                        : config.name}
                                     {key === "custom" && isActive && (
                                         <ChevronDown
                                             size={9}
@@ -765,14 +774,14 @@ export default function ChatPage() {
                                                     exit={{opacity: 0, y: -4, scale: 0.96}}
                                                     transition={{duration: 0.15, ease: [0.32, 0.72, 0, 1]}}
                                                     style={{
-                                                        position: "absolute",
-                                                        top: "calc(100% + 4px)",
-                                                        left: 0,
-                                                        zIndex: 50,
+                                                        position: "fixed",
+                                                        top: corporaDropdownRef.current ? corporaDropdownRef.current.getBoundingClientRect().bottom + 4 : 0,
+                                                        left: corporaDropdownRef.current ? corporaDropdownRef.current.getBoundingClientRect().left : 0,
+                                                        zIndex: 9999,
                                                         minWidth: 200,
                                                         maxWidth: 280,
                                                         borderRadius: RADIUS.lg,
-                                                        background: isDark ? "rgba(15,22,35,0.85)" : "rgba(255,252,242,0.90)",
+                                                        background: isDark ? "rgba(15,22,35,0.96)" : "rgba(255,252,242,0.97)",
                                                         backdropFilter: GLASS.dark.blur,
                                                         WebkitBackdropFilter: GLASS.dark.blur,
                                                         border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
@@ -833,9 +842,10 @@ export default function ChatPage() {
                                                                             fontWeight: isSelected ? 600 : 400,
                                                                             fontFamily: FONT.sans,
                                                                             background: isSelected
-                                                                                ? isDark ? COLOR.gold.tint : "rgba(201,168,76,0.12)"
+                                                                                ? isDark ? "rgba(201,168,76,0.18)" : "rgba(201,168,76,0.15)"
                                                                                 : "transparent",
                                                                             border: "none",
+                                                                            borderLeft: isSelected ? `3px solid ${COLOR.gold.base}` : "3px solid transparent",
                                                                             color: isSelected
                                                                                 ? isDark ? COLOR.gold.base : "#7a4a00"
                                                                                 : isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
@@ -852,7 +862,7 @@ export default function ChatPage() {
                                                                             }
                                                                         }}
                                                                     >
-                                                                        <FolderOpen size={12} strokeWidth={1.5} style={{flexShrink: 0, opacity: 0.65}}/>
+                                                                        <FolderOpen size={12} strokeWidth={1.5} style={{flexShrink: 0, opacity: isSelected ? 1 : 0.65, color: isSelected ? COLOR.gold.base : "inherit"}}/>
                                                                         <div style={{flex: 1, minWidth: 0}}>
                                                                             <div style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                                                                                 {c.name}
@@ -1376,7 +1386,6 @@ export default function ChatPage() {
                             <button
                                 onClick={() => {
                                     clearError()
-                                    router.replace("/")
                                 }}
                                 style={{
                                     fontSize: TYPE_SCALE.sm, fontWeight: 600, padding: `${SPACE['1']}px ${SPACE['3']}px`,
@@ -1387,7 +1396,7 @@ export default function ChatPage() {
                                     fontFamily: FONT.sans,
                                 }}
                             >
-                                Sign in
+                                Dismiss
                             </button>
                         </div>
                     )}

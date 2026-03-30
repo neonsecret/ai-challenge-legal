@@ -4,10 +4,10 @@ import {motion} from "motion/react";
 
 const pillars = [
     {
-        stat: "< 2s",
-        statLabel: "average response",
-        title: "Instant Research",
-        body: "Find exact clauses in seconds. No more manual page-turning through hundreds of pages.",
+        stat: "4,800+",
+        statLabel: "legal documents indexed",
+        title: "Comprehensive Coverage",
+        body: "Full DIFC law library and court judgments. Search across legislation, case law, and your own documents.",
         icon: (
             <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
                 <circle cx="10" cy="10" r="7" stroke="#C9A84C" strokeWidth="1.5"/>

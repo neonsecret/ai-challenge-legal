@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # Override via LLAMA_QUERY_TASK env var for different domains.
 QWEN_QUERY_TASK = os.environ.get(
     "LLAMA_QUERY_TASK",
-    "Given a criminal law question from Australia, find the relevant legal rule or jury direction",
+    "Given a legal question, find the relevant legal provision, court judgment, or statutory rule",
 )
 QWEN_QUERY_PREFIX = f"Instruct: {QWEN_QUERY_TASK}\nQuery: "
 

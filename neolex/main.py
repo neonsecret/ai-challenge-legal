@@ -82,7 +82,7 @@ async def _cleanup_expired() -> None:
 
     from sqlalchemy import delete as sql_delete, select as sql_select
 
-    from neolex.db.models import AuthToken, ConversationDocs, ConversationMessage, Session
+    from neolex.db.models import AuthToken, ConversationDocs, ConversationMessage, PipelineJob, Session
     from neolex.db.postgres import AsyncSessionLocal
 
     while True:
@@ -116,11 +116,21 @@ async def _cleanup_expired() -> None:
                 else:
                     deleted_docs = 0
 
+                # 4. Pipeline jobs older than 24 hours (ephemeral status tracking)
+                cutoff_24h = now - timedelta(hours=24)
+                result3 = await db.execute(
+                    sql_delete(PipelineJob)
+                    .where(PipelineJob.created_at < cutoff_24h)
+                    .returning(PipelineJob.id)
+                )
+                deleted_jobs = len(result3.all())
+
                 await db.commit()
                 logger.info(
-                    "Cleanup complete: expired sessions/tokens, %d old messages, %d orphaned conv docs",
+                    "Cleanup complete: expired sessions/tokens, %d old messages, %d orphaned conv docs, %d old pipeline jobs",
                     deleted_msgs,
                     deleted_docs,
+                    deleted_jobs,
                 )
         except Exception:
             logger.exception("Periodic cleanup failed")

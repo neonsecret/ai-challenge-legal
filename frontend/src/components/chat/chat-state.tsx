@@ -1,7 +1,7 @@
 "use client"
 
 import {createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode} from "react"
-import {useQueryStream, type Source, type UseQueryStreamReturn} from "./use-query-stream"
+import {useQueryStream, formatStatus, type Source, type UseQueryStreamReturn} from "./use-query-stream"
 import {useJurisdiction} from "@/lib/use-jurisdiction"
 import {jurisdictionToCorpus} from "@/lib/jurisdictions"
 
@@ -60,7 +60,17 @@ function saveSessions(sessions: ChatSession[]) {
     try {
         // Don't persist backend-only stubs (empty messages) to localStorage —
         // they'll be re-fetched from the backend on next mount anyway.
-        const persistable = sessions.filter(s => !s.backendOnly)
+        // Replace pipeline status placeholders with null so recovery triggers on next load.
+        const persistable = sessions
+            .filter(s => !s.backendOnly)
+            .map(s => ({
+                ...s,
+                messages: s.messages.map(m =>
+                    m.role === "assistant" && isPipelineStatusContent(m.content)
+                        ? {...m, content: null}
+                        : m
+                ),
+            }))
         localStorage.setItem(_userKey("neolex_chat_sessions"), JSON.stringify(persistable.slice(0, MAX_SESSIONS)))
     } catch { /* ignore */ }
 }
@@ -85,6 +95,15 @@ function titleFromMessages(msgs: Message[]): string {
     if (!firstUser?.content) return "New chat"
     const text = firstUser.content
     return text.length > 50 ? text.slice(0, 50) + "…" : text
+}
+
+/** Sentinel prefixes for pipeline status messages stored as message content. */
+const PIPELINE_POLLING_PLACEHOLDER = "__polling_pipeline_status__"
+const PIPELINE_STATUS_PREFIX = "__pipeline_status:"
+
+/** Check if a message content string is a pipeline status placeholder (not real content). */
+function isPipelineStatusContent(c: string | null): boolean {
+    return c === PIPELINE_POLLING_PLACEHOLDER || (c != null && c.startsWith(PIPELINE_STATUS_PREFIX))
 }
 
 interface ChatState {
@@ -155,7 +174,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 ...s,
                 messages: s.messages.map(m =>
                     m.role === "assistant" && m.content === null
-                        ? {...m, content: INTERRUPTED}
+                        ? {...m, content: PIPELINE_POLLING_PLACEHOLDER}
                         : m
                 ),
             }
@@ -172,28 +191,55 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             }
         }
 
-        // Poll to recover interrupted answers from server for ALL affected sessions.
-        // Backend may still be processing (60-90s pipeline), so poll every 5s for up to 3 min.
+        // Poll pipeline status for interrupted sessions.
+        // Uses the new /status endpoint which shows real-time pipeline progress,
+        // falling back to /last-answer if no pipeline job is found.
         const interruptedIds = loaded
             .filter(s => s.messages.some(m => m.role === "assistant" && m.content === null))
             .map(s => s.id)
 
-        const applyRecovery = (convId: string, answer: string) => {
+        const applyRecovery = (convId: string, answer: string, sources?: Source[]) => {
+            const isRecoverable = (c: string | null) =>
+                c === INTERRUPTED || isPipelineStatusContent(c)
             setSessions(prev => prev.map(s => {
                 if (s.id !== convId) return s
                 return {
                     ...s,
                     messages: s.messages.map(m =>
-                        m.role === "assistant" && m.content === INTERRUPTED
-                            ? {...m, content: answer}
+                        m.role === "assistant" && isRecoverable(m.content)
+                            ? {...m, content: answer, ...(sources ? {sources} : {})}
                             : m
                     ),
                 }
             }))
             if (convId === lastId) {
                 setMessages(prev => prev.map(m =>
-                    m.role === "assistant" && m.content === INTERRUPTED
-                        ? {...m, content: answer}
+                    m.role === "assistant" && isRecoverable(m.content)
+                        ? {...m, content: answer, ...(sources ? {sources} : {})}
+                        : m
+                ))
+            }
+        }
+
+        const applyStatusUpdate = (convId: string, rawStatusDetail: string) => {
+            // Format the raw backend stage code into a user-friendly label
+            const friendly = formatStatus(rawStatusDetail) ?? rawStatusDetail
+            const statusMsg = `${PIPELINE_STATUS_PREFIX}${friendly}`
+            setSessions(prev => prev.map(s => {
+                if (s.id !== convId) return s
+                return {
+                    ...s,
+                    messages: s.messages.map(m =>
+                        m.role === "assistant" && isPipelineStatusContent(m.content)
+                            ? {...m, content: statusMsg}
+                            : m
+                    ),
+                }
+            }))
+            if (convId === lastId) {
+                setMessages(prev => prev.map(m =>
+                    m.role === "assistant" && isPipelineStatusContent(m.content)
+                        ? {...m, content: statusMsg}
                         : m
                 ))
             }
@@ -201,22 +247,46 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
         for (const convId of interruptedIds) {
             ;(async () => {
-                for (let attempt = 0; attempt < 36; attempt++) {
+                for (let attempt = 0; attempt < 60; attempt++) {
                     if (cancelled) return
                     try {
-                        const r = await fetch(`${API}/api/v1/conversations/${encodeURIComponent(convId)}/last-answer`, {
+                        // Try the pipeline status endpoint first
+                        const r = await fetch(`${API}/api/v1/conversations/${encodeURIComponent(convId)}/status`, {
                             credentials: "include",
                         })
                         if (r.ok) {
                             const data = await r.json()
-                            if (data?.answer) {
-                                if (!cancelled) applyRecovery(convId, data.answer)
+                            if (data.status === "complete" && data.answer) {
+                                if (!cancelled) applyRecovery(convId, data.answer, data.sources)
                                 return
+                            }
+                            if (data.status === "failed" || data.status === "timeout") {
+                                const errorMsg = data.status_detail || "An error occurred. Please try again."
+                                if (!cancelled) applyRecovery(convId, `*${errorMsg}*`)  // italic markdown for error display
+                                return
+                            }
+                            // Still processing — show live status detail
+                            if (data.status_detail && !cancelled) {
+                                applyStatusUpdate(convId, data.status_detail)
+                            }
+                        } else if (r.status === 404) {
+                            // No pipeline job found — fall back to last-answer endpoint
+                            const r2 = await fetch(`${API}/api/v1/conversations/${encodeURIComponent(convId)}/last-answer`, {
+                                credentials: "include",
+                            })
+                            if (r2.ok) {
+                                const data2 = await r2.json()
+                                if (data2?.answer) {
+                                    if (!cancelled) applyRecovery(convId, data2.answer)
+                                    return
+                                }
                             }
                         }
                     } catch { /* network error, keep trying */ }
-                    await new Promise(r => setTimeout(r, 5000))
+                    await new Promise(r => setTimeout(r, 3000))
                 }
+                // Exhausted all attempts — show interrupted message
+                if (!cancelled) applyRecovery(convId, INTERRUPTED)
             })()
         }
 
@@ -424,10 +494,80 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                         } catch { /* network error — session stays empty */ }
                     })()
                 } else {
+                    // Check if this session has a pending assistant message (content is
+                    // null or a polling placeholder). If so, poll the pipeline status
+                    // endpoint to show real-time progress.
+                    const hasPending = session.messages.some(
+                        m => m.role === "assistant" && (m.content === null || isPipelineStatusContent(m.content))
+                    )
                     setMessages(session.messages)
                     setCurrentSessionId(id)
                     if (!stream.isStreaming) {
                         activeAssistantId.current = null
+                    }
+                    if (hasPending) {
+                        const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+                        ;(async () => {
+                            for (let attempt = 0; attempt < 60; attempt++) {
+                                try {
+                                    const r = await fetch(
+                                        `${API}/api/v1/conversations/${encodeURIComponent(id)}/status`,
+                                        {credentials: "include"},
+                                    )
+                                    if (r.ok) {
+                                        const data = await r.json()
+                                        const isReplaceable = (c: string | null) => c === null || isPipelineStatusContent(c)
+                                        if (data.status === "complete" && data.answer) {
+                                            loadingSessionRef.current = true
+                                            setMessages(prev2 => prev2.map(m =>
+                                                m.role === "assistant" && isReplaceable(m.content)
+                                                    ? {...m, content: data.answer, ...(data.sources ? {sources: data.sources} : {})}
+                                                    : m
+                                            ))
+                                            return
+                                        }
+                                        if (data.status === "failed" || data.status === "timeout") {
+                                            const errMsg = data.status_detail || "An error occurred. Please try again."
+                                            loadingSessionRef.current = true
+                                            setMessages(prev2 => prev2.map(m =>
+                                                m.role === "assistant" && isReplaceable(m.content)
+                                                    ? {...m, content: `*${errMsg}*`}
+                                                    : m
+                                            ))
+                                            return
+                                        }
+                                        // Still processing — show live status (format raw stage code)
+                                        if (data.status_detail) {
+                                            const friendly = formatStatus(data.status_detail) ?? data.status_detail
+                                            setMessages(prev2 => prev2.map(m =>
+                                                m.role === "assistant" && isReplaceable(m.content)
+                                                    ? {...m, content: `${PIPELINE_STATUS_PREFIX}${friendly}`}
+                                                    : m
+                                            ))
+                                        }
+                                    } else if (r.status === 404) {
+                                        // No pipeline job — try last-answer as fallback
+                                        const r2 = await fetch(
+                                            `${API}/api/v1/conversations/${encodeURIComponent(id)}/last-answer`,
+                                            {credentials: "include"},
+                                        )
+                                        if (r2.ok) {
+                                            const data2 = await r2.json()
+                                            if (data2?.answer) {
+                                                loadingSessionRef.current = true
+                                                setMessages(prev2 => prev2.map(m =>
+                                                    m.role === "assistant" && (m.content === null || isPipelineStatusContent(m.content))
+                                                        ? {...m, content: data2.answer}
+                                                        : m
+                                                ))
+                                                return
+                                            }
+                                        }
+                                    }
+                                } catch { /* network error, keep trying */ }
+                                await new Promise(resolve => setTimeout(resolve, 3000))
+                            }
+                        })()
                     }
                 }
             }

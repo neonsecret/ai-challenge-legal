@@ -6,12 +6,14 @@ Cross-user access is structurally impossible: every query filters by user_id.
 """
 from __future__ import annotations
 
+import json as _json
 import logging
 import uuid
+from datetime import datetime, timezone
 
-from sqlalchemy import select, func, case
+from sqlalchemy import select, func, case, update as sql_update
 
-from neolex.db.models import ConversationMessage
+from neolex.db.models import ConversationMessage, PipelineJob
 from neolex.db.postgres import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -282,3 +284,152 @@ async def save_turn(
             await session.commit()
     except Exception:
         logger.exception("Failed to save conversation turn for conv=%s", conversation_id)
+
+
+# ---------------------------------------------------------------------------
+# Pipeline job tracking — persistent status for SSE recovery after page reload
+# ---------------------------------------------------------------------------
+
+
+async def create_pipeline_job(
+    user_id: str,
+    conversation_id: str,
+    question: str,
+) -> uuid.UUID | None:
+    """Create a pipeline_jobs row with status='processing'. Returns job ID or None on error."""
+    try:
+        uid = uuid.UUID(str(user_id))
+        job_id = uuid.uuid4()
+        async with AsyncSessionLocal() as session:
+            session.add(PipelineJob(
+                id=job_id,
+                user_id=uid,
+                conversation_id=conversation_id,
+                question=question[:2000],
+                status="processing",
+                status_detail="Processing...",
+            ))
+            await session.commit()
+        return job_id
+    except Exception:
+        logger.exception("Failed to create pipeline job for conv=%s", conversation_id)
+        return None
+
+
+async def update_pipeline_job_status(
+    job_id: uuid.UUID,
+    *,
+    status: str | None = None,
+    status_detail: str | None = None,
+) -> None:
+    """Update the status/status_detail of a pipeline job. Fire-and-forget safe."""
+    try:
+        values: dict = {"updated_at": datetime.now(timezone.utc)}
+        if status is not None:
+            values["status"] = status
+        if status_detail is not None:
+            values["status_detail"] = status_detail
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                sql_update(PipelineJob)
+                .where(PipelineJob.id == job_id)
+                .values(**values)
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("Failed to update pipeline job %s", job_id)
+
+
+async def complete_pipeline_job(
+    job_id: uuid.UUID,
+    *,
+    answer: str,
+    sources_json: str,
+    confidence: str,
+) -> None:
+    """Mark a pipeline job as complete with answer data."""
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                sql_update(PipelineJob)
+                .where(PipelineJob.id == job_id)
+                .values(
+                    status="complete",
+                    status_detail=None,
+                    answer=answer[:8000],
+                    sources_json=sources_json,
+                    confidence=confidence,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("Failed to complete pipeline job %s", job_id)
+
+
+async def fail_pipeline_job(
+    job_id: uuid.UUID,
+    *,
+    status: str = "failed",
+    detail: str | None = None,
+) -> None:
+    """Mark a pipeline job as failed or timed out."""
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                sql_update(PipelineJob)
+                .where(PipelineJob.id == job_id)
+                .values(
+                    status=status,
+                    status_detail=detail,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
+            await session.commit()
+    except Exception:
+        logger.exception("Failed to mark pipeline job %s as %s", job_id, status)
+
+
+async def get_pipeline_job_status(
+    user_id: str,
+    conversation_id: str,
+) -> dict | None:
+    """Return the latest pipeline job status for a user+conversation.
+
+    Returns a dict with status, status_detail, answer, sources, confidence,
+    or None if no job found.
+    """
+    try:
+        uid = uuid.UUID(str(user_id))
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(PipelineJob)
+                .where(
+                    PipelineJob.user_id == uid,
+                    PipelineJob.conversation_id == conversation_id,
+                )
+                .order_by(PipelineJob.created_at.desc())
+                .limit(1)
+            )
+            job = result.scalar_one_or_none()
+            if not job:
+                return None
+
+            sources = None
+            if job.sources_json:
+                try:
+                    sources = _json.loads(job.sources_json)
+                except (ValueError, TypeError):
+                    sources = None
+
+            return {
+                "status": job.status,
+                "status_detail": job.status_detail,
+                "answer": job.answer,
+                "sources": sources,
+                "confidence": job.confidence,
+                "created_at": job.created_at.isoformat() if job.created_at else None,
+            }
+    except Exception:
+        logger.exception("Failed to get pipeline job status for conv=%s", conversation_id)
+        return None

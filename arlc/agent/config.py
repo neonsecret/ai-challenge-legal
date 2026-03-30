@@ -21,7 +21,7 @@ WEB_SEARCH_ENABLED: bool = os.environ.get("AGENT_WEB_SEARCH_ENABLED", "true").lo
 MAX_WEB_SOURCES: int = int(os.environ.get("AGENT_MAX_WEB_SOURCES", "15"))
 
 # --- Timeouts ---
-AGENT_TIMEOUT_SECONDS: int = int(os.environ.get("AGENT_TIMEOUT_SECONDS", "120"))
+AGENT_TIMEOUT_SECONDS: int = int(os.environ.get("AGENT_TIMEOUT_SECONDS", "300"))
 
 # --- LLM ---
 LLM_MODEL: str = os.environ.get("AGENT_LLM_MODEL", "claude-sonnet-4-6")

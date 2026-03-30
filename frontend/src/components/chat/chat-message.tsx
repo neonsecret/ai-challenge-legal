@@ -364,7 +364,12 @@ export function ChatMessage({
             {/* Answer card */}
             <div style={answerCardStyle}>
                 <div style={{padding: SPACE[4]}}>
-                    {content ? (
+                    {content === "__polling_pipeline_status__" ? (
+                        <StreamingStatus status="Processing..." isDark={isDark}/>
+                    ) : content?.startsWith("__pipeline_status:") ? (
+                        <StreamingStatus status={content.slice("__pipeline_status:".length)} isDark={isDark}/>
+                    ) : content ? (() => {
+                        return (
                         <div className="group relative">
                             <div className={isDark ? DARK_PROSE : WARM_PROSE}>
                                 <ReactMarkdown
@@ -414,7 +419,8 @@ export function ChatMessage({
                                 {copied ? <Check className="size-3.5"/> : <Copy className="size-3.5"/>}
                             </button>
                         </div>
-                    ) : isStreaming ? (
+                        )
+                    })() : isStreaming ? (
                         <StreamingStatus status={streamingStatus} isDark={isDark}/>
                     ) : (
                         <p style={{
