@@ -83,7 +83,22 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
         )
         for cp in result.get("chunk_pages", [])
     ]
-    answer = result.get("answer")
+    raw_answer = result.get("answer")
+    # Strip <analysis>...</analysis> and <answer>...</answer> XML wrappers
+    # the LLM may produce. Keep only the content inside <answer> if present.
+    answer = raw_answer
+    if isinstance(raw_answer, str):
+        # Extract <answer> content if present
+        answer_match = re.search(r"<answer>(.*?)$", raw_answer, re.DOTALL)
+        if answer_match:
+            answer = answer_match.group(1)
+            # Strip closing tag if present
+            answer = re.sub(r"</answer>\s*$", "", answer)
+        # Remove any remaining <analysis>...</analysis> blocks
+        answer = re.sub(r"<analysis>.*?</analysis>", "", answer, flags=re.DOTALL)
+        # Clean up leftover tags
+        answer = re.sub(r"</?(?:analysis|answer)>", "", answer)
+        answer = answer.strip() or raw_answer  # fallback to raw if stripping emptied it
     model_name = result.get("model_name", "unknown")
     if answer is None:
         confidence = "not_found"

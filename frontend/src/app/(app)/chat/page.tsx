@@ -193,7 +193,7 @@ export default function ChatPage() {
         sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
-    const {answer, sources, confidence, isStreaming, streamingStatus, error, clearError} = stream
+    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, error, clearError} = stream
 
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[]; focusDocId?: string; focusPage?: number; focusSeq: number }>({answer: "", sources: [], focusSeq: 0})
@@ -240,6 +240,10 @@ export default function ChatPage() {
 
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const inputFocusRef = useRef<(() => void) | null>(null)
+    /** Track whether the user is near the bottom of the scroll area.
+     *  Updated on scroll events; used to decide if auto-scroll should fire. */
+    const isNearBottomRef = useRef(true)
+    const prevMessageCountRef = useRef(0)
 
     // Redirect to landing if no valid session cookie
     useEffect(() => {
@@ -340,9 +344,28 @@ export default function ChatPage() {
         document.title = "Vitreon Legal — Your AI Legal Counsel"
     }, [isStreaming, messages])
 
-    // Auto-scroll
+    // Track scroll position to decide whether auto-scroll should fire
     useEffect(() => {
-        if (scrollAreaRef.current) scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight
+        const el = scrollAreaRef.current
+        if (!el) return
+        const NEAR_BOTTOM_PX = 120
+        const onScroll = () => {
+            isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX
+        }
+        el.addEventListener("scroll", onScroll, {passive: true})
+        return () => el.removeEventListener("scroll", onScroll)
+    }, [])
+
+    // Auto-scroll: always scroll when a new message is added (user sent a question),
+    // otherwise only scroll when the user is already near the bottom.
+    useEffect(() => {
+        const el = scrollAreaRef.current
+        if (!el) return
+        const newMessageAdded = messages.length > prevMessageCountRef.current
+        prevMessageCountRef.current = messages.length
+        if (newMessageAdded || isNearBottomRef.current) {
+            el.scrollTop = el.scrollHeight
+        }
     }, [messages])
 
     // Cmd+K focus
@@ -1335,6 +1358,8 @@ export default function ChatPage() {
                                     confidence={m.confidence}
                                     isStreaming={isStreaming && m.id === activeAssistantId.current}
                                     streamingStatus={isStreaming && m.id === activeAssistantId.current ? streamingStatus : null}
+                                    streamingProgress={isStreaming && m.id === activeAssistantId.current ? streamingProgress : null}
+                                    streamingThinkingPreview={isStreaming && m.id === activeAssistantId.current ? thinkingPreview : null}
                                     trace={m.trace}
                                     onSourceClick={handleSourceClick}
                                     isDark={isDark}

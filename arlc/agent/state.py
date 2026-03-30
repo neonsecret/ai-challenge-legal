@@ -70,6 +70,14 @@ class AgentState(TypedDict):
         For audit logging.
     conversation_id : str
         For conversation persistence / session tracking.
+    cached_target_docs : list[str] | None
+        Router-identified target document IDs from the first search call.
+        Reserved for future use — currently NOT populated because the DIFC
+        router is query-dependent (it extracts case IDs, law names, and
+        article numbers from the search query text, which changes per LLM
+        iteration).  If the router is ever refactored to use only the
+        original user question, this field enables skipping redundant
+        router calls on subsequent searches within the same agent turn.
     _on_status : Callable[[str], None] | None
         Per-request status callback.  Passed through state (not a graph
         channel) so the search_node can emit SSE status events.
@@ -84,4 +92,5 @@ class AgentState(TypedDict):
     conversation_id: str
     web_sources: NotRequired[list[dict]]
     use_internet: NotRequired[bool]
+    cached_target_docs: NotRequired[list[str] | None]
     _on_status: NotRequired[Callable[[str], None] | None]

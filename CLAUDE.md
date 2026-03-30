@@ -17,6 +17,7 @@
 13. Do not remove existing UI content (source text, markdown formatting, etc.) unless explicitly asked. Do not over-dim, over-simplify, or strip styling during refactors. We need to follow the UI style. 
 14. All risky changes have to be analyzed to not cause regressions.
 15. Never roll your own SSE parser or protocol handler — use battle-tested libraries (e.g. `eventsource-parser`); never trust per-file code reviews to catch integration bugs — always include an API contract reviewer that checks backend schemas against frontend interfaces, and an E2E tester that actually calls endpoints.
+16. Never re-order, re-sort, or relabel accumulated documents — the LLM sees [DOC-N] labels during tool calls and the same labels must stay consistent in the system prompt and final source mapping. Sorting by score, deduplication, or any reindexing breaks the citation chain. Speed optimizations must never change what the LLM sees or how its output maps to sources — always run a benchmark before and after.
 
 ## Infrastructure
 

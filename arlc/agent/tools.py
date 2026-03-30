@@ -27,6 +27,7 @@ def execute_search(
     exclude_doc_pages: set[tuple[str, int]],
     target_new: int = SEARCH_TOP_K,
     on_status: Callable[[str], None] | None = None,
+    cached_target_docs: list[str] | None = None,
 ) -> list[SourceDocument]:
     """Search the legal corpus, always returning fresh results.
 
@@ -38,12 +39,34 @@ def execute_search(
 
     For DIFC, the router is run first to identify target documents.
     For other corpora (Czech, custom), retrieval is corpus-wide.
+
+    Parameters
+    ----------
+    cached_target_docs:
+        If provided, skip the router call and use these target doc IDs
+        directly.  **Not currently used by the graph** — the DIFC router
+        extracts case IDs, law names, and article references from the
+        ``query`` text via regex, and the query changes per agent iteration
+        (the LLM rewrites search queries).  Caching the first router
+        result would miss entities referenced only in later queries,
+        producing incorrect routing.  This parameter is reserved for future
+        use if the router is ever refactored to separate entity extraction
+        from the query string (e.g., routing based on the original user
+        question only).
     """
     from arlc.retriever import retrieve_pages, PageResult
 
-    # DIFC: run the deterministic router for targeted retrieval
-    target_docs = None
-    if corpus == "difc":
+    # DIFC: run the deterministic router for targeted retrieval.
+    # NOTE on caching: the router uses regex extraction on the query string
+    # to find case IDs (e.g. "CFI 057/2025"), law names ("Employment Law"),
+    # and article references ("Article 14").  Since the LLM generates
+    # different query strings per search iteration, different queries will
+    # match different entities — caching the first result would miss
+    # entities mentioned only in later queries.  We therefore always run
+    # the router fresh.  If cached_target_docs is provided, it is used
+    # as-is (the caller is responsible for correctness).
+    target_docs = cached_target_docs
+    if target_docs is None and corpus == "difc":
         try:
             from arlc.router import route
             route_result = route(query, SEARCH_ANSWER_TYPE)

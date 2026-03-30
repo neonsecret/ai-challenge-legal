@@ -230,6 +230,7 @@ def build_agent_graph():
                     corpus=state["corpus"],
                     law_filters=state["selected_laws"] or None,
                     exclude_doc_pages=exclude,
+                    on_status=on_status,
                 )
             except Exception:
                 logger.exception("[agent] search failed: query=%s", query[:80])

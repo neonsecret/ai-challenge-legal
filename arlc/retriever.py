@@ -184,7 +184,6 @@ def get_reranker():
     Failover chain:
     1. Remote llama-server (RERANKER_SERVER_URL, CUDA on RTX 3070) — ~1.7s for 108 docs
     2. Local llama-server (RERANKER_LOCAL_URL, Metal) — ~2.1s for 40 docs
-    3. Local PyTorch (MPS) — ~38s for 40 docs (last resort)
     """
     global _reranker
     if _reranker is None:
@@ -206,6 +205,18 @@ def get_reranker():
     return _reranker
 
 
+def _demote_remote_reranker():
+    """Circuit breaker: swap primary reranker to local after remote failure.
+
+    Called when the remote reranker fails mid-query. Prevents subsequent
+    calls from waiting for TCP timeouts on an unreachable host.
+    """
+    global _reranker
+    if _local_reranker is not None and _reranker is not _local_reranker:
+        logger.warning("Circuit breaker: demoting remote reranker to local for remaining queries")
+        _reranker = _local_reranker
+
+
 def get_local_reranker():
     """Get the local reranker (for mid-query fallback when remote fails)."""
     if _local_reranker is not None:
@@ -224,7 +235,7 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=
         return chunks
 
     RERANK_TIMEOUT = 180  # seconds — MPS is slow (~50s/batch for Qwen3-0.6B)
-    pairs = _format_reranker_pairs([(question, chunk["text"][:2000]) for chunk in chunks])
+    pairs = _format_reranker_pairs([(question, chunk["text"][:4000]) for chunk in chunks])
 
     def _progress(done, total):
         if on_status:
@@ -233,20 +244,19 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=
     # Try primary reranker (remote if configured, else local)
     ranker = get_reranker()
     try:
-        with _reranker_lock:
-            scores = ranker.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
+        scores = ranker.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
         indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
         return [chunks[i] for i, _ in indexed[:top_k]]
     except Exception as e:
-        # If primary was remote, try local PyTorch as fallback
+        # If primary was remote, try local as fallback + circuit-break for remaining calls
         local = get_local_reranker()
         if local is not ranker:
+            _demote_remote_reranker()
             logger.warning("Primary reranker failed (%s), falling back to local", e)
             if on_status:
                 on_status("retrieving:reranking passages")
             try:
-                with _reranker_lock:
-                    scores = local.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
+                scores = local.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
                 indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
                 return [chunks[i] for i, _ in indexed[:top_k]]
             except Exception as e2:
@@ -485,6 +495,24 @@ def _faiss_get_by_ids(chunk_ids: list[str], corpus: str = "difc") -> dict:
                 meta["entities"] = entry["entities"]
             metadatas.append(meta)
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
+
+
+def _faiss_chunk_id_to_pos(corpus: str = "difc") -> dict[str, int]:
+    """Return a chunk_id -> FAISS index position mapping (cached per corpus).
+
+    Used by _dense_page_scores() to reconstruct pre-computed embeddings
+    from the FAISS index instead of re-embedding through the model.
+    """
+    cache_attr = f"_cid_pos_map_{corpus}"
+    if hasattr(_faiss_chunk_id_to_pos, cache_attr):
+        return getattr(_faiss_chunk_id_to_pos, cache_attr)
+    _, metadata = _load_faiss(corpus=corpus)
+    pos_map = {}
+    for i, entry in enumerate(metadata):
+        cid = entry.get("chunk_id", f"{entry['doc_id']}_{entry['page']}")
+        pos_map[cid] = i
+    setattr(_faiss_chunk_id_to_pos, cache_attr, pos_map)
+    return pos_map
 
 
 def _use_faiss(corpus: str = "difc") -> bool:
@@ -1185,7 +1213,7 @@ def build_bm25_doc_index():
     return _bm25_doc_index, _bm25_doc_ids
 
 
-def generate_hyde_passage(question: str) -> str | None:
+def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
     """Generate a hypothetical document passage that would answer the question (HyDE).
 
     Embeds this passage instead of the raw question for better semantic alignment with
@@ -1194,14 +1222,29 @@ def generate_hyde_passage(question: str) -> str | None:
 
     Uses the configured LLM backend (litellm/vertex/anthropic) via arlc.llm.router.
     Returns None silently on any error so HyDE is always best-effort.
+
+    Parameters
+    ----------
+    question : str
+        The user's legal question.
+    corpus : str
+        Active corpus identifier. Controls the domain used in the HyDE prompt
+        so the generated passage matches the target legal domain.
     """
+    # Map corpus to a domain label for the HyDE prompt
+    _HYDE_DOMAIN_LABELS = {
+        "difc": "DIFC (Dubai International Financial Centre) law",
+        "czech": "Czech law",
+    }
+    domain = _HYDE_DOMAIN_LABELS.get(corpus, "legal")
+
     try:
         from arlc.llm.router import _call_backend
         text, *_ = _call_backend(
             system_prompt="You are a legal document writer. Write only document text, no preamble.",
             user_message=(
-                f"Write a single concise paragraph (3-4 sentences) from a Victorian "
-                f"criminal law document that directly answers this question: {question}"
+                f"Write a single concise paragraph (3-4 sentences) from a {domain} "
+                f"document that directly answers this question: {question}"
             ),
             max_tokens=150,
             model=_HAIKU_MODEL,
@@ -1239,9 +1282,9 @@ USE_MULTI_SIGNAL_FUSION = True  # Enable/disable multi-signal document fusion
 PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
 
 # Adaptive CE pre-filter: scale pool size with document size instead of hard-capping at 50.
-# For large docs (>50 chunks), top-50 covers only a fraction — may miss correct pages.
-# Formula: min(100, max(50, n_chunks // 2)) — doubles coverage for medium docs, caps at 100.
-# Set to False to restore original fixed-50 behaviour.
+# Formula: min(100, max(50, n_chunks // 2)) — covers ~half of medium docs,
+# caps at 100 to keep Qwen3-Reranker-0.6B latency acceptable.
+# Set to False to use fixed-50 fallback.
 CE_ADAPTIVE_PREFILTER = os.environ.get("CE_ADAPTIVE_PREFILTER", "1") != "0"
 
 # BM25 injection: inject top BM25-matched chunks from the target doc into the CE pool,
@@ -1603,7 +1646,7 @@ def _extract_article_filter(question: str) -> str | None:
     return None
 
 
-def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_type: str = "") -> list[dict]:
+def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_type: str = "", corpus: str = "difc") -> list[dict]:
     """
     Hybrid retrieval: keyword match + BM25 + vector search with RRF.
 
@@ -1776,7 +1819,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
         # HyDE: generate a hypothetical passage and embed it for additional signal
         # Only for free_text questions — adds ~500ms Haiku call overhead, worth it for LLM-judged answers
         hyde_ranking = []
-        hyde_passage = generate_hyde_passage(question) if use_hyde else None
+        hyde_passage = generate_hyde_passage(question, corpus=corpus) if use_hyde else None
         if hyde_passage:
             try:
                 hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
@@ -2133,26 +2176,70 @@ def _fair_case_select(
     return selected
 
 
-def _dense_page_scores(question: str, doc_id: str, chunks: list[dict]) -> dict[int, float]:
+def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
+                        cached_query_emb=None,
+                        corpus: str = "difc") -> dict[int, float]:
     """Rank pages within a document using dense embedding similarity only.
 
     # Dense-only page ranking insight from IAS Partners (guy4)
     Returns dict of page_number -> max_similarity_score.
+
+    Uses pre-computed embeddings from the FAISS index via reconstruct()
+    instead of re-embedding through the model. For a 389-chunk document
+    this reduces scoring time from 334+ seconds to <0.1 seconds.
+
+    Falls back to model.encode() if any chunk_id is missing from the FAISS
+    index (e.g. index was rebuilt but chunks_by_doc cache is stale).
+
+    cached_query_emb: pre-computed query embedding to avoid redundant
+    embed_query() calls when scoring multiple documents for the same question.
     """
     if not chunks:
         return {}
 
-    query_emb = embed_query(question)
-    model = get_embedding_model()
+    query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
 
-    # Embed all chunk texts for this doc (no prefix — documents are indexed without one)
-    chunk_texts = [chunk["text"][:2000] for chunk in chunks]
-    with _embedding_lock:
-        chunk_embeddings = model.encode(chunk_texts, normalize_embeddings=True)
+    # Try FAISS reconstruction first — instant memory read, no model inference.
+    chunk_embeddings = None
+    if _use_faiss(corpus=corpus):
+        try:
+            faiss_index, _ = _load_faiss(corpus=corpus)
+            cid_to_pos = _faiss_chunk_id_to_pos(corpus=corpus)
 
-    import numpy as np  # noqa: E402 — lazy import to avoid startup cost
-    query_arr = np.array(query_emb)
-    similarities = chunk_embeddings @ query_arr
+            # Look up FAISS positions for all chunks
+            positions = []
+            for chunk in chunks:
+                cid = chunk.get("chunk_id")
+                if cid is None or cid not in cid_to_pos:
+                    # chunk_id missing from FAISS — fall back to model.encode()
+                    positions = None
+                    break
+                positions.append(cid_to_pos[cid])
+
+            if positions is not None:
+                # Reconstruct embeddings from FAISS index (pure memory read)
+                reconstructed = np.zeros(
+                    (len(positions), faiss_index.d), dtype=np.float32
+                )
+                for i, pos in enumerate(positions):
+                    faiss_index.reconstruct(pos, reconstructed[i])
+                chunk_embeddings = reconstructed
+        except Exception as e:
+            logger.warning(
+                "FAISS reconstruct failed for doc %s (%s), falling back to model.encode()",
+                doc_id, e,
+            )
+
+    # Fallback: re-embed through the model (slow but always correct)
+    if chunk_embeddings is None:
+        model = get_embedding_model()
+        chunk_texts = [chunk["text"][:2000] for chunk in chunks]
+        with _embedding_lock:
+            chunk_embeddings = model.encode(chunk_texts, normalize_embeddings=True)
+
+    query_arr = np.array(query_emb, dtype=np.float32)
+    with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
+        similarities = chunk_embeddings @ query_arr
 
     page_scores: dict[int, float] = {}
     for chunk, sim in zip(chunks, similarities):
@@ -2230,6 +2317,16 @@ def _retrieve_pages_targeted(
 
     all_page_scores: list[PageResult] = []
 
+    def _rerank_progress(done, total):
+        if on_status:
+            on_status(f"retrieving:reranking passages ({done}/{total})")
+
+    # Pre-cache query embedding and BM25 tokenization before the per-document
+    # loop. Both are pure functions of `question` — recomputing inside the loop
+    # wastes ~200ms per document on embedding and ~50ms on tokenization.
+    _cached_query_emb = embed_query(question) if not PAGE_RANK_USE_BM25 else None
+    _cached_q_tokens = legal_tokenize_queries(question) if PAGE_RANK_BM25_INJECTION else None
+
     if on_status:
         on_status(f"retrieving:scoring {len(target_doc_ids)} documents")
 
@@ -2264,7 +2361,8 @@ def _retrieve_pages_targeted(
         # scoring, then cross-encoder reranking on top candidates only.
         if not PAGE_RANK_USE_BM25:
             # Phase 1: Dense similarity scoring for all chunks
-            dense_scores = _dense_page_scores(question, doc_id, doc_chunks)
+            dense_scores = _dense_page_scores(question, doc_id, doc_chunks,
+                                              cached_query_emb=_cached_query_emb)
             # Phase 2: Select top candidate chunks by dense score, then cross-encoder rerank
             chunk_dense = []
             for chunk in doc_chunks:
@@ -2272,7 +2370,6 @@ def _retrieve_pages_targeted(
                 chunk_dense.append((dense_scores.get(pg, 0.0), chunk))
             chunk_dense.sort(key=lambda x: x[0], reverse=True)
             # Adaptive CE pre-filter: scale pool with doc size (Technique 5).
-            # Fixed-50 was a latency compromise for competition TTFT bonus — no longer needed.
             # Formula: min(100, max(50, n_chunks // 2)) — covers ~half of medium docs,
             # caps at 100 to keep Qwen3-Reranker-0.6B latency acceptable.
             if CE_ADAPTIVE_PREFILTER:
@@ -2288,7 +2385,7 @@ def _retrieve_pages_targeted(
             if PAGE_RANK_BM25_INJECTION:
                 try:
                     _bm25_idx, _bm25_ids = build_bm25_index()
-                    _q_tokens = legal_tokenize_queries(question)
+                    _q_tokens = _cached_q_tokens
                     _doc_cid_set = {c["chunk_id"] for c in doc_chunks}
                     _pool_cid_set = {c["chunk_id"] for c in top_chunks}
                     _bm25_results, _ = _bm25_idx.retrieve(_q_tokens, k=min(800, len(_bm25_ids)))
@@ -2309,21 +2406,20 @@ def _retrieve_pages_targeted(
                 except Exception as _inj_err:
                     pass  # Injection is best-effort; never block page scoring
 
-            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in top_chunks])
+            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:4000]) for chunk in top_chunks])
             if on_status:
                 on_status(f"retrieving:reranking {len(pairs)} passages")
             try:
-                with _reranker_lock:
-                    ce_scores = ranker.predict(pairs, timeout=180)
+                ce_scores = ranker.predict(pairs, timeout=180, on_progress=_rerank_progress)
             except Exception as e:
                 local = get_local_reranker()
                 if local is not ranker:
+                    _demote_remote_reranker()
                     logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
                     if on_status:
                         on_status("retrieving:reranking passages")
                     try:
-                        with _reranker_lock:
-                            ce_scores = local.predict(pairs, timeout=180)
+                        ce_scores = local.predict(pairs, timeout=180, on_progress=_rerank_progress)
                     except Exception as e2:
                         logger.warning("Local reranking also failed for %s (%s), using dense scores", doc_id, e2)
                         ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
@@ -2341,23 +2437,22 @@ def _retrieve_pages_targeted(
                     page_scores[page_num] = score_val
         else:
             # Original: Score all chunks against the question using cross-encoder
-            # Use 2000 chars to capture more legal context than the default 1000
+            # Use 4000 chars to match reranker context window (-c 4096) and capture full legal context
             # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
-            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:2000]) for chunk in doc_chunks])
+            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:4000]) for chunk in doc_chunks])
             if on_status:
                 on_status(f"retrieving:reranking {len(pairs)} passages")
             try:
-                with _reranker_lock:
-                    scores = ranker.predict(pairs, timeout=180)
+                scores = ranker.predict(pairs, timeout=180, on_progress=_rerank_progress)
             except Exception as e:
                 local = get_local_reranker()
                 if local is not ranker:
+                    _demote_remote_reranker()
                     logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
                     if on_status:
                         on_status("retrieving:reranking passages")
                     try:
-                        with _reranker_lock:
-                            scores = local.predict(pairs, timeout=180)
+                        scores = local.predict(pairs, timeout=180, on_progress=_rerank_progress)
                     except Exception as e2:
                         logger.warning("Local reranking also failed for %s (%s), using uniform scores", doc_id, e2)
                         scores = [0.5] * len(doc_chunks)

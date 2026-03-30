@@ -3,7 +3,8 @@
 import {useEffect, useRef, useState, useCallback} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {Sparkles, Search, Globe, BookMarked, PenLine, Wifi, Loader2} from "lucide-react"
-import {STEP_COLOR, TIMING, FONT, TYPE_SCALE, SPACE, GLASS, TEXT_DARK, TEXT_LIGHT} from "@/lib/design-tokens"
+import {STEP_COLOR, TIMING, FONT, TYPE_SCALE, SPACE, GLASS, TEXT_DARK, TEXT_LIGHT, RADIUS} from "@/lib/design-tokens"
+import type {Progress} from "./use-query-stream"
 
 /** Cubic-bezier values from EASE.out as a tuple for motion/react */
 const MOTION_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1]
@@ -19,6 +20,8 @@ const ELAPSED_INTERVAL_MS = 1000
 
 interface StreamingStatusProps {
     status?: string | null
+    progress?: Progress | null
+    thinkingPreview?: string | null
     isDark?: boolean
 }
 
@@ -32,7 +35,7 @@ function getIconForStatus(label: string): { icon: typeof Sparkles; name: string;
     if (lower.includes("analyzing") || lower.includes("thinking")) {
         return {icon: Sparkles, name: "sparkles", color: STEP_COLOR.thinking}
     }
-    if (lower.includes("searching legal") || lower.includes("corpus") || lower.includes("eranking") || lower.includes("andidate") || lower.includes("mbedding") || lower.includes("ybrid")) {
+    if (lower.includes("searching legal") || lower.includes("corpus") || lower.includes("reading legal") || lower.includes("evaluating") || lower.includes("broadening")) {
         return {icon: Search, name: "search", color: STEP_COLOR.search}
     }
     if (lower.includes("web")) {
@@ -65,7 +68,7 @@ function formatElapsed(seconds: number): string {
 
 const DOT_CYCLE = [".", "..", "..."] as const
 
-export function StreamingStatus({status, isDark = false}: StreamingStatusProps) {
+export function StreamingStatus({status, progress, thinkingPreview, isDark = false}: StreamingStatusProps) {
     const label = status ?? "Thinking\u2026"
     const [pastSteps, setPastSteps] = useState<StepEntry[]>([])
     const prevLabel = useRef(label)
@@ -89,22 +92,12 @@ export function StreamingStatus({status, isDark = false}: StreamingStatusProps) 
     useEffect(() => {
         if (label !== prevLabel.current) {
             const prevInfo = getIconForStatus(prevLabel.current)
-            // For reranking progress updates, replace the last reranking step
-            const prevLower = prevLabel.current.toLowerCase()
-            const currLower = label.toLowerCase()
-            if (currLower.includes("eranking") && prevLower.includes("eranking")) {
-                setPastSteps((prev) => {
-                    if (prev.length > 0 && prev[prev.length - 1].label.toLowerCase().includes("eranking")) {
-                        return [...prev.slice(0, -1), {label: prevLabel.current, color: prevInfo.color}]
-                    }
-                    return [...prev.slice(-5), {label: prevLabel.current, color: prevInfo.color}]
-                })
-            } else {
-                setPastSteps((prev) => {
-                    if (prev.length > 0 && prev[prev.length - 1].label === prevLabel.current) return prev
-                    return [...prev.slice(-5), {label: prevLabel.current, color: prevInfo.color}]
-                })
-            }
+            // Don't duplicate past steps if the label is the same (e.g. progress updates
+            // on "Reading legal documents..." keep the same label)
+            setPastSteps((prev) => {
+                if (prev.length > 0 && prev[prev.length - 1].label === prevLabel.current) return prev
+                return [...prev.slice(-5), {label: prevLabel.current, color: prevInfo.color}]
+            })
             prevLabel.current = label
             resetStepTimers()
         }
@@ -222,6 +215,85 @@ export function StreamingStatus({status, isDark = false}: StreamingStatusProps) 
                     )}
                 </AnimatePresence>
             </div>
+
+            {/* Progress bar — uses opacity + translateY instead of height: "auto"
+               which is unreliable in motion/react v12 and can cause the bar to
+               render with zero height while the counter text overflows visibly. */}
+            <AnimatePresence>
+                {progress && progress.total > 0 && (
+                    <motion.div
+                        initial={{opacity: 0, y: -4}}
+                        animate={{opacity: 1, y: 0}}
+                        exit={{opacity: 0, y: -4}}
+                        transition={{duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT}}
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: SPACE["1"],
+                            paddingLeft: 26, // align with text (18px icon + 8px gap)
+                            willChange: "opacity, transform",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <div style={{
+                            width: "100%",
+                            height: 4,
+                            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                            borderRadius: RADIUS.full,
+                            overflow: "hidden",
+                        }}>
+                            <motion.div
+                                key={`bar-${progress.total}`}
+                                initial={{width: 0}}
+                                animate={{width: `${Math.min(100, (progress.current / progress.total) * 100)}%`}}
+                                transition={{duration: 0.4, ease: MOTION_EASE_OUT}}
+                                style={{
+                                    height: "100%",
+                                    background: iconColor,
+                                    borderRadius: RADIUS.full,
+                                    willChange: "width",
+                                }}
+                            />
+                        </div>
+                        <span style={{
+                            fontSize: TYPE_SCALE.xs,
+                            fontFamily: FONT.mono,
+                            color: dimTextColor,
+                            whiteSpace: "nowrap",
+                        }}>
+                            {progress.current}/{progress.total}
+                        </span>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Thinking preview — live intermediate reasoning from the LLM */}
+            <AnimatePresence>
+                {thinkingPreview && !progress && (
+                    <motion.div
+                        initial={{opacity: 0}}
+                        animate={{opacity: 1}}
+                        exit={{opacity: 0}}
+                        transition={{duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT}}
+                        style={{
+                            paddingLeft: 26,
+                            fontSize: TYPE_SCALE.xs,
+                            fontFamily: FONT.sans,
+                            fontStyle: "italic",
+                            color: dimTextColor,
+                            lineHeight: 1.4,
+                            maxWidth: 320,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                        }}
+                    >
+                        {thinkingPreview}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Past steps */}
             <AnimatePresence>

@@ -181,7 +181,7 @@ async def query(
         logger.error("Pipeline timeout for question: %.80s", body.question)
         raise HTTPException(
             status_code=504,
-            detail={"error": "Pipeline timeout", "detail": "Query exceeded time limit."},
+            detail={"error": "Pipeline timeout", "detail": "Query timed out. Please try again."},
         )
     except Exception as exc:
         logger.exception("Pipeline error for question: %.80s", body.question)
@@ -318,8 +318,18 @@ async def query_stream(
                 pipeline_job_id, status=coarse, status_detail=stage,
             ))
 
+        import re
+        _PROGRESS_RE = re.compile(r"\((\d+)/(\d+)\)")
+
         def on_status(stage: str):
-            _enqueue(("status", stage))
+            # Extract structured progress (current/total) from status strings
+            # e.g. "retrieving:reranking passages (5/47)" → progress={current:5, total:47}
+            m = _PROGRESS_RE.search(stage)
+            if m:
+                progress = {"current": int(m.group(1)), "total": int(m.group(2))}
+                _enqueue(("status", stage, progress))
+            else:
+                _enqueue(("status", stage, None))
             _update_job_status_detail(stage)
 
         def on_token(text: str):
@@ -384,14 +394,19 @@ async def query_stream(
 
         try:
             while True:
-                event_type, data = await queue.get()
-                if event_type == "status":
-                    yield {"event": "status", "data": json.dumps({"status": data})}
+                item = await queue.get()
+                if item[0] == "status":
+                    stage = item[1]
+                    progress = item[2] if len(item) > 2 else None
+                    payload: dict = {"status": stage}
+                    if progress is not None:
+                        payload["progress"] = progress
+                    yield {"event": "status", "data": json.dumps(payload)}
                     await asyncio.sleep(0)
-                elif event_type == "token":
-                    yield {"event": "token", "data": json.dumps({"text": data})}
+                elif item[0] == "token":
+                    yield {"event": "token", "data": json.dumps({"text": item[1]})}
                     await asyncio.sleep(0)
-                elif event_type == "done":
+                elif item[0] == "done":
                     break
         except asyncio.CancelledError:
             # Client disconnected (page reload, network drop) — do NOT cancel the
@@ -410,13 +425,13 @@ async def query_stream(
             if pipeline_job_id:
                 t = asyncio.create_task(fail_pipeline_job(
                     pipeline_job_id, status="timeout",
-                    detail="Query exceeded time limit. Please try a simpler question.",
+                    detail="Query timed out — the pipeline took too long to process this request.",
                 ))
                 t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"error": "Pipeline timeout", "detail": "Query exceeded time limit. Please try a simpler question."}),
+                    {"error": "Pipeline timeout", "detail": "Query timed out. This may be due to heavy load or a complex search. Please try again."}),
             }
             return
         if pipeline_error is not None:

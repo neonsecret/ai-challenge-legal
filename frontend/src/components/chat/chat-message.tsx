@@ -209,6 +209,8 @@ interface ChatMessageProps {
     isStreaming?: boolean
     confidence?: number | null
     streamingStatus?: string | null
+    streamingProgress?: import("@/components/chat/use-query-stream").Progress | null
+    streamingThinkingPreview?: string | null
     trace?: string[]
     onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
     isDark?: boolean
@@ -223,6 +225,8 @@ export function ChatMessage({
     isStreaming = false,
     confidence,
     streamingStatus,
+    streamingProgress,
+    streamingThinkingPreview,
     trace,
     onSourceClick,
     isDark = false,
@@ -421,7 +425,7 @@ export function ChatMessage({
                         </div>
                         )
                     })() : isStreaming ? (
-                        <StreamingStatus status={streamingStatus} isDark={isDark}/>
+                        <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview} isDark={isDark}/>
                     ) : (
                         <p style={{
                             fontSize: TYPE_SCALE.sm,

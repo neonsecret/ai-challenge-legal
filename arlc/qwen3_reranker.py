@@ -177,6 +177,14 @@ class LlamaServerReranker:
     Drop-in replacement for Qwen3Reranker — same predict() interface.
     Uses llama-server with --reranking flag and a GGUF reranker model.
 
+    Supports batched requests to reduce Metal memory pressure and provide
+    mid-processing progress callbacks. Documents are split into batches
+    (default size from RERANKER_BATCH_SIZE env var, fallback 10) and sent
+    as separate HTTP POSTs. Per-batch ``index`` fields are offset to
+    reconstruct original document order. When batching is unnecessary
+    (batch_size >= total docs, or no on_progress callback), a single
+    request fast path is used to avoid overhead.
+
     Start the server with::
 
         llama-server -m Qwen3-Reranker-0.6B-Q8_0.gguf --reranking -ngl 99 \\
@@ -187,6 +195,9 @@ class LlamaServerReranker:
     url:
         Base URL of the llama-server reranking instance.
     """
+
+    # Default batch size, overridable via RERANKER_BATCH_SIZE env var.
+    DEFAULT_BATCH_SIZE = int(os.environ.get("RERANKER_BATCH_SIZE", "10"))
 
     def __init__(self, url: str) -> None:
         import requests as _requests
@@ -199,6 +210,35 @@ class LlamaServerReranker:
         except Exception as e:
             raise RuntimeError(f"llama-server reranker at {self.url} not reachable: {e}")
 
+    # Connect timeout: how long to wait for TCP handshake (seconds).
+    # Keeps failures fast when the remote host is unreachable — avoids 75s
+    # OS-level TCP SYN retransmission delays on macOS.
+    CONNECT_TIMEOUT = 5
+
+    def _rerank_single_batch(
+            self,
+            query: str,
+            documents: list[str],
+            read_timeout: float,
+    ) -> list[dict]:
+        """Send one /v1/rerank request and return raw results list.
+
+        Each result dict has ``index`` (0-based within this batch) and
+        ``relevance_score``.
+        """
+        r = self._requests.post(
+            f"{self.url}/v1/rerank",
+            json={"model": "local", "query": query, "documents": documents},
+            timeout=(self.CONNECT_TIMEOUT, read_timeout),
+        )
+        if not r.ok:
+            logger.warning(
+                "llama-server rerank %s returned %d: %s",
+                self.url, r.status_code, r.text[:300],
+            )
+        r.raise_for_status()
+        return r.json()["results"]
+
     def predict(
             self,
             sentences: list[tuple[str, str]],
@@ -207,24 +247,67 @@ class LlamaServerReranker:
             timeout: Optional[float] = None,
             **kwargs,
     ) -> np.ndarray:
-        """Score (query, document) pairs via llama-server /v1/rerank."""
+        """Score (query, document) pairs via llama-server /v1/rerank.
+
+        When ``on_progress`` is provided and ``batch_size`` < total documents,
+        documents are sent in batches with progress callbacks after each batch.
+        Otherwise a single request is used (fast path, no overhead).
+
+        Parameters
+        ----------
+        sentences:
+            List of (query, document) tuples to score.
+        batch_size:
+            Number of documents per HTTP request. Defaults to
+            ``RERANKER_BATCH_SIZE`` env var (or 10).
+        on_progress:
+            Optional callback ``(done: int, total: int)`` called after each
+            batch completes.
+        timeout:
+            Read timeout in seconds for each HTTP request (default 180).
+        """
+        if not sentences:
+            return np.array([], dtype=np.float32)
+
         # All pairs share the same query (reranking is query-vs-many-docs)
-        query = sentences[0][0] if sentences else ""
+        query = sentences[0][0]
         documents = [doc for _, doc in sentences]
+        total = len(documents)
+        read_timeout = timeout or 180
+        bs = batch_size if batch_size is not None else self.DEFAULT_BATCH_SIZE
+
+        # Fast path: single request when batching adds no value
+        if bs >= total or on_progress is None:
+            try:
+                results = self._rerank_single_batch(query, documents, read_timeout)
+                results.sort(key=lambda x: x["index"])
+                scores = [x["relevance_score"] for x in results]
+                if on_progress:
+                    on_progress(total, total)
+                return np.array(scores, dtype=np.float32)
+            except Exception as e:
+                raise RuntimeError(f"llama-server reranking failed: {e}") from e
+
+        # Batched path: split documents, merge results in original order
         try:
-            r = self._requests.post(
-                f"{self.url}/v1/rerank",
-                json={"model": "local", "query": query, "documents": documents},
-                timeout=timeout or 180,
-            )
-            if not r.ok:
-                logger.warning("llama-server rerank %s returned %d: %s", self.url, r.status_code, r.text[:300])
-            r.raise_for_status()
-            results = r.json()["results"]
-            results.sort(key=lambda x: x["index"])
-            scores = [x["relevance_score"] for x in results]
-            if on_progress:
-                on_progress(len(scores), len(scores))
-            return np.array(scores, dtype=np.float32)
+            # Pre-allocate scores array to place results at correct positions
+            scores = np.zeros(total, dtype=np.float32)
+            done = 0
+
+            for batch_start in range(0, total, bs):
+                batch_end = min(batch_start + bs, total)
+                batch_docs = documents[batch_start:batch_end]
+
+                results = self._rerank_single_batch(query, batch_docs, read_timeout)
+
+                # Map batch-local indices back to global positions
+                for item in results:
+                    global_idx = batch_start + item["index"]
+                    scores[global_idx] = item["relevance_score"]
+
+                done = batch_end
+                on_progress(done, total)
+
+            return scores
         except Exception as e:
             raise RuntimeError(f"llama-server reranking failed: {e}") from e

@@ -29,11 +29,20 @@ export function formatStatus(raw: string): string | null {
         // Map known retrieval sub-steps to friendlier text
         if (/searching\s+corpus/i.test(detail)) return "Searching legal documents..."
         if (/searching\s+the\s+web/i.test(detail)) return "Searching the web..."
+        if (/searching\s+\d+\s+target/i.test(detail)) return "Searching target documents..."
 
         // "found N new sources" — capitalize but no trailing ellipsis (past-tense)
         if (/^found\s/i.test(detail)) {
             return detail.charAt(0).toUpperCase() + detail.slice(1)
         }
+
+        // Reranking with progress — clean label (progress bar handles the numbers)
+        if (/reranking/i.test(detail)) return "Reading legal documents..."
+        // Scoring documents
+        if (/scoring.*document/i.test(detail)) return "Evaluating relevance..."
+        if (/scoring/i.test(detail)) return "Evaluating relevance..."
+        // Broadening search
+        if (/broadening/i.test(detail)) return "Broadening search..."
 
         // Other retrieval details — capitalize and add ellipsis
         return detail.charAt(0).toUpperCase() + detail.slice(1) + "..."
@@ -66,6 +75,24 @@ function extractAnswerContent(raw: string): string | null {
     return content.trim() || null
 }
 
+/**
+ * Extracts the agent's intermediate reasoning from <analysis> tags.
+ * Shown as a live "thinking" preview before <answer> appears.
+ * Returns null if no analysis content found.
+ */
+function extractThinkingPreview(raw: string): string | null {
+    const start = raw.indexOf("<analysis>")
+    if (start === -1) return null
+    const contentStart = start + "<analysis>".length
+    const end = raw.indexOf("</analysis>", contentStart)
+    const text = end >= 0 ? raw.slice(contentStart, end) : raw.slice(contentStart)
+    // Take last ~120 chars to show the most recent thinking
+    const trimmed = text.trim()
+    if (!trimmed) return null
+    if (trimmed.length > 120) return "..." + trimmed.slice(-120).trim()
+    return trimmed
+}
+
 function clearSessionAndRedirect(router: ReturnType<typeof useRouter>) {
     const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
     fetch(`${API}/auth/logout`, {method: "POST", credentials: "include", headers: {"X-Requested-With": "XMLHttpRequest"}}).catch(() => {
@@ -81,12 +108,19 @@ export interface Source {
     title?: string | null // web source title
 }
 
+export interface Progress {
+    current: number
+    total: number
+}
+
 interface StreamState {
     answer: string | null
     sources: Source[]
     confidence: number | null
     isStreaming: boolean
     streamingStatus: string | null
+    streamingProgress: Progress | null
+    thinkingPreview: string | null
     error: string | null
 }
 
@@ -104,6 +138,8 @@ export function useQueryStream(): UseQueryStreamReturn {
         confidence: null,
         isStreaming: false,
         streamingStatus: null,
+        streamingProgress: null,
+        thinkingPreview: null,
         error: null,
     })
     const abortRef = useRef<AbortController | null>(null)
@@ -126,6 +162,8 @@ export function useQueryStream(): UseQueryStreamReturn {
             confidence: null,
             isStreaming: false,
             streamingStatus: null,
+            streamingProgress: null,
+            thinkingPreview: null,
             error: null,
         })
     }, [])
@@ -189,6 +227,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                 confidence: null,
                 isStreaming: true,
                 streamingStatus: "Connecting...",
+                streamingProgress: null,
+                thinkingPreview: null,
                 error: null,
             })
 
@@ -205,26 +245,50 @@ export function useQueryStream(): UseQueryStreamReturn {
                             tokenBufRef.current += parsed.text
                             const visible = extractAnswerContent(tokenBufRef.current)
                             if (visible !== null) {
-                                setState((prev) => ({...prev, answer: visible, streamingStatus: null}))
+                                setState((prev) => ({...prev, answer: visible, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
+                            } else {
+                                // Show intermediate reasoning as a live preview
+                                const preview = extractThinkingPreview(tokenBufRef.current)
+                                if (preview !== null) {
+                                    setState((prev) => ({...prev, thinkingPreview: preview}))
+                                }
                             }
                         }
                     } else if (eventType === "answer") {
                         const parsed = JSON.parse(data)
+                        // Strip any leftover XML tags from the answer (safety net —
+                        // backend should already strip them in pipeline_dict_to_response)
+                        let cleanAnswer = parsed.answer
+                        if (typeof cleanAnswer === "string") {
+                            const extracted = extractAnswerContent(cleanAnswer)
+                            cleanAnswer = extracted ?? cleanAnswer.replace(/<\/?(?:analysis|answer)>/g, "").trim()
+                        }
                         setState((prev) => ({
                             ...prev,
-                            answer: parsed.answer ?? prev.answer,
+                            answer: cleanAnswer ?? prev.answer,
                             sources: parsed.sources ?? [],
                             confidence: parsed.confidence ?? null,
                             streamingStatus: null,
+                            streamingProgress: null,
                         }))
                     } else if (eventType === "status") {
                         const parsed = JSON.parse(data)
                         const raw = parsed.status || parsed.message
+                        const progress: Progress | null = parsed.progress
+                            ? {current: parsed.progress.current, total: parsed.progress.total}
+                            : null
                         if (raw) {
                             const friendly = formatStatus(raw)
                             // null means "hide this status" (e.g. agent:done)
                             if (friendly !== null) {
-                                setState((prev) => ({...prev, streamingStatus: friendly}))
+                                setState((prev) => ({
+                                    ...prev,
+                                    streamingStatus: friendly,
+                                    streamingProgress: progress,
+                                }))
+                            } else if (progress) {
+                                // Hidden status but with progress — update progress only
+                                setState((prev) => ({...prev, streamingProgress: progress}))
                             }
                         }
                     } else if (eventType === "error") {
