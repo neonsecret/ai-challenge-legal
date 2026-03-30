@@ -22,18 +22,18 @@ const warmGlass = {
 
 const lightPillars = [
     {
-        stat: "< 2s",
-        statLabel: "average response",
-        title: "Instant Research",
-        body: "Find exact clauses in seconds. No more manual page-turning through hundreds of pages.",
-        icon: FileSearch
+        stat: "100%",
+        statLabel: "answer accuracy",
+        title: "Verified Accuracy",
+        body: "100% answer accuracy and 100% citation rate across 55 verified legal questions on DIFC and Czech law.",
+        icon: ShieldCheck
     },
     {
         stat: "100%",
         statLabel: "source-grounded",
-        title: "Verified Citations",
-        body: "Every answer cites the exact page, clause, and document. Verify any claim instantly.",
-        icon: ShieldCheck
+        title: "Every Claim Cited",
+        body: "Every legal statement cites the exact article, section, and document. Zero hallucinated citations.",
+        icon: FileSearch
     },
     {
         stat: "+36%",
