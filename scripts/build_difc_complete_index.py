@@ -50,7 +50,8 @@ JUDGMENTS_DIR = DATA_DIR / "difc_complete" / "judgments"
 OUTPUT_INDEX = DATA_DIR / "faiss_difc_complete.bin"
 OUTPUT_META = DATA_DIR / "faiss_difc_complete.json"
 
-EMBEDDING_URL = os.environ.get("EMBEDDING_URL", "http://100.98.171.97:8088")
+# For remote embedding on RTX 3070: EMBEDDING_URL=http://100.98.171.97:8088
+EMBEDDING_URL = os.environ.get("EMBEDDING_URL", "http://localhost:8088")
 EMBEDDING_DIM = 4096  # Qwen3-Embedding-8B output dimension
 
 MAX_CHUNK_CHARS = 7500  # Stay within Qwen3-8B's 16384-token context
