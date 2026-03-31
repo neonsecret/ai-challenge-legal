@@ -12,31 +12,25 @@ Routes:
 from __future__ import annotations
 
 import asyncio
+import datetime
+import json
 import logging
+import os
 import re
 from pathlib import Path
-
-
-def _log_task_exception(task: asyncio.Task) -> None:
-    """Log exceptions from fire-and-forget tasks."""
-    if not task.cancelled() and task.exception():
-        logging.getLogger(__name__).error("Background task failed: %s", task.exception())
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from neolex.config import settings
-
 from neolex.auth.middleware import get_api_key
+from neolex.config import settings
 from neolex.db.audit import get_audit_db
 from neolex.db.models import User
 from neolex.db.postgres import get_db
 from neolex.schemas.documents import (
     DocumentDeleteResponse,
-    DocumentListResponse,
-    DocumentMeta,
     DocumentUploadResponse,
     ReindexJobResponse,
     ZipUploadResponse,
@@ -54,6 +48,12 @@ from neolex.services.document_manager import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
+
+
+def _log_task_exception(task: asyncio.Task) -> None:
+    """Log exceptions from fire-and-forget tasks."""
+    if not task.cancelled() and task.exception():
+        logger.error("Background task failed: %s", task.exception())
 
 # ---------------------------------------------------------------------------
 # Plan-based upload limits
@@ -264,7 +264,6 @@ async def upload_document(
     await asyncio.to_thread(save_doc_meta, client_slug, meta)
 
     # --- Trigger background reindex (non-blocking) ---
-    from neolex.config import settings
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
     job_id = await create_job(client_slug)
@@ -544,7 +543,6 @@ async def list_documents(
         key_row: dict = Depends(get_api_key),
 ):
     """List all documents uploaded by this client, with collection info from .meta files."""
-    import json as _json
     client_slug = key_row["client_slug"]
 
     async with get_audit_db() as db:
@@ -555,7 +553,7 @@ async def list_documents(
     meta_collections: dict[str, str] = {}
     for meta_path in docs_dir.glob("*.meta"):
         try:
-            meta = _json.loads(meta_path.read_text())
+            meta = json.loads(meta_path.read_text())
             meta_collections[meta.get("doc_id", "")] = meta.get("collection", "My Documents")
         except Exception:
             pass
@@ -615,7 +613,6 @@ async def delete_doc(
         await db.delete_document(doc_id, client_slug)
 
     # Trigger reindex
-    from neolex.config import settings
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
     job_id = await create_job(client_slug)
@@ -670,7 +667,6 @@ async def trigger_reindex(
     """
     client_slug = key_row["client_slug"]
 
-    from neolex.config import settings
     from neolex.indexing.reindex_worker import create_job, run_reindex_job
 
     job_id = await create_job(client_slug)
@@ -690,8 +686,6 @@ async def trigger_reindex(
         )
 
     logger.info("Manual reindex triggered for client %s — job %s", client_slug, job_id)
-
-    import datetime
 
     return ReindexJobResponse(
         job_id=job_id,
@@ -749,7 +743,6 @@ async def rename_collection(
         key_row: dict = Depends(get_api_key),
 ):
     """Rename a collection by updating the 'collection' field in all matching .meta files."""
-    import json
     body = await request.json()
     old_name = body.get("old_name", "").strip()
     new_name = body.get("new_name", "").strip()
@@ -777,11 +770,10 @@ async def rename_collection(
     if not updates:
         raise HTTPException(status_code=404, detail=f"No documents found in collection '{old_name}'")
 
-    import os as _os
     for meta_path, meta in updates:
         tmp = meta_path.with_suffix(".meta.tmp")
         tmp.write_text(json.dumps(meta, indent=2))
-        _os.replace(str(tmp), str(meta_path))  # atomic on POSIX
+        os.replace(str(tmp), str(meta_path))  # atomic on POSIX
     updated = len(updates)
 
     logger.info("Renamed collection '%s' → '%s' for client %s (%d docs)", old_name, new_name, client_slug, updated)
@@ -800,7 +792,6 @@ async def move_document_collection(
         key_row: dict = Depends(get_api_key),
 ):
     """Move a document to a different collection."""
-    import json
     if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
         raise HTTPException(status_code=400, detail="Invalid doc_id format")
 
@@ -823,8 +814,7 @@ async def move_document_collection(
     meta["collection"] = collection
     tmp = meta_path.with_suffix(".meta.tmp")
     tmp.write_text(json.dumps(meta, indent=2))
-    import os as _os
-    _os.replace(str(tmp), str(meta_path))
+    os.replace(str(tmp), str(meta_path))
 
     logger.info("Moved doc %s from '%s' → '%s' for client %s", doc_id[:16], old_collection, collection, client_slug)
     return {"doc_id": doc_id, "old_collection": old_collection, "new_collection": collection}

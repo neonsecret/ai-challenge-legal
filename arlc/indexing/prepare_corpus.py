@@ -91,7 +91,7 @@ def step_download(force: bool = False):
         t0 = time.monotonic()
         # Download to temp dir, then move PDFs to data/documents
         DOCS_DIR.mkdir(parents=True, exist_ok=True)
-        target = client.download_documents(str(DOCS_DIR))
+        client.download_documents(str(DOCS_DIR))
         elapsed = time.monotonic() - t0
         # Count PDFs after extraction
         pdfs = list(DOCS_DIR.glob("*.pdf"))
@@ -333,8 +333,8 @@ async def step_smoke_test(n_questions: int = 10):
     print(f"  Testing {len(sample)} random questions...")
 
     try:
-        from arlc.router import route
         from arlc.retriever import retrieve_pages
+        from arlc.router import route
     except ImportError as e:
         print(f"  ERROR: Cannot import pipeline modules: {e}")
         return False

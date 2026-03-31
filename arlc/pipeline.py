@@ -41,8 +41,8 @@ load_dotenv()
 #              "total_time_ms": int, "input_tokens": int, "output_tokens": int,
 #              "model_name": str}
 
-from arlc.indexing.indexer import build_index
 from arlc.format_guardian import FormatGuardian
+from arlc.indexing.indexer import build_index
 
 # Case metadata for cross-case oracle citation expansion
 _CASE_META_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "case_metadata_index.json")
@@ -556,8 +556,6 @@ async def _process_question(
         _retrieval_cache: dict = {}  # survives timeouts so Sonnet fallback can reuse pages
         for _q_attempt in range(1 + MAX_QUESTION_RETRIES):
             try:
-                t_start = time.monotonic()
-
                 # Wrap retrieval + answering in a timeout to prevent hangs.
                 # 600s: worst case = lock_wait(120s) + cross_encoder(60s) + LLM retries(100s) + LLM(90s)
                 result = await asyncio.wait_for(
@@ -710,7 +708,7 @@ async def _process_question_inner(
     # The answerer's oracle can answer judge/party/date/claim comparisons
     # directly from case_metadata_index — no retrieval needed.
     # Skipping retrieval avoids 60-300s cross-encoder scoring for cross-case queries.
-    from arlc.answerer import _lookup_oracle, AnswerResult as _AnswerResult
+    from arlc.answerer import _lookup_oracle
 
     # Fast path A: router pre-computed the answer (date/claim comparisons)
     # Guard: skip if answer is a list of dicts (router bug for list-format parties) or
@@ -921,8 +919,8 @@ async def _process_question_inner(
     # This is deterministic (no LLM) so it adds 0 PPQ.
     if result.get("answer") is not None and result.get("model_name") != "oracle":
         try:
-            from arlc.page_verifier import verify_pages as _verify_pages
             import arlc.page_verifier as _pv_mod
+            from arlc.page_verifier import verify_pages as _verify_pages
             _chunk_pages = result.get("chunk_pages", [])
             if _chunk_pages:
                 _verified_pages = _verify_pages(
@@ -1668,7 +1666,7 @@ async def run_pipeline(
     results.sort(key=lambda r: question_order.get(r["id"], 999999))
 
     # Step 5: Save results
-    print(f"\n=== Step 5: Saving results ===")
+    print("\n=== Step 5: Saving results ===")
 
     # Full results (internal format)
     with open(results_path, "w") as f:

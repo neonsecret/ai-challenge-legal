@@ -23,6 +23,7 @@ import pytest
 # PostgreSQL (e.g. _dense_page_scores).  Fall back to a dummy value so
 # collection still works in CI / environments without .env.
 from dotenv import load_dotenv
+
 load_dotenv()
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
@@ -82,6 +83,7 @@ class TestSSRFPrivateIPBlocking:
         assert _is_private_ip("100.127.255.255") is True
 
     def test_blocks_zero_address(self):
+        # 0.0.0.0 is reserved / unspecified address
         assert _is_private_ip("0.0.0.0") is True
 
     def test_blocks_dot_local_domain(self):
@@ -94,10 +96,6 @@ class TestSSRFPrivateIPBlocking:
         # Domain names that don't match heuristics are allowed at this
         # layer; DNS resolution in _validate_url() is the real check.
         assert _is_private_ip("example.com") is False
-
-    def test_blocks_zero_address(self):
-        # 0.0.0.0 is reserved
-        assert _is_private_ip("0.0.0.0") is True
 
     def test_allows_public_ipv6(self):
         # 2001:4860:4860::8888 is Google's public DNS
@@ -332,7 +330,6 @@ class TestRerankerBatching:
             reranker.url = "http://fake:8089"
             reranker.CONNECT_TIMEOUT = 5
             # Import requests for mocking
-            import requests as _requests
             reranker._requests = MagicMock()
             return reranker
 

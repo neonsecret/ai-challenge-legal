@@ -1,11 +1,12 @@
 """Index PDF documents into PostgreSQL (pgvector) for retrieval."""
 
+import base64
+import json
 import os
 import re
-import json
-import base64
-import pymupdf
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import pymupdf
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -355,9 +356,9 @@ def _get_embedding_function():
     For llama-server (default): uses the retriever's LlamaServerEmbedder via HTTP.
     For SentenceTransformer models: loads locally with GPU auto-detection.
     """
-    from arlc.retriever import get_embedding_model, _embedding_lock
+    from arlc.retriever import _embedding_lock, get_embedding_model
     model = get_embedding_model()
-    print(f"  Embedding via llama-server (same as retriever)")
+    print("  Embedding via llama-server (same as retriever)")
 
     def encode(texts: list[str]) -> list[list[float]]:
         import numpy as np
@@ -477,7 +478,8 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
     all_embeddings = ef(all_embed_texts)
 
     # --- Insert into PostgreSQL (pgvector) ---
-    from sqlalchemy import create_engine, text as sa_text
+    from sqlalchemy import create_engine
+    from sqlalchemy import text as sa_text
 
     db_url = os.environ.get("DATABASE_URL", "")
     if "+asyncpg" in db_url:

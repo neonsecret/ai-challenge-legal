@@ -1,19 +1,21 @@
 """Retrieve relevant document chunks for a question using hybrid search."""
 
 import functools
-import logging
-import re
-import os
 import json
-import time
+import logging
+import os
+import re
 import threading
 from dataclasses import dataclass
-import numpy as np
+
 import anthropic
-from sqlalchemy import create_engine, text as sa_text
-from sqlalchemy.orm import Session as SASession
+import numpy as np
 import pymupdf
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
+from sqlalchemy import text as sa_text
+from sqlalchemy.orm import Session as SASession
+
 # SentenceTransformer is used by the snowflake embedding backend.
 # CrossEncoder is used only when RERANKER_MODEL is not a Qwen model (non-default).
 # Both are imported lazily inside their respective factory functions so that the

@@ -63,4 +63,7 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line too long (handled by line-length setting)
+    "E402",   # module-level import not at top of file (intentional: load_dotenv() must precede Settings import)
+]

@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import json
 import logging
+import threading
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -98,13 +100,6 @@ def _run_indexing_sync(
 
     Returns (doc_count, chunks_skipped).
     """
-    import json
-    import os
-
-    pdf_files = list(docs_dir.glob("*.pdf")) + list(docs_dir.glob("**/*.pdf"))
-    # Also match UUID-prefixed filenames like <uuid>_filename.pdf
-    all_pdfs = list(docs_dir.glob("*.pdf"))
-
     # Count PDFs from meta files to avoid double-counting UUID-prefixed ones
     meta_files = list(docs_dir.glob("*.meta"))
     doc_ids_with_pdfs = set()
@@ -165,7 +160,6 @@ def _run_indexing_sync(
     return doc_count, chunks_skipped
 
 
-import threading
 _reindex_lock = threading.Lock()
 
 
@@ -241,7 +235,6 @@ async def run_reindex_job(
         )
 
         # Mark all documents as indexed in sidecar meta files + audit DB
-        import json
         from neolex.db.audit import get_audit_db
 
         for meta_path in docs_dir.glob("*.meta"):

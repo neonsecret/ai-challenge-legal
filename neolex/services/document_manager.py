@@ -9,10 +9,8 @@ route handlers via asyncio.to_thread() where I/O matters.
 from __future__ import annotations
 
 import datetime
-import hashlib
 import os
 import re
-import shutil
 import stat
 import uuid
 import zipfile
@@ -75,7 +73,7 @@ def save_upload(
 
     # Validate PDF magic bytes (Rule 2: file type guard)
     if not content.startswith(PDF_MAGIC):
-        raise ValueError(f"Not a valid PDF — file must start with %PDF")
+        raise ValueError("Not a valid PDF — file must start with %PDF")
 
     doc_id = str(uuid.uuid4())
     upload_ts = datetime.datetime.utcnow().isoformat()

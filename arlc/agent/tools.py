@@ -55,7 +55,7 @@ def execute_search(
         from the query string (e.g., routing based on the original user
         question only).
     """
-    from arlc.retriever import retrieve_pages, PageResult
+    from arlc.retriever import PageResult, retrieve_pages
 
     # DIFC: run the deterministic router for targeted retrieval.
     # NOTE on caching: the router uses regex extraction on the query string
@@ -193,11 +193,14 @@ def format_web_results(results: list[dict]) -> str:
     """
     if not results:
         return "No web results found."
+
+    def _esc(s: str) -> str:
+        return s.replace("</web_content>", "&lt;/web_content&gt;")
+
     parts = []
     for r in results:
         snippet = (r['snippet'] or "")[:_WEB_SNIPPET_MAX_CHARS]
         # Escape closing tags in ALL fields to prevent prompt injection
-        _esc = lambda s: s.replace("</web_content>", "&lt;/web_content&gt;")
         title = _esc(r.get('title', '') or '')
         url = _esc(r.get('url', '') or '')
         snippet = _esc(snippet)

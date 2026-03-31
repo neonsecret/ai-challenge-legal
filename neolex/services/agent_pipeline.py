@@ -49,7 +49,7 @@ async def run_agent_question(
     accumulated_docs: list[dict] = []
 
     if user_id and conversation_id:
-        from neolex.services.conversation import load_history, load_accumulated_docs
+        from neolex.services.conversation import load_accumulated_docs, load_history
 
         conversation_history, accumulated_docs = await asyncio.gather(
             load_history(user_id, conversation_id),

@@ -5,7 +5,7 @@ subscriptions, invoices) and operational (api_keys, queries, events,
 rate_limits, documents, reindex_jobs).
 """
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
 from neolex.config import settings
@@ -41,9 +41,11 @@ async def get_db():
 
 async def init_db() -> None:
     """Create all tables defined in models.py, operational_models.py, and chunks.py (idempotent)."""
-    from neolex.db import models  # noqa: F401 — registers auth/billing models
-    from neolex.db import operational_models  # noqa: F401 — registers operational models
-    from neolex.db import chunks  # noqa: F401 — registers chunk/vector model
+    from neolex.db import (
+        chunks,  # noqa: F401 — registers chunk/vector model
+        models,  # noqa: F401 — registers auth/billing models
+        operational_models,  # noqa: F401 — registers operational models
+    )
     async with engine.begin() as conn:
         # Enable pgvector extension (must precede table creation)
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))

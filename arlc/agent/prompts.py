@@ -358,7 +358,7 @@ def build_system_prompt(state: AgentState) -> str:
 
     # --- Semi-static: jurisdiction context ---
     semi_static_parts = [
-        f"\n## JURISDICTION CONTEXT",
+        "\n## JURISDICTION CONTEXT",
         f"- Jurisdiction: {jurisdiction}",
         f"- Corpus language: {lang}",
         f"- Write ALL search queries in {lang}.",

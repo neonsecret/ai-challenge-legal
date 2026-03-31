@@ -20,19 +20,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from neolex.auth import email_auth as email_auth_router
+from neolex.auth import oauth as oauth_router
 from neolex.config import settings
 from neolex.logging_config import configure_logging
 from neolex.middleware.error_handler import JSONErrorMiddleware
 from neolex.middleware.request_id import RequestIDMiddleware
 from neolex.middleware.timeout import TimeoutMiddleware
-from neolex.routers import health
-from neolex.routers import query as query_router
 from neolex.routers import admin as admin_router
 from neolex.routers import documents as documents_router
-from neolex.routers import stripe_router
+from neolex.routers import health, stripe_router
+from neolex.routers import query as query_router
 from neolex.routers import web_proxy as web_proxy_router
-from neolex.auth import oauth as oauth_router
-from neolex.auth import email_auth as email_auth_router
 from neolex.startup_validation import validate_startup
 
 # Configure logging before anything else.
@@ -80,7 +79,8 @@ async def _cleanup_expired() -> None:
     """
     from datetime import timedelta
 
-    from sqlalchemy import delete as sql_delete, select as sql_select
+    from sqlalchemy import delete as sql_delete
+    from sqlalchemy import select as sql_select
 
     from neolex.db.models import AuthToken, ConversationDocs, ConversationMessage, PipelineJob, Session
     from neolex.db.postgres import AsyncSessionLocal

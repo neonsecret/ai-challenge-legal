@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Request, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -190,7 +190,7 @@ async def query(
             status_code=504,
             detail={"error": "Pipeline timeout", "detail": "Query timed out. Please try again."},
         )
-    except Exception as exc:
+    except Exception:
         logger.exception("Pipeline error for question: %.80s", body.question)
         raise HTTPException(
             status_code=500,
@@ -264,10 +264,10 @@ async def query_stream(
 
     # Create pipeline job for persistent status tracking
     from neolex.services.conversation import (
-        create_pipeline_job,
-        update_pipeline_job_status,
         complete_pipeline_job,
+        create_pipeline_job,
         fail_pipeline_job,
+        update_pipeline_job_status,
     )
     pipeline_job_id = await create_pipeline_job(user_id, conversation_id or "", body.question)
 
@@ -352,8 +352,8 @@ async def query_stream(
             try:
                 if body.use_agent:
                     # ---- LangGraph agent path ----
-                    from neolex.services.agent_pipeline import run_agent_question
                     from arlc.agent.config import AGENT_TIMEOUT_SECONDS
+                    from neolex.services.agent_pipeline import run_agent_question
 
                     pipeline_result = await asyncio.wait_for(
                         run_agent_question(
@@ -522,8 +522,9 @@ async def list_corpora(
     Groups documents by collection name (stored in .meta files) so the frontend
     can show selectable pills per collection with their doc_ids for filtering.
     """
-    from pathlib import Path
     from collections import defaultdict
+    from pathlib import Path
+
     from arlc.retriever import get_chunk_count
 
     client_slug = key_row["client_slug"]
