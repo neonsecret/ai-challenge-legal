@@ -1928,21 +1928,37 @@ def _open_pdf_cached(pdf_path: str):
 
 
 def _extract_page_text(doc_id: str, page_number: int) -> str:
-    """Extract full text from a specific page of a PDF document.
+    """Extract full text from a specific page of a document.
 
     page_number is 1-based (matches our grounding convention).
-    Returns empty string for missing files or scanned pages with no text.
+    Tries PDF first, then falls back to chunk text from the FAISS metadata
+    (for TXT-based judgment documents that have no PDF).
     """
+    # Try PDF extraction first (law documents)
     pdf_path = os.path.join(DOCUMENTS_DIR, f"{doc_id}.pdf")
-    if not os.path.exists(pdf_path):
-        return ""
+    if os.path.exists(pdf_path):
+        try:
+            doc = _open_pdf_cached(pdf_path)
+            if 1 <= page_number <= len(doc):
+                return doc[page_number - 1].get_text().strip()
+        except Exception:
+            pass
+
+    # Fallback: concatenate chunk texts for this page from the in-memory index.
+    # This handles TXT-based judgments and any docs without PDFs.
     try:
-        doc = _open_pdf_cached(pdf_path)
-        if page_number < 1 or page_number > len(doc):
-            return ""
-        return doc[page_number - 1].get_text().strip()
+        chunks_by_doc = get_chunks_by_doc()
+        doc_chunks = chunks_by_doc.get(doc_id, [])
+        page_texts = [
+            c["text"] for c in doc_chunks
+            if c.get("metadata", {}).get("page", c.get("page", 0)) == page_number
+        ]
+        if page_texts:
+            return "\n".join(page_texts)
     except Exception:
-        return ""
+        pass
+
+    return ""
 
 
 _METADATA_QUESTION_PATTERNS = re.compile(
