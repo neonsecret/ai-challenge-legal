@@ -391,7 +391,6 @@ export default function ChatPage() {
             // For assistant messages, scroll to the top of the answer card.
             const lastMsg = messages.at(-1)
             if (lastMsg?.role === "assistant" && lastAssistantRef.current) {
-                // Use requestAnimationFrame to wait for the DOM to update
                 requestAnimationFrame(() => {
                     lastAssistantRef.current?.scrollIntoView({
                         block: "start",
@@ -401,9 +400,8 @@ export default function ChatPage() {
             } else {
                 el.scrollTop = el.scrollHeight
             }
-        } else if (isNearBottomRef.current) {
-            el.scrollTop = el.scrollHeight
         }
+        // No auto-scroll during streaming — let the user scroll freely.
     }, [messages])
 
     // Cmd+K focus
