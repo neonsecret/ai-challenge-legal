@@ -19,6 +19,8 @@ export interface PdfViewerProps {
     page?: number
     highlightText?: string
     className?: string
+    /** Called when the PDF fails to load (e.g. 404 — no PDF for this doc). */
+    onError?: () => void
 }
 
 /**
@@ -66,7 +68,7 @@ function applyHighlights(container: HTMLDivElement | null, highlightText: string
     }
 }
 
-export default function PdfViewerImpl({docId, page = 1, highlightText, className}: PdfViewerProps) {
+export default function PdfViewerImpl({docId, page = 1, highlightText, className, onError}: PdfViewerProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const targetPageRef = useRef<HTMLDivElement>(null)
@@ -224,15 +226,17 @@ export default function PdfViewerImpl({docId, page = 1, highlightText, className
         const msg = error?.message ?? ""
         // Worker destroyed mid-load (race condition on source switch) — not a real error
         if (msg.includes("messageHandler") || msg.includes("Worker was destroyed")) return
-        if (msg.includes("401") || msg.includes("Unexpected server response (401)")) {
-            setErrorMessage("Authentication required")
-        } else if (msg.includes("404")) {
+        if (msg.includes("404")) {
+            // PDF not found — trigger fallback to text viewer
+            onError?.()
             setErrorMessage("Document not found")
+        } else if (msg.includes("401") || msg.includes("Unexpected server response (401)")) {
+            setErrorMessage("Authentication required")
         } else {
             setErrorMessage("PDF unavailable")
         }
         setLoadState("error")
-    }, [])
+    }, [onError])
 
     const handleTextLayerSuccess = useCallback(() => {
         requestAnimationFrame(() => {

@@ -316,6 +316,33 @@ function WebContentPreview({source, answer, isDark, isMobile}: {
     )
 }
 
+/** PDF viewer with automatic fallback to text viewer when PDF is not found (404). */
+function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageClick}: {
+    source: SourceRef
+    page: number
+    answer: string
+    isDark: boolean
+    isMobile: boolean
+    onPageClick: (page: number) => void
+}) {
+    const [pdfFailed, setPdfFailed] = useState(false)
+
+    if (pdfFailed) {
+        return <TextSourceViewer source={source} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} />
+    }
+
+    return (
+        <PdfViewer
+            key={source.doc_id}
+            docId={source.doc_id}
+            page={page}
+            className="h-full"
+            highlightText={answer.slice(0, 200)}
+            onError={() => setPdfFailed(true)}
+        />
+    )
+}
+
 /** Text-only source viewer — cleans, truncates, and formats raw judgment text. */
 function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
     source: SourceRef
@@ -634,12 +661,14 @@ export function GroundingView({answer, sources, isDark = false, isMobile = false
                                 isMobile={isMobile}
                             />
                         ) : isPdfSource(activeSource) ? (
-                            <PdfViewer
+                            <PdfViewerWithFallback
                                 key={activeSource.doc_id}
-                                docId={activeSource.doc_id}
+                                source={activeSource}
                                 page={activePage}
-                                className="h-full"
-                                highlightText={answer.slice(0, 200)}
+                                answer={answer}
+                                isDark={isDark}
+                                isMobile={isMobile}
+                                onPageClick={handlePageFromText}
                             />
                         ) : (
                             <TextSourceViewer

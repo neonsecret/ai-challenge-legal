@@ -155,54 +155,35 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                 }
             `}</style>
 
-            {/* Past steps — rendered above current step for stable layout */}
-            {pastSteps.length > 0 && (
-                <motion.div
-                    layout
-                    style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: SPACE["1"],
-                    }}
-                    transition={{layout: {duration: 0.25, ease: MOTION_EASE_OUT}}}
+            {/* Past steps — plain divs, no motion/layout to prevent jitter */}
+            {pastSteps.map((step, i) => (
+                <div
+                    key={`past-${i}-${step.label.slice(0, 20)}`}
+                    className="flex items-center"
+                    style={{paddingLeft: 1, gap: SPACE["2"]}}
                 >
-                    {pastSteps.map((step, i) => (
-                        <motion.div
-                            key={`past-${i}-${step.label.slice(0, 20)}`}
-                            layout
-                            initial={{opacity: 0, height: 0}}
-                            animate={{opacity: 1, height: "auto"}}
-                            transition={{
-                                opacity: {duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT},
-                                height: {duration: 0.25, ease: MOTION_EASE_OUT},
-                                layout: {duration: 0.25, ease: MOTION_EASE_OUT},
-                            }}
-                            className="flex items-center"
-                            style={{paddingLeft: 1, gap: SPACE["2"], overflow: "hidden"}}
-                        >
-                            <div style={{
-                                width: dotSize,
-                                height: dotSize,
-                                borderRadius: "50%",
-                                flexShrink: 0,
-                                background: step.color,
-                            }}/>
-                            <span style={{
-                                fontSize: TYPE_SCALE.xs,
-                                fontFamily: FONT.sans,
-                                color: dimTextColor,
-                                whiteSpace: "nowrap",
-                            }}>
-                                {step.label}
-                            </span>
-                        </motion.div>
-                    ))}
-                </motion.div>
-            )}
+                    <div style={{
+                        width: dotSize,
+                        height: dotSize,
+                        borderRadius: "50%",
+                        flexShrink: 0,
+                        background: step.color,
+                        opacity: 0.5,
+                    }}/>
+                    <span style={{
+                        fontSize: TYPE_SCALE.xs,
+                        fontFamily: FONT.sans,
+                        color: dimTextColor,
+                        whiteSpace: "nowrap",
+                    }}>
+                        {step.label}
+                    </span>
+                </div>
+            ))}
 
             {/* Current step */}
-            <motion.div layout className="flex items-center" style={{gap: SPACE["2"]}}
-                        transition={{layout: {duration: 0.25, ease: MOTION_EASE_OUT}}}>
+            <div className="flex items-center" style={{gap: SPACE["2"]}}
+                        >
                 <div style={{
                     width: 18,
                     height: 18,
@@ -261,7 +242,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                         </motion.span>
                     )}
                 </AnimatePresence>
-            </motion.div>
+            </div>
 
             {/* Progress bar — uses opacity + translateY instead of height: "auto"
                which is unreliable in motion/react v12 and can cause the bar to
@@ -269,15 +250,10 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
             <AnimatePresence>
                 {progress && progress.total > 0 && (
                     <motion.div
-                        layout
-                        initial={{opacity: 0, y: -4}}
-                        animate={{opacity: 1, y: 0}}
-                        exit={{opacity: 0, y: -4}}
-                        transition={{
-                            opacity: {duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT},
-                            y: {duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT},
-                            layout: {duration: 0.25, ease: MOTION_EASE_OUT},
-                        }}
+                        initial={{opacity: 0}}
+                        animate={{opacity: 1}}
+                        exit={{opacity: 0}}
+                        transition={{duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT}}
                         style={{
                             display: "flex",
                             flexDirection: "column",
