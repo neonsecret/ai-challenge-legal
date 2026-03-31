@@ -307,6 +307,7 @@ export default function ChatPage() {
             setCorpusBlocked(true)
             setTimeout(() => setCorpusBlocked(false), 4000)
         }
+        // "streaming" means previous query still running — silently ignore
     }, [handleSend])
 
     // Load custom corpus name and corpus warning preference from localStorage

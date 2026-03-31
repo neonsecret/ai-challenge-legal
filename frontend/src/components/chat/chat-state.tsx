@@ -119,7 +119,7 @@ interface ChatState {
     useInternet: boolean
     setUseInternet: React.Dispatch<React.SetStateAction<boolean>>
     stream: UseQueryStreamReturn
-    handleSend: (question: string) => "ok" | "blocked"
+    handleSend: (question: string) => "ok" | "blocked" | "streaming"
     sessions: ChatSession[]
     currentSessionId: string | null
     currentCorpora: string[]
@@ -600,22 +600,20 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         }).catch(() => {})
     }, [newChat, stream.isStreaming, stream.abort])
 
-    const handleSend = useCallback((question: string): "ok" | "blocked" => {
+    const handleSend = useCallback((question: string): "ok" | "blocked" | "streaming" => {
         // Block new queries while one is still streaming
-        if (stream.isStreaming) return "blocked"
+        if (stream.isStreaming) return "streaming"
 
         const corpus = jurisdictionToCorpus(jurisdiction)
         if (!corpus) return "blocked"  // safety: at least one corpus required
 
-        // Check corpus limit: max 2 distinct corpora per conversation
+        // Corpus limit is enforced at the jurisdiction pill level (line ~718).
+        // No redundant check here — it caused false positives when the session's
+        // corpora array was out of sync with sessionsRef.
         const convId = currentSessionId ?? `chat-${Date.now()}`
         const currentSessions = sessionsRef.current
         const session = currentSessions.find(s => s.id === convId)
         const existingCorpora = session?.corpora ?? []
-        if (existingCorpora.length >= 2 && !existingCorpora.includes(corpus)) {
-            // Blocked — max 2 corpora per conversation
-            return "blocked" as const
-        }
 
         traceRef.current = []
         const userId = `user-${Date.now()}`
