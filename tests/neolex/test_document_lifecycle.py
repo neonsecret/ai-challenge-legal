@@ -15,7 +15,6 @@ Does NOT require the pipeline to be warmed up.
 from __future__ import annotations
 
 import asyncio
-import io
 import json
 from pathlib import Path
 
@@ -37,9 +36,9 @@ REAL_ENOUGH_PDF = (
 @pytest.fixture
 async def lifecycle_client(tmp_path, monkeypatch):
     """Full integration fixture: real DB, real filesystem, mocked auth and pipeline."""
-    from neolex.main import app
     from neolex.auth.middleware import get_api_key
     from neolex.config import settings
+    from neolex.main import app
 
     db_path = str(tmp_path / "neolex.db")
     data_dir = str(tmp_path / "data")
@@ -210,9 +209,8 @@ async def test_upload_non_pdf_rejected(lifecycle_client):
 
 async def test_client_isolation_in_listing(lifecycle_client, tmp_path, monkeypatch):
     """Two clients uploading documents see only their own documents."""
-    from neolex.main import app
     from neolex.auth.middleware import get_api_key
-    from neolex.config import settings
+    from neolex.main import app
 
     # Upload as integ-corp (lifecycle_client)
     await lifecycle_client.post(

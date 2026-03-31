@@ -11,10 +11,10 @@ Endpoint configuration via env vars:
   LITELLM_CUSTOMER_ID_N — optional x-litellm-customer-id header
 """
 
-import os
-import time
 import logging
+import os
 import threading
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,6 @@ _init_lock = threading.Lock()
 _MODEL_MAP = {
     "claude-sonnet-4-6": "claude-sonnet-4-6",
     "claude-opus-4-6": "claude-opus-4-6",
-    "claude-haiku-4-5": "claude-haiku-4-5",
     "claude-haiku-4-5": "claude-haiku-4-5",
 }
 

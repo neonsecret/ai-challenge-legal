@@ -1154,10 +1154,10 @@ def _call_llm(
         except Exception as exc:
             last_exc = exc
             logger.warning(f"[LLM] Attempt {attempt + 1} failed: {exc}")
-            err_msg = str(exc).lower()
+            str(exc).lower()
             # On rate limit / overloaded, switch to longer backoff schedule
             if _is_rate_limit_error(exc):
-                logger.warning(f"[LLM] Rate limit detected, switching to extended backoff")
+                logger.warning("[LLM] Rate limit detected, switching to extended backoff")
                 for rl_attempt in range(MAX_RETRIES_RATE_LIMIT):
                     time.sleep(RETRY_DELAYS_RATE_LIMIT[rl_attempt])
                     try:
@@ -1675,7 +1675,7 @@ def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object
                 return f"{m.group(1).upper()} {m.group(2)}/{m.group(3)}"
             return s
 
-        lines = [l.strip().rstrip(".") for l in stripped.split("\n") if l.strip()]
+        lines = [line.strip().rstrip(".") for line in stripped.split("\n") if line.strip()]
         if not lines:
             return None
 
@@ -1741,7 +1741,7 @@ def _clean_law_pages(pages_text: list[str]) -> list[str]:
     # Detect repeated last lines (footers) across pages
     last_lines = []
     for t in pages_text:
-        stripped_lines = [l for l in t.split('\n') if l.strip()]
+        stripped_lines = [line for line in t.split('\n') if line.strip()]
         if stripped_lines:
             last_lines.append(stripped_lines[-1].strip())
     last_counts = Counter(last_lines)

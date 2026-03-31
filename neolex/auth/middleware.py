@@ -7,7 +7,7 @@ All endpoints requiring authentication use:
 """
 from fastapi import Depends
 
-from neolex.auth.session import get_current_user, require_active_subscription
+from neolex.auth.session import get_current_user
 from neolex.db.models import User
 
 

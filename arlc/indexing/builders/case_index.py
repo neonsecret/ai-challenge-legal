@@ -14,8 +14,14 @@ Saves to data/case_metadata_index.json.
 
 Usage: uv run python build_case_index.py [--docs-dir data/documents]
 """
-import anthropic, fitz, json, os, re, argparse
+import argparse
+import json
+import os
+import re
 from pathlib import Path
+
+import anthropic
+import fitz
 from dotenv import load_dotenv
 
 load_dotenv()

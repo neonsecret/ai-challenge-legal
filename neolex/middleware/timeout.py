@@ -13,7 +13,6 @@ still protects against stuck requests consuming server resources.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import os
 

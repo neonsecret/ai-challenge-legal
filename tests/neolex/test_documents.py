@@ -6,10 +6,9 @@ Uses tmp filesystem and tmp SQLite DB — never touches data/ or neolex.db.
 from __future__ import annotations
 
 import asyncio
-import io
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -50,9 +49,9 @@ async def doc_client(tmp_path, monkeypatch, mock_key_row):
     - get_api_key       -> returns mock_key_row
     - run_reindex_job   -> no-op async function (don't actually index)
     """
-    from neolex.main import app
     from neolex.auth.middleware import get_api_key
     from neolex.config import settings
+    from neolex.main import app
 
     monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
     monkeypatch.setattr(settings, "db_path", str(tmp_path / "test.db"))
@@ -73,8 +72,9 @@ async def doc_client(tmp_path, monkeypatch, mock_key_row):
 
     # Patch reindex worker module to be instant (no-op) so tests don't spin real indexing
     async def fake_reindex_job(job_id, client_slug, db_path, app=None):
-        from neolex.indexing.reindex_worker import update_job
         import datetime
+
+        from neolex.indexing.reindex_worker import update_job
 
         await update_job(
             job_id,
@@ -276,7 +276,6 @@ async def test_list_documents_after_upload(doc_client):
 
 async def test_delete_document(doc_client, tmp_path, monkeypatch):
     """DOC-07: Delete a document and verify it's removed."""
-    from neolex.config import settings
 
     upload_resp = await doc_client.post(
         "/api/v1/documents",
@@ -305,9 +304,8 @@ async def test_delete_nonexistent_document_returns_404(doc_client):
 
 async def test_client_isolation_delete(doc_client, tmp_path, monkeypatch):
     """DOC-03: Cannot delete another client's document (returns 404, not 403)."""
-    from neolex.main import app
     from neolex.auth.middleware import get_api_key
-    from neolex.config import settings
+    from neolex.main import app
 
     # Upload document as test-co
     upload_resp = await doc_client.post(

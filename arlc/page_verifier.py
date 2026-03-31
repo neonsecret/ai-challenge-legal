@@ -8,7 +8,6 @@ Designed to be called between answer generation (Step 3) and post-processing (St
 in finals.py.
 """
 
-import json
 import logging
 import os
 import re
@@ -487,6 +486,6 @@ def verify_pages(
         updated_pages.append({"doc_id": doc_id, "page_numbers": deduped})
 
     if any_changed:
-        logger.info(f"[page_verifier] Pages updated for question")
+        logger.info("[page_verifier] Pages updated for question")
 
     return updated_pages

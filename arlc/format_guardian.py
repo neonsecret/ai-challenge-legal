@@ -5,14 +5,14 @@ FORMAT GUARDIAN - Last line of defense before submission.
 Validates and fixes answer formats to prevent S_det failures from format issues.
 """
 
+import argparse
 import json
 import re
-import argparse
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from dataclasses import dataclass, asdict
-from datetime import datetime
 from collections import defaultdict
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Tuple
 
 
 @dataclass
@@ -319,7 +319,7 @@ class FormatGuardian:
                     question_id=question_id,
                     answer_type=answer_type,
                     severity='warning',
-                    issue=f'Names list had formatting issues',
+                    issue='Names list had formatting issues',
                     original_value=value,
                     fixed_value=fixed,
                     question=question
@@ -336,7 +336,7 @@ class FormatGuardian:
                     question_id=question_id,
                     answer_type=answer_type,
                     severity='critical',
-                    issue=f'Names as comma-separated string instead of array',
+                    issue='Names as comma-separated string instead of array',
                     original_value=value,
                     fixed_value=parts,
                     question=question
@@ -348,7 +348,7 @@ class FormatGuardian:
                     question_id=question_id,
                     answer_type=answer_type,
                     severity='critical',
-                    issue=f'Single name as string instead of array',
+                    issue='Single name as string instead of array',
                     original_value=value,
                     fixed_value=[value],
                     question=question

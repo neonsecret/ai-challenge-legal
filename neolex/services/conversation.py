@@ -11,7 +11,8 @@ import logging
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func, case, update as sql_update
+from sqlalchemy import case, func, select
+from sqlalchemy import update as sql_update
 
 from neolex.db.models import ConversationMessage, PipelineJob
 from neolex.db.postgres import AsyncSessionLocal
@@ -74,8 +75,9 @@ async def load_accumulated_docs(user_id: str, conversation_id: str) -> list[dict
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
-            from neolex.db.models import ConversationDocs
             from sqlalchemy import select as _select
+
+            from neolex.db.models import ConversationDocs
             result = await session.execute(
                 _select(ConversationDocs.docs_json).where(
                     ConversationDocs.conversation_id == cid,
@@ -105,8 +107,9 @@ async def save_accumulated_docs(
         cid = _to_conv_uuid(conversation_id)
         docs_str = _json.dumps(docs, ensure_ascii=False)
         async with AsyncSessionLocal() as session:
-            from neolex.db.models import ConversationDocs
             from sqlalchemy import select as _select
+
+            from neolex.db.models import ConversationDocs
             result = await session.execute(
                 _select(ConversationDocs).where(
                     ConversationDocs.conversation_id == cid,
@@ -227,6 +230,7 @@ async def delete_conversation(user_id: str, conversation_id: str) -> bool:
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
             from sqlalchemy import delete as sql_delete
+
             from neolex.db.models import ConversationDocs
 
             # Delete messages

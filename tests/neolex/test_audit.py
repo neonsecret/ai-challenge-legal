@@ -1,10 +1,9 @@
 """Tests for append-only audit log (AUDIT-01, AUDIT-03, AUDIT-04, AUDIT-05, NFR-04)."""
 import asyncio
 import json
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, ASGITransport
+from unittest.mock import MagicMock
 
+from httpx import ASGITransport, AsyncClient
 
 # ---------------------------------------------------------------------------
 # NFR-04: WAL mode
@@ -29,8 +28,11 @@ async def test_wal_mode(tmp_db_path, monkeypatch):
 
 def test_no_delete_methods():
     """AuditDB must not expose delete or update methods for log tables (AUDIT-05)."""
+    import unittest.mock as mock_module
+
+    import aiosqlite
+
     from neolex.db.audit import AuditDB
-    import aiosqlite, unittest.mock as mock_module
 
     mock_conn = mock_module.MagicMock(spec=aiosqlite.Connection)
     db = AuditDB(mock_conn)
@@ -100,9 +102,9 @@ async def test_auth_failure_logged(authed_client, seeded_db):
 
 async def test_admin_audit_requires_admin_scope(seeded_db, monkeypatch):
     """Query-scoped key on GET /api/v1/admin/audit -> 403 (AUDIT-04)."""
+
     from neolex.config import settings
     from neolex.main import app
-    from neolex.auth.keys import generate_key, hash_key, key_prefix
 
     db_path, raw_key, _ = seeded_db  # raw_key is query-scoped
     monkeypatch.setattr(settings, "db_path", db_path)
@@ -124,10 +126,12 @@ async def test_admin_audit_requires_admin_scope(seeded_db, monkeypatch):
 
 async def test_admin_audit_returns_rows(seeded_db, monkeypatch):
     """Admin-scoped key on GET /api/v1/admin/audit -> 200 with rows list."""
+    from neolex.auth.keys import generate_key, hash_key
+    from neolex.auth.keys import key_prefix as kp
+
     from neolex.config import settings
-    from neolex.main import app
     from neolex.db.audit import get_audit_db
-    from neolex.auth.keys import generate_key, hash_key, key_prefix as kp
+    from neolex.main import app
 
     db_path, _, _ = seeded_db
     monkeypatch.setattr(settings, "db_path", db_path)

@@ -55,7 +55,7 @@ async def migrate() -> None:
     print(f"Connecting to SQLite: {sqlite_path}")
     sqlite_conn = sqlite3.connect(str(sqlite_path))
 
-    print(f"Connecting to PostgreSQL...")
+    print("Connecting to PostgreSQL...")
     pg = await asyncpg.connect(pg_url)
 
     try:

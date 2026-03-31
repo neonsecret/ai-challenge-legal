@@ -25,9 +25,8 @@ import hashlib
 import json
 import logging
 import re
-import sys
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -440,7 +439,6 @@ async def scrape_law_page(
         stats.laws_failed += 1
 
     # Find regulation links on the same page
-    reg_section = False
     for a in soup.find_all("a", href=True):
         href = a["href"]
         link_text = a.get_text(strip=True)
@@ -874,9 +872,9 @@ async def run(args):
 
 def print_summary(stats: ScrapeStats, new_docs: list[DocumentMeta], existing: list[dict]):
     """Print final summary statistics."""
-    total_laws = stats.laws_downloaded + stats.laws_skipped
-    total_regs = stats.regulations_downloaded + stats.regulations_skipped
-    total_judgments = stats.judgments_downloaded + stats.judgments_skipped
+    stats.laws_downloaded + stats.laws_skipped
+    stats.regulations_downloaded + stats.regulations_skipped
+    stats.judgments_downloaded + stats.judgments_skipped
 
     print("\n" + "=" * 60)
     print("DIFC CORPUS SCRAPE SUMMARY")
@@ -907,7 +905,7 @@ def print_summary(stats: ScrapeStats, new_docs: list[DocumentMeta], existing: li
 
     # Compare with current corpus
     print("\n--- Comparison with current corpus ---")
-    print(f"Current corpus: 303 documents, 26,947 chunks")
+    print("Current corpus: 303 documents, 26,947 chunks")
     print(f"New corpus:     {total_new + len(existing)} documents (new: {total_new})")
     print("=" * 60)
 

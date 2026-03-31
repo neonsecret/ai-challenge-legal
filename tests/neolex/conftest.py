@@ -1,10 +1,8 @@
 import asyncio
-import os
-import pathlib
-import pytest
-import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, ASGITransport
+
+import pytest
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture
@@ -45,8 +43,8 @@ async def app_client(mock_pipeline_result):
     Auth dependency (get_api_key) is patched to return a fixed key row so that
     pipeline-focused tests can run without seeding a real SQLite DB.
     """
-    from neolex.main import app
     from neolex.auth.middleware import get_api_key
+    from neolex.main import app
 
     # Inject mock state directly — bypasses lifespan so tests run without data/
     app.state.ready = True
@@ -105,6 +103,7 @@ async def seeded_db(tmp_db_path, monkeypatch):
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 
     from neolex.auth.keys import generate_key, hash_key, key_prefix
+
     from neolex.db.audit import get_audit_db
 
     raw_key = generate_key()

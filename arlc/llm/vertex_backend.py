@@ -1,8 +1,8 @@
 """LLM manager — Vertex AI backend (AnthropicVertex client)."""
 
+import logging
 import os
 import time
-import logging
 
 from anthropic import AnthropicVertex
 

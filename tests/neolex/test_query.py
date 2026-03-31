@@ -1,5 +1,4 @@
-import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
 
 async def test_post_query_happy_path(app_client, mock_pipeline_result):

@@ -12,8 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.config import settings
+from neolex.db.models import Session as DBSession
+from neolex.db.models import User
 from neolex.db.postgres import get_db
-from neolex.db.models import Session as DBSession, User
 
 
 def hash_token(token: str) -> str:

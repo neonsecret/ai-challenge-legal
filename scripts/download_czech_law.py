@@ -8,11 +8,11 @@ Output: data/corpus/czech/<law_id>.txt  (one file per law)
 """
 from __future__ import annotations
 
+import logging
 import re
 import time
-import logging
-from pathlib import Path
 from html.parser import HTMLParser
+from pathlib import Path
 
 import requests
 

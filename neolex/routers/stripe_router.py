@@ -29,6 +29,7 @@ stripe.api_key = settings.stripe_secret_key
 # Webhook idempotency — simple in-memory set (OK for single-instance;
 # use Redis for multi-instance).
 from collections import OrderedDict
+
 _processed_events: OrderedDict[str, None] = OrderedDict()
 _MAX_PROCESSED = 10_000
 
@@ -125,9 +126,10 @@ async def _delete_user_corpora(user: User) -> None:
     do not propagate — billing state updates must not fail because of cleanup.
     """
     try:
-        from neolex.services.document_manager import client_docs_dir
-        from neolex.db.audit import get_audit_db
         import shutil
+
+        from neolex.db.audit import get_audit_db
+        from neolex.services.document_manager import client_docs_dir
 
         client_slug = str(user.id)  # user-scoped corpus isolation
 

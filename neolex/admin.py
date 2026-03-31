@@ -18,9 +18,10 @@ from neolex.db.audit import get_audit_db
 
 
 async def cmd_list_users(args: argparse.Namespace) -> None:
-    from neolex.db.postgres import AsyncSessionLocal
-    from neolex.db.models import User
     from sqlalchemy import select
+
+    from neolex.db.models import User
+    from neolex.db.postgres import AsyncSessionLocal
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User).order_by(User.created_at.desc()))

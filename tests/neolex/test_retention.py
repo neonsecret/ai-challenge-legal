@@ -3,10 +3,10 @@
 Phase 7 — Task 2.
 """
 import datetime
+
 import pytest
 
-from neolex.compliance.retention import RetentionPolicy, DEFAULT_RETENTION_DAYS
-
+from neolex.compliance.retention import DEFAULT_RETENTION_DAYS, RetentionPolicy
 
 # ---------------------------------------------------------------------------
 # Unit tests — RetentionPolicy config
@@ -106,8 +106,8 @@ async def retention_db(tmp_path, monkeypatch):
 
 async def test_dry_run_counts_without_deleting(retention_db, monkeypatch):
     """Dry run must report purgeable rows but not delete them."""
-    from neolex.db.audit import get_audit_db
     from neolex.compliance.retention import RetentionPolicy
+    from neolex.db.audit import get_audit_db
 
     monkeypatch.setenv("AUDIT_LOG_RETENTION_DAYS", "365")
     monkeypatch.delenv("SOC2_OBSERVATION_PERIOD", raising=False)
@@ -128,8 +128,8 @@ async def test_dry_run_counts_without_deleting(retention_db, monkeypatch):
 
 async def test_purge_deletes_old_entries(retention_db, monkeypatch):
     """Purge must delete old entries and preserve recent ones."""
-    from neolex.db.audit import get_audit_db
     from neolex.compliance.retention import RetentionPolicy
+    from neolex.db.audit import get_audit_db
 
     monkeypatch.setenv("AUDIT_LOG_RETENTION_DAYS", "365")
     monkeypatch.delenv("SOC2_OBSERVATION_PERIOD", raising=False)
@@ -149,8 +149,8 @@ async def test_purge_deletes_old_entries(retention_db, monkeypatch):
 
 async def test_purge_blocked_in_observation_mode(retention_db, monkeypatch):
     """Purge must raise RuntimeError if SOC2_OBSERVATION_PERIOD is active."""
-    from neolex.db.audit import get_audit_db
     from neolex.compliance.retention import RetentionPolicy
+    from neolex.db.audit import get_audit_db
 
     monkeypatch.setenv("SOC2_OBSERVATION_PERIOD", "true")
     policy = RetentionPolicy()
@@ -162,9 +162,10 @@ async def test_purge_blocked_in_observation_mode(retention_db, monkeypatch):
 
 async def test_record_retention_run_creates_event(retention_db, monkeypatch):
     """record_retention_run must append a retention_run event to the events table."""
-    from neolex.db.audit import get_audit_db
-    from neolex.compliance.retention import RetentionPolicy, record_retention_run
     import json
+
+    from neolex.compliance.retention import RetentionPolicy, record_retention_run
+    from neolex.db.audit import get_audit_db
 
     monkeypatch.setenv("AUDIT_LOG_RETENTION_DAYS", "365")
     monkeypatch.delenv("SOC2_OBSERVATION_PERIOD", raising=False)

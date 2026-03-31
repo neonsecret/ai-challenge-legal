@@ -22,7 +22,6 @@ import logging
 import os
 import re
 import sys
-import time
 
 # ---------------------------------------------------------------------------
 # Security: scrub api_key query param from access logs

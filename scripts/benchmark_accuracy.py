@@ -250,7 +250,7 @@ def run_benchmark(name: str, tests: list, corpus: str):
         if scores["correctness"] == 0:
             print(f"       MISS keyword: expected '{test['expected_answer_contains']}' not found")
         if scores["grounding"] == 0:
-            print(f"       MISS grounding: no [DOC-N] citations found")
+            print("       MISS grounding: no [DOC-N] citations found")
         print(f"       Answer: {answer_preview}...")
         print()
 
@@ -328,7 +328,7 @@ if __name__ == "__main__":
 
     # ── Final comparison ─────────────────────────────────────────────
     print(f"\n{'='*80}")
-    print(f"  FINAL COMPARISON")
+    print("  FINAL COMPARISON")
     print(f"{'='*80}")
     print(f"{'Metric':<25} {'DIFC':<15} {'Czech':<15}")
     print(f"{'─'*25} {'─'*14} {'─'*14}")

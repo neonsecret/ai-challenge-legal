@@ -13,6 +13,7 @@ Output: data/article_page_index.json
 import json
 import os
 import re
+
 import pymupdf
 
 DOCS_DIR = "data/documents"

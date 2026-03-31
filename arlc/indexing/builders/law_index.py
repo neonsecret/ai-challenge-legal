@@ -7,10 +7,15 @@ Build/update law indexes:
 
 Usage: uv run python build_law_index_v2.py [--docs-dir data/documents]
 """
-import fitz, json, re, os, argparse
+import argparse
+import json
+import os
+import re
 from pathlib import Path
-from dotenv import load_dotenv
+
 import anthropic
+import fitz
+from dotenv import load_dotenv
 
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
@@ -74,7 +79,7 @@ def update_law_name_index(editions: dict):
 
     for name_lower, entry in editions.items():
         doc_id = entry['doc_id']
-        name = entry['name']
+        entry['name']
         # Add multiple variants
         variants = [
             name_lower,
@@ -94,7 +99,7 @@ def update_law_name_index(editions: dict):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--docs-dir', default='data/documents')
-    args = parser.parse_args()
+    parser.parse_args()
 
     print('Building law edition index...')
     editions = build_edition_index()

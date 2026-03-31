@@ -152,10 +152,10 @@ def _generate_template_questions(text: str, n: int) -> list[str]:
     first_sentence = text.split(".")[0].strip()[:200]
     templates = [
         f"What does the law state about {first_sentence.lower()[:80]}?",
-        f"What are the legal requirements described in this passage?",
-        f"What elements must be established according to this passage?",
-        f"How does Australian law define the concepts in this passage?",
-        f"What standard of proof applies according to this passage?",
+        "What are the legal requirements described in this passage?",
+        "What elements must be established according to this passage?",
+        "How does Australian law define the concepts in this passage?",
+        "What standard of proof applies according to this passage?",
     ]
     return templates[:n]
 
@@ -183,7 +183,7 @@ def mine_hard_negatives_for_dataset(
         return triplets_path
 
     print(f"[mine] Loading pairs from {pairs_path}...")
-    pairs = [json.loads(l) for l in open(pairs_path)]
+    pairs = [json.loads(line) for line in open(pairs_path)]
     dataset = Dataset.from_dict({
         "anchor": [p["query"] for p in pairs],
         "positive": [p["positive"] for p in pairs],
@@ -254,12 +254,12 @@ def train(
         SentenceTransformerTrainer,
         SentenceTransformerTrainingArguments,
     )
+    from sentence_transformers.evaluation import InformationRetrievalEvaluator
     from sentence_transformers.losses import (
         CachedMultipleNegativesRankingLoss,
         MatryoshkaLoss,
     )
     from sentence_transformers.training_args import BatchSamplers
-    from sentence_transformers.evaluation import InformationRetrievalEvaluator
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -291,7 +291,7 @@ def train(
 
     # ---- Load dataset ----
     print(f"[train] Loading triplets from {triplets_path}...")
-    triplets = [json.loads(l) for l in open(triplets_path)]
+    triplets = [json.loads(line) for line in open(triplets_path)]
     # 90/10 train/eval split
     split = int(len(triplets) * 0.9)
     train_data = triplets[:split]
@@ -601,7 +601,7 @@ def main():
 
     if args.mode in ("train", "full"):
         triplets_path = data_dir / "training_triplets.jsonl"
-        adapter_path = train(
+        train(
             base_model=args.base_model,
             triplets_path=triplets_path,
             output_dir=output_dir,

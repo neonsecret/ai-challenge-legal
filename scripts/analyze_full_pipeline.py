@@ -2,16 +2,19 @@
 Full pipeline analysis: run all 900 questions through router + retriever (no LLM)
 to identify routing and retrieval quality patterns.
 """
-import json, sys, os, time
+import json
+import os
+import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-from arlc.router import route
-from arlc.retriever import retrieve_pages
 from arlc.answerer import _lookup_oracle
+from arlc.retriever import retrieve_pages
+from arlc.router import route
 
 questions = json.load(open(os.path.join(os.path.dirname(__file__), "..", "data", "questions.json")))
 
@@ -105,7 +108,7 @@ print(f"SUMMARY: {len(questions)} questions")
 print(f"  Oracle hits: {oracle_count} ({oracle_count / len(questions) * 100:.1f}%)")
 print(f"  No pages retrieved: {no_pages_count}")
 print(f"  Low confidence (<0.4): {low_confidence_count}")
-print(f"\nBy answer type:")
+print("\nBy answer type:")
 print(
     f"  {'Type':15s} {'Total':>5s} {'Oracle':>7s} {'Routed':>7s} {'Retr':>5s} {'NoPg':>5s} {'LowC':>5s} {'AvgTopScore':>12s}")
 for at in sorted(type_stats.keys()):

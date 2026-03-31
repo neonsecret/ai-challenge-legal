@@ -290,7 +290,7 @@ def main():
         if result:
             print(f"Converted {args.doc_id} -> {result[0].name}, {result[1].name}")
         else:
-            print(f"Already done (use --force to reconvert)")
+            print("Already done (use --force to reconvert)")
     else:
         print(f"Converting all PDFs in {DOCS_DIR}...")
         convert_all(force=args.force)

@@ -1138,7 +1138,7 @@ def test_routing_coverage():
         print(f"            Q: {q_short}")
 
     print(f"\n{'=' * 80}")
-    print(f"SUMMARY")
+    print("SUMMARY")
     print(f"{'=' * 80}")
     print(f"  Total questions:    {len(questions)}")
     print(f"  Routed:             {routed} ({100 * routed / len(questions):.1f}%)")

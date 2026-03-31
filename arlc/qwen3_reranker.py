@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import torch
@@ -69,7 +69,7 @@ class Qwen3Reranker:
             )
         self.device = device
 
-        from transformers import AutoTokenizer, AutoModelForCausalLM
+        from transformers import AutoModelForCausalLM, AutoTokenizer
 
         logger.info("Loading Qwen3-Reranker %s on %s", model_name, device)
         self.tokenizer = AutoTokenizer.from_pretrained(

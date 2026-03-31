@@ -8,11 +8,11 @@ Verifies that:
 5. Demo config endpoint is intentionally exempt from audit (unauthenticated, no data access).
 """
 import asyncio
-import datetime
 import json
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 # Minimal valid PDF magic bytes for upload tests
 _MINIMAL_PDF = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
@@ -25,11 +25,12 @@ async def doc_audit_client(tmp_path, monkeypatch):
     Returns (client, raw_key, db_path).
     Used for document endpoint audit tests.
     """
-    from neolex.main import app
-    from neolex.auth.middleware import get_api_key
+    from neolex.auth.keys import generate_key, hash_key
+    from neolex.auth.keys import key_prefix as kp
+
     from neolex.config import settings
-    from neolex.auth.keys import generate_key, hash_key, key_prefix as kp
     from neolex.db.audit import get_audit_db
+    from neolex.main import app
 
     db_path = str(tmp_path / "audit_test.db")
     monkeypatch.setattr(settings, "data_dir", str(tmp_path / "data"))
@@ -232,9 +233,9 @@ async def test_invalid_key_logged_with_prefix(seeded_db, monkeypatch):
 
     Uses a direct app client with no dependency overrides so real auth logic runs.
     """
+    from neolex.auth.middleware import get_api_key
     from neolex.config import settings
     from neolex.main import app
-    from neolex.auth.middleware import get_api_key
 
     db_path, _, _ = seeded_db
     monkeypatch.setattr(settings, "db_path", db_path)
@@ -276,9 +277,11 @@ async def test_invalid_key_logged_with_prefix(seeded_db, monkeypatch):
 
 def test_audit_log_append_only_no_delete_methods():
     """AuditDB must not expose any method that deletes or updates log rows (AUDIT-05)."""
-    from neolex.db.audit import AuditDB
-    import aiosqlite
     import unittest.mock as m
+
+    import aiosqlite
+
+    from neolex.db.audit import AuditDB
 
     conn = m.MagicMock(spec=aiosqlite.Connection)
     db = AuditDB(conn)

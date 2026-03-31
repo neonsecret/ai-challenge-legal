@@ -3,8 +3,6 @@ from pydantic import ValidationError
 
 from neolex.schemas.query import (
     QueryRequest,
-    QueryResponse,
-    SourceCitation,
     pipeline_dict_to_response,
 )
 

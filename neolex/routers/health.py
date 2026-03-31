@@ -33,17 +33,14 @@ async def health_check(request: Request):
     """
     app = request.app
     ready = getattr(app.state, "ready", False)
-    workers = getattr(app.state, "workers", 0)
+    getattr(app.state, "workers", 0)
 
     uptime_s = _uptime_seconds(app)
 
     # Pull metrics from main module (single-process counters).
     import neolex.main as _main
-    request_count = _main._request_count
-    last_error_ts = _main._last_error_ts
-    avg_latency_ms: float | None = None
     if _main._latency_count > 0:
-        avg_latency_ms = round(_main._latency_sum_ms / _main._latency_count, 1)
+        round(_main._latency_sum_ms / _main._latency_count, 1)
 
     if not ready:
         return JSONResponse(

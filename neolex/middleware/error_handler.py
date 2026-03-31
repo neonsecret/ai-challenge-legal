@@ -13,7 +13,6 @@ Why not @app.exception_handler(Exception)?
 """
 from __future__ import annotations
 
-import json
 import logging
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -33,7 +32,7 @@ class JSONErrorMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         try:
             return await call_next(request)
-        except Exception as exc:
+        except Exception:
             import datetime
             # Update last_error_ts in main module if available.
             try:

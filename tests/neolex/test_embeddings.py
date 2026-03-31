@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 import importlib
-import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Config tests
@@ -126,7 +124,7 @@ class TestLlamaServerEmbedder:
         monkeypatch.setattr(requests, "get", get_mock)
         monkeypatch.setattr(requests, "post", capturing_post)
 
-        from neolex.embeddings.llama_embedder import LlamaServerEmbedder, QWEN_QUERY_PREFIX
+        from neolex.embeddings.llama_embedder import QWEN_QUERY_PREFIX, LlamaServerEmbedder
         emb = LlamaServerEmbedder(url="http://localhost:8088")
         emb.encode("my legal question", prompt_name="query")
 
@@ -153,7 +151,7 @@ class TestLlamaServerEmbedder:
         monkeypatch.setattr(requests, "get", get_mock)
         monkeypatch.setattr(requests, "post", capturing_post)
 
-        from neolex.embeddings.llama_embedder import LlamaServerEmbedder, QWEN_QUERY_PREFIX
+        from neolex.embeddings.llama_embedder import QWEN_QUERY_PREFIX, LlamaServerEmbedder
         emb = LlamaServerEmbedder(url="http://localhost:8088")
         emb.encode("plain document text")
 

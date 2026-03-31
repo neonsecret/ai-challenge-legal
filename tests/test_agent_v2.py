@@ -8,7 +8,7 @@ Expected: all 3 PASS.
 """
 
 import json
-import pytest
+
 from agent_v2 import answer_question
 
 

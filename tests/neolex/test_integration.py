@@ -14,7 +14,7 @@ import os
 import subprocess
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 
 def corpus_available() -> bool:
@@ -65,6 +65,7 @@ async def live_client():
 
     # Seed an integration key before app startup (init_schema runs in lifespan)
     from neolex.auth.keys import generate_key, hash_key, key_prefix
+
     from neolex.db.audit import get_audit_db
 
     _int_raw_key = generate_key()
@@ -86,8 +87,9 @@ async def live_client():
             )
 
     # Import fresh app instance — triggers lifespan via asgi_lifespan
-    from neolex.main import app
     from asgi_lifespan import LifespanManager
+
+    from neolex.main import app
 
     async with LifespanManager(app, startup_timeout=120, shutdown_timeout=30) as manager:
         async with AsyncClient(

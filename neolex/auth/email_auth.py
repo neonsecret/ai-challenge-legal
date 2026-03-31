@@ -8,15 +8,16 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse, Response
-import bcrypt
-from sqlalchemy import delete as sql_delete, select
+from sqlalchemy import delete as sql_delete
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
 from neolex.auth.email_service import send_password_reset_email, send_verification_email
-from neolex.auth.session import create_session, get_current_user, _set_session_cookie
+from neolex.auth.session import _set_session_cookie, create_session, get_current_user
 from neolex.config import settings
 from neolex.db.models import (
     AuthToken,
@@ -399,9 +400,11 @@ async def _delete_user_audit_logs(client_slug: str) -> None:
     themselves. This ensures full GDPR erasure of audit data.
     """
     try:
+        from sqlalchemy import delete as sa_delete
+        from sqlalchemy import select as sa_select
+
         from neolex.db.audit import get_audit_db
         from neolex.db.operational_models import ApiKey, Event, Query
-        from sqlalchemy import delete as sa_delete, select as sa_select
 
         async with get_audit_db() as audit_db:
             session = audit_db._session

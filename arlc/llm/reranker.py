@@ -21,8 +21,6 @@ import math
 import os
 import re
 import time
-from dataclasses import dataclass
-from typing import Optional
 
 import anthropic
 
@@ -170,7 +168,7 @@ def llm_rerank_pages(
 
     for attempt in range(max_retries + 1):
         try:
-            t0 = time.monotonic()
+            time.monotonic()
             llm_fn = _get_llm_fn()
             content, _, elapsed_ms, _, _, _ = llm_fn(
                 "", prompt, max_tokens=128, model=model,

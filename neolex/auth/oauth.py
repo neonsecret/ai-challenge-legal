@@ -6,12 +6,12 @@ from datetime import datetime, timezone
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
-from neolex.auth.session import create_session, _set_session_cookie, get_current_user
+from neolex.auth.session import _set_session_cookie, create_session, get_current_user
 from neolex.config import settings
 from neolex.db.models import User
 from neolex.db.postgres import get_db

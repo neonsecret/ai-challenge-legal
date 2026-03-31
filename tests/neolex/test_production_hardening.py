@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -26,8 +25,8 @@ from httpx import ASGITransport, AsyncClient
 @pytest.fixture
 async def base_app_client():
     """Minimal app client with mocked state. No auth override — uses app_client fixture."""
-    from neolex.main import app
     from neolex.auth.middleware import get_api_key
+    from neolex.main import app
 
     app.state.ready = True
     app.state.semaphore = asyncio.Semaphore(5)
@@ -100,6 +99,7 @@ class TestGlobalExceptionHandler:
         """Return a minimal FastAPI app with JSONErrorMiddleware + crashing endpoint."""
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
+
         from neolex.middleware.error_handler import JSONErrorMiddleware
         from neolex.middleware.request_id import RequestIDMiddleware
         from neolex.middleware.timeout import TimeoutMiddleware
@@ -156,14 +156,12 @@ class TestGlobalExceptionHandler:
 class TestTimeoutMiddleware:
     async def test_timeout_returns_504_json(self):
         """A slow request should return 504 JSON when timeout is very short."""
-        from neolex.main import app
-        from neolex.middleware.timeout import TimeoutMiddleware
-        from neolex.auth.middleware import get_api_key
-
         # Re-create app with a 0.05s timeout for the test
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
+
         from neolex.middleware.request_id import RequestIDMiddleware
+        from neolex.middleware.timeout import TimeoutMiddleware
 
         mini_app = FastAPI()
         mini_app.state.ready = True
@@ -192,6 +190,7 @@ class TestTimeoutMiddleware:
         """Health endpoints must respond even with an extremely short timeout."""
         from fastapi import FastAPI
         from fastapi.middleware.cors import CORSMiddleware
+
         from neolex.middleware.request_id import RequestIDMiddleware
         from neolex.middleware.timeout import TimeoutMiddleware
 
@@ -246,7 +245,6 @@ class TestEnhancedHealth:
 
     async def test_health_ready_503_when_not_ready(self):
         from neolex.main import app
-        from neolex.auth.middleware import get_api_key
 
         # Temporarily mark app as not ready
         original_ready = app.state.ready
@@ -283,7 +281,7 @@ class TestLoggingConfig:
         """JSON formatter produces valid JSON for each log record."""
         import json
         import logging
-        import io
+
         from neolex.logging_config import JSONFormatter
 
         formatter = JSONFormatter()
@@ -308,6 +306,7 @@ class TestLoggingConfig:
     def test_configure_logging_human_format(self):
         """Human formatter produces a non-empty string."""
         import logging
+
         from neolex.logging_config import HumanFormatter
 
         formatter = HumanFormatter()
@@ -328,6 +327,7 @@ class TestLoggingConfig:
     def test_configure_logging_idempotent(self):
         """Calling configure_logging twice must not add duplicate handlers."""
         import logging
+
         from neolex.logging_config import configure_logging
 
         root = logging.getLogger()
@@ -404,13 +404,11 @@ class TestCORSConfig:
         which breaks the singleton reference in neolex.db.audit and causes
         SOC2 audit completeness tests to fail when run in the same suite.
         """
-        import os
         custom = "https://example.com,https://app.example.com"
         parsed = [o.strip() for o in custom.split(",") if o.strip()]
         assert "https://example.com" in parsed
         assert "https://app.example.com" in parsed
         # Verify Settings uses the same parsing logic
-        from neolex.config import Settings
         monkeypatch.setenv("ALLOWED_ORIGINS", custom)
         # Settings reads os.environ at class def time, so we verify
         # the parsing matches what Settings would produce on fresh import

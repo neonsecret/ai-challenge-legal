@@ -13,8 +13,8 @@ All tracking is no-op when ARLC_METRICS is not set, so there is zero overhead
 in normal production runs.
 """
 
-import os
 import json
+import os
 import threading
 from collections import defaultdict
 from typing import Any

@@ -1,11 +1,11 @@
 """Tests for new tools in agent_tools.py — Task 3 of agentic RAG v2 plan."""
 import json
-import pytest
+
 from agent_tools import (
-    search_within_doc,
     get_case_metadata,
-    verify_page_supports_answer,
     get_latest_law_doc,
+    search_within_doc,
+    verify_page_supports_answer,
 )
 
 

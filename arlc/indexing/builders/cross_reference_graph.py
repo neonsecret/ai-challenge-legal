@@ -16,7 +16,6 @@ Usage:
 
 import json
 import re
-import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -105,7 +104,7 @@ def _load_json(path: Path) -> dict:
 def _get_page_text(doc_path: Path, page_num: int) -> str:
     """Get text for a specific page from docling markdown or PyMuPDF."""
     doc_id = doc_path.stem
-    md_path = DOCLING_DIR / f"{doc_id}.md"
+    DOCLING_DIR / f"{doc_id}.md"
     # For cross-reference extraction, PyMuPDF text is fine
     doc = pymupdf.open(str(doc_path))
     if page_num < len(doc):

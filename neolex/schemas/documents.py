@@ -4,11 +4,9 @@ DOC-01 through DOC-07 request/response contracts.
 """
 from __future__ import annotations
 
-import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Upload

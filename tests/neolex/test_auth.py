@@ -1,8 +1,5 @@
 """Tests for API key authentication (AUTH-01, AUTH-02, AUTH-03, AUTH-05, API-06)."""
-import os
-import pytest
 from neolex.auth.keys import generate_key
-
 
 # ---------------------------------------------------------------------------
 # Exemption: /health needs no key
@@ -60,11 +57,13 @@ async def test_wrong_key_returns_401(authed_client):
 async def test_revoked_key_returns_401(seeded_db, monkeypatch):
     """Revoked key (active=0) -> 401."""
     import asyncio
-    from unittest.mock import patch, AsyncMock, MagicMock
-    from httpx import AsyncClient, ASGITransport
-    from neolex.main import app
+    from unittest.mock import MagicMock
+
+    from httpx import ASGITransport, AsyncClient
+
     from neolex.config import settings
     from neolex.db.audit import get_audit_db
+    from neolex.main import app
 
     db_path, raw_key, row = seeded_db
     monkeypatch.setattr(settings, "db_path", db_path)
@@ -117,8 +116,9 @@ async def test_rate_limit_exceeded(authed_client, monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_RPM", "2")
 
     # Reset rate state for this key to avoid pollution from other tests
-    from neolex.auth.middleware import _rate_state
     from neolex.auth.keys import hash_key
+
+    from neolex.auth.middleware import _rate_state
     k_hash = hash_key(raw_key)
     _rate_state.pop(k_hash, None)
 

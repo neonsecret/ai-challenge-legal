@@ -6,12 +6,10 @@ the full cycle: CLI creates key -> server validates it -> audit log captures que
 """
 import argparse
 import asyncio
-import io
-import sys
+
 import pytest
 
 from neolex.admin import cmd_keys_create, cmd_keys_list, cmd_keys_revoke, cmd_show_log
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -186,13 +184,13 @@ async def test_full_phase2_cycle(tmp_db_path, monkeypatch):
     This test requires no live LLM or corpus — the pipeline is mocked.
     It exercises the full HTTP stack including auth middleware and audit logging.
     """
-    import asyncio
-    import json as _json
     from unittest.mock import AsyncMock, MagicMock, patch
-    from httpx import AsyncClient, ASGITransport
+
+    from httpx import ASGITransport, AsyncClient
+
     from neolex.config import settings
-    from neolex.main import app
     from neolex.db.audit import get_audit_db
+    from neolex.main import app
 
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 

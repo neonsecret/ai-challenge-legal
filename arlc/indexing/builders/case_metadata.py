@@ -408,7 +408,7 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
     print(f"  Manual-only:       {len(manual_only)}  {manual_only if manual_only else ''}")
 
     # Compare doc counts per case
-    print(f"\n  Per-case doc count comparison:")
+    print("\n  Per-case doc count comparison:")
     for case_id in sorted(matched):
         auto_docs = len(auto_index[case_id]["docs"])
         manual_docs = len(manual_index[case_id]["docs"])
@@ -416,7 +416,7 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
         print(f"    {case_id:20s}  auto={auto_docs}  manual={manual_docs}  [{status}]")
 
     # Compare metadata fields for each matched doc
-    print(f"\n  Field-level comparison:")
+    print("\n  Field-level comparison:")
     total_fields = 0
     correct_fields = 0
     field_stats = {}
@@ -495,7 +495,7 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
     print(f"\n  Overall accuracy: {correct_fields}/{total_fields} "
           f"({100 * correct_fields / total_fields:.1f}%)" if total_fields else "")
 
-    print(f"\n  Per-field accuracy:")
+    print("\n  Per-field accuracy:")
     for field, stats in sorted(field_stats.items()):
         pct = 100 * stats["correct"] / stats["total"] if stats["total"] else 0
         print(f"    {field:20s}  {stats['correct']}/{stats['total']}  ({pct:.0f}%)")

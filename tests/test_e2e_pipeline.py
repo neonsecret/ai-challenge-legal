@@ -11,22 +11,22 @@ Usage:
     python -m tests.test_e2e_pipeline --full        # 20 questions
 """
 
+import argparse
 import asyncio
 import json
 import os
 import sys
 import time
-import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from dotenv import load_dotenv
 
 load_dotenv()
 
-from arlc.router import route
-from arlc.retriever import retrieve_pages
-from arlc.answerer import generate_answer, AnswerResult, _lookup_oracle
+from arlc.answerer import _lookup_oracle, generate_answer
 from arlc.page_verifier import verify_pages
+from arlc.retriever import retrieve_pages
+from arlc.router import route
 
 
 def load_questions(path="data/questions.json"):
@@ -59,7 +59,7 @@ def select_test_questions(questions, n=20):
 
 def test_single_question(q, verbose=True):
     """Run a single question through the full pipeline. Returns result dict."""
-    qid = q["id"][:12]
+    q["id"][:12]
     question = q["question"]
     answer_type = q["answer_type"]
 
@@ -218,7 +218,7 @@ def main():
 
     n = args.n or (5 if args.quick else 20 if args.full else 10)
 
-    print(f"Loading questions...")
+    print("Loading questions...")
     questions = load_questions()
     selected = select_test_questions(questions, n)
     print(f"Testing {len(selected)} questions across {len(set(q['answer_type'] for q in selected))} types\n")
@@ -283,7 +283,7 @@ def main():
     os.makedirs("output", exist_ok=True)
     with open("output/e2e_test_results.json", "w") as f:
         json.dump(results, f, indent=2, default=str)
-    print(f"\nDetailed results saved to output/e2e_test_results.json")
+    print("\nDetailed results saved to output/e2e_test_results.json")
 
 
 if __name__ == "__main__":

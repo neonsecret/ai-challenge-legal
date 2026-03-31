@@ -1,6 +1,4 @@
 import json
-import pytest
-from unittest.mock import patch, AsyncMock
 
 
 def parse_sse_events(text: str) -> list[dict]:
