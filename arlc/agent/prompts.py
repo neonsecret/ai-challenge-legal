@@ -353,6 +353,16 @@ def build_system_prompt(state: AgentState) -> str:
             f"Focus your research within these laws."
         )
 
+    # Custom corpus: inform the LLM that the user has uploaded documents
+    if corpus not in _CORPUS_LANGUAGES:
+        semi_static_parts.append(
+            "- This is a CUSTOM corpus of user-uploaded documents. "
+            "When the user refers to 'my documents', 'uploaded documents', "
+            "or 'my files', they mean the documents in this corpus. "
+            "ALWAYS use search_legal_corpus to find and analyze them — "
+            "do NOT tell the user to upload documents."
+        )
+
     semi_static = "\n".join(semi_static_parts)
 
     # --- Dynamic: accumulated documents + case metadata ---

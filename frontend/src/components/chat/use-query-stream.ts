@@ -136,7 +136,7 @@ export interface Progress {
 interface StreamState {
     answer: string | null
     sources: Source[]
-    confidence: number | null
+    confidence: string | null
     isStreaming: boolean
     streamingStatus: string | null
     streamingProgress: Progress | null

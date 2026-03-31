@@ -12,7 +12,7 @@ export interface Message {
     role: "user" | "assistant"
     content: string | null
     sources?: Source[]
-    confidence?: number | null
+    confidence?: string | null
     trace?: string[]
 }
 

@@ -223,7 +223,7 @@ interface ChatMessageProps {
     content: string | null
     sources?: Source[]
     isStreaming?: boolean
-    confidence?: number | null
+    confidence?: string | null
     streamingStatus?: string | null
     streamingProgress?: import("@/components/chat/use-query-stream").Progress | null
     streamingThinkingPreview?: string | null

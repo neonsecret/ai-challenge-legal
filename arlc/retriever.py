@@ -432,13 +432,14 @@ def _search_faiss(query_embedding: list[float], top_k: int = 50, corpus: str = "
         if idx < 0:  # FAISS returns -1 for unfilled slots
             continue
         entry = metadata[idx]
-        ids.append(entry.get("chunk_id", f"{entry['doc_id']}_{entry['page']}"))
-        documents.append(entry["text"])
+        doc_id = entry.get("doc_id") or entry.get("pdf_id", "unknown")
+        ids.append(entry.get("chunk_id", f"{doc_id}_{entry.get('page', 0)}"))
+        documents.append(entry.get("text", ""))
         metadatas.append({
-            "doc_id": entry["doc_id"],
-            "pdf_id": entry.get("pdf_id", entry["doc_id"]),
-            "page": entry["page"],
-            "source_file": entry.get("source_file", entry["doc_id"]),
+            "doc_id": doc_id,
+            "pdf_id": entry.get("pdf_id", doc_id),
+            "page": entry.get("page", 1),
+            "source_file": entry.get("source_file", doc_id),
         })
         # Convert inner product similarity to cosine distance for ChromaDB compat
         distances.append(1.0 - float(D[0][i]))
