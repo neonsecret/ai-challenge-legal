@@ -86,7 +86,13 @@ function extractAnswerContent(raw: string): string | null {
     if (openAnalysis !== -1) text = text.slice(0, openAnalysis)
     // Clean up leftover tags
     text = text.replace(/<\/?(?:analysis|answer)>/g, "").trim()
-    return text || null
+    if (text) return text
+    // Buffer has content but is all whitespace/tags after cleanup.
+    // If no analysis block is open, return empty string so the caller
+    // knows we're in answer-mode (clears "Writing answer..." status)
+    // rather than null which means "no answer content yet".
+    if (raw.length > 0 && openAnalysis === -1) return ""
+    return null
 }
 
 /**
@@ -258,8 +264,14 @@ export function useQueryStream(): UseQueryStreamReturn {
                         if (typeof parsed.text === "string") {
                             tokenBufRef.current += parsed.text
                             const visible = extractAnswerContent(tokenBufRef.current)
-                            if (visible !== null) {
+                            if (visible !== null && visible.length > 0) {
+                                // Real answer content — display it and clear status
                                 setState((prev) => ({...prev, answer: visible, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
+                            } else if (visible !== null) {
+                                // Empty string — answer mode started but only whitespace so far.
+                                // Clear the "Writing answer..." status so it doesn't persist,
+                                // but don't set answer to empty (would show "No response").
+                                setState((prev) => ({...prev, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
                             } else {
                                 // Show intermediate reasoning as a live preview
                                 const preview = extractThinkingPreview(tokenBufRef.current)

@@ -134,7 +134,6 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
 
     return (
         <motion.div
-            layout
             className="inline-flex flex-col rounded-xl"
             style={{
                 gap: SPACE["1"],
@@ -146,7 +145,6 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                 minWidth: 180,
                 width: "auto",
             }}
-            transition={{layout: {duration: 0.25, ease: MOTION_EASE_OUT}}}
         >
             {/* Inline keyframes for the gentle glow pulse */}
             <style>{`

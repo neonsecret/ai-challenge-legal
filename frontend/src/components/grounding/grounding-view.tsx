@@ -1,10 +1,10 @@
 "use client"
 
-import {useState, useCallback, useEffect, useRef} from "react"
+import {useState, useCallback, useEffect, useRef, useMemo} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {PdfViewer} from "./pdf-viewer"
 import {cn} from "@/lib/utils"
-import {Copy, Check, Globe, ExternalLink} from "lucide-react"
+import {Copy, Check, Globe, ExternalLink, ChevronDown, ChevronUp} from "lucide-react"
 import {
     FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE,
     TEXT_DARK, TEXT_LIGHT,
@@ -36,6 +36,30 @@ function getDomain(url: string): string {
     } catch {
         return url.slice(0, 40)
     }
+}
+
+/** Navigation/boilerplate lines to strip from raw judgment text.
+ *  Matches lines that consist entirely of common nav items. */
+const NAV_BOILERPLATE_RE = /^\s*(DIFC Courts?|Home|About|FAQs?|Careers?|Contact|Login|Sign [Ii]n|Newsroom|News|Media|Press|Subscribe|Newsletter|Search|Menu|Skip to (?:content|main)|Cookie|Privacy|Terms|Accessibility|Sitemap|Follow us|Share|Print|Back to top|Copyright|All [Rr]ights [Rr]eserved|\u00a9.*$|Toggle navigation|Close)\s*$/i
+
+/** Maximum character count before truncation in the source panel */
+const TEXT_TRUNCATE_LIMIT = 2000
+
+/** Strip navigation boilerplate and clean up raw judgment text */
+function cleanJudgmentText(raw: string): string {
+    return raw
+        .split("\n")
+        .filter((line) => !NAV_BOILERPLATE_RE.test(line))
+        // Collapse runs of 3+ blank lines into 2
+        .reduce<string[]>((acc, line) => {
+            if (line.trim() === "" && acc.length >= 2 && acc[acc.length - 1].trim() === "" && acc[acc.length - 2].trim() === "") {
+                return acc
+            }
+            acc.push(line)
+            return acc
+        }, [])
+        .join("\n")
+        .trim()
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
@@ -272,6 +296,135 @@ function WebContentPreview({source, answer, isDark, isMobile}: {
     )
 }
 
+/** Text-only source viewer — cleans, truncates, and formats raw judgment text. */
+function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
+    source: SourceRef
+    answer: string
+    isDark: boolean
+    isMobile: boolean
+    onPageClick: (page: number) => void
+}) {
+    const [expanded, setExpanded] = useState(false)
+
+    const raw = source.text ?? answer
+    const headerMatch = raw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
+    const lawName = headerMatch?.[1] ?? ""
+    const breadcrumb = headerMatch?.[2]?.trim() ?? ""
+    const body = headerMatch?.[3] ?? raw
+
+    const cleanedBody = useMemo(() => cleanJudgmentText(body), [body])
+    const needsTruncation = cleanedBody.length > TEXT_TRUNCATE_LIMIT
+    const displayBody = expanded || !needsTruncation
+        ? cleanedBody
+        : cleanedBody.slice(0, TEXT_TRUNCATE_LIMIT)
+
+    // Split into paragraphs for better readability
+    const paragraphs = useMemo(() => {
+        return displayBody
+            .split(/\n{2,}/)
+            .map((p) => p.trim())
+            .filter(Boolean)
+    }, [displayBody])
+
+    const textColor = isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary
+    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+
+    return (
+        <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
+            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+            border: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+            backdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
+            WebkitBackdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
+            boxShadow: isDark
+                ? `${GLASS.dark.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.20)`
+                : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
+        }}>
+            {/* Header: law name + breadcrumb */}
+            {(lawName || breadcrumb) && (
+                <div style={{marginBottom: SPACE['3']}}>
+                    {lawName && (
+                        <p style={{
+                            fontSize: TYPE_SCALE.xs,
+                            fontWeight: 700,
+                            textTransform: "uppercase" as const,
+                            letterSpacing: "0.10em",
+                            color: isDark ? COLOR.gold.solid : COLOR.gold.base,
+                            margin: `0 0 ${SPACE['1']}px`,
+                            fontFamily: FONT.sans,
+                        }}>{lawName.replace(/_/g, " ")}</p>
+                    )}
+                    {breadcrumb && (
+                        <p style={{
+                            fontSize: TYPE_SCALE.xs,
+                            color: mutedColor,
+                            margin: 0,
+                            fontFamily: FONT.sans,
+                        }}>{breadcrumb}</p>
+                    )}
+                </div>
+            )}
+
+            {/* Body text — paragraph-split with legal highlighting */}
+            <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: SPACE['3'],
+            }}>
+                {paragraphs.map((para, pi) => (
+                    <p key={pi} style={{
+                        fontSize: TYPE_SCALE.sm,
+                        lineHeight: 1.75,
+                        color: textColor,
+                        fontFamily: FONT.brand,
+                        margin: 0,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                    }}>
+                        <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick}/>
+                    </p>
+                ))}
+            </div>
+
+            {/* Truncation: "Show more" / "Show less" toggle */}
+            {needsTruncation && (
+                <button
+                    onClick={() => setExpanded((v) => !v)}
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: SPACE['1'],
+                        marginTop: SPACE['3'],
+                        padding: `${SPACE['1']}px ${SPACE['3']}px`,
+                        fontSize: TYPE_SCALE.xs,
+                        fontWeight: 500,
+                        fontFamily: FONT.sans,
+                        color: COLOR.gold.base,
+                        background: COLOR.gold.tint,
+                        border: `0.5px solid ${COLOR.gold.border}`,
+                        borderRadius: RADIUS.sm,
+                        cursor: "pointer",
+                        transition: `all ${TIMING.instant} ${EASE.out}`,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
+                >
+                    {expanded ? (
+                        <>
+                            <ChevronUp size={SPACE['3']} />
+                            Show less
+                        </>
+                    ) : (
+                        <>
+                            <ChevronDown size={SPACE['3']} />
+                            Show more ({Math.round(cleanedBody.length / 1000)}k chars)
+                        </>
+                    )}
+                </button>
+            )}
+        </div>
+    )
+}
+
 interface GroundingViewProps {
     answer: string
     sources: SourceRef[]
@@ -470,60 +623,13 @@ export function GroundingView({answer, sources, isDark = false, isMobile = false
                                 highlightText={answer.slice(0, 200)}
                             />
                         ) : (
-                            <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-                                background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
-                                border: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                                backdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
-                                WebkitBackdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
-                                boxShadow: isDark
-                                    ? `${GLASS.dark.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.20)`
-                                    : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
-                            }}>
-                                {(() => {
-                                    const raw = activeSource.text ?? answer
-                                    const headerMatch = raw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
-                                    const lawName = headerMatch?.[1] ?? ""
-                                    const breadcrumb = headerMatch?.[2]?.trim() ?? ""
-                                    const body = headerMatch?.[3] ?? raw
-                                    return (
-                                        <>
-                                            {(lawName || breadcrumb) && (
-                                                <div style={{marginBottom: SPACE['3']}}>
-                                                    {lawName && (
-                                                        <p style={{
-                                                            fontSize: TYPE_SCALE.xs,
-                                                            fontWeight: 700,
-                                                            textTransform: "uppercase" as const,
-                                                            letterSpacing: "0.10em",
-                                                            color: isDark ? COLOR.gold.solid : COLOR.gold.base,
-                                                            margin: `0 0 ${SPACE['1']}px`,
-                                                            fontFamily: FONT.sans,
-                                                        }}>{lawName.replace(/_/g, " ")}</p>
-                                                    )}
-                                                    {breadcrumb && (
-                                                        <p style={{
-                                                            fontSize: TYPE_SCALE.xs,
-                                                            color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
-                                                            margin: 0,
-                                                            fontFamily: FONT.sans,
-                                                        }}>{breadcrumb}</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                            <p style={{
-                                                fontSize: TYPE_SCALE.sm,
-                                                lineHeight: 1.75,
-                                                color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
-                                                fontFamily: FONT.brand,
-                                                margin: 0,
-                                                whiteSpace: "pre-wrap",
-                                            }}>
-                                                <HighlightedLegalText text={body} isDark={isDark} onPageClick={handlePageFromText}/>
-                                            </p>
-                                        </>
-                                    )
-                                })()}
-                            </div>
+                            <TextSourceViewer
+                                source={activeSource}
+                                answer={answer}
+                                isDark={isDark}
+                                isMobile={isMobile}
+                                onPageClick={handlePageFromText}
+                            />
                         )}
                     </motion.div>
                 ) : (
