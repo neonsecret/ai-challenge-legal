@@ -45,20 +45,28 @@ const NAV_BOILERPLATE_RE = /^\s*(DIFC Courts?|Home|About|FAQs?|Careers?|Contact|
 /** Maximum character count before truncation in the source panel */
 const TEXT_TRUNCATE_LIMIT = 2000
 
-/** Strip navigation boilerplate and clean up raw judgment text */
+/** Strip navigation boilerplate, insert paragraph breaks, and clean up raw judgment text.
+ *  DIFC judgment TXT files are scraped webpage text — one continuous blob
+ *  with navigation menus, breadcrumbs, and no paragraph breaks. */
 function cleanJudgmentText(raw: string): string {
-    return raw
+    let text = raw
+    // Strip everything before the first case-like heading (e.g. "Claim No:", "IN THE COURT", party names)
+    const caseStart = text.search(/(?:Claim No|IN THE\s*COURT|BETWEEN|BEFORE|Hearing:|Judgment:)/i)
+    if (caseStart > 100) text = text.slice(caseStart)
+
+    // Insert paragraph breaks before numbered paragraphs (1. 2. 3. etc.)
+    text = text.replace(/(?<=[.!?"'])\s*(\d{1,3}\.\s+[A-Z])/g, "\n\n$1")
+    // Insert breaks before common legal section headers
+    text = text.replace(/((?:IT IS HEREBY ORDERED|JUDGMENT OF|Background|Parties|The Claimant|The Defendant|Conclusion|Analysis|Discussion|Issues?|Decision|Orders?)\s*(?:that)?:?)/gi, "\n\n$1")
+    // Insert breaks before ALLCAPS headings (3+ consecutive caps words)
+    text = text.replace(/([.!?])\s*([A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})*)/g, "$1\n\n$2")
+
+    // Now filter lines
+    return text
         .split("\n")
         .filter((line) => !NAV_BOILERPLATE_RE.test(line))
-        // Collapse runs of 3+ blank lines into 2
-        .reduce<string[]>((acc, line) => {
-            if (line.trim() === "" && acc.length >= 2 && acc[acc.length - 1].trim() === "" && acc[acc.length - 2].trim() === "") {
-                return acc
-            }
-            acc.push(line)
-            return acc
-        }, [])
         .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
         .trim()
 }
 
@@ -373,11 +381,10 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
                 {paragraphs.map((para, pi) => (
                     <p key={pi} style={{
                         fontSize: TYPE_SCALE.sm,
-                        lineHeight: 1.75,
+                        lineHeight: 1.7,
                         color: textColor,
-                        fontFamily: FONT.brand,
+                        fontFamily: FONT.sans,
                         margin: 0,
-                        whiteSpace: "pre-wrap",
                         wordBreak: "break-word",
                     }}>
                         <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick}/>

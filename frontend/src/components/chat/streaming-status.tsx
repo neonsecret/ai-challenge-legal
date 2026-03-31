@@ -96,7 +96,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
             // on "Reading legal documents..." keep the same label)
             setPastSteps((prev) => {
                 if (prev.length > 0 && prev[prev.length - 1].label === prevLabel.current) return prev
-                return [...prev.slice(-5), {label: prevLabel.current, color: prevInfo.color}]
+                return [...prev.slice(-2), {label: prevLabel.current, color: prevInfo.color}]
             })
             prevLabel.current = label
             resetStepTimers()
@@ -133,7 +133,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
     const glowColor = iconColor + "4D" // 4D hex ≈ 30% opacity
 
     return (
-        <motion.div
+        <div
             className="inline-flex flex-col rounded-xl"
             style={{
                 gap: SPACE["1"],
@@ -144,6 +144,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                 WebkitBackdropFilter: glass.blurLight,
                 minWidth: 180,
                 width: "auto",
+                maxWidth: 340,
             }}
         >
             {/* Inline keyframes for the gentle glow pulse */}
@@ -349,6 +350,6 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                     </motion.div>
                 )}
             </AnimatePresence>
-        </motion.div>
+        </div>
     )
 }

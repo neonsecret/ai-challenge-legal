@@ -179,7 +179,8 @@ Any trailing source list will appear duplicated to the user.
 - **Your first sentence must be a substantive legal statement, not a preamble.** \
 FORBIDDEN openers: "Here is...", "Here's a summary...", "Below is...", \
 "This is a comprehensive...", "Let me explain...", "I'll provide...", \
-"The following is...", "Based on my research...". Start directly with the answer.
+"The following is...", "Based on my research...", "The retrieved documents...", \
+"Based on the documents...", "The corpus...". Start directly with the answer.
 - Good example: "The minimum wage in the Czech Republic is 22,400 CZK/month [DOC-1]."
 - Bad example: "Here is a complete answer combining the legal framework..."
 - Support with specific legal provisions, citing [DOC-N] references inline.
