@@ -175,73 +175,27 @@ def _run_arlc_indexing(
         index_dir: Path,
         doc_ids: list[str],
 ) -> None:
-    """Attempt to call arlc/indexing/indexer.py for real vector indexing.
+    """Call arlc/indexing/indexer.py for real vector indexing into PostgreSQL.
 
-    This is a thin wrapper that translates Vitreon Legal concepts to arlc expectations.
+    Temporarily overrides DOCUMENTS_DIR for the client's corpus, then calls
+    build_index() with the client_slug as both corpus and tenant_id so chunks
+    are scoped correctly in the PostgreSQL chunks table.
+
     If arlc dependencies are not available, raises ImportError (caller stubs).
     """
-    # arlc indexer is designed for the competition corpus — it has many
-    # hardcoded paths. For v1 we call it if possible, otherwise stub.
-    # The interface contract: if this raises, caller falls back to stub.
     import importlib
 
     indexer = importlib.import_module("arlc.indexing.indexer")
 
-    # arlc indexer expects DOCUMENTS_DIR and FAISS_INDEX_PATH as globals.
-    # We temporarily override them for the client's corpus.
-    original_docs_dir = indexer.DOCUMENTS_DIR
-    # Serialize concurrent reindex operations to prevent monkey-patching races.
-    # Without this lock, two simultaneous uploads could clobber each other's
-    # DOCUMENTS_DIR / FAISS_INDEX_PATH overrides.
+    # Serialize concurrent reindex operations to prevent monkey-patching races
+    # on DOCUMENTS_DIR.
     with _reindex_lock:
-        return _run_arlc_indexing_locked(indexer, docs_dir, index_dir)
-
-
-def _run_arlc_indexing_locked(indexer, docs_dir: Path, index_dir: Path):
-    original_docs_dir = indexer.DOCUMENTS_DIR
-    original_faiss_path = indexer.FAISS_INDEX_PATH
-    original_faiss_meta = indexer.FAISS_METADATA_PATH
-
-    # Override the embedding model to match the retriever's backend.
-    # The indexer defaults to Snowflake Arctic (1024-dim) but the retriever
-    # uses Qwen3-8B via llama-server (4096-dim). Dimension mismatch = broken search.
-    original_embedding_model = getattr(indexer, "EMBEDDING_MODEL", None)
-
-    try:
-        indexer.DOCUMENTS_DIR = str(docs_dir)
-        indexer.FAISS_INDEX_PATH = str(index_dir / "faiss_index.bin")
-        indexer.FAISS_METADATA_PATH = str(index_dir / "faiss_metadata.json")
-
-        # Override the indexer's embedding function to use the retriever's
-        # llama-server backend (Qwen3-8B, 4096-dim) instead of the indexer's
-        # default SentenceTransformer (Snowflake Arctic, 1024-dim).
-        from arlc.retriever import get_embedding_model, _embedding_lock
-        model = get_embedding_model()
-
-        def _llama_embed_fn(texts):
-            """Embedding function compatible with indexer's build_index()."""
-            import numpy as np
-            with _embedding_lock:
-                embeddings = model.encode(texts, normalize_embeddings=True)
-            return np.array(embeddings).tolist()
-
-        original_embed_fn = getattr(indexer, "_get_embedding_function", None)
-        indexer._get_embedding_function = lambda: _llama_embed_fn
-
-        if hasattr(indexer, "build_index"):
-            indexer.build_index()
-        elif hasattr(indexer, "build_faiss_index"):
-            indexer.build_faiss_index()
-        else:
-            raise AttributeError("build_index not found in arlc.indexing.indexer")
-    finally:
-        indexer.DOCUMENTS_DIR = original_docs_dir
-        indexer.FAISS_INDEX_PATH = original_faiss_path
-        indexer.FAISS_METADATA_PATH = original_faiss_meta
-        if original_embedding_model is not None:
-            indexer.EMBEDDING_MODEL = original_embedding_model
-        if original_embed_fn is not None:
-            indexer._get_embedding_function = original_embed_fn
+        original_docs_dir = indexer.DOCUMENTS_DIR
+        try:
+            indexer.DOCUMENTS_DIR = str(docs_dir)
+            indexer.build_index(corpus=client_slug, tenant_id=client_slug)
+        finally:
+            indexer.DOCUMENTS_DIR = original_docs_dir
 
 
 # ---------------------------------------------------------------------------
@@ -332,31 +286,5 @@ async def run_reindex_job(
 
 
 def _hot_swap_index(app: "FastAPI", client_slug: str, index_dir: Path) -> None:
-    """Swap in the new FAISS/BM25 index for the client without server restart.
-
-    For v1 single-tenant (default client), this updates the global retriever
-    singletons in arlc.retriever so future queries use the new index.
-
-    For multi-tenant readiness, each client's index is namespaced separately.
-    """
-    try:
-        import arlc.retriever as _ret
-
-        faiss_path = str(index_dir / "faiss_index.bin")
-        meta_path = str(index_dir / "faiss_metadata.json")
-
-        if not Path(faiss_path).exists():
-            logger.debug("No FAISS index at %s — skipping hot-swap", faiss_path)
-            return
-
-        # Reset the cached singleton so the next query reloads from new path
-        if hasattr(_ret, "_faiss_index"):
-            _ret._faiss_index = None
-        if hasattr(_ret, "_faiss_metadata"):
-            _ret._faiss_metadata = None
-        if hasattr(_ret, "_chunks_by_doc"):
-            _ret._chunks_by_doc = None
-
-        logger.info("Hot-swapped index for client %s from %s", client_slug, faiss_path)
-    except Exception as exc:
-        logger.warning("Hot-swap failed (non-fatal): %s", exc)
+    """No-op: PostgreSQL chunks table is always current, no cache to invalidate."""
+    logger.info("Index ready for client %s (PostgreSQL — no cache swap needed)", client_slug)

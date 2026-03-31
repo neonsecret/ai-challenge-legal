@@ -1,15 +1,11 @@
-"""Index PDF documents into ChromaDB and/or FAISS for retrieval."""
+"""Index PDF documents into PostgreSQL (pgvector) for retrieval."""
 
 import os
 import re
 import json
-import shutil
 import base64
 import pymupdf
-import chromadb
-import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -71,17 +67,12 @@ def extract_entities_from_chunk(text: str) -> list[str]:
 
 
 DOCUMENTS_DIR = "data/documents"
+# Deprecated: kept for backward compat with arlc/pipeline.py import.
+# New indexing writes directly to PostgreSQL (pgvector).
 CHROMA_DIR = "data/chroma_db"
 # Embedding model: must match the retriever's model for consistent dimensions.
 # Default: llama-server (Qwen3-8B via HTTP, 4096-dim).
-# Override via EMBEDDING_MODEL env var for different backends.
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
-# FAISS: pure vector math, no SQLite overhead — strictly better than ChromaDB for ~27K vectors
-# Credit: FAISS backend choice inspired by IAS Partners (guy4)
-FAISS_INDEX_PATH = "data/faiss_index.bin"
-FAISS_METADATA_PATH = "data/faiss_metadata.json"
-# VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
-VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
 
 _ocr_model = os.environ.get("MODEL_NAME", "")
 
@@ -380,54 +371,26 @@ def _get_embedding_function():
     return encode
 
 
-def build_index():
-    """Build vector index from all PDF documents.
+def build_index(corpus: str = "difc", tenant_id: str | None = None):
+    """Build vector index by inserting chunks into PostgreSQL (pgvector).
 
-    Builds FAISS index by default (VECTOR_BACKEND=faiss). Set VECTOR_BACKEND=chroma
-    for ChromaDB fallback. Both backends can be built simultaneously if desired.
+    Extracts pages from PDFs, splits into chunks, generates SAC context,
+    computes embeddings, and INSERTs into the ``chunks`` table.
+
+    Args:
+        corpus: Corpus identifier ('difc', 'czech', or tenant UUID for custom).
+        tenant_id: Tenant UUID for custom corpora, None for built-in.
     """
     ef = _get_embedding_function()
 
-    # Clear BM25 disk cache — it will be rebuilt after indexing
-    bm25_cache = "data/bm25_cache"
-    if os.path.exists(bm25_cache):
-        shutil.rmtree(bm25_cache)
-
-    # ChromaDB setup (always built for backward compat; FAISS is added alongside)
-    client = chromadb.PersistentClient(path=CHROMA_DIR)
-
-    # Delete existing collection if it exists
-    try:
-        client.delete_collection("legal_docs")
-    except Exception:
-        pass
-
-    # ChromaDB collection — we pass pre-computed embeddings so no embedding_function needed.
-    # Query-time uses FAISS, not ChromaDB. Kept for backward compat only.
-    chroma_ef = None
-    if "arctic" in EMBEDDING_MODEL.lower():
-        chroma_ef_kwargs = {"trust_remote_code": True}
-    else:
-        chroma_ef_kwargs = {}
-    try:
-        chroma_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=EMBEDDING_MODEL, **chroma_ef_kwargs)
-    except Exception:
-        pass  # ChromaDB query-time embedding not critical — FAISS is primary
-    collection = client.create_collection(
-        name="legal_docs",
-        embedding_function=chroma_ef,
-        metadata={"hnsw:space": "cosine"},
-    )
-
     pdf_files = sorted(f for f in os.listdir(DOCUMENTS_DIR) if f.endswith(".pdf"))
-    print(f"Indexing {len(pdf_files)} PDF files (backend={VECTOR_BACKEND}, model={EMBEDDING_MODEL})...")
+    print(f"Indexing {len(pdf_files)} PDF files (model={EMBEDDING_MODEL}, corpus={corpus})...")
 
-    all_ids = []
-    all_texts = []
-    all_metadatas = []
+    all_ids: list[str] = []
+    all_texts: list[str] = []
+    all_metadatas: list[dict] = []
     # (idx, pdf_id, summary, chunk_text, chunk_key) for concurrent context generation
-    pending_contexts = []
+    pending_contexts: list[tuple] = []
 
     for pdf_file in pdf_files:
         pdf_id = pdf_file.replace(".pdf", "")
@@ -446,14 +409,13 @@ def build_index():
             chunk_id = f"{pdf_id}_{chunk_info['page']}_{chunk_info['chunk_idx']}"
             all_ids.append(chunk_id)
             all_texts.append(chunk_info["text"])  # raw text; SAC prefix prepended below
-            # Entity extraction at index time (inspired by CPBD, Azamat Yelmagambetov, 1st place)
-            # Stored as pipe-separated string (ChromaDB metadata requires scalar values).
+            # Entity extraction at index time
             entities = extract_entities_from_chunk(chunk_info["text"])
             all_metadatas.append({
                 "pdf_id": pdf_id,
                 "page": chunk_info["page"],  # 1-based, used for grounding
                 "source_file": pdf_file,
-                "entities": "|".join(entities),  # pipe-separated for ChromaDB scalar compat
+                "entities": "|".join(entities),
             })
             if summary:
                 chunk_key = f"{chunk_info['page']}_{chunk_info['chunk_idx']}"
@@ -489,7 +451,7 @@ def build_index():
                     print(f"    {completed}/{len(pending_contexts)} contexts done")
         print(f"  Contexts complete ({len(pending_contexts)} chunks)")
 
-    # Embedding decontamination: clean text for embedding, keep original for storage/BM25
+    # Embedding decontamination: clean text for embedding, keep original for storage
     print("  Cleaning text for embedding decontamination...")
     all_embed_texts = []
     for i, text in enumerate(all_texts):
@@ -501,50 +463,75 @@ def build_index():
     print("  Computing embeddings from decontaminated text...")
     all_embeddings = ef(all_embed_texts)
 
-    # --- Build FAISS index ---
-    if VECTOR_BACKEND == "faiss" or os.environ.get("BUILD_BOTH_BACKENDS"):
-        import faiss
+    # --- Insert into PostgreSQL (pgvector) ---
+    from sqlalchemy import create_engine, text as sa_text
 
-        print("  Building FAISS index...")
-        embeddings_np = np.array(all_embeddings).astype('float32')
-        faiss.normalize_L2(embeddings_np)  # normalize for cosine similarity via inner product
-        dim = embeddings_np.shape[1]
-        index = faiss.IndexFlatIP(dim)  # inner product on L2-normalized vectors = cosine similarity
-        index.add(embeddings_np)
-        faiss.write_index(index, FAISS_INDEX_PATH)
-        print(f"  FAISS index saved: {FAISS_INDEX_PATH} ({index.ntotal} vectors, {dim}-dim)")
+    db_url = os.environ.get("DATABASE_URL", "")
+    if "+asyncpg" in db_url:
+        db_url = db_url.replace("+asyncpg", "")
+    engine = create_engine(db_url)
 
-        # Save metadata mapping: index position -> {chunk_id, doc_id, page, text, entities}
-        faiss_metadata = []
-        for i in range(len(all_ids)):
-            faiss_metadata.append({
-                "chunk_id": all_ids[i],
-                "pdf_id": all_metadatas[i]["pdf_id"],
-                "page": all_metadatas[i]["page"],
-                "source_file": all_metadatas[i]["source_file"],
-                "text": all_texts[i],
-                # Entities extracted at index time (pipe-separated string)
-                "entities": all_metadatas[i].get("entities", ""),
-            })
-        with open(FAISS_METADATA_PATH, "w") as f:
-            json.dump(faiss_metadata, f)
-        print(f"  FAISS metadata saved: {FAISS_METADATA_PATH} ({len(faiss_metadata)} entries)")
+    print(f"  Inserting {len(all_ids)} chunks into PostgreSQL (corpus={corpus})...")
 
-    # --- Build ChromaDB index (always, for backward compat) ---
-    # Add in batches — store ORIGINAL text but use CLEANED embeddings
-    batch_size = 100
-    for i in range(0, len(all_ids), batch_size):
-        end = min(i + batch_size, len(all_ids))
-        collection.add(
-            ids=all_ids[i:end],
-            documents=all_texts[i:end],
-            embeddings=all_embeddings[i:end],
-            metadatas=all_metadatas[i:end],
+    with engine.begin() as conn:
+        # Delete existing chunks for this corpus (clean rebuild)
+        conn.execute(
+            sa_text("DELETE FROM chunks WHERE corpus = :corpus"),
+            {"corpus": corpus},
         )
-        print(f"  Indexed {end}/{len(all_ids)} chunks (ChromaDB)")
 
-    print(f"Done! Total chunks: {len(all_ids)}")
-    return collection
+        # Batch insert with UPSERT as safety net
+        for i in range(0, len(all_ids), 64):
+            batch_end = min(i + 64, len(all_ids))
+            for j in range(i, batch_end):
+                chunk_id = all_ids[j]
+                meta = all_metadatas[j]
+                text = all_texts[j]
+                emb = all_embeddings[j]
+
+                vec_str = "[" + ",".join(str(float(x)) for x in emb) + "]"
+
+                # Store entities, doc_type, court_division in metadata_extra JSONB
+                extra: dict = {}
+                entities_str = meta.get("entities", "")
+                if entities_str:
+                    extra["entities"] = entities_str
+                if meta.get("doc_type"):
+                    extra["doc_type"] = meta["doc_type"]
+                if meta.get("court_division"):
+                    extra["court_division"] = meta["court_division"]
+
+                conn.execute(
+                    sa_text("""
+                        INSERT INTO chunks
+                            (corpus, tenant_id, doc_id, pdf_id, page, chunk_id,
+                             source_file, text, embedding, metadata_extra)
+                        VALUES
+                            (:corpus, :tenant_id, :doc_id, :pdf_id, :page, :chunk_id,
+                             :source_file, :text, cast(:embedding as vector), :metadata_extra)
+                        ON CONFLICT (chunk_id) DO UPDATE SET
+                            text = EXCLUDED.text,
+                            embedding = EXCLUDED.embedding,
+                            metadata_extra = EXCLUDED.metadata_extra
+                    """),
+                    {
+                        "corpus": corpus,
+                        "tenant_id": tenant_id,
+                        "doc_id": meta["pdf_id"],
+                        "pdf_id": meta["pdf_id"],
+                        "page": meta["page"],
+                        "chunk_id": chunk_id,
+                        "source_file": meta["source_file"],
+                        "text": text,
+                        "embedding": vec_str,
+                        "metadata_extra": json.dumps(extra) if extra else None,
+                    },
+                )
+
+            print(f"  Inserted {batch_end}/{len(all_ids)} chunks")
+
+    engine.dispose()
+    print(f"Index built: {len(all_ids)} chunks inserted into PostgreSQL (corpus={corpus})")
 
 
 if __name__ == "__main__":
