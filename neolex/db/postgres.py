@@ -4,6 +4,7 @@ All tables live here: auth/billing (users, sessions, auth_tokens,
 subscriptions, invoices) and operational (api_keys, queries, events,
 rate_limits, documents, reindex_jobs).
 """
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
 
@@ -39,8 +40,30 @@ async def get_db():
 
 
 async def init_db() -> None:
-    """Create all tables defined in models.py and operational_models.py (idempotent)."""
+    """Create all tables defined in models.py, operational_models.py, and chunks.py (idempotent)."""
     from neolex.db import models  # noqa: F401 — registers auth/billing models
     from neolex.db import operational_models  # noqa: F401 — registers operational models
+    from neolex.db import chunks  # noqa: F401 — registers chunk/vector model
     async with engine.begin() as conn:
+        # Enable pgvector extension (must precede table creation)
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
+        # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
+        # preserves legal terms that stemmers would mangle.
+        await conn.execute(text("""
+            CREATE OR REPLACE FUNCTION chunks_text_search_trigger() RETURNS trigger AS $$
+            BEGIN
+                NEW.text_search := to_tsvector('simple', NEW.text);
+                RETURN NEW;
+            END
+            $$ LANGUAGE plpgsql;
+        """))
+        await conn.execute(text("""
+            DO $$ BEGIN
+                CREATE TRIGGER chunks_text_search_update
+                    BEFORE INSERT OR UPDATE OF text ON chunks
+                    FOR EACH ROW EXECUTE FUNCTION chunks_text_search_trigger();
+            EXCEPTION WHEN duplicate_object THEN NULL;
+            END $$;
+        """))
