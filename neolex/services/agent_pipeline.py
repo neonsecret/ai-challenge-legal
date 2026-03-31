@@ -32,6 +32,7 @@ async def run_agent_question(
     on_status: Callable[[str], None] | None = None,
     on_token: Callable[[str], None] | None = None,
     use_internet: bool = True,
+    doc_ids: list[str] | None = None,
 ) -> dict:
     """Run a question through the LangGraph agent.
 
@@ -77,6 +78,7 @@ async def run_agent_question(
         on_status=on_status,
         on_token=on_token,
         use_internet=use_internet,
+        doc_ids=doc_ids,
     )
 
     # Persist accumulated docs for future turns (non-blocking)

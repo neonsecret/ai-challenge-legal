@@ -1,15 +1,18 @@
 "use client";
 
-import {useMemo, useState} from "react";
+import {useMemo, useState, useCallback} from "react";
 import {useTheme} from "next-themes";
-import {Folder, FileText, ChevronDown, ChevronRight, Trash2, CheckCircle2} from "lucide-react";
+import {Folder, FileText, ChevronDown, ChevronRight, Trash2, CheckCircle2, Pencil, Check, X} from "lucide-react";
 import type {Document} from "./use-documents";
 import {useI18n} from "@/lib/i18n";
+
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 interface FolderViewProps {
     documents: Document[];
     loading: boolean;
     onDelete: (documentId: string) => Promise<boolean>;
+    onRefresh?: () => void;
 }
 
 interface DocumentFolder {
@@ -32,22 +35,7 @@ function formatDate(iso: string): string {
     });
 }
 
-function getFolderName(filename: string): string {
-    // Group by the portion before the first underscore, dash, or space
-    // E.g. "civil_code_2024.pdf" → "Civil Code"
-    // "commercial-law.pdf"        → "Commercial Law"
-    // "document.pdf"              → "Documents"
-    const stem = filename.replace(/\.pdf$/i, "");
-    const separator = stem.match(/[_\-\s]/)?.[0];
-    if (separator) {
-        const prefix = stem.split(separator)[0];
-        // Capitalize
-        return prefix.charAt(0).toUpperCase() + prefix.slice(1).replace(/_/g, " ");
-    }
-    return "Documents";
-}
-
-export function FolderView({documents, loading, onDelete}: FolderViewProps) {
+export function FolderView({documents, loading, onDelete, onRefresh}: FolderViewProps) {
     const {resolvedTheme} = useTheme();
     const isDark = resolvedTheme === "dark";
     const {t} = useI18n();
@@ -56,6 +44,8 @@ export function FolderView({documents, loading, onDelete}: FolderViewProps) {
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
+    const [renamingFolder, setRenamingFolder] = useState<string | null>(null);
+    const [renameValue, setRenameValue] = useState("");
 
     const fontStack = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
     const labelColor = isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)";
@@ -64,7 +54,7 @@ export function FolderView({documents, loading, onDelete}: FolderViewProps) {
     const folders = useMemo<DocumentFolder[]>(() => {
         const map = new Map<string, DocumentFolder>();
         for (const doc of documents) {
-            const name = getFolderName(doc.filename);
+            const name = doc.collection ?? "My Documents";
             if (!map.has(name)) {
                 map.set(name, {name, docs: [], totalBytes: 0});
             }
@@ -74,6 +64,27 @@ export function FolderView({documents, loading, onDelete}: FolderViewProps) {
         }
         return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
     }, [documents]);
+
+    const handleRename = useCallback(async (oldName: string, newName: string) => {
+        if (!newName.trim() || newName === oldName) {
+            setRenamingFolder(null);
+            return;
+        }
+        try {
+            const res = await fetch(`${API_BASE}/documents/collections/rename`, {
+                method: "PATCH",
+                credentials: "include",
+                headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
+                body: JSON.stringify({old_name: oldName, new_name: newName.trim()}),
+            });
+            if (res.ok) {
+                setRenamingFolder(null);
+                onRefresh?.();
+            }
+        } catch {
+            // ignore
+        }
+    }, [onRefresh]);
 
     const toggleFolder = (name: string) => {
         setExpandedFolders((prev) => {
@@ -207,18 +218,48 @@ export function FolderView({documents, loading, onDelete}: FolderViewProps) {
 
                             {/* Folder name + meta */}
                             <div style={{flex: 1, minWidth: 0}}>
-                                <div
-                                    style={{
-                                        fontSize: "13px",
-                                        fontWeight: 600,
-                                        color: textColor,
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                        whiteSpace: "nowrap",
-                                    }}
-                                >
-                                    {folder.name}
-                                </div>
+                                {renamingFolder === folder.name ? (
+                                    <div style={{display: "flex", alignItems: "center", gap: "6px"}}
+                                         onClick={(e) => e.stopPropagation()}>
+                                        <input
+                                            autoFocus
+                                            value={renameValue}
+                                            onChange={(e) => setRenameValue(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") handleRename(folder.name, renameValue);
+                                                if (e.key === "Escape") setRenamingFolder(null);
+                                            }}
+                                            style={{
+                                                fontSize: "13px", fontWeight: 600, color: textColor,
+                                                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
+                                                border: "1px solid rgba(201,168,76,0.4)",
+                                                borderRadius: "6px", padding: "2px 8px", width: "160px",
+                                                outline: "none", fontFamily: fontStack,
+                                            }}
+                                        />
+                                        <button onClick={(e) => { e.stopPropagation(); handleRename(folder.name, renameValue); }}
+                                                style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}>
+                                            <Check size={14} style={{color: "#4ade80"}}/>
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); setRenamingFolder(null); }}
+                                                style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}>
+                                            <X size={14} style={{color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)"}}/>
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div
+                                        style={{
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: textColor,
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            whiteSpace: "nowrap",
+                                        }}
+                                    >
+                                        {folder.name}
+                                    </div>
+                                )}
                                 <div
                                     style={{
                                         fontSize: "11px",
@@ -231,6 +272,27 @@ export function FolderView({documents, loading, onDelete}: FolderViewProps) {
                                     {formatSize(folder.totalBytes)}
                                 </div>
                             </div>
+
+                            {/* Rename button */}
+                            {renamingFolder !== folder.name && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setRenamingFolder(folder.name);
+                                        setRenameValue(folder.name);
+                                    }}
+                                    title="Rename collection"
+                                    style={{
+                                        background: "none", border: "none", cursor: "pointer",
+                                        color: labelColor, padding: "4px", flexShrink: 0,
+                                        opacity: 0.6, transition: "opacity 0.15s",
+                                    }}
+                                    onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
+                                >
+                                    <Pencil size={14}/>
+                                </button>
+                            )}
 
                             {/* Expand chevron */}
                             <div style={{color: labelColor, flexShrink: 0}}>

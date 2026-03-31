@@ -366,6 +366,7 @@ async def query_stream(
                             on_status=on_status,
                             on_token=on_token,
                             use_internet=body.use_internet,
+                            doc_ids=body.doc_ids,
                         ),
                         timeout=AGENT_TIMEOUT_SECONDS,
                     )
@@ -518,10 +519,11 @@ async def list_corpora(
 ):
     """Return the list of searchable custom corpora for the authenticated user.
 
-    Checks PostgreSQL chunks table for indexed documents belonging to this tenant.
-    Returns {"corpora": [{"name": "My Documents", "corpus_id": "<client_slug>", "indexed": true}]}
+    Groups documents by collection name (stored in .meta files) so the frontend
+    can show selectable pills per collection with their doc_ids for filtering.
     """
     from pathlib import Path
+    from collections import defaultdict
     from arlc.retriever import get_chunk_count
 
     client_slug = key_row["client_slug"]
@@ -530,15 +532,36 @@ async def list_corpora(
     logger.info("[corpora] client_slug=%s, chunk_count=%d", client_slug, chunk_count)
     corpora: list[dict] = []
     if chunk_count > 0:
-        # Count documents for display
         docs_dir = Path(settings.data_dir) / "clients" / client_slug / "docs"
-        doc_count = len(list(docs_dir.glob("*.pdf"))) if docs_dir.exists() else 0
-        corpora.append({
-            "name": "My Documents",
-            "corpus_id": client_slug,
-            "doc_count": doc_count,
-            "indexed": True,
-        })
+        if docs_dir.exists():
+            # Group documents by collection name
+            collections: dict[str, list[str]] = defaultdict(list)
+            for meta_path in sorted(docs_dir.glob("*.meta")):
+                try:
+                    meta = json.loads(meta_path.read_text())
+                    doc_id = meta.get("doc_id", "")
+                    collection_name = meta.get("collection", "My Documents")
+                    if doc_id:
+                        collections[collection_name].append(doc_id)
+                except Exception:
+                    pass
+
+            for name, doc_ids in collections.items():
+                corpora.append({
+                    "name": name,
+                    "corpus_id": client_slug,
+                    "doc_ids": doc_ids,
+                    "doc_count": len(doc_ids),
+                    "indexed": True,
+                })
+
+        # Fallback: no .meta files but chunks exist — show single entry
+        if not corpora:
+            corpora.append({
+                "name": "My Documents",
+                "corpus_id": client_slug,
+                "indexed": True,
+            })
 
     return {"corpora": corpora}
 

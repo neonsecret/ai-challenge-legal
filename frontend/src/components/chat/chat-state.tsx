@@ -157,6 +157,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const {jurisdiction} = useJurisdiction()
 
     const stream = useQueryStream()
+    /** Mirror of isStreaming for handleSend — avoids stale closure over stream.isStreaming. */
+    const isStreamingRef = useRef(false)
+    isStreamingRef.current = stream.isStreaming
 
     // ── Mount: load from localStorage (client-only, runs once) ──
     useEffect(() => {
@@ -601,8 +604,8 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     }, [newChat, stream.isStreaming, stream.abort])
 
     const handleSend = useCallback((question: string): "ok" | "blocked" | "streaming" => {
-        // Block new queries while one is still streaming
-        if (stream.isStreaming) return "streaming"
+        // Block new queries while one is still streaming (use ref to avoid stale closure)
+        if (isStreamingRef.current) return "streaming"
 
         const corpus = jurisdictionToCorpus(jurisdiction)
         if (!corpus) return "blocked"  // safety: at least one corpus required
@@ -638,7 +641,20 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             {id: assistantId, role: "assistant", content: null, sources: [], confidence: null},
         ])
         const laws = jurisdiction === "cz" && selectedLaws.length > 0 ? selectedLaws : undefined
-        stream.sendQuery(question, corpus, convId, laws, useInternet)
+        // Custom corpus: read selected doc_ids from localStorage to filter by collection
+        let docIds: string[] | undefined
+        if (jurisdiction === "custom" && typeof window !== "undefined") {
+            const selectedDocIdsRaw = localStorage.getItem("neolex_selected_doc_ids")
+            if (selectedDocIdsRaw) {
+                try {
+                    const parsed = JSON.parse(selectedDocIdsRaw)
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        docIds = parsed
+                    }
+                } catch { /* invalid JSON, ignore — search all docs */ }
+            }
+        }
+        stream.sendQuery(question, corpus, convId, laws, useInternet, docIds)
         return "ok" as const
     }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, useInternet])
 

@@ -345,10 +345,12 @@ async def proxy_web_content(
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Timed out fetching the page")
     except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=502, detail=f"Remote server returned {e.response.status_code}")
+        # Use 424 (not 502) to prevent Cloudflare Tunnel from replacing
+        # the JSON response with its own HTML error page (strips CORS headers).
+        raise HTTPException(status_code=424, detail=f"Remote server returned {e.response.status_code}")
     except httpx.HTTPError as e:
         logger.warning("[web-proxy] fetch failed for %s: %s", url[:80], e)
-        raise HTTPException(status_code=502, detail="Failed to fetch the page")
+        raise HTTPException(status_code=424, detail="Failed to fetch the page")
 
     # Check content type — only process HTML
     content_type = response.headers.get("content-type", "")

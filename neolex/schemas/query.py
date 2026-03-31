@@ -15,7 +15,10 @@ class QueryRequest(BaseModel):
     corpus: str = Field(default="difc", pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     # Optional list of Czech law prefixes to restrict retrieval to specific laws.
     # E.g. ["zakonik_prace", "obcansky_zakonik"]. Empty or None = all laws.
-    laws: list[str] | None = Field(default=None)
+    laws: list[str] | None = Field(default=None, max_length=20)
+    # Optional list of document IDs to restrict retrieval to specific uploaded documents.
+    # Used when the user selects individual documents in a custom corpus instead of "All".
+    doc_ids: list[str] | None = Field(default=None, max_length=50)
 
     @field_validator("laws")
     @classmethod
@@ -26,6 +29,17 @@ class QueryRequest(BaseModel):
         for law_id in v:
             if not pattern.match(law_id):
                 raise ValueError(f"Invalid law ID: {law_id!r}")
+        return v
+
+    @field_validator("doc_ids")
+    @classmethod
+    def validate_doc_ids(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        pattern = re.compile(r"^[a-zA-Z0-9_.@-]{1,128}$")
+        for doc_id in v:
+            if not pattern.match(doc_id):
+                raise ValueError(f"Invalid doc ID: {doc_id!r}")
         return v
     # Opaque session pointer — server loads history from DB using user_id+conversation_id.
     # Client never sends history content; only this UUID-like key.

@@ -231,6 +231,7 @@ def build_agent_graph():
                     law_filters=state["selected_laws"] or None,
                     exclude_doc_pages=exclude,
                     on_status=on_status,
+                    doc_ids=state.get("doc_ids"),
                 )
             except Exception:
                 logger.exception("[agent] search failed: query=%s", query[:80])
@@ -375,6 +376,7 @@ async def run_agent_turn(
     on_status: Callable[[str], None] | None = None,
     on_token: Callable[[str], None] | None = None,
     use_internet: bool = True,
+    doc_ids: list[str] | None = None,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -409,6 +411,7 @@ async def run_agent_turn(
         "user_id": user_id,
         "conversation_id": conversation_id,
         "use_internet": use_internet,
+        "doc_ids": doc_ids,
         "_on_status": on_status,  # passed through state for search_node
     }
 

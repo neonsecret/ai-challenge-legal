@@ -286,5 +286,12 @@ async def run_reindex_job(
 
 
 def _hot_swap_index(app: "FastAPI", client_slug: str, index_dir: Path) -> None:
-    """No-op: PostgreSQL chunks table is always current, no cache to invalidate."""
-    logger.info("Index ready for client %s (PostgreSQL — no cache swap needed)", client_slug)
+    """Evict in-memory chunk caches so the retriever sees newly indexed documents."""
+    try:
+        import arlc.retriever as _ret
+        # Evict corpus-specific caches (get_chunks_by_doc, build_doc_index)
+        if hasattr(_ret, "_corpus_chunk_cache") and client_slug in _ret._corpus_chunk_cache:
+            del _ret._corpus_chunk_cache[client_slug]
+        logger.info("Cache evicted for client %s after reindex", client_slug)
+    except Exception as exc:
+        logger.warning("Cache eviction failed (non-fatal): %s", exc)

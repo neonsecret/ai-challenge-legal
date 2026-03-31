@@ -62,6 +62,7 @@ def save_upload(
         client_slug: str,
         filename: str,
         content: bytes,
+        collection: str = "My Documents",
 ) -> dict:
     """Save uploaded PDF bytes to the client's docs directory.
 
@@ -95,6 +96,7 @@ def save_upload(
         "indexed": False,
         "client_slug": client_slug,
         "path": str(dest),
+        "collection": collection,
     }
 
 

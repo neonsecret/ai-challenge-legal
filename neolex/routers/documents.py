@@ -22,7 +22,7 @@ def _log_task_exception(task: asyncio.Task) -> None:
     if not task.cancelled() and task.exception():
         logging.getLogger(__name__).error("Background task failed: %s", task.exception())
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -141,6 +141,7 @@ async def _enforce_upload_limits(
 async def upload_document(
         request: Request,
         file: UploadFile = File(...),
+        collection: str = Form("My Documents"),
         key_row: dict = Depends(get_api_key),
         db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
@@ -234,6 +235,7 @@ async def upload_document(
             client_slug,
             file.filename or "upload.pdf",
             content,
+            collection,
         )
     except ValueError as exc:
         # Invalid PDF magic bytes or size guard
@@ -321,6 +323,7 @@ _VALID_ZIP_CONTENT_TYPES = frozenset({
 async def upload_zip(
     request: Request,
     file: UploadFile = File(...),
+    collection: str = Form("My Documents"),
     key_row: dict = Depends(get_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> ZipUploadResponse:
@@ -442,7 +445,7 @@ async def upload_zip(
     for pdf_name, pdf_bytes in valid_pdfs:
         try:
             meta = await asyncio.to_thread(
-                save_upload, client_slug, pdf_name, pdf_bytes,
+                save_upload, client_slug, pdf_name, pdf_bytes, collection,
             )
         except ValueError as exc:
             file_results.append(ZipUploadResult(
@@ -536,32 +539,44 @@ async def upload_zip(
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=DocumentListResponse)
+@router.get("")
 async def list_documents(
         key_row: dict = Depends(get_api_key),
-) -> DocumentListResponse:
-    """List all documents uploaded by this client."""
+):
+    """List all documents uploaded by this client, with collection info from .meta files."""
+    import json as _json
     client_slug = key_row["client_slug"]
 
     async with get_audit_db() as db:
         rows = await db.list_documents(client_slug)
 
-    docs = [
-        DocumentMeta(
-            doc_id=row["doc_id"],
-            filename=row["filename"],
-            size_bytes=row["size_bytes"],
-            upload_ts=row["upload_ts"],
-            indexed=bool(row["indexed"]),
-        )
-        for row in rows
-    ]
+    # Enrich with collection from .meta files
+    docs_dir = client_docs_dir(client_slug)
+    meta_collections: dict[str, str] = {}
+    for meta_path in docs_dir.glob("*.meta"):
+        try:
+            meta = _json.loads(meta_path.read_text())
+            meta_collections[meta.get("doc_id", "")] = meta.get("collection", "My Documents")
+        except Exception:
+            pass
 
-    return DocumentListResponse(
-        client_slug=client_slug,
-        documents=docs,
-        total=len(docs),
-    )
+    docs = []
+    for row in rows:
+        doc_id = row["doc_id"]
+        docs.append({
+            "doc_id": doc_id,
+            "filename": row["filename"],
+            "size_bytes": row["size_bytes"],
+            "upload_ts": row["upload_ts"],
+            "indexed": bool(row["indexed"]),
+            "collection": meta_collections.get(doc_id, "My Documents"),
+        })
+
+    return {
+        "client_slug": client_slug,
+        "documents": docs,
+        "total": len(docs),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -721,6 +736,98 @@ async def get_reindex_status(
         error=job.get("error"),
         doc_count=job.get("doc_count", 0),
     )
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v1/documents/collections/rename  — rename a collection
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/collections/rename")
+async def rename_collection(
+        request: Request,
+        key_row: dict = Depends(get_api_key),
+):
+    """Rename a collection by updating the 'collection' field in all matching .meta files."""
+    import json
+    body = await request.json()
+    old_name = body.get("old_name", "").strip()
+    new_name = body.get("new_name", "").strip()
+
+    if not old_name or not new_name:
+        raise HTTPException(status_code=400, detail="Both old_name and new_name are required")
+    if len(new_name) > 100:
+        raise HTTPException(status_code=400, detail="Collection name too long (max 100 chars)")
+
+    client_slug = key_row["client_slug"]
+    docs_dir = client_docs_dir(client_slug)
+
+    # Collect all files to update, then write atomically via temp file + os.replace
+    updates: list[tuple[Path, dict]] = []
+    for meta_path in docs_dir.glob("*.meta"):
+        try:
+            meta = json.loads(meta_path.read_text())
+            current = meta.get("collection", "My Documents")
+            if current == old_name:
+                meta["collection"] = new_name
+                updates.append((meta_path, meta))
+        except Exception:
+            pass
+
+    if not updates:
+        raise HTTPException(status_code=404, detail=f"No documents found in collection '{old_name}'")
+
+    import os as _os
+    for meta_path, meta in updates:
+        tmp = meta_path.with_suffix(".meta.tmp")
+        tmp.write_text(json.dumps(meta, indent=2))
+        _os.replace(str(tmp), str(meta_path))  # atomic on POSIX
+    updated = len(updates)
+
+    logger.info("Renamed collection '%s' → '%s' for client %s (%d docs)", old_name, new_name, client_slug, updated)
+    return {"old_name": old_name, "new_name": new_name, "updated": updated}
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v1/documents/{doc_id}/collection  — move doc to different collection
+# ---------------------------------------------------------------------------
+
+
+@router.patch("/{doc_id}/collection")
+async def move_document_collection(
+        doc_id: str,
+        request: Request,
+        key_row: dict = Depends(get_api_key),
+):
+    """Move a document to a different collection."""
+    import json
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
+        raise HTTPException(status_code=400, detail="Invalid doc_id format")
+
+    body = await request.json()
+    collection = body.get("collection", "").strip()
+    if not collection:
+        raise HTTPException(status_code=400, detail="collection is required")
+    if len(collection) > 100:
+        raise HTTPException(status_code=400, detail="Collection name too long (max 100 chars)")
+
+    client_slug = key_row["client_slug"]
+    docs_dir = client_docs_dir(client_slug)
+    meta_path = docs_dir / f"{doc_id}.meta"
+
+    if not meta_path.exists():
+        raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
+
+    meta = json.loads(meta_path.read_text())
+    old_collection = meta.get("collection", "My Documents")
+    meta["collection"] = collection
+    tmp = meta_path.with_suffix(".meta.tmp")
+    tmp.write_text(json.dumps(meta, indent=2))
+    import os as _os
+    _os.replace(str(tmp), str(meta_path))
+
+    logger.info("Moved doc %s from '%s' → '%s' for client %s", doc_id[:16], old_collection, collection, client_slug)
+    return {"doc_id": doc_id, "old_collection": old_collection, "new_collection": collection}
 
 
 # ---------------------------------------------------------------------------

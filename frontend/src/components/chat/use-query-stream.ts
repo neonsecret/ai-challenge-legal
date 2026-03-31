@@ -137,7 +137,7 @@ interface StreamState {
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean) => void
+    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[]) => void
     clearError: () => void
     abort: () => void
 }
@@ -157,6 +157,7 @@ export function useQueryStream(): UseQueryStreamReturn {
     const abortRef = useRef<AbortController | null>(null)
     const tokenBufRef = useRef<string>("")
     const conversationIdRef = useRef<string | null>(null)
+    const intermediateClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const clearError = useCallback(() => {
         setState((prev) => ({...prev, error: null}))
@@ -223,7 +224,7 @@ export function useQueryStream(): UseQueryStreamReturn {
     }, [router])
 
     const sendQuery = useCallback(
-        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean) => {
+        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[]) => {
             // Abort any existing SSE connection
             if (abortRef.current) {
                 abortRef.current.abort()
@@ -247,6 +248,12 @@ export function useQueryStream(): UseQueryStreamReturn {
             const ctrl = new AbortController()
             abortRef.current = ctrl
 
+            // Cancel any stale intermediate-clear timer from a previous query
+            if (intermediateClearTimerRef.current) {
+                clearTimeout(intermediateClearTimerRef.current)
+                intermediateClearTimerRef.current = null
+            }
+
             // --- Event processing ---
 
             const processEvent = (eventType: string, data: string) => {
@@ -263,7 +270,6 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 // Empty string — answer mode started but only whitespace so far.
                                 // Clear the "Writing answer..." status so it doesn't persist,
                                 // but don't set answer to empty (would show "No response").
-                                setState((prev) => ({...prev, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
                             } else {
                                 // Show intermediate reasoning as a live preview
                                 const preview = extractThinkingPreview(tokenBufRef.current)
@@ -273,6 +279,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                             }
                         }
                     } else if (eventType === "answer") {
+                        // Final answer — cancel any pending intermediate text clear
+                        if (intermediateClearTimerRef.current) { clearTimeout(intermediateClearTimerRef.current); intermediateClearTimerRef.current = null }
                         const parsed = JSON.parse(data)
                         // Strip any leftover XML tags from the answer (safety net —
                         // backend should already strip them in pipeline_dict_to_response)
@@ -305,14 +313,20 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 // and will be discarded by the backend.
                                 const isSearchPhase = raw.startsWith("retrieving:") || raw.startsWith("agent:thinking")
                                 if (isSearchPhase) {
-                                    tokenBufRef.current = ""
+                                    // Show the new status immediately but delay clearing
+                                    // the intermediate answer text so the user can read it.
                                     setState((prev) => ({
                                         ...prev,
-                                        answer: null,
                                         streamingStatus: friendly,
                                         streamingProgress: progress,
                                         thinkingPreview: null,
                                     }))
+                                    if (intermediateClearTimerRef.current) clearTimeout(intermediateClearTimerRef.current)
+                                    intermediateClearTimerRef.current = setTimeout(() => {
+                                        tokenBufRef.current = ""
+                                        setState((prev) => ({...prev, answer: null}))
+                                        intermediateClearTimerRef.current = null
+                                    }, 2000)
                                 } else {
                                     setState((prev) => ({
                                         ...prev,
@@ -327,6 +341,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                         }
                     } else if (eventType === "error") {
                         const parsed = JSON.parse(data)
+                        if (intermediateClearTimerRef.current) { clearTimeout(intermediateClearTimerRef.current); intermediateClearTimerRef.current = null }
                         ctrl.abort()
                         abortRef.current = null
                         setState((prev) => ({
@@ -336,6 +351,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             error: parsed.detail || parsed.error || "Query failed. Please try again.",
                         }))
                     } else if (eventType === "done") {
+                        if (intermediateClearTimerRef.current) { clearTimeout(intermediateClearTimerRef.current); intermediateClearTimerRef.current = null }
                         ctrl.abort()
                         abortRef.current = null
                         tokenBufRef.current = ""
@@ -410,6 +426,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                             conversation_id: conversationId ?? null,
                             // Czech law corpus filter — only sent when user selects specific laws.
                             ...(laws && laws.length > 0 ? {laws} : {}),
+                            // Custom corpus document filter — restricts to specific uploaded docs.
+                            ...(docIds && docIds.length > 0 ? {doc_ids: docIds} : {}),
                             // Agent is the production path — deterministic pipeline is for benchmarks only.
                             use_agent: true,
                             use_internet: useInternet ?? true,

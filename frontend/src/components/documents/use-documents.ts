@@ -9,6 +9,7 @@ export interface Document {
     size_bytes: number;
     uploaded_at: string;
     indexed?: boolean;
+    collection?: string;
 }
 
 export interface ReindexJob {
@@ -61,6 +62,7 @@ export function useDocuments() {
                 size_bytes: d.size_bytes ?? 0,
                 uploaded_at: d.upload_ts ?? d.uploaded_at ?? "",
                 indexed: d.indexed ?? false,
+                collection: (d.collection as string) ?? "My Documents",
             }));
             setDocuments(docs);
         } catch (e) {
@@ -71,12 +73,15 @@ export function useDocuments() {
     }, []);
 
     const uploadDocument = useCallback(
-        async (file: File): Promise<Document | null> => {
+        async (file: File, collection?: string): Promise<Document | null> => {
             setUploadProgress(0);
             setError(null);
             try {
                 const formData = new FormData();
                 formData.append("file", file);
+                if (collection) {
+                    formData.append("collection", collection);
+                }
 
                 const xhr = new XMLHttpRequest();
                 const result = await new Promise<Document>((resolve, reject) => {
@@ -124,12 +129,15 @@ export function useDocuments() {
     );
 
     const uploadZip = useCallback(
-        async (file: File): Promise<ZipUploadResult | null> => {
+        async (file: File, collection?: string): Promise<ZipUploadResult | null> => {
             setUploadProgress(0);
             setError(null);
             try {
                 const formData = new FormData();
                 formData.append("file", file);
+                if (collection) {
+                    formData.append("collection", collection);
+                }
 
                 const xhr = new XMLHttpRequest();
                 const result = await new Promise<ZipUploadResult>((resolve, reject) => {
@@ -170,12 +178,12 @@ export function useDocuments() {
     );
 
     const uploadFile = useCallback(
-        async (file: File): Promise<Document | ZipUploadResult | null> => {
+        async (file: File, collection?: string): Promise<Document | ZipUploadResult | null> => {
             const isZip = file.type.includes("zip") || file.name.toLowerCase().endsWith(".zip");
             if (isZip) {
-                return uploadZip(file);
+                return uploadZip(file, collection);
             }
-            return uploadDocument(file);
+            return uploadDocument(file, collection);
         },
         [uploadDocument, uploadZip]
     );

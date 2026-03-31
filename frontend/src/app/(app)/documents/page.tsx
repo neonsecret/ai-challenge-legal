@@ -39,8 +39,8 @@ export default function DocumentsPage() {
 
     const [zipResult, setZipResult] = useState<import("@/components/documents/use-documents").ZipUploadResult | null>(null);
 
-    const handleUpload = useCallback(async (file: File) => {
-        const result = await uploadFile(file);
+    const handleUpload = useCallback(async (file: File, collection?: string) => {
+        const result = await uploadFile(file, collection);
         // If this was a ZIP upload, show the result banner
         if (result && "uploaded_count" in result) {
             setZipResult(result);
@@ -319,6 +319,7 @@ export default function DocumentsPage() {
                             documents={documents}
                             loading={loading}
                             onDelete={deleteDocument}
+                            onRefresh={fetchDocuments}
                         />
                     </div>
                 </div>

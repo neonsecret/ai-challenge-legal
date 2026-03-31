@@ -10,7 +10,7 @@ const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 const MAX_ZIP_SIZE = 200 * 1024 * 1024; // 200MB
 
 interface UploadZoneProps {
-    onUpload: (file: File) => Promise<unknown>;
+    onUpload: (file: File, collection?: string) => Promise<unknown>;
     uploadProgress: number | null;
     zipResult?: ZipUploadResult | null;
 }
@@ -21,6 +21,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
     const [validationError, setValidationError] = useState<string | null>(null);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
     const [zipBanner, setZipBanner] = useState<ZipUploadResult | null>(null);
+    const [collectionName, setCollectionName] = useState("My Documents");
     const inputRef = useRef<HTMLInputElement>(null);
 
     const {resolvedTheme} = useTheme();
@@ -63,10 +64,11 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                 return;
             }
             setPendingFile(file);
-            await onUpload(file);
+            const col = collectionName.trim() || "My Documents";
+            await onUpload(file, col);
             setPendingFile(null);
         },
-        [onUpload]
+        [onUpload, collectionName]
     );
 
     const handleDrop = useCallback(
@@ -109,6 +111,56 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
             : "1.5px dashed rgba(255,255,255,0.45)";
 
     return (
+        <div style={{display: "flex", flexDirection: "column", gap: "12px"}}>
+            {/* Collection name input */}
+            <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
+                <label
+                    htmlFor="collection-name"
+                    style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.55)",
+                        whiteSpace: "nowrap",
+                        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+                    }}
+                >
+                    Collection
+                </label>
+                <input
+                    id="collection-name"
+                    type="text"
+                    value={collectionName}
+                    onChange={(e) => setCollectionName(e.target.value)}
+                    placeholder="My Documents"
+                    style={{
+                        flex: 1,
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        padding: "6px 12px",
+                        borderRadius: "8px",
+                        border: isDark
+                            ? "0.5px solid rgba(255,255,255,0.15)"
+                            : "0.5px solid rgba(255,255,255,0.40)",
+                        background: isDark
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(255,255,255,0.25)",
+                        color: isDark ? "rgba(255,255,255,0.85)" : "#2e1f08",
+                        outline: "none",
+                        transition: "border-color 0.15s",
+                        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+                    }}
+                    onFocus={(e) => {
+                        e.currentTarget.style.borderColor = isDark
+                            ? "rgba(201,168,76,0.40)"
+                            : "rgba(196,124,0,0.40)";
+                    }}
+                    onBlur={(e) => {
+                        e.currentTarget.style.borderColor = isDark
+                            ? "rgba(255,255,255,0.15)"
+                            : "rgba(255,255,255,0.40)";
+                    }}
+                />
+            </div>
         <div
             style={{
                 position: "relative",
@@ -359,6 +411,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                     </button>
                 </div>
             )}
+        </div>
         </div>
     );
 }
