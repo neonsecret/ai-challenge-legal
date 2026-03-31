@@ -161,11 +161,10 @@ async def lifespan(app: FastAPI):
         # the OS thread holding the lock — permanent deadlock.
         # (See arlc/pipeline.py lines 1491-1503 for original pattern.)
         import arlc.retriever as _ret
-        logger.info("Pre-warming retriever singletons (FAISS, BM25, cross-encoder)...")
+        logger.info("Pre-warming retriever singletons (PostgreSQL, cross-encoder)...")
+        await asyncio.to_thread(_ret.get_chunk_count, "difc")
+        await asyncio.to_thread(_ret.get_chunk_count, "czech")
         await asyncio.to_thread(_ret.get_chunks_by_doc)
-        await asyncio.to_thread(_ret._load_faiss, "difc")
-        await asyncio.to_thread(_ret._load_faiss, "czech")   # avoids cold-start on first Czech query
-        await asyncio.to_thread(_ret.build_bm25_index)        # BM25 cold-start is ~3 min without this
         reranker = await asyncio.to_thread(_ret.get_reranker)
         await asyncio.to_thread(_ret.get_embedding_model)
         # Fire one dummy rerank to compile the MPS Metal graph — first real call drops from 6s to 3.6s

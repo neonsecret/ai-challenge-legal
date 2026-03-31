@@ -10,9 +10,8 @@ import threading
 from dataclasses import dataclass
 import numpy as np
 import anthropic
-import chromadb
-import bm25s
-from arlc.indexing.legal_tokenizer import legal_tokenize_corpus, legal_tokenize_queries
+from sqlalchemy import create_engine, text as sa_text
+from sqlalchemy.orm import Session as SASession
 import pymupdf
 from dotenv import load_dotenv
 # SentenceTransformer is used by the snowflake embedding backend.
@@ -42,7 +41,6 @@ def _get_anthropic_client() -> anthropic.Anthropic:
     return _anthropic_client
 
 
-CHROMA_DIR = "data/chroma_db"  # Fallback ChromaDB path
 DOCUMENTS_DIR = "data/documents"
 # Reranker model. Default: Qwen3-Reranker-0.6B (instruction-aware, ~2GB VRAM).
 # Fallback: BAAI/bge-reranker-v2-m3 (general-purpose, no instruction support).
@@ -58,30 +56,6 @@ RERANKER_INSTRUCTION = os.environ.get(
 # Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
 # Fallback: set EMBEDDING_MODEL=snowflake to use Snowflake Arctic Embed L v2.0 (no server needed).
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
-# FAISS: pure vector math, no SQLite overhead — faster search, lower memory than ChromaDB
-# Credit: FAISS backend choice inspired by IAS Partners (guy4)
-# Default index path matches the active embedding backend.
-# Rebuild with: EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \
-#     --corpus data/chunks/ --output data/faiss_llama-server.bin
-FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "data/faiss_llama-server.bin")
-FAISS_METADATA_PATH = os.environ.get("FAISS_METADATA_PATH", "data/faiss_llama-server.json")
-# Czech corpus FAISS index paths
-FAISS_CZECH_INDEX_PATH = os.environ.get("FAISS_CZECH_INDEX_PATH", "data/faiss_czech.bin")
-FAISS_CZECH_METADATA_PATH = os.environ.get("FAISS_CZECH_METADATA_PATH", "data/faiss_czech.json")
-# VECTOR_BACKEND: "faiss" (default, preferred) or "chroma" (fallback)
-VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "faiss")
-# Embedding prefixes: Arctic uses "query: " for queries, "" for documents
-# BGE uses "Represent this sentence for searching relevant passages: " for queries
-BGE_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
-BM25_CACHE_DIR = "data/bm25_cache"  # Must match CHROMA_DIR corpus
-BM25_IDS_PATH = "data/bm25_cache/corpus_ids.json"
-
-# Multi-signal fusion BM25 index variants
-# Credit: Multi-signal fusion architecture from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
-BM25_PAGE1_CACHE_DIR = "data/bm25_page1_cache"
-BM25_PAGE1_IDS_PATH = "data/bm25_page1_cache/corpus_ids.json"
-BM25_DOC_CACHE_DIR = "data/bm25_doc_cache"
-BM25_DOC_IDS_PATH = "data/bm25_doc_cache/corpus_ids.json"
 
 # doc_id -> page where date_of_issue appears (from case_metadata_index.json).
 # Judge/claimant/defendant are always page 1 — only dates need a targeted lookup.
@@ -114,31 +88,19 @@ _load_doc_date_pages()
 
 # Module-level caches
 _doc_index = None  # pdf_id -> full text (for keyword matching)
-_chunks_by_doc = None  # pdf_id -> list[dict] (for fast page retrieval, replaces collection.get())
-_bm25_index = None
-_bm25_corpus_ids = None
-_bm25_page1_index = None
-_bm25_page1_ids = None
-_bm25_doc_index = None
-_bm25_doc_ids = None
-_collection = None
+_chunks_by_doc = None  # pdf_id -> list[dict] (for fast page retrieval)
 _reranker = None          # primary (remote if available, else local)
 _local_reranker = None    # always local PyTorch — used as fallback when remote fails mid-query
 _embedding_model = None
-_faiss_index = None  # FAISS index (loaded lazily) — default/DIFC corpus
-_faiss_metadata = None  # FAISS metadata list (loaded lazily) — default/DIFC corpus
-# Multi-corpus FAISS cache: corpus_name -> (index, metadata)
-_faiss_corpus_cache: dict[str, tuple] = {}
+_sync_engine = None  # Sync SQLAlchemy engine for PostgreSQL (retriever runs in threads)
+
+# Multi-corpus chunk caches: corpus_name -> (doc_index, chunks_by_doc)
+_corpus_chunk_cache: dict[str, tuple] = {}
 
 # Locks for thread-safe lazy initialization
-_bm25_lock = threading.Lock()
-_bm25_page1_lock = threading.Lock()
-_bm25_doc_lock = threading.Lock()
-_collection_lock = threading.Lock()
 _reranker_lock = threading.Lock()
 _embedding_lock = threading.Lock()
 _doc_index_lock = threading.Lock()
-_faiss_lock = threading.Lock()
 
 
 @dataclass
@@ -324,279 +286,254 @@ def embed_query(question: str) -> list[float]:
         if _is_llama_server() or _is_arctic_model():
             embedding = model.encode(question, prompt_name='query', normalize_embeddings=True)
         else:
-            embedding = model.encode(BGE_QUERY_PREFIX + question, normalize_embeddings=True)
+            embedding = model.encode(question, normalize_embeddings=True)
     return embedding.tolist()
 
 
-def _load_faiss(corpus: str = "difc"):
-    """Load FAISS index and metadata from disk (cached, thread-safe).
-
-    Parameters
-    ----------
-    corpus : str
-        Which corpus index to load. "difc" (default) or "czech".
-    """
-    # Validate corpus name to prevent path traversal (e.g. "../../etc/passwd")
-    if not re.match(r"^[a-zA-Z0-9_-]+$", corpus):
-        raise ValueError(f"Invalid corpus name: {corpus!r}")
-
-    global _faiss_index, _faiss_metadata, _faiss_corpus_cache
-
-    # Select paths based on corpus
-    if corpus == "czech":
-        idx_path = FAISS_CZECH_INDEX_PATH
-        meta_path = FAISS_CZECH_METADATA_PATH
-    elif corpus == "difc":
-        idx_path = FAISS_INDEX_PATH
-        meta_path = FAISS_METADATA_PATH
-    else:
-        # Client-uploaded corpus: look for data/clients/{corpus}/index/
-        import os as _os
-        client_idx = f"data/clients/{corpus}/index/faiss_index.bin"
-        client_meta = f"data/clients/{corpus}/index/faiss_metadata.json"
-        if _os.path.exists(client_idx):
-            idx_path = client_idx
-            meta_path = client_meta
-        else:
-            # Legacy fallback: data/faiss_{corpus}.bin
-            idx_path = f"data/faiss_{corpus}.bin"
-            meta_path = f"data/faiss_{corpus}.json"
-
-    # Check multi-corpus cache first
-    if corpus in _faiss_corpus_cache:
-        return _faiss_corpus_cache[corpus]
-
-    with _faiss_lock:
-        # Double-check after acquiring lock
-        if corpus in _faiss_corpus_cache:
-            return _faiss_corpus_cache[corpus]
-
-        import faiss
-        print(f"Loading FAISS index for corpus={corpus!r} from {idx_path}...")
-        index = faiss.read_index(idx_path)
-        with open(meta_path) as f:
-            metadata = json.load(f)
-        print(f"FAISS index loaded (corpus={corpus!r}): {index.ntotal} vectors, dim={index.d}")
-
-        # Validate dimension matches query embedder to catch mismatches early.
-        # Probe with a dummy query — this is cheaper than a silent FAISS crash later.
-        try:
-            probe = embed_query("dimension check")
-            if len(probe) != index.d:
-                raise RuntimeError(
-                    f"FAISS index dim ({index.d}) != "
-                    f"query embedding dim ({len(probe)}) for "
-                    f"EMBEDDING_MODEL={EMBEDDING_MODEL!r}, corpus={corpus!r}. "
-                    f"Rebuild the index with the same backend:\n"
-                    f"  EMBEDDING_MODEL={EMBEDDING_MODEL} python3 -m neolex.embeddings.build_index "
-                    f"--corpus data/chunks/ --output {idx_path}"
-                )
-        except Exception as e:
-            if "dim" in str(e).lower() or "FAISS index dim" in str(e):
-                raise
-            # embed_query errors (e.g. server not running) surface here — re-raise clearly
-            raise RuntimeError(
-                f"Embedding backend check failed for EMBEDDING_MODEL={EMBEDDING_MODEL!r}: {e}"
-            ) from e
-
-        _faiss_corpus_cache[corpus] = (index, metadata)
-
-        # Keep backward compat: update the legacy singletons for "difc"
-        if corpus == "difc":
-            _faiss_index = index
-            _faiss_metadata = metadata
-
-        return index, metadata
+def _get_sync_engine():
+    """Lazy singleton for sync PostgreSQL engine (retriever runs in threads)."""
+    global _sync_engine
+    if _sync_engine is None:
+        url = os.environ.get("DATABASE_URL", "")
+        if "+asyncpg" in url:
+            url = url.replace("+asyncpg", "")
+        _sync_engine = create_engine(url, pool_size=5, max_overflow=10, pool_pre_ping=True)
+    return _sync_engine
 
 
-def _search_faiss(query_embedding: list[float], top_k: int = 50, corpus: str = "difc") -> dict:
-    """Search FAISS index, returning results in ChromaDB-compatible format.
+# ---------------------------------------------------------------------------
+# PostgreSQL-backed search functions (replace FAISS + BM25 + ChromaDB)
+# ---------------------------------------------------------------------------
+
+def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: str = "difc") -> dict:
+    """Search chunks via pgvector inner product, returning legacy-compatible format.
 
     Returns dict with keys: ids, documents, metadatas, distances
-    Each is a list-of-lists (matching ChromaDB's batch format).
-    Distances are cosine distances (1 - similarity) for ChromaDB compatibility.
+    Each is a list-of-lists (matching legacy batch format).
     """
-    index, metadata = _load_faiss(corpus=corpus)
-    query_np = np.array([query_embedding], dtype='float32')
-    import faiss
-    faiss.normalize_L2(query_np)  # normalize query for cosine similarity
-    top_k = min(top_k, index.ntotal)
-    D, I = index.search(query_np, top_k)  # D=similarities (inner product), I=indices
+    engine = _get_sync_engine()
+    query_np = np.array(query_embedding, dtype=np.float32)
+    norm = np.linalg.norm(query_np)
+    if norm > 0:
+        query_np = query_np / norm
 
-    ids = []
-    documents = []
-    metadatas = []
-    distances = []
-    for i in range(top_k):
-        idx = int(I[0][i])
-        if idx < 0:  # FAISS returns -1 for unfilled slots
-            continue
-        entry = metadata[idx]
-        doc_id = entry.get("doc_id") or entry.get("pdf_id", "unknown")
-        ids.append(entry.get("chunk_id", f"{doc_id}_{entry.get('page', 0)}"))
-        documents.append(entry.get("text", ""))
-        metadatas.append({
-            "doc_id": doc_id,
-            "pdf_id": entry.get("pdf_id", doc_id),
-            "page": entry.get("page", 1),
-            "source_file": entry.get("source_file", doc_id),
-        })
-        # Convert inner product similarity to cosine distance for ChromaDB compat
-        distances.append(1.0 - float(D[0][i]))
+    vec_literal = '[' + ','.join(str(float(x)) for x in query_np) + ']'
 
-    return {
-        "ids": [ids],
-        "documents": [documents],
-        "metadatas": [metadatas],
-        "distances": [distances],
-    }
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, doc_id, pdf_id, page, source_file, text,
+                   metadata_extra, (embedding <#> cast(:vec as vector)) AS neg_ip
+            FROM chunks
+            WHERE corpus = :corpus
+            ORDER BY embedding <#> cast(:vec as vector)
+            LIMIT :top_k
+        """), {"vec": vec_literal, "corpus": corpus, "top_k": top_k}).fetchall()
 
-
-def _faiss_count(corpus: str = "difc") -> int:
-    """Return total number of vectors in FAISS index."""
-    index, _ = _load_faiss(corpus=corpus)
-    return index.ntotal
-
-
-def _faiss_get_all(corpus: str = "difc") -> dict:
-    """Get all documents and metadata from FAISS (equivalent to collection.get())."""
-    _, metadata = _load_faiss(corpus=corpus)
-    ids = [entry["chunk_id"] for entry in metadata]
-    documents = [entry["text"] for entry in metadata]
-    metadatas = [
-        {
-            "pdf_id": entry["pdf_id"],
-            "page": entry["page"],
-            "source_file": entry["source_file"],
-            # entities field added at index time (CPBD-inspired); may be absent in old indexes
-            **({"entities": entry["entities"]} if entry.get("entities") else {}),
+    ids, documents, metadatas, distances = [], [], [], []
+    for row in rows:
+        ids.append(row.chunk_id)
+        documents.append(row.text)
+        meta = {
+            "doc_id": row.doc_id,
+            "pdf_id": row.pdf_id,
+            "page": row.page,
+            "source_file": row.source_file,
         }
-        for entry in metadata
-    ]
+        if row.metadata_extra and row.metadata_extra.get("entities"):
+            meta["entities"] = row.metadata_extra["entities"]
+        metadatas.append(meta)
+        # neg_ip is negative inner product; convert to cosine distance for compat
+        distances.append(1.0 + float(row.neg_ip))
+
+    return {"ids": [ids], "documents": [documents], "metadatas": [metadatas], "distances": [distances]}
+
+
+def search_chunks_text(query: str, top_k: int = 200, corpus: str = "difc") -> list[str]:
+    """Search chunks via tsvector full-text search, returning ranked chunk_ids."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            FROM chunks
+            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            ORDER BY rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+    return [row.chunk_id for row in rows]
+
+
+def search_chunks_text_page1(query: str, top_k: int = 200, corpus: str = "difc") -> list[str]:
+    """Text search over page-1 chunks only (document identification signal)."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            FROM chunks
+            WHERE corpus = :corpus AND page = 1 AND text_search @@ plainto_tsquery('simple', :query)
+            ORDER BY rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+    return [row.chunk_id for row in rows]
+
+
+def search_docs_text(query: str, top_k: int = 200, corpus: str = "difc") -> list[str]:
+    """Text search aggregated to document level (sum of chunk ranks per doc)."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT pdf_id, SUM(ts_rank(text_search, plainto_tsquery('simple', :query))) AS total_rank
+            FROM chunks
+            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            GROUP BY pdf_id
+            ORDER BY total_rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+    return [row.pdf_id for row in rows]
+
+
+def _search_chunks_text_scored(query: str, top_k: int = 200, corpus: str = "difc") -> list[tuple[str, str, float]]:
+    """Text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, pdf_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            FROM chunks
+            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            ORDER BY rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+    return [(row.chunk_id, row.pdf_id, float(row.rank)) for row in rows]
+
+
+def _search_chunks_text_page1_scored(query: str, top_k: int = 200, corpus: str = "difc") -> list[tuple[str, str, float]]:
+    """Page-1 text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, pdf_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            FROM chunks
+            WHERE corpus = :corpus AND page = 1 AND text_search @@ plainto_tsquery('simple', :query)
+            ORDER BY rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+    return [(row.chunk_id, row.pdf_id, float(row.rank)) for row in rows]
+
+
+def _search_docs_text_scored(query: str, top_k: int = 200, corpus: str = "difc") -> list[tuple[str, float]]:
+    """Doc-level text search returning (pdf_id, total_rank) tuples for fusion scoring."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT pdf_id, SUM(ts_rank(text_search, plainto_tsquery('simple', :query))) AS total_rank
+            FROM chunks
+            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            GROUP BY pdf_id
+            ORDER BY total_rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+    return [(row.pdf_id, float(row.total_rank)) for row in rows]
+
+
+def _search_chunks_text_for_doc(query: str, pdf_id: str, corpus: str = "difc", top_k: int = 50) -> list[str]:
+    """Text search within a specific document, returning chunk_ids."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            FROM chunks
+            WHERE corpus = :corpus AND pdf_id = :pdf_id
+              AND text_search @@ plainto_tsquery('simple', :query)
+            ORDER BY rank DESC
+            LIMIT :top_k
+        """), {"query": query, "corpus": corpus, "pdf_id": pdf_id, "top_k": top_k}).fetchall()
+    return [row.chunk_id for row in rows]
+
+
+def get_chunk_count(corpus: str = "difc") -> int:
+    """Return total number of chunks in PostgreSQL for a corpus."""
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        result = session.execute(
+            sa_text("SELECT count(*) FROM chunks WHERE corpus = :corpus"),
+            {"corpus": corpus},
+        ).scalar()
+    return result or 0
+
+
+def get_chunks_by_ids(chunk_ids: list[str]) -> dict:
+    """Get specific chunks by ID from PostgreSQL."""
+    if not chunk_ids:
+        return {"ids": [], "documents": [], "metadatas": []}
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, doc_id, pdf_id, page, source_file, text, metadata_extra
+            FROM chunks
+            WHERE chunk_id = ANY(:ids)
+        """), {"ids": chunk_ids}).fetchall()
+
+    ids, documents, metadatas = [], [], []
+    for row in rows:
+        ids.append(row.chunk_id)
+        documents.append(row.text)
+        meta = {"pdf_id": row.pdf_id, "page": row.page, "source_file": row.source_file}
+        if row.metadata_extra and row.metadata_extra.get("entities"):
+            meta["entities"] = row.metadata_extra["entities"]
+        metadatas.append(meta)
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
 
-def _faiss_get_by_ids(chunk_ids: list[str], corpus: str = "difc") -> dict:
-    """Get specific chunks by ID from FAISS metadata."""
-    _, metadata = _load_faiss(corpus=corpus)
-    # Build lookup on first call per corpus (O(n) once, then O(1) per lookup)
-    cache_attr = f"_id_map_{corpus}"
-    if not hasattr(_faiss_get_by_ids, cache_attr):
-        setattr(_faiss_get_by_ids, cache_attr, {entry["chunk_id"]: entry for entry in metadata})
-    id_map = getattr(_faiss_get_by_ids, cache_attr)
-
-    ids = []
-    documents = []
-    metadatas = []
-    for cid in chunk_ids:
-        entry = id_map.get(cid)
-        if entry:
-            ids.append(entry["chunk_id"])
-            documents.append(entry["text"])
-            meta = {"pdf_id": entry["pdf_id"], "page": entry["page"],
-                    "source_file": entry["source_file"]}
-            if entry.get("entities"):
-                meta["entities"] = entry["entities"]
-            metadatas.append(meta)
-    return {"ids": ids, "documents": documents, "metadatas": metadatas}
-
-
-def _faiss_chunk_id_to_pos(corpus: str = "difc") -> dict[str, int]:
-    """Return a chunk_id -> FAISS index position mapping (cached per corpus).
-
-    Used by _dense_page_scores() to reconstruct pre-computed embeddings
-    from the FAISS index instead of re-embedding through the model.
-    Thread-safe via double-checked locking with _faiss_lock.
-    """
-    cache_attr = f"_cid_pos_map_{corpus}"
-    if hasattr(_faiss_chunk_id_to_pos, cache_attr):
-        return getattr(_faiss_chunk_id_to_pos, cache_attr)
-    with _faiss_lock:
-        if hasattr(_faiss_chunk_id_to_pos, cache_attr):
-            return getattr(_faiss_chunk_id_to_pos, cache_attr)
-        _, metadata = _load_faiss(corpus=corpus)
-        pos_map = {}
-        for i, entry in enumerate(metadata):
-            cid = entry.get("chunk_id", f"{entry['doc_id']}_{entry['page']}")
-            pos_map[cid] = i
-        setattr(_faiss_chunk_id_to_pos, cache_attr, pos_map)
-        return pos_map
-
-
-def _use_faiss(corpus: str = "difc") -> bool:
-    """Check if FAISS backend should be used (preferred when available)."""
-    if VECTOR_BACKEND != "faiss":
-        return False
-    if corpus == "czech":
-        return os.path.exists(FAISS_CZECH_INDEX_PATH) and os.path.exists(FAISS_CZECH_METADATA_PATH)
-    elif corpus == "difc":
-        return os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_METADATA_PATH)
-    else:
-        return os.path.exists(f"data/faiss_{corpus}.bin") and os.path.exists(f"data/faiss_{corpus}.json")
-
-
-def get_collection():
-    """Get the ChromaDB collection (cached, thread-safe).
-
-    No embedding function needed here — we always pass query_embeddings explicitly.
-    Avoids loading BGE a second time via SentenceTransformerEmbeddingFunction.
-    Used as fallback when FAISS is not available.
-    """
-    global _collection
-    if _collection is None:
-        with _collection_lock:
-            if _collection is None:
-                client = chromadb.PersistentClient(path=CHROMA_DIR)
-                _collection = client.get_collection(name="legal_docs")
-    return _collection
-
-
-# Multi-corpus chunk caches: corpus_name -> (doc_index, chunks_by_doc)
-_corpus_chunk_cache: dict[str, tuple[dict, dict]] = {}
-
+# ---------------------------------------------------------------------------
+# In-memory chunk caches (populated from PostgreSQL on first access)
+# ---------------------------------------------------------------------------
 
 def _load_all_chunks(corpus: str = "difc"):
-    """Load all chunks from vector store once into memory. Builds both indexes simultaneously.
-
-    Uses FAISS metadata when available (faster, no SQLite), falls back to ChromaDB.
-    """
+    """Load all chunks from PostgreSQL into memory. Builds both indexes simultaneously."""
     global _doc_index, _chunks_by_doc, _corpus_chunk_cache
-    if _use_faiss(corpus=corpus):
-        all_results = _faiss_get_all(corpus=corpus)
-    elif corpus == "difc":
-        collection = get_collection()
-        all_results = collection.get(include=["documents", "metadatas"])
-    else:
-        # Non-DIFC corpora require FAISS — no ChromaDB fallback
-        raise RuntimeError(f"No FAISS index found for corpus={corpus!r}")
 
-    doc_text_index = {}
-    chunks_by_doc = {}
-    for chunk_id, text, meta in zip(all_results["ids"], all_results["documents"], all_results["metadatas"]):
-        pdf_id = meta["pdf_id"]
-        # Build text index for keyword matching
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, doc_id, pdf_id, page, source_file, text, metadata_extra
+            FROM chunks
+            WHERE corpus = :corpus
+            ORDER BY pdf_id, page
+        """), {"corpus": corpus}).fetchall()
+
+    doc_text_index: dict[str, str] = {}
+    chunks_by_doc: dict[str, list[dict]] = {}
+    for row in rows:
+        pdf_id = row.pdf_id
+        meta: dict = {
+            "pdf_id": pdf_id,
+            "page": row.page,
+            "source_file": row.source_file,
+        }
+        if row.metadata_extra:
+            if row.metadata_extra.get("entities"):
+                meta["entities"] = row.metadata_extra["entities"]
+            if row.metadata_extra.get("chunk_type"):
+                meta["chunk_type"] = row.metadata_extra["chunk_type"]
+
         if pdf_id not in doc_text_index:
             doc_text_index[pdf_id] = ""
-        doc_text_index[pdf_id] += text + "\n"
-        # Build chunk index for fast page retrieval
+        doc_text_index[pdf_id] += row.text + "\n"
         if pdf_id not in chunks_by_doc:
             chunks_by_doc[pdf_id] = []
         chunks_by_doc[pdf_id].append({
-            "chunk_id": chunk_id,
-            "text": text,
+            "chunk_id": row.chunk_id,
+            "text": row.text,
             "metadata": meta,
         })
 
     _corpus_chunk_cache[corpus] = (doc_text_index, chunks_by_doc)
-
-    # Keep backward compat: update legacy singletons for "difc"
     if corpus == "difc":
         _doc_index = doc_text_index
         _chunks_by_doc = chunks_by_doc
 
 
 def build_doc_index(corpus: str = "difc") -> dict[str, str]:
-    """Build keyword-matching index from ChromaDB data (includes OCR'd text)."""
+    """Build keyword-matching index from PostgreSQL data (includes OCR'd text)."""
     global _doc_index
     if corpus != "difc":
         if corpus not in _corpus_chunk_cache:
@@ -612,7 +549,7 @@ def build_doc_index(corpus: str = "difc") -> dict[str, str]:
 
 
 def get_chunks_by_doc(corpus: str = "difc") -> dict[str, list[dict]]:
-    """Get in-memory chunk index (pdf_id -> list of chunks). Avoids slow collection.get() per doc."""
+    """Get in-memory chunk index (pdf_id -> list of chunks) from PostgreSQL."""
     global _chunks_by_doc
     if corpus != "difc":
         if corpus not in _corpus_chunk_cache:
@@ -625,6 +562,8 @@ def get_chunks_by_doc(corpus: str = "difc") -> dict[str, list[dict]]:
             if _chunks_by_doc is None:
                 _load_all_chunks()
     return _chunks_by_doc
+
+
 
 
 # Known DIFC law name patterns — map question phrases to searchable keywords
@@ -1032,192 +971,6 @@ def get_all_pages_for_docs(pdf_ids: list[str]) -> list[dict]:
     return chunks
 
 
-def build_bm25_index():
-    """Build BM25 index over all ChromaDB chunks (lazy-loaded, disk-cached, thread-safe).
-
-    Saves index to data/bm25_cache/ on first build; loads from disk on subsequent runs.
-    Delete data/bm25_cache/ after re-indexing to force a rebuild.
-    """
-    global _bm25_index, _bm25_corpus_ids
-    if _bm25_index is not None:
-        return _bm25_index, _bm25_corpus_ids
-
-    with _bm25_lock:
-        if _bm25_index is not None:
-            return _bm25_index, _bm25_corpus_ids
-
-        # Try loading from disk cache first
-        if os.path.exists(BM25_IDS_PATH) and os.path.exists(BM25_CACHE_DIR):
-            try:
-                print("Loading BM25 index from disk cache...")
-                retriever = bm25s.BM25.load(BM25_CACHE_DIR, load_corpus=False)
-                with open(BM25_IDS_PATH) as f:
-                    corpus_ids = json.load(f)
-                _bm25_corpus_ids = corpus_ids
-                _bm25_index = retriever
-                print("BM25 index loaded from cache.")
-                return _bm25_index, _bm25_corpus_ids
-            except Exception as e:
-                print(f"BM25 cache load failed ({e}), rebuilding...")
-
-        # Build from vector store (FAISS or ChromaDB)
-        print("Building BM25 index...")
-        if _use_faiss():
-            all_results = _faiss_get_all()
-        else:
-            collection = get_collection()
-            all_results = collection.get(include=["documents", "metadatas"])
-
-        corpus_texts = all_results["documents"]
-        corpus_ids = all_results["ids"]
-
-        corpus_tokens = legal_tokenize_corpus(corpus_texts)
-
-        retriever = bm25s.BM25()
-        retriever.index(corpus_tokens)
-
-        # Save to disk cache
-        try:
-            os.makedirs(BM25_CACHE_DIR, exist_ok=True)
-            retriever.save(BM25_CACHE_DIR)
-            with open(BM25_IDS_PATH, "w") as f:
-                json.dump(corpus_ids, f)
-            print("BM25 index saved to disk cache.")
-        except Exception as e:
-            print(f"BM25 cache save failed (non-fatal): {e}")
-
-        _bm25_corpus_ids = corpus_ids
-        _bm25_index = retriever
-
-    return _bm25_index, _bm25_corpus_ids
-
-
-def build_bm25_page1_index():
-    """Build BM25 index over first-page-only chunks (document identification signal).
-
-    # Multi-signal fusion from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
-    Page 1 typically contains the document title, law number, and preamble — strong
-    signal for identifying which document a query refers to.
-    """
-    global _bm25_page1_index, _bm25_page1_ids
-    if _bm25_page1_index is not None:
-        return _bm25_page1_index, _bm25_page1_ids
-
-    with _bm25_page1_lock:
-        if _bm25_page1_index is not None:
-            return _bm25_page1_index, _bm25_page1_ids
-
-        # Try loading from disk cache first
-        if os.path.exists(BM25_PAGE1_IDS_PATH) and os.path.exists(BM25_PAGE1_CACHE_DIR):
-            try:
-                print("Loading BM25 page1 index from disk cache...")
-                retriever = bm25s.BM25.load(BM25_PAGE1_CACHE_DIR, load_corpus=False)
-                with open(BM25_PAGE1_IDS_PATH) as f:
-                    corpus_ids = json.load(f)
-                _bm25_page1_ids = corpus_ids
-                _bm25_page1_index = retriever
-                print("BM25 page1 index loaded from cache.")
-                return _bm25_page1_index, _bm25_page1_ids
-            except Exception as e:
-                print(f"BM25 page1 cache load failed ({e}), rebuilding...")
-
-        # Build from in-memory chunks (page 1 only)
-        print("Building BM25 page1 index...")
-        chunks_by_doc = get_chunks_by_doc()
-
-        corpus_texts = []
-        corpus_ids = []
-        for doc_id, chunks in chunks_by_doc.items():
-            for chunk in chunks:
-                if chunk["metadata"].get("page", 1) == 1:
-                    corpus_texts.append(chunk["text"])
-                    corpus_ids.append(chunk["chunk_id"])
-
-        if not corpus_texts:
-            print("BM25 page1 index: no page-1 chunks found, skipping.")
-            return None, None
-
-        corpus_tokens = legal_tokenize_corpus(corpus_texts)
-        retriever = bm25s.BM25()
-        retriever.index(corpus_tokens)
-
-        try:
-            os.makedirs(BM25_PAGE1_CACHE_DIR, exist_ok=True)
-            retriever.save(BM25_PAGE1_CACHE_DIR)
-            with open(BM25_PAGE1_IDS_PATH, "w") as f:
-                json.dump(corpus_ids, f)
-            print("BM25 page1 index saved to disk cache.")
-        except Exception as e:
-            print(f"BM25 page1 cache save failed (non-fatal): {e}")
-
-        _bm25_page1_ids = corpus_ids
-        _bm25_page1_index = retriever
-
-    return _bm25_page1_index, _bm25_page1_ids
-
-
-def build_bm25_doc_index():
-    """Build BM25 index over concatenated document text (one entry per doc).
-
-    # Multi-signal fusion from IAS Partners (guy4, Ivanov/Agishev/Sadchikov)
-    Document-level BM25 captures full-document term frequency — strong signal for
-    identifying target documents when queries mention law names or case numbers.
-    """
-    global _bm25_doc_index, _bm25_doc_ids
-    if _bm25_doc_index is not None:
-        return _bm25_doc_index, _bm25_doc_ids
-
-    with _bm25_doc_lock:
-        if _bm25_doc_index is not None:
-            return _bm25_doc_index, _bm25_doc_ids
-
-        # Try loading from disk cache first
-        if os.path.exists(BM25_DOC_IDS_PATH) and os.path.exists(BM25_DOC_CACHE_DIR):
-            try:
-                print("Loading BM25 doc-level index from disk cache...")
-                retriever = bm25s.BM25.load(BM25_DOC_CACHE_DIR, load_corpus=False)
-                with open(BM25_DOC_IDS_PATH) as f:
-                    doc_ids = json.load(f)
-                _bm25_doc_ids = doc_ids
-                _bm25_doc_index = retriever
-                print("BM25 doc-level index loaded from cache.")
-                return _bm25_doc_index, _bm25_doc_ids
-            except Exception as e:
-                print(f"BM25 doc-level cache load failed ({e}), rebuilding...")
-
-        # Build from in-memory chunks (concatenate all pages per doc)
-        print("Building BM25 doc-level index...")
-        chunks_by_doc = get_chunks_by_doc()
-
-        doc_texts = []
-        doc_ids = []
-        for doc_id, chunks in chunks_by_doc.items():
-            # Concatenate all chunk texts for this document
-            full_text = "\n".join(chunk["text"] for chunk in chunks)
-            doc_texts.append(full_text)
-            doc_ids.append(doc_id)
-
-        if not doc_texts:
-            print("BM25 doc-level index: no documents found, skipping.")
-            return None, None
-
-        corpus_tokens = legal_tokenize_corpus(doc_texts)
-        retriever = bm25s.BM25()
-        retriever.index(corpus_tokens)
-
-        try:
-            os.makedirs(BM25_DOC_CACHE_DIR, exist_ok=True)
-            retriever.save(BM25_DOC_CACHE_DIR)
-            with open(BM25_DOC_IDS_PATH, "w") as f:
-                json.dump(doc_ids, f)
-            print("BM25 doc-level index saved to disk cache.")
-        except Exception as e:
-            print(f"BM25 doc-level cache save failed (non-fatal): {e}")
-
-        _bm25_doc_ids = doc_ids
-        _bm25_doc_index = retriever
-
-    return _bm25_doc_index, _bm25_doc_ids
 
 
 def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
@@ -1357,68 +1110,22 @@ def _doc_fusion_select(
     type_cfg = RETRIEVAL_CONFIGS.get(answer_type, {})
     fusion_top_k = type_cfg.get("top_k", 128)
 
-    # Load all required indexes
-    bm25_all, bm25_all_ids = build_bm25_index()
-    bm25_p1_result = build_bm25_page1_index()
-    bm25_doc_result = build_bm25_doc_index()
-
-    if bm25_p1_result is None or bm25_p1_result[0] is None:
-        return None
-    if bm25_doc_result is None or bm25_doc_result[0] is None:
-        return None
-
-    bm25_p1_idx, bm25_p1_ids = bm25_p1_result
-    bm25_doc_idx, bm25_doc_doc_ids = bm25_doc_result
-
-    collection = get_collection() if not _use_faiss() else None
-    chunks_by_doc_map = get_chunks_by_doc()
-
-    # Map chunk_id -> doc_id for BM25 all-pages index
-    chunk_to_doc = {}
-    for doc_id, chunks in chunks_by_doc_map.items():
-        for chunk in chunks:
-            chunk_to_doc[chunk["chunk_id"]] = doc_id
-
-    # Map chunk_id -> doc_id for BM25 page1 index
-    chunk_to_doc_p1 = {}
-    for doc_id, chunks in chunks_by_doc_map.items():
-        for chunk in chunks:
-            if chunk["metadata"].get("page", 1) == 1:
-                chunk_to_doc_p1[chunk["chunk_id"]] = doc_id
-
-    query_tokens = legal_tokenize_queries(question)
-
-    # --- Signal 1: BM25 standard (max page score per doc) ---
-    bm25_results, bm25_scores = bm25_all.retrieve(query_tokens, k=min(fusion_top_k, len(bm25_all_ids)))
+    # --- Signal 1: Text search standard (max page score per doc) ---
+    bm25_std_results = _search_chunks_text_scored(question, top_k=fusion_top_k, corpus="difc")
     bm25_std_doc_scores: dict[str, float] = {}
-    indices = bm25_results[0] if len(bm25_results.shape) > 1 else bm25_results
-    scores_arr = bm25_scores[0] if len(bm25_scores.shape) > 1 else bm25_scores
-    for idx_i, idx in enumerate(indices):
-        if idx < len(bm25_all_ids):
-            chunk_id = bm25_all_ids[idx]
-            doc_id = chunk_to_doc.get(chunk_id)
-            if doc_id:
-                score = float(scores_arr[idx_i]) if idx_i < len(scores_arr) else 0.0
-                if doc_id not in bm25_std_doc_scores or score > bm25_std_doc_scores[doc_id]:
-                    bm25_std_doc_scores[doc_id] = score
+    for _chunk_id, pdf_id, score in bm25_std_results:
+        if pdf_id not in bm25_std_doc_scores or score > bm25_std_doc_scores[pdf_id]:
+            bm25_std_doc_scores[pdf_id] = score
 
-    # Normalize BM25 std scores
+    # Normalize text search std scores
     max_bm25_std = max(bm25_std_doc_scores.values(), default=1.0) or 1.0
     for d in bm25_std_doc_scores:
         bm25_std_doc_scores[d] /= max_bm25_std
 
     # --- Signal 2 & 3: Dense embedding scores + RRF ---
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    if _use_faiss():
-        dense_n = min(fusion_top_k, _faiss_count())
-        vector_results = _search_faiss(query_emb, top_k=dense_n)
-    else:
-        dense_n = min(fusion_top_k, collection.count())
-        vector_results = collection.query(
-            query_embeddings=[query_emb],
-            n_results=dense_n,
-            include=["metadatas", "distances"],
-        )
+    dense_n = min(fusion_top_k, get_chunk_count("difc"))
+    vector_results = search_chunks_vector(query_emb, top_k=dense_n, corpus="difc")
 
     dense_std_doc_scores: dict[str, float] = {}
     dense_rrf_doc_scores: dict[str, float] = {}
@@ -1427,7 +1134,7 @@ def _doc_fusion_select(
             zip(vector_results["metadatas"][0], vector_results["distances"][0])
     ):
         doc_id = meta["pdf_id"]
-        sim = 1.0 - float(dist)  # ChromaDB cosine distance -> similarity
+        sim = 1.0 - float(dist)  # cosine distance -> similarity
         # Signal 2: max dense score per doc
         if doc_id not in dense_std_doc_scores or sim > dense_std_doc_scores[doc_id]:
             dense_std_doc_scores[doc_id] = sim
@@ -1443,34 +1150,22 @@ def _doc_fusion_select(
     for d in dense_rrf_doc_scores:
         dense_rrf_doc_scores[d] /= max_dense_rrf
 
-    # --- Signal 4: BM25 doc-level ---
-    bm25_doc_results, bm25_doc_scores = bm25_doc_idx.retrieve(query_tokens, k=min(fusion_top_k, len(bm25_doc_doc_ids)))
+    # --- Signal 4: Text search doc-level ---
+    bm25_doc_results = _search_docs_text_scored(question, top_k=fusion_top_k, corpus="difc")
     bm25_doc_doc_scored: dict[str, float] = {}
-    d_indices = bm25_doc_results[0] if len(bm25_doc_results.shape) > 1 else bm25_doc_results
-    d_scores = bm25_doc_scores[0] if len(bm25_doc_scores.shape) > 1 else bm25_doc_scores
-    for idx_i, idx in enumerate(d_indices):
-        if idx < len(bm25_doc_doc_ids):
-            doc_id = bm25_doc_doc_ids[idx]
-            score = float(d_scores[idx_i]) if idx_i < len(d_scores) else 0.0
-            bm25_doc_doc_scored[doc_id] = score
+    for pdf_id, score in bm25_doc_results:
+        bm25_doc_doc_scored[pdf_id] = score
 
     max_bm25_doc = max(bm25_doc_doc_scored.values(), default=1.0) or 1.0
     for d in bm25_doc_doc_scored:
         bm25_doc_doc_scored[d] /= max_bm25_doc
 
-    # --- Signal 5: BM25 page1 ---
-    bm25_p1_results, bm25_p1_scores = bm25_p1_idx.retrieve(query_tokens, k=min(fusion_top_k, len(bm25_p1_ids)))
+    # --- Signal 5: Text search page1 ---
+    bm25_p1_results = _search_chunks_text_page1_scored(question, top_k=fusion_top_k, corpus="difc")
     bm25_p1_doc_scored: dict[str, float] = {}
-    p1_indices = bm25_p1_results[0] if len(bm25_p1_results.shape) > 1 else bm25_p1_results
-    p1_scores = bm25_p1_scores[0] if len(bm25_p1_scores.shape) > 1 else bm25_p1_scores
-    for idx_i, idx in enumerate(p1_indices):
-        if idx < len(bm25_p1_ids):
-            chunk_id = bm25_p1_ids[idx]
-            doc_id = chunk_to_doc_p1.get(chunk_id)
-            if doc_id:
-                score = float(p1_scores[idx_i]) if idx_i < len(p1_scores) else 0.0
-                if doc_id not in bm25_p1_doc_scored or score > bm25_p1_doc_scored[doc_id]:
-                    bm25_p1_doc_scored[doc_id] = score
+    for _chunk_id, pdf_id, score in bm25_p1_results:
+        if pdf_id not in bm25_p1_doc_scored or score > bm25_p1_doc_scored[pdf_id]:
+            bm25_p1_doc_scored[pdf_id] = score
 
     max_bm25_p1 = max(bm25_p1_doc_scored.values(), default=1.0) or 1.0
     for d in bm25_p1_doc_scored:
@@ -1557,13 +1252,9 @@ def prewarm():
     """Pre-warm all caches before parallel processing to avoid race conditions."""
     print("Pre-warming retrieval caches...")
     get_embedding_model()
-    get_collection()
-    build_doc_index()  # also populates _chunks_by_doc via _load_all_chunks()
-    build_bm25_index()
-    # Multi-signal fusion indexes (graceful if not yet built)
-    if USE_MULTI_SIGNAL_FUSION:
-        build_bm25_page1_index()
-        build_bm25_doc_index()
+    get_chunk_count("difc")   # warm DB connection pool
+    get_chunk_count("czech")
+    build_doc_index()  # populates in-memory chunk cache from PostgreSQL
     get_reranker()
     print("Caches ready.")
 
@@ -1690,8 +1381,6 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
         # If decomposition failed, fall through to standard retrieval
         print("[MULTI-HOP] Decomposition failed, using standard retrieval")
 
-    collection = get_collection() if not _use_faiss() else None
-
     # Step 0: Extract article filter for metadata-aware retrieval
     article_filter = _extract_article_filter(question)
 
@@ -1738,14 +1427,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
 
         # Also get vector search results to supplement
         _kw_query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-        if _use_faiss():
-            vector_results = _search_faiss(_kw_query_emb, top_k=max(n_results, 15))
-        else:
-            vector_results = collection.query(
-                query_embeddings=[_kw_query_emb],
-                n_results=max(n_results, 15),
-                include=["documents", "metadatas", "distances"],
-            )
+        vector_results = search_chunks_vector(_kw_query_emb, top_k=max(n_results, 15), corpus=corpus)
 
         vector_chunks = []
         for i in range(len(vector_results["ids"][0])):
@@ -1792,37 +1474,18 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
         return ranked
 
     else:
-        # No keyword matches: use BM25 + vector with RRF, augmented by HyDE
-        bm25_index, corpus_ids = build_bm25_index()
-        query_tokens = legal_tokenize_queries(question)
+        # No keyword matches: use text search + vector with RRF, augmented by HyDE
 
         # Scale top_k based on metadata filters (need larger pool before filtering)
         # V5: Raised floor from 50 to 200 — deeper pool gives +0.10 retrieval accuracy
         base_top_k = max(n_results, 200)
         top_k = base_top_k * 3 if article_filter else base_top_k
 
-        bm25_results, bm25_scores = bm25_index.retrieve(query_tokens, k=top_k)
-
-        bm25_ranking = []
-        if len(bm25_results.shape) > 1:
-            for idx in bm25_results[0]:
-                if idx < len(corpus_ids):
-                    bm25_ranking.append(corpus_ids[idx])
-        else:
-            for idx in bm25_results:
-                if idx < len(corpus_ids):
-                    bm25_ranking.append(corpus_ids[idx])
+        bm25_ranking = search_chunks_text(question, top_k=top_k, corpus=corpus)
 
         # Original query embedding
         query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-        if _use_faiss():
-            vector_results = _search_faiss(query_emb, top_k=top_k)
-        else:
-            vector_results = collection.query(
-                query_embeddings=[query_emb],
-                n_results=top_k,
-                include=["documents", "metadatas", "distances"],
-            )
+        vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus)
         vector_ranking = vector_results["ids"][0]
 
         # HyDE: generate a hypothetical passage and embed it for additional signal
@@ -1832,38 +1495,27 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
         if hyde_passage:
             try:
                 hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
-                if _use_faiss():
-                    hyde_results = _search_faiss(hyde_emb, top_k=top_k)
-                else:
-                    hyde_results = collection.query(
-                        query_embeddings=[hyde_emb],
-                        n_results=top_k,
-                        include=["documents", "metadatas", "distances"],
-                    )
+                hyde_results = search_chunks_vector(hyde_emb, top_k=top_k, corpus=corpus)
                 hyde_ranking = hyde_results["ids"][0]
             except Exception:
                 pass
 
-        # Multi-query expansion: generate variant queries for additional BM25 signal
+        # Multi-query expansion: generate variant queries for additional text search signal
         # Only for free_text (use_hyde=True) to avoid TTFT penalty on deterministic questions
         variant_rankings = []
         if use_hyde:
             variants = _generate_query_variants(question)
             for variant in variants[:2]:
                 try:
-                    v_tokens = legal_tokenize_queries(variant)
-                    v_results, _ = bm25_index.retrieve(v_tokens, k=top_k)
-                    v_bm25_ranking = [corpus_ids[idx] for idx in
-                                      (v_results[0] if len(v_results.shape) > 1 else v_results) if
-                                      idx < len(corpus_ids)]
+                    v_bm25_ranking = search_chunks_text(variant, top_k=top_k, corpus=corpus)
                     variant_rankings.append(v_bm25_ranking)
                 except Exception:
                     pass
 
-        # RRF over all signals: BM25, vector, HyDE-vector, variant queries
+        # RRF over all signals: text search, vector, HyDE-vector, variant queries
         all_rankings = [r for r in [bm25_ranking, vector_ranking, hyde_ranking] + variant_rankings if r]
-        # BM25 gets 2.0x weight — outperforms dense for legal without domain-adapted embeddings (LRAGE 2025)
-        # Phase 3: raised 1.5→2.0 for larger 300-doc corpus (more vector noise at scale)
+        # Text search gets 2.0x weight — outperforms dense for legal without domain-adapted embeddings (LRAGE 2025)
+        # Phase 3: raised 1.5->2.0 for larger 300-doc corpus (more vector noise at scale)
         weights = [2.0] + [1.0] * (len(all_rankings) - 1)
         merged_ranking = reciprocal_rank_fusion(all_rankings, k=60, weights=weights)
 
@@ -1883,13 +1535,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
             if chunk_id in vector_lookup:
                 final_chunks.append(vector_lookup[chunk_id])
             else:
-                if _use_faiss():
-                    chunk_data = _faiss_get_by_ids([chunk_id])
-                else:
-                    chunk_data = collection.get(
-                        ids=[chunk_id],
-                        include=["documents", "metadatas"],
-                    )
+                chunk_data = get_chunks_by_ids([chunk_id])
                 if len(chunk_data["ids"]) > 0:
                     final_chunks.append({
                         "chunk_id": chunk_data["ids"][0],
@@ -1982,18 +1628,18 @@ def _retrieve_pages_simple(
         laws: list[str] | None = None,
         cached_query_emb=None,
 ) -> list[PageResult]:
-    """Simplified retrieval for non-DIFC corpora: FAISS vector search + cross-encoder reranking.
+    """Simplified retrieval for non-DIFC corpora: vector search + cross-encoder reranking.
 
-    No BM25, no routing metadata, no DIFC-specific heuristics.
+    No text search fusion, no routing metadata, no DIFC-specific heuristics.
     """
     print(f"[retriever] simple retrieval for corpus={corpus!r}")
     if on_status:
         on_status("retrieving:searching corpus")
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    top_k = min(100, _faiss_count(corpus=corpus))  # 100 candidates for better recall on large corpora
+    top_k = min(100, get_chunk_count(corpus=corpus))  # 100 candidates for better recall on large corpora
     if on_status:
         on_status("retrieving:searching corpus")
-    vector_results = _search_faiss(query_emb, top_k=top_k, corpus=corpus)
+    vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus)
 
     # Convert to chunk dicts for reranking
     chunks = []
@@ -2010,7 +1656,7 @@ def _retrieve_pages_simple(
         law_prefixes = set(laws)
         chunks = [c for c in chunks if any(c["metadata"].get("doc_id", "").startswith(p) for p in law_prefixes)]
 
-    # Preserve top FAISS result before reranking — embedding models handle
+    # Preserve top vector result before reranking — embedding models handle
     # cross-language queries better than the reranker for non-DIFC corpora.
     faiss_top = chunks[0] if chunks else None
 
@@ -2221,12 +1867,9 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
     # Dense-only page ranking insight from IAS Partners (guy4)
     Returns dict of page_number -> max_similarity_score.
 
-    Uses pre-computed embeddings from the FAISS index via reconstruct()
-    instead of re-embedding through the model. For a 389-chunk document
-    this reduces scoring time from 334+ seconds to <0.1 seconds.
-
-    Falls back to model.encode() if any chunk_id is missing from the FAISS
-    index (e.g. index was rebuilt but chunks_by_doc cache is stale).
+    Uses pgvector inner product on pre-stored embeddings instead of
+    re-embedding through the model. For a 389-chunk document this
+    reduces scoring time from 334+ seconds to <0.1 seconds.
 
     cached_query_emb: pre-computed query embedding to avoid redundant
     embed_query() calls when scoring multiple documents for the same question.
@@ -2235,55 +1878,24 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
         return {}
 
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
+    vec_literal = '[' + ','.join(str(float(x)) for x in query_emb) + ']'
 
-    # Try FAISS reconstruction first — instant memory read, no model inference.
-    chunk_embeddings = None
-    if _use_faiss(corpus=corpus):
-        try:
-            faiss_index, _ = _load_faiss(corpus=corpus)
-            cid_to_pos = _faiss_chunk_id_to_pos(corpus=corpus)
+    chunk_ids = [c.get("chunk_id") for c in chunks if c.get("chunk_id")]
+    if not chunk_ids:
+        return {}
 
-            # Look up FAISS positions for all chunks
-            positions = []
-            for chunk in chunks:
-                cid = chunk.get("chunk_id")
-                if cid is None or cid not in cid_to_pos:
-                    # chunk_id missing from FAISS — fall back to model.encode()
-                    positions = None
-                    break
-                positions.append(cid_to_pos[cid])
-
-            if positions is not None:
-                # Reconstruct embeddings from FAISS index (pure memory read)
-                reconstructed = np.zeros(
-                    (len(positions), faiss_index.d), dtype=np.float32
-                )
-                for i, pos in enumerate(positions):
-                    faiss_index.reconstruct(pos, reconstructed[i])
-                chunk_embeddings = reconstructed
-        except Exception as e:
-            logger.warning(
-                "FAISS reconstruct failed for doc %s (%s), falling back to model.encode()",
-                doc_id, e,
-            )
-
-    # Fallback: re-embed through the model (slow but always correct)
-    if chunk_embeddings is None:
-        model = get_embedding_model()
-        chunk_texts = [chunk["text"][:2000] for chunk in chunks]
-        with _embedding_lock:
-            chunk_embeddings = model.encode(chunk_texts, normalize_embeddings=True)
-
-    query_arr = np.array(query_emb, dtype=np.float32)
-    with np.errstate(divide='ignore', over='ignore', invalid='ignore'):
-        similarities = chunk_embeddings @ query_arr
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(sa_text("""
+            SELECT chunk_id, page, (embedding <#> cast(:vec as vector)) * -1 AS similarity
+            FROM chunks
+            WHERE chunk_id = ANY(:ids)
+        """), {"vec": vec_literal, "ids": chunk_ids}).fetchall()
 
     page_scores: dict[int, float] = {}
-    for chunk, sim in zip(chunks, similarities):
-        page_num = chunk["metadata"].get("page", 1)
-        sim_val = float(sim)
-        if page_num not in page_scores or sim_val > page_scores[page_num]:
-            page_scores[page_num] = sim_val
+    for row in rows:
+        if row.page not in page_scores or row.similarity > page_scores[row.page]:
+            page_scores[row.page] = float(row.similarity)
 
     return page_scores
 
@@ -2366,7 +1978,7 @@ def _retrieve_pages_targeted(
         _cached_query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
     else:
         _cached_query_emb = None
-    _cached_q_tokens = legal_tokenize_queries(question) if PAGE_RANK_BM25_INJECTION else None
+    # (BM25 tokenization no longer needed — text search runs in PostgreSQL)
 
     if on_status:
         on_status(f"retrieving:scoring {len(target_doc_ids)} documents")
@@ -2419,32 +2031,25 @@ def _retrieve_pages_targeted(
                 _ce_pool_size = 50
             top_chunks = [c for _, c in chunk_dense[:_ce_pool_size]]
 
-            # BM25 injection: rescue pages with strong lexical signal that dense de-ranked
-            # (Technique 2). Query BM25 on the full corpus, filter to this doc's chunks,
+            # Text search injection: rescue pages with strong lexical signal that dense
+            # de-ranked (Technique 2). Query PostgreSQL tsvector within this doc,
             # inject up to BM25_INJECTION_K candidates not already in the dense pool.
-            # CE still provides all final scores — BM25 only expands the candidate set.
-            # Only run BM25 injection when the CE pool doesn't already cover
+            # CE still provides all final scores — text search only expands the candidate set.
+            # Only run injection when the CE pool doesn't already cover
             # all document chunks — if it does, injection can't add anything new.
-            # Saves ~0.25s per small-to-medium document (most DIFC docs have
-            # <100 chunks and pool=50-100 covers them).
             if PAGE_RANK_BM25_INJECTION and _ce_pool_size < len(doc_chunks):
                 try:
-                    _bm25_idx, _bm25_ids = build_bm25_index()
-                    _q_tokens = _cached_q_tokens
-                    _doc_cid_set = {c["chunk_id"] for c in doc_chunks}
                     _pool_cid_set = {c["chunk_id"] for c in top_chunks}
-                    _bm25_results, _ = _bm25_idx.retrieve(_q_tokens, k=min(800, len(_bm25_ids)))
-                    _bm25_indices = _bm25_results[0] if len(_bm25_results.shape) > 1 else _bm25_results
-                    _injected = 0
-                    # Build a chunk_id → chunk lookup for fast injection
                     _cid_to_chunk = {c["chunk_id"]: c for c in doc_chunks}
-                    for _bidx in _bm25_indices:
+                    _text_hits = _search_chunks_text_for_doc(
+                        question, pdf_id=doc_id, corpus="difc",
+                        top_k=BM25_INJECTION_K * 4,
+                    )
+                    _injected = 0
+                    for _cid in _text_hits:
                         if _injected >= BM25_INJECTION_K:
                             break
-                        if int(_bidx) >= len(_bm25_ids):
-                            continue
-                        _cid = _bm25_ids[int(_bidx)]
-                        if _cid in _doc_cid_set and _cid not in _pool_cid_set:
+                        if _cid in _cid_to_chunk and _cid not in _pool_cid_set:
                             top_chunks.append(_cid_to_chunk[_cid])
                             _pool_cid_set.add(_cid)
                             _injected += 1
