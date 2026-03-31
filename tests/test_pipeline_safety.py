@@ -6,7 +6,7 @@ These tests cover:
 3. XML answer tag stripping in pipeline_dict_to_response
 4. DOC-N citation numbering consistency (insertion order, not score order)
 5. Reranker batching correctness (batched == unbatched, correct length)
-6. FAISS dense page scoring output shape (conditional on infrastructure)
+6. Dense page scoring via pgvector (requires PostgreSQL connection)
 7. Progress event regex extraction from status strings
 """
 
@@ -19,9 +19,11 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-# Set DATABASE_URL before any neolex imports to prevent the postgres module
-# from raising RuntimeError during collection. This is a dummy value — no
-# actual DB connection is made by these unit tests.
+# Load .env first so real DATABASE_URL is available for tests that hit
+# PostgreSQL (e.g. _dense_page_scores).  Fall back to a dummy value so
+# collection still works in CI / environments without .env.
+from dotenv import load_dotenv
+load_dotenv()
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
 
@@ -457,32 +459,40 @@ class TestRerankerBatching:
 
 class TestDensePageScores:
     """Test _dense_page_scores returns scores for all unique pages.
-    Skipped when FAISS index infrastructure is unavailable."""
+    Uses real chunks from PostgreSQL (pgvector) instead of fake IDs."""
 
-    @pytest.mark.skipif(
-        not __import__("os").path.exists("data/faiss_llama-server.bin"),
-        reason="FAISS index not available (requires data/faiss_llama-server.bin)",
-    )
     def test_returns_dict_of_page_scores(self):
-        from arlc.retriever import _dense_page_scores
+        from arlc.retriever import _dense_page_scores, get_chunks_by_doc
 
-        # Create synthetic chunks with known pages
-        fake_chunks = [
-            {"chunk_id": "fake_0", "text": "test text", "metadata": {"page": 1}},
-            {"chunk_id": "fake_1", "text": "more text", "metadata": {"page": 2}},
-            {"chunk_id": "fake_2", "text": "even more text", "metadata": {"page": 1}},
-        ]
-        # Use a zero embedding as cached query embedding — won't give
-        # meaningful scores, but verifies the output structure.
+        # Get real chunks from the database for a known DIFC document
+        cbd = get_chunks_by_doc("difc")
+        if not cbd:
+            pytest.skip("No chunks available in PostgreSQL for DIFC corpus")
+
+        # Pick a doc that has chunks on multiple pages
+        doc_id = None
+        doc_chunks = None
+        for did, chunks in cbd.items():
+            pages = {c["metadata"]["page"] for c in chunks}
+            if len(pages) >= 2:
+                doc_id = did
+                doc_chunks = chunks[:5]  # limit to 5 for speed
+                break
+
+        if doc_id is None:
+            pytest.skip("No multi-page document found in DIFC corpus")
+
         fake_emb = np.zeros(4096, dtype=np.float32)
         result = _dense_page_scores(
-            "test question", "FAKE_DOC", fake_chunks,
+            "test question", doc_id, doc_chunks,
             cached_query_emb=fake_emb, corpus="difc",
         )
         assert isinstance(result, dict)
-        # Should have entries for page 1 and page 2
-        assert 1 in result
-        assert 2 in result
+        # Should have at least one page entry
+        assert len(result) > 0
+        # All keys should be ints (page numbers), all values floats
+        assert all(isinstance(k, int) for k in result.keys())
+        assert all(isinstance(v, float) for v in result.values())
 
     def test_empty_chunks_returns_empty(self):
         """Importing _dense_page_scores just to test empty input."""

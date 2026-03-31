@@ -1,8 +1,8 @@
 # Custom legal tokenizer inspired by IAS Partners (guy4)
 """
-Legal-domain tokenizer for BM25 that expands compound legal references
-into multiple searchable tokens. This improves BM25 recall for queries
-containing case IDs, article references, law numbers, etc.
+Legal-domain tokenizer that expands compound legal references into
+multiple searchable tokens. Used for entity extraction and keyword
+matching in queries containing case IDs, article references, law numbers, etc.
 """
 
 import re
@@ -107,10 +107,10 @@ def _expand_legal_refs(text: str) -> list[str]:
 
 
 def legal_tokenize(text: str) -> list[str]:
-    """Tokenize text with legal reference expansion for BM25.
+    """Tokenize text with legal reference expansion.
 
     Combines standard word tokenization with expanded legal reference tokens.
-    Applies lowercasing and stopword removal consistent with bm25s defaults.
+    Applies lowercasing and stopword removal.
     """
     # Standard word tokens (lowercased, stopwords removed)
     words = _WORD_RE.findall(text.lower())
@@ -123,7 +123,7 @@ def legal_tokenize(text: str) -> list[str]:
 
 
 def legal_tokenize_query(query: str) -> list[str]:
-    """Tokenize a query with legal reference expansion for BM25.
+    """Tokenize a query with legal reference expansion.
 
     Same as legal_tokenize — queries get the same expansion so that
     a query for "Article 28(1)" matches documents containing that reference.
@@ -132,18 +132,17 @@ def legal_tokenize_query(query: str) -> list[str]:
 
 
 def legal_tokenize_corpus(texts: list[str]) -> list[list[str]]:
-    """Tokenize a corpus of texts for BM25 indexing.
+    """Tokenize a corpus of texts with legal reference expansion.
 
-    Returns list-of-lists format compatible with bm25s.BM25.index().
+    Returns list-of-lists of tokenized text.
     """
     return [legal_tokenize(text) for text in texts]
 
 
 def legal_tokenize_queries(queries: Union[str, list[str]]) -> list[list[str]]:
-    """Tokenize one or more queries for BM25 retrieval.
+    """Tokenize one or more queries with legal reference expansion.
 
-    Returns list-of-lists format compatible with bm25s.BM25.retrieve().
-    Accepts a single string or list of strings.
+    Returns list-of-lists of tokenized text. Accepts a single string or list of strings.
     """
     if isinstance(queries, str):
         queries = [queries]

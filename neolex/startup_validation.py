@@ -6,7 +6,8 @@ Raises SystemExit with a clear error message if a required precondition is not m
 Checks performed:
 1. Required environment variables are set (or have acceptable defaults).
 2. data/ directory exists with required index files.
-3. Log a warning for any optional but recommended env vars that are missing.
+3. PostgreSQL chunks table has data.
+4. Log a warning for any optional but recommended env vars that are missing.
 
 Design rationale: fail on startup rather than on the first request so that
 misconfigurations are caught immediately in CI/CD and not in production traffic.
@@ -71,17 +72,19 @@ def validate_startup(data_dir: str) -> None:
             if not os.path.isfile(fpath):
                 errors.append(f"Required index file missing: {fpath}")
 
-        # Check FAISS index exists at the configured path
-        faiss_path = os.environ.get("FAISS_INDEX_PATH", "data/faiss_llama-server.bin")
-        if not os.path.isabs(faiss_path):
-            faiss_path = os.path.join(os.getcwd(), faiss_path)
-        if not os.path.isfile(faiss_path):
-            errors.append(
-                f"FAISS index not found: {faiss_path}. "
-                f"Build it with: EMBEDDING_MODEL=llama-server python3 -m "
-                f"neolex.embeddings.build_index --corpus data/chunks/ "
-                f"--output {os.environ.get('FAISS_INDEX_PATH', 'data/faiss_llama-server.bin')}"
-            )
+        # Check PostgreSQL chunks table has data
+        try:
+            from arlc.retriever import get_chunk_count
+            difc_count = get_chunk_count("difc")
+            if difc_count == 0:
+                errors.append(
+                    "No chunks found in PostgreSQL for corpus 'difc'. "
+                    "Run the indexer: uv run python3 -m arlc.indexing.indexer"
+                )
+            else:
+                logger.info("PostgreSQL chunks: difc=%d", difc_count)
+        except Exception as exc:
+            errors.append(f"Cannot connect to PostgreSQL to verify chunks: {exc}")
 
     # --- Check llama-server if embedding backend requires it ---
     if os.environ.get("EMBEDDING_MODEL", "llama-server") == "llama-server":

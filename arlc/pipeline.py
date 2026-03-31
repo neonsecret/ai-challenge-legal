@@ -41,7 +41,7 @@ load_dotenv()
 #              "total_time_ms": int, "input_tokens": int, "output_tokens": int,
 #              "model_name": str}
 
-from arlc.indexing.indexer import build_index, CHROMA_DIR
+from arlc.indexing.indexer import build_index
 from arlc.format_guardian import FormatGuardian
 
 # Case metadata for cross-case oracle citation expansion
@@ -1552,11 +1552,15 @@ async def run_pipeline(
             sys.exit(1)
 
     # Step 1: Index documents (if needed)
-    if not skip_indexing and not os.path.exists(CHROMA_DIR):
-        print("=== Step 1: Indexing documents ===")
-        build_index()
+    if not skip_indexing:
+        from arlc.retriever import get_chunk_count
+        if get_chunk_count("difc") == 0:
+            print("=== Step 1: Indexing documents ===")
+            build_index()
+        else:
+            print("=== Step 1: Skipping indexing (chunks already in PostgreSQL) ===")
     else:
-        print("=== Step 1: Skipping indexing (already done) ===")
+        print("=== Step 1: Skipping indexing (--skip-indexing) ===")
 
     # Step 2: Load questions
     print("=== Step 2: Loading questions ===")
@@ -2003,8 +2007,9 @@ def main():
     )
     args = parser.parse_args()
 
-    # Auto-skip indexing if index exists
-    skip = args.skip_indexing or os.path.exists(CHROMA_DIR)
+    # Auto-skip indexing if chunks already exist in PostgreSQL
+    from arlc.retriever import get_chunk_count
+    skip = args.skip_indexing or get_chunk_count("difc") > 0
 
     asyncio.run(run_pipeline(
         questions_path=args.questions,

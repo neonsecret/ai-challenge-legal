@@ -518,18 +518,18 @@ async def list_corpora(
 ):
     """Return the list of searchable custom corpora for the authenticated user.
 
-    Checks for FAISS indexes under data/clients/{client_slug}/index/.
+    Checks PostgreSQL chunks table for indexed documents belonging to this tenant.
     Returns {"corpora": [{"name": "My Documents", "corpus_id": "<client_slug>", "indexed": true}]}
     """
     from pathlib import Path
+    from arlc.retriever import get_chunk_count
 
     client_slug = key_row["client_slug"]
-    index_dir = Path(settings.data_dir) / "clients" / client_slug / "index"
-    faiss_path = index_dir / "faiss_index.bin"
+    chunk_count = get_chunk_count(corpus=client_slug)
 
-    logger.info("[corpora] client_slug=%s, checking %s (exists=%s)", client_slug, faiss_path, faiss_path.exists())
+    logger.info("[corpora] client_slug=%s, chunk_count=%d", client_slug, chunk_count)
     corpora: list[dict] = []
-    if faiss_path.exists():
+    if chunk_count > 0:
         # Count documents for display
         docs_dir = Path(settings.data_dir) / "clients" / client_slug / "docs"
         doc_count = len(list(docs_dir.glob("*.pdf"))) if docs_dir.exists() else 0

@@ -2,7 +2,7 @@
 
 End-to-end script that handles:
 1. Download documents and questions from platform API
-2. Index documents into ChromaDB
+2. Index documents into PostgreSQL (pgvector)
 3. Extract case metadata (for routing)
 4. Build article-to-page index (for law routing)
 5. Build law name index (for law routing)
@@ -14,7 +14,7 @@ Idempotent: skips steps that are already done.
 Usage:
     uv run python prepare_corpus.py                     # Full preparation
     uv run python prepare_corpus.py --skip-download     # Skip download
-    uv run python prepare_corpus.py --skip-indexing      # Skip ChromaDB indexing
+    uv run python prepare_corpus.py --skip-indexing      # Skip indexing
     uv run python prepare_corpus.py --smoke-test-only    # Just run smoke test
     uv run python prepare_corpus.py --force              # Rebuild everything
 """
@@ -35,8 +35,6 @@ load_dotenv()
 
 DOCS_DIR = Path("data/documents")
 QUESTIONS_PATH = Path("data/questions.json")
-CHROMA_DIR = Path("data/chroma_db")
-
 INDEX_FILES = {
     "case_metadata": Path("data/case_metadata_index.json"),
     "article_page": Path("data/article_page_index.json"),
@@ -145,20 +143,18 @@ def step_docling_convert(force: bool = False):
 # ---------------------------------------------------------------------------
 
 def step_index(force: bool = False):
-    """Build ChromaDB vector index."""
-    _step_header(2, "Index documents into ChromaDB")
+    """Build PostgreSQL vector index (pgvector)."""
+    _step_header(2, "Index documents into PostgreSQL")
 
-    if CHROMA_DIR.exists() and not force:
-        print(f"  ChromaDB index exists: {CHROMA_DIR}")
+    from arlc.retriever import get_chunk_count
+    chunk_count = get_chunk_count("difc")
+    if chunk_count > 0 and not force:
+        print(f"  PostgreSQL chunks already indexed: {chunk_count} chunks")
         print("  Use --force to rebuild")
         return
 
-    if force and CHROMA_DIR.exists():
-        print("  Removing existing index...")
-        shutil.rmtree(CHROMA_DIR)
-
     from arlc.indexing.indexer import build_index
-    print("  Building ChromaDB index...")
+    print("  Building PostgreSQL index...")
     t0 = time.monotonic()
     build_index()
     elapsed = time.monotonic() - t0
@@ -300,11 +296,13 @@ def step_validate():
         print(f"  {'questions':20s}: MISSING")
         all_ok = False
 
-    # Check ChromaDB
-    if CHROMA_DIR.exists():
-        print(f"  {'chroma_db':20s}: OK")
+    # Check PostgreSQL chunks
+    from arlc.retriever import get_chunk_count
+    chunk_count = get_chunk_count("difc")
+    if chunk_count > 0:
+        print(f"  {'postgresql_chunks':20s}: {chunk_count} chunks")
     else:
-        print(f"  {'chroma_db':20s}: MISSING")
+        print(f"  {'postgresql_chunks':20s}: EMPTY")
         all_ok = False
 
     if all_ok:
