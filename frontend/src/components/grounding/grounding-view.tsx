@@ -67,7 +67,7 @@ function cleanJudgmentText(raw: string): string {
     if (caseStart > 100) text = text.slice(caseStart)
 
     // Insert paragraph breaks before numbered paragraphs (1. 2. 3. etc.)
-    text = text.replace(/(?<=[.!?"'])\s*(\d{1,3}\.\s+[A-Z])/g, "\n\n$1")
+    text = text.replace(/([.!?"'])\s*(\d{1,3}\.\s+[A-Z])/g, "$1\n\n$2")
     // Insert breaks before common legal section headers
     text = text.replace(/((?:IT IS HEREBY ORDERED|JUDGMENT OF|Background|Parties|The Claimant|The Defendant|Conclusion|Analysis|Discussion|Issues?|Decision|Orders?)\s*(?:that)?:?)/gi, "\n\n$1")
     // Insert breaks before ALLCAPS headings (3+ consecutive caps words)

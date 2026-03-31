@@ -165,6 +165,10 @@ def _run_indexing_sync(
     return doc_count, chunks_skipped
 
 
+import threading
+_reindex_lock = threading.Lock()
+
+
 def _run_arlc_indexing(
         client_slug: str,
         docs_dir: Path,
@@ -185,6 +189,15 @@ def _run_arlc_indexing(
 
     # arlc indexer expects DOCUMENTS_DIR and FAISS_INDEX_PATH as globals.
     # We temporarily override them for the client's corpus.
+    original_docs_dir = indexer.DOCUMENTS_DIR
+    # Serialize concurrent reindex operations to prevent monkey-patching races.
+    # Without this lock, two simultaneous uploads could clobber each other's
+    # DOCUMENTS_DIR / FAISS_INDEX_PATH overrides.
+    with _reindex_lock:
+        return _run_arlc_indexing_locked(indexer, docs_dir, index_dir)
+
+
+def _run_arlc_indexing_locked(indexer, docs_dir: Path, index_dir: Path):
     original_docs_dir = indexer.DOCUMENTS_DIR
     original_faiss_path = indexer.FAISS_INDEX_PATH
     original_faiss_meta = indexer.FAISS_METADATA_PATH

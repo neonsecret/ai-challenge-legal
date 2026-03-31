@@ -226,8 +226,8 @@ export default function PdfViewerImpl({docId, page = 1, highlightText, className
         const msg = error?.message ?? ""
         // Worker destroyed mid-load (race condition on source switch) — not a real error
         if (msg.includes("messageHandler") || msg.includes("Worker was destroyed")) return
-        if (msg.includes("404")) {
-            // PDF not found — trigger fallback to text viewer
+        if (msg.includes("404") || msg.includes("Unexpected server response (404)")) {
+            // PDF not found — trigger fallback to text viewer (only on 404, not transient errors)
             onError?.()
             setErrorMessage("Document not found")
         } else if (msg.includes("401") || msg.includes("Unexpected server response (401)")) {
