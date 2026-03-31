@@ -99,9 +99,8 @@ async def _cleanup_expired() -> None:
                 result = await db.execute(
                     sql_delete(ConversationMessage)
                     .where(ConversationMessage.created_at < cutoff_90d)
-                    .returning(ConversationMessage.id)
                 )
-                deleted_msgs = len(result.all())
+                deleted_msgs = result.rowcount
 
                 # 3. Orphaned conversation docs (no remaining messages)
                 if deleted_msgs > 0:
@@ -110,9 +109,9 @@ async def _cleanup_expired() -> None:
                             ~ConversationDocs.conversation_id.in_(
                                 sql_select(ConversationMessage.conversation_id).distinct()
                             )
-                        ).returning(ConversationDocs.conversation_id)
+                        )
                     )
-                    deleted_docs = len(result2.all())
+                    deleted_docs = result2.rowcount
                 else:
                     deleted_docs = 0
 
@@ -121,9 +120,8 @@ async def _cleanup_expired() -> None:
                 result3 = await db.execute(
                     sql_delete(PipelineJob)
                     .where(PipelineJob.created_at < cutoff_24h)
-                    .returning(PipelineJob.id)
                 )
-                deleted_jobs = len(result3.all())
+                deleted_jobs = result3.rowcount
 
                 await db.commit()
                 logger.info(

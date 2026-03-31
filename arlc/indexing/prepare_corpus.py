@@ -25,6 +25,7 @@ import json
 import os
 import random
 import shutil
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -189,7 +190,7 @@ def step_case_metadata(force: bool = False):
 
     print(f"  Running {auto_builder.name}...")
     t0 = time.monotonic()
-    os.system(f"uv run python {auto_builder} --docs-dir {DOCS_DIR}")
+    subprocess.run(["uv", "run", "python", str(auto_builder), "--docs-dir", str(DOCS_DIR)], check=True)
     elapsed = time.monotonic() - t0
 
     # The auto builder outputs to a different path
