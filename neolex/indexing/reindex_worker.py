@@ -189,10 +189,31 @@ def _run_arlc_indexing(
     original_faiss_path = indexer.FAISS_INDEX_PATH
     original_faiss_meta = indexer.FAISS_METADATA_PATH
 
+    # Override the embedding model to match the retriever's backend.
+    # The indexer defaults to Snowflake Arctic (1024-dim) but the retriever
+    # uses Qwen3-8B via llama-server (4096-dim). Dimension mismatch = broken search.
+    original_embedding_model = getattr(indexer, "EMBEDDING_MODEL", None)
+
     try:
         indexer.DOCUMENTS_DIR = str(docs_dir)
         indexer.FAISS_INDEX_PATH = str(index_dir / "faiss_index.bin")
         indexer.FAISS_METADATA_PATH = str(index_dir / "faiss_metadata.json")
+
+        # Override the indexer's embedding function to use the retriever's
+        # llama-server backend (Qwen3-8B, 4096-dim) instead of the indexer's
+        # default SentenceTransformer (Snowflake Arctic, 1024-dim).
+        from arlc.retriever import get_embedding_model, _embedding_lock
+        model = get_embedding_model()
+
+        def _llama_embed_fn(texts):
+            """Embedding function compatible with indexer's build_index()."""
+            import numpy as np
+            with _embedding_lock:
+                embeddings = model.encode(texts, normalize_embeddings=True)
+            return np.array(embeddings).tolist()
+
+        original_embed_fn = getattr(indexer, "_get_embedding_function", None)
+        indexer._get_embedding_function = lambda: _llama_embed_fn
 
         if hasattr(indexer, "build_index"):
             indexer.build_index()
@@ -204,6 +225,10 @@ def _run_arlc_indexing(
         indexer.DOCUMENTS_DIR = original_docs_dir
         indexer.FAISS_INDEX_PATH = original_faiss_path
         indexer.FAISS_METADATA_PATH = original_faiss_meta
+        if original_embedding_model is not None:
+            indexer.EMBEDDING_MODEL = original_embedding_model
+        if original_embed_fn is not None:
+            indexer._get_embedding_function = original_embed_fn
 
 
 # ---------------------------------------------------------------------------

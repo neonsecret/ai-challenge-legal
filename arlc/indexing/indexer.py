@@ -72,8 +72,10 @@ def extract_entities_from_chunk(text: str) -> list[str]:
 
 DOCUMENTS_DIR = "data/documents"
 CHROMA_DIR = "data/chroma_db"
-# Snowflake Arctic Embed L v2.0: 1024-dim, retrieval-optimized (2024), replaces BGE-large-en-v1.5
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "Snowflake/snowflake-arctic-embed-l-v2.0")
+# Embedding model: must match the retriever's model for consistent dimensions.
+# Default: llama-server (Qwen3-8B via HTTP, 4096-dim).
+# Override via EMBEDDING_MODEL env var for different backends.
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
 # FAISS: pure vector math, no SQLite overhead — strictly better than ChromaDB for ~27K vectors
 # Credit: FAISS backend choice inspired by IAS Partners (guy4)
 FAISS_INDEX_PATH = "data/faiss_index.bin"
@@ -360,12 +362,26 @@ def extract_pages(pdf_path: str) -> list[dict]:
 
 
 def _get_embedding_function():
-    """Get the SentenceTransformer embedding model with GPU auto-detection.
+    """Get the embedding function matching the retriever's backend.
 
-    Uses SentenceTransformer directly (not chromadb's wrapper) so we can
-    control the device — CUDA > MPS > CPU.  Arctic Embed v2.0 requires
-    trust_remote_code=True.
+    For llama-server (default): uses the retriever's LlamaServerEmbedder via HTTP.
+    For SentenceTransformer models: loads locally with GPU auto-detection.
     """
+    if EMBEDDING_MODEL.lower() == "llama-server":
+        # Use the same llama-server embedder as the retriever (Qwen3-8B, 4096-dim)
+        from arlc.retriever import get_embedding_model, _embedding_lock
+        model = get_embedding_model()
+        print(f"  Embedding via llama-server (same as retriever)")
+
+        def encode(texts: list[str]) -> list[list[float]]:
+            import numpy as np
+            with _embedding_lock:
+                embeddings = model.encode(texts, normalize_embeddings=True)
+            return np.array(embeddings).tolist()
+
+        return encode
+
+    # Fallback: SentenceTransformer for non-llama-server models
     import torch
     from sentence_transformers import SentenceTransformer
 
