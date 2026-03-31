@@ -19,6 +19,7 @@
 15. Never roll your own SSE parser or protocol handler — use battle-tested libraries (e.g. `eventsource-parser`); never trust per-file code reviews to catch integration bugs — always include an API contract reviewer that checks backend schemas against frontend interfaces, and an E2E tester that actually calls endpoints.
 16. Never re-order, re-sort, or relabel accumulated documents — the LLM sees [DOC-N] labels during tool calls and the same labels must stay consistent in the system prompt and final source mapping. Sorting by score, deduplication, or any reindexing breaks the citation chain. Speed optimizations must never change what the LLM sees or how its output maps to sources — always run a benchmark before and after.
 17. Don't procrastinate — when optimizations or fixes are identified, implement them immediately in the same session. Don't defer to "later" or "future session" unless blocked by external dependencies (e.g. hardware unavailable).
+18. Always test your own changes end-to-end before deploying — run actual queries via the API, verify the frontend renders correctly, check that sub-components (PDF viewer, streaming, citations) work with real data, not just compile checks. Force-rebuild the frontend (`rm -rf .next && npm run build`) when UI changes aren't taking effect.
 
 ## Infrastructure
 
