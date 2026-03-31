@@ -334,17 +334,17 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
             .filter(Boolean)
     }, [displayBody])
 
-    const textColor = isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary
+    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
     const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
 
     return (
         <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
-            border: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-            backdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
-            WebkitBackdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
+            background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
+            border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
             boxShadow: isDark
-                ? `${GLASS.dark.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.20)`
+                ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`
                 : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
         }}>
             {/* Header: law name + breadcrumb */}

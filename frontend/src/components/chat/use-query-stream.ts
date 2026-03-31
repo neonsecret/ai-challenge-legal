@@ -307,11 +307,27 @@ export function useQueryStream(): UseQueryStreamReturn {
                             const friendly = formatStatus(raw)
                             // null means "hide this status" (e.g. agent:done)
                             if (friendly !== null) {
-                                setState((prev) => ({
-                                    ...prev,
-                                    streamingStatus: friendly,
-                                    streamingProgress: progress,
-                                }))
+                                // When status goes back to searching/thinking after
+                                // "Writing answer...", reset the answer and token buffer.
+                                // The intermediate text was from a non-final LLM call
+                                // and will be discarded by the backend.
+                                const isSearchPhase = raw.startsWith("retrieving:") || raw.startsWith("agent:thinking")
+                                if (isSearchPhase) {
+                                    tokenBufRef.current = ""
+                                    setState((prev) => ({
+                                        ...prev,
+                                        answer: null,
+                                        streamingStatus: friendly,
+                                        streamingProgress: progress,
+                                        thinkingPreview: null,
+                                    }))
+                                } else {
+                                    setState((prev) => ({
+                                        ...prev,
+                                        streamingStatus: friendly,
+                                        streamingProgress: progress,
+                                    }))
+                                }
                             } else if (progress) {
                                 // Hidden status but with progress — update progress only
                                 setState((prev) => ({...prev, streamingProgress: progress}))
