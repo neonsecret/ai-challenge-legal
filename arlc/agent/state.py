@@ -59,7 +59,7 @@ class AgentState(TypedDict):
         Capped at 10 to fit comfortably in the context window.
     corpus : str
         Active corpus identifier: ``"difc"``, ``"czech"``, or a custom slug
-        matching a ``data/faiss_{corpus}.bin`` index.
+        scoped to a PostgreSQL corpus partition.
     selected_laws : list[str]
         Optional law-filter prefixes (e.g. ``["DIFC_LAW_001"]``).
         Empty list means search the full corpus.
@@ -93,4 +93,5 @@ class AgentState(TypedDict):
     web_sources: NotRequired[list[dict]]
     use_internet: NotRequired[bool]
     cached_target_docs: NotRequired[list[str] | None]
+    doc_ids: NotRequired[list[str] | None]
     _on_status: NotRequired[Callable[[str], None] | None]

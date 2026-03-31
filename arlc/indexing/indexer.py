@@ -290,12 +290,12 @@ def split_page_into_chunks(text: str, page_num: int, max_chars: int = 500, overl
 
                 # If still one giant chunk, force split at max_chars
                 if len(sentences) == 1 and len(sentences[0]) > max_chars:
-                    # Hard split as last resort
-                    text = sentences[0]
-                    while text:
-                        chunk_size = max_chars if len(text) > max_chars else len(text)
-                        chunks.append(text[:chunk_size])
-                        text = text[chunk_size:]
+                    # Hard split as last resort — use local var to avoid shadowing the param
+                    _remaining = sentences[0]
+                    while _remaining:
+                        chunk_size = max_chars if len(_remaining) > max_chars else len(_remaining)
+                        chunks.append(_remaining[:chunk_size])
+                        _remaining = _remaining[chunk_size:]
                 else:
                     # Process sentences/fragments normally
                     for sent in sentences:
@@ -306,11 +306,11 @@ def split_page_into_chunks(text: str, page_num: int, max_chars: int = 500, overl
                                 chunks.append(current)
                             # If single sentence > max_chars, hard split it
                             if len(sent) > max_chars:
-                                text = sent
-                                while text:
-                                    chunk_size = max_chars if len(text) > max_chars else len(text)
-                                    chunks.append(text[:chunk_size])
-                                    text = text[chunk_size:]
+                                _remaining = sent
+                                while _remaining:
+                                    chunk_size = max_chars if len(_remaining) > max_chars else len(_remaining)
+                                    chunks.append(_remaining[:chunk_size])
+                                    _remaining = _remaining[chunk_size:]
                                 current = ""
                             else:
                                 current = sent
@@ -392,6 +392,21 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
     for pdf_file in pdf_files:
         pdf_id = pdf_file.replace(".pdf", "")
         pdf_path = os.path.join(DOCUMENTS_DIR, pdf_file)
+
+        # For custom corpora, PDFs are named {uuid}_{filename}.pdf.
+        # Read the .meta sidecar to get the canonical doc_id (pure UUID),
+        # so doc_ids filtering matches what the frontend sends.
+        canonical_doc_id = pdf_id
+        meta_path = os.path.join(DOCUMENTS_DIR, pdf_id.split("_")[0] + ".meta")
+        if os.path.exists(meta_path):
+            try:
+                with open(meta_path) as _mf:
+                    _m = json.loads(_mf.read())
+                if _m.get("doc_id"):
+                    canonical_doc_id = _m["doc_id"]
+            except Exception:
+                pass
+
         chunks = extract_pages(pdf_path)
 
         # SAC: generate per-document summary from first 2-3 pages
@@ -410,6 +425,7 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
             entities = extract_entities_from_chunk(chunk_info["text"])
             all_metadatas.append({
                 "pdf_id": pdf_id,
+                "doc_id": canonical_doc_id,  # canonical UUID from .meta (matches frontend doc_ids)
                 "page": chunk_info["page"],  # 1-based, used for grounding
                 "source_file": pdf_file,
                 "entities": "|".join(entities),
@@ -514,7 +530,7 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
                     {
                         "corpus": corpus,
                         "tenant_id": tenant_id,
-                        "doc_id": meta["pdf_id"],
+                        "doc_id": meta.get("doc_id", meta["pdf_id"]),
                         "pdf_id": meta["pdf_id"],
                         "page": meta["page"],
                         "chunk_id": chunk_id,

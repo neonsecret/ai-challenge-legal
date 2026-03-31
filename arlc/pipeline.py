@@ -71,7 +71,7 @@ _COMPARISON_RE = re.compile(
 # Architecture summary for submission
 ARCHITECTURE_SUMMARY = (
     "Simplified RAG: deterministic document routing (regex case/law extraction) "
-    "-> hybrid BM25+Qwen3 retrieval scoped to target docs -> Qwen3-Reranker reranking "
+    "-> hybrid tsvector+pgvector retrieval scoped to target docs -> Qwen3-Reranker reranking "
     "-> top-1 page per doc (max 3 total) -> single Sonnet 4.6 call with type-specific "
     "prompts -> Opus 4.6 extended-thinking citation page selection (post-processing). PPQ < 1.3."
 )

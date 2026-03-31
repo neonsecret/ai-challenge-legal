@@ -1,9 +1,9 @@
 """Search tool for the LangGraph legal research agent.
 
 Thin wrapper around the competition-proven ``retrieve_pages()`` pipeline.
-All retrieval logic (BM25, FAISS, HyDE, RRF fusion, cross-encoder reranking,
-article-to-page mapping, cross-reference boosting) lives in ``arlc.retriever``
-— this module just adapts it for the agent's needs:
+All retrieval logic (tsvector full-text, pgvector ANN, HyDE, RRF fusion,
+cross-encoder reranking, article-to-page mapping, cross-reference boosting)
+lives in ``arlc.retriever`` — this module just adapts it for the agent:
 
   1. Runs the router to identify target documents (DIFC only).
   2. Calls ``retrieve_pages()`` with exclusion of already-seen docs.
@@ -28,12 +28,13 @@ def execute_search(
     target_new: int = SEARCH_TOP_K,
     on_status: Callable[[str], None] | None = None,
     cached_target_docs: list[str] | None = None,
+    doc_ids: list[str] | None = None,
 ) -> list[SourceDocument]:
     """Search the legal corpus, always returning fresh results.
 
     Delegates to the full competition pipeline (``retrieve_pages``) which
-    handles BM25 + FAISS + HyDE fusion, cross-encoder reranking, article
-    mapping, and cross-reference boosting.  Already-seen documents are
+    handles tsvector + pgvector + HyDE fusion, cross-encoder reranking,
+    article mapping, and cross-reference boosting.  Already-seen documents are
     excluded at the retrieval level so every call is guaranteed to return
     new sources (unless the corpus is exhausted).
 
@@ -89,6 +90,7 @@ def execute_search(
         corpus=corpus,
         on_status=on_status,
         laws=law_filters,
+        doc_ids=doc_ids,
     )
 
     # Filter out already-seen docs and take top_k new

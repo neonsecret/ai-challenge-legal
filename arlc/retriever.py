@@ -93,6 +93,7 @@ _reranker = None          # primary (remote if available, else local)
 _local_reranker = None    # always local PyTorch — used as fallback when remote fails mid-query
 _embedding_model = None
 _sync_engine = None  # Sync SQLAlchemy engine for PostgreSQL (retriever runs in threads)
+_sync_engine_lock = threading.Lock()
 
 # Multi-corpus chunk caches: corpus_name -> (doc_index, chunks_by_doc)
 _corpus_chunk_cache: dict[str, tuple] = {}
@@ -294,10 +295,12 @@ def _get_sync_engine():
     """Lazy singleton for sync PostgreSQL engine (retriever runs in threads)."""
     global _sync_engine
     if _sync_engine is None:
-        url = os.environ.get("DATABASE_URL", "")
-        if "+asyncpg" in url:
-            url = url.replace("+asyncpg", "")
-        _sync_engine = create_engine(url, pool_size=5, max_overflow=10, pool_pre_ping=True)
+        with _sync_engine_lock:
+            if _sync_engine is None:
+                url = os.environ.get("DATABASE_URL", "")
+                if "+asyncpg" in url:
+                    url = url.replace("+asyncpg", "")
+                _sync_engine = create_engine(url, pool_size=5, max_overflow=10, pool_pre_ping=True)
     return _sync_engine
 
 
@@ -305,11 +308,17 @@ def _get_sync_engine():
 # PostgreSQL-backed search functions (replace FAISS + BM25 + ChromaDB)
 # ---------------------------------------------------------------------------
 
-def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: str = "difc") -> dict:
+def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: str = "difc", doc_ids: list[str] | None = None) -> dict:
     """Search chunks via pgvector inner product, returning legacy-compatible format.
 
     Returns dict with keys: ids, documents, metadatas, distances
     Each is a list-of-lists (matching legacy batch format).
+
+    Parameters
+    ----------
+    doc_ids : list[str] | None
+        If provided, restrict search to chunks from these specific documents.
+        Used when the user selects individual uploaded documents instead of "All".
     """
     engine = _get_sync_engine()
     query_np = np.array(query_embedding, dtype=np.float32)
@@ -319,15 +328,22 @@ def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: 
 
     vec_literal = '[' + ','.join(str(float(x)) for x in query_np) + ']'
 
+    # Build WHERE clause — optionally filter by specific doc_ids
+    where_clause = "WHERE corpus = :corpus"
+    params: dict = {"vec": vec_literal, "corpus": corpus, "top_k": top_k}
+    if doc_ids:
+        where_clause += " AND doc_id = ANY(:doc_ids)"
+        params["doc_ids"] = doc_ids
+
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(sa_text(f"""
             SELECT chunk_id, doc_id, pdf_id, page, source_file, text,
                    metadata_extra, (embedding <#> cast(:vec as vector)) AS neg_ip
             FROM chunks
-            WHERE corpus = :corpus
+            {where_clause}
             ORDER BY embedding <#> cast(:vec as vector)
             LIMIT :top_k
-        """), {"vec": vec_literal, "corpus": corpus, "top_k": top_k}).fetchall()
+        """), params).fetchall()
 
     ids, documents, metadatas, distances = [], [], [], []
     for row in rows:
@@ -460,23 +476,24 @@ def get_chunk_count(corpus: str = "difc") -> int:
     return result or 0
 
 
-def get_chunks_by_ids(chunk_ids: list[str]) -> dict:
+def get_chunks_by_ids(chunk_ids: list[str], corpus: str | None = None) -> dict:
     """Get specific chunks by ID from PostgreSQL."""
     if not chunk_ids:
         return {"ids": [], "documents": [], "metadatas": []}
     engine = _get_sync_engine()
+    sql = "SELECT chunk_id, doc_id, pdf_id, page, source_file, text, metadata_extra FROM chunks WHERE chunk_id = ANY(:ids)"
+    params: dict = {"ids": chunk_ids}
+    if corpus:
+        sql += " AND corpus = :corpus"
+        params["corpus"] = corpus
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
-            SELECT chunk_id, doc_id, pdf_id, page, source_file, text, metadata_extra
-            FROM chunks
-            WHERE chunk_id = ANY(:ids)
-        """), {"ids": chunk_ids}).fetchall()
+        rows = session.execute(sa_text(sql), params).fetchall()
 
     ids, documents, metadatas = [], [], []
     for row in rows:
         ids.append(row.chunk_id)
         documents.append(row.text)
-        meta = {"pdf_id": row.pdf_id, "page": row.page, "source_file": row.source_file}
+        meta = {"doc_id": row.doc_id, "pdf_id": row.pdf_id, "page": row.page, "source_file": row.source_file}
         if row.metadata_extra and row.metadata_extra.get("entities"):
             meta["entities"] = row.metadata_extra["entities"]
         metadatas.append(meta)
@@ -505,6 +522,7 @@ def _load_all_chunks(corpus: str = "difc"):
     for row in rows:
         pdf_id = row.pdf_id
         meta: dict = {
+            "doc_id": row.doc_id,  # canonical UUID (may differ from pdf_id for custom corpora)
             "pdf_id": pdf_id,
             "page": row.page,
             "source_file": row.source_file,
@@ -1535,7 +1553,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
             if chunk_id in vector_lookup:
                 final_chunks.append(vector_lookup[chunk_id])
             else:
-                chunk_data = get_chunks_by_ids([chunk_id])
+                chunk_data = get_chunks_by_ids([chunk_id], corpus=corpus)
                 if len(chunk_data["ids"]) > 0:
                     final_chunks.append({
                         "chunk_id": chunk_data["ids"][0],
@@ -1627,6 +1645,7 @@ def _retrieve_pages_simple(
         on_status=None,
         laws: list[str] | None = None,
         cached_query_emb=None,
+        doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
     """Simplified retrieval for non-DIFC corpora: vector search + cross-encoder reranking.
 
@@ -1639,7 +1658,7 @@ def _retrieve_pages_simple(
     top_k = min(100, get_chunk_count(corpus=corpus))  # 100 candidates for better recall on large corpora
     if on_status:
         on_status("retrieving:searching corpus")
-    vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus)
+    vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
 
     # Convert to chunk dicts for reranking
     chunks = []
@@ -1658,7 +1677,7 @@ def _retrieve_pages_simple(
 
     # Preserve top vector result before reranking — embedding models handle
     # cross-language queries better than the reranker for non-DIFC corpora.
-    faiss_top = chunks[0] if chunks else None
+    vector_top = chunks[0] if chunks else None
 
     # Cross-encoder reranking
     if on_status:
@@ -1675,14 +1694,14 @@ def _retrieve_pages_simple(
         if key not in page_scores or score > page_scores[key][0]:
             page_scores[key] = (score, chunk["text"])
 
-    # Inject FAISS top-1 if the reranker dropped it — the embedding model's
+    # Inject vector top-1 if the reranker dropped it — the embedding model's
     # best pick often outperforms the reranker on cross-language queries.
-    if faiss_top:
-        ft_doc = faiss_top["metadata"].get("doc_id", faiss_top["metadata"]["pdf_id"])
-        ft_page = int(faiss_top["metadata"]["page"])
+    if vector_top:
+        ft_doc = vector_top["metadata"].get("doc_id", vector_top["metadata"]["pdf_id"])
+        ft_page = int(vector_top["metadata"]["page"])
         ft_key = (ft_doc, ft_page)
         if ft_key not in page_scores:
-            page_scores[ft_key] = (0.5, faiss_top["text"])
+            page_scores[ft_key] = (0.5, vector_top["text"])
 
     # Sort by score descending, apply per-doc and total limits
     sorted_pages = sorted(page_scores.items(), key=lambda x: x[1][0], reverse=True)
@@ -1712,6 +1731,7 @@ def retrieve_pages(
         corpus: str = "difc",
         on_status=None,
         laws: list[str] | None = None,
+        doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
     """Retrieve the best pages for answering a question.
 
@@ -1747,10 +1767,10 @@ def retrieve_pages(
     _question_emb = embed_query(question)
 
     # ── Non-DIFC corpus: simplified vector-only retrieval path ──
-    # Czech and other non-DIFC corpora use FAISS vector search + cross-encoder reranking.
-    # They don't have BM25 indexes, routing metadata, or DIFC-specific heuristics.
+    # Czech and other non-DIFC corpora use pgvector search + cross-encoder reranking.
+    # They don't have routing metadata or DIFC-specific heuristics.
     if corpus != "difc":
-        return _retrieve_pages_simple(question, max_per_doc, max_total, corpus=corpus, on_status=on_status, laws=laws, cached_query_emb=_question_emb)
+        return _retrieve_pages_simple(question, max_per_doc, max_total, corpus=corpus, on_status=on_status, laws=laws, cached_query_emb=_question_emb, doc_ids=doc_ids)
 
     # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
     # Apply per-answer-type retrieval config if available, using caller's values as overrides
