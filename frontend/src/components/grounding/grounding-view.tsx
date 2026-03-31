@@ -29,6 +29,18 @@ function isWebSource(source: SourceRef): boolean {
     return source.doc_id.startsWith("web:") || !!source.url
 }
 
+/** Check if a non-web source has a PDF available on the backend.
+ *  Matches hex hashes (DIFC corpus), UUIDs (custom uploads), and any
+ *  alphanumeric doc_id that the /api/v1/documents/{doc_id}/pdf endpoint accepts.
+ *  Returns false only for web sources (handled separately) and sources whose
+ *  doc_id clearly doesn't correspond to a stored PDF. */
+function isPdfSource(source: SourceRef): boolean {
+    if (isWebSource(source)) return false
+    // Backend accepts doc_ids matching [A-Za-z0-9_\-]+
+    // This covers hex hashes (DIFC), UUIDs (custom corpus), and named docs.
+    return /^[A-Za-z0-9_-]+$/.test(source.doc_id)
+}
+
 /** Extract the domain from a URL string. */
 function getDomain(url: string): string {
     try {
@@ -621,7 +633,7 @@ export function GroundingView({answer, sources, isDark = false, isMobile = false
                                 isDark={isDark}
                                 isMobile={isMobile}
                             />
-                        ) : /^[0-9a-f]{20,}$/i.test(activeSource.doc_id) ? (
+                        ) : isPdfSource(activeSource) ? (
                             <PdfViewer
                                 key={activeSource.doc_id}
                                 docId={activeSource.doc_id}

@@ -76,23 +76,15 @@ function extractAnswerContent(raw: string): string | null {
         return content.trim() || null
     }
 
-    // No <answer> tags — the LLM outputs raw text directly.
-    // Strip any <analysis>...</analysis> blocks and show the rest.
+    // No <answer> tags — strip all analysis tags (open or closed) and show the rest.
+    // Claude sometimes wraps its reasoning in <analysis> tags spontaneously.
+    // We strip them completely so the answer text is always visible during streaming.
     let text = raw
-    // Remove complete <analysis> blocks
-    text = text.replace(/<analysis>[\s\S]*?<\/analysis>/g, "")
-    // If <analysis> is still open (streaming), hide everything after it
-    const openAnalysis = text.indexOf("<analysis>")
-    if (openAnalysis !== -1) text = text.slice(0, openAnalysis)
-    // Clean up leftover tags
-    text = text.replace(/<\/?(?:analysis|answer)>/g, "").trim()
-    if (text) return text
-    // Buffer has content but is all whitespace/tags after cleanup.
-    // If no analysis block is open, return empty string so the caller
-    // knows we're in answer-mode (clears "Writing answer..." status)
-    // rather than null which means "no answer content yet".
-    if (raw.length > 0 && openAnalysis === -1) return ""
-    return null
+        .replace(/<analysis>[\s\S]*?<\/analysis>/g, "")  // Remove closed blocks
+        .replace(/<analysis>[\s\S]*$/g, "")               // Remove open block (still streaming)
+        .replace(/<\/?(?:analysis|answer)>/g, "")          // Clean leftover tags
+        .trim()
+    return text || (raw.length > 0 ? "" : null)
 }
 
 /**
