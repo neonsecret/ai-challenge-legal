@@ -401,7 +401,7 @@ export default function ChatPage() {
         return () => window.removeEventListener("keydown", handler)
     }, [])
 
-    const previewScenarios = PREVIEW_SCENARIOS_MAP[jurisdiction] ?? DIFC_SCENARIOS
+    const previewScenarios = PREVIEW_SCENARIOS_MAP[jurisdiction] ?? []
     const presetQuestions = getPresetQuestions(jurisdiction)
     const showPreview = messages.length === 0 && previewIndex !== null && previewIndex < previewScenarios.length
     const lastAssistant = messages.at(-1)
