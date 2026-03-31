@@ -367,39 +367,15 @@ def _get_embedding_function():
     For llama-server (default): uses the retriever's LlamaServerEmbedder via HTTP.
     For SentenceTransformer models: loads locally with GPU auto-detection.
     """
-    if EMBEDDING_MODEL.lower() == "llama-server":
-        # Use the same llama-server embedder as the retriever (Qwen3-8B, 4096-dim)
-        from arlc.retriever import get_embedding_model, _embedding_lock
-        model = get_embedding_model()
-        print(f"  Embedding via llama-server (same as retriever)")
-
-        def encode(texts: list[str]) -> list[list[float]]:
-            import numpy as np
-            with _embedding_lock:
-                embeddings = model.encode(texts, normalize_embeddings=True)
-            return np.array(embeddings).tolist()
-
-        return encode
-
-    # Fallback: SentenceTransformer for non-llama-server models
-    import torch
-    from sentence_transformers import SentenceTransformer
-
-    device = (
-        'cuda' if torch.cuda.is_available()
-        else 'mps' if torch.backends.mps.is_available()
-        else 'cpu'
-    )
-    model_kwargs = {}
-    if "arctic" in EMBEDDING_MODEL.lower():
-        model_kwargs["trust_remote_code"] = True
-    model = SentenceTransformer(EMBEDDING_MODEL, device=device, **model_kwargs)
-    print(f"  Embedding model loaded on {device}")
+    from arlc.retriever import get_embedding_model, _embedding_lock
+    model = get_embedding_model()
+    print(f"  Embedding via llama-server (same as retriever)")
 
     def encode(texts: list[str]) -> list[list[float]]:
-        embeddings = model.encode(texts, normalize_embeddings=True,
-                                  batch_size=256, show_progress_bar=True)
-        return embeddings.tolist()
+        import numpy as np
+        with _embedding_lock:
+            embeddings = model.encode(texts, normalize_embeddings=True)
+        return np.array(embeddings).tolist()
 
     return encode
 
