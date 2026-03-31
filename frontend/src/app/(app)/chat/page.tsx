@@ -23,8 +23,9 @@ import {FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE, TEXT_DARK, 
 interface CorpusEntry {
     name: string
     corpus_id: string
-    doc_count: number
-    indexed: boolean
+    doc_ids?: string[]   // doc IDs in this collection
+    doc_count?: number
+    indexed?: boolean
 }
 
 // Error boundary to prevent grounding panel crashes from taking down the whole page
@@ -326,13 +327,16 @@ export default function ChatPage() {
             .then(data => {
                 if (data?.corpora) {
                     setAvailableCorpora(data.corpora)
-                    // Auto-select the first corpus if none selected yet
+                    // Auto-select corpus_id if none stored yet
                     const storedId = localStorage.getItem("neolex_custom_corpus")
                     if (!storedId && data.corpora.length > 0) {
                         const first = data.corpora[0]
                         setCustomCorpus(first.name)
                         localStorage.setItem("neolex_custom_corpus", first.corpus_id)
                         localStorage.setItem("neolex_custom_corpus_name", first.name)
+                        // Default: "All" (no collection filter)
+                        localStorage.removeItem("neolex_selected_collection")
+                        localStorage.removeItem("neolex_selected_doc_ids")
                     }
                 }
             })
@@ -1213,52 +1217,95 @@ export default function ChatPage() {
                                 Loading...
                             </span>
                         ) : availableCorpora.length > 0 ? (
-                            availableCorpora.map((c) => {
-                                const storedCorpusId = typeof window !== "undefined"
-                                    ? localStorage.getItem("neolex_custom_corpus") : null
-                                const isActive = storedCorpusId === c.corpus_id
-                                return (
+                            (() => {
+                                const storedCollection = typeof window !== "undefined"
+                                    ? localStorage.getItem("neolex_selected_collection") : null
+                                // "All" is active when no specific collection is stored
+                                const isAllActive = !storedCollection
+                                const corpusId = availableCorpora[0]?.corpus_id ?? ""
+                                // Total document count across all collections
+                                const totalDocs = availableCorpora.reduce((sum, c) => sum + (c.doc_count ?? c.doc_ids?.length ?? 0), 0)
+
+                                const pillStyle = (active: boolean) => ({
+                                    fontSize: TYPE_SCALE.sm, fontWeight: active ? 700 : 500,
+                                    padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.sm,
+                                    cursor: "pointer" as const, whiteSpace: "nowrap" as const, flexShrink: 0,
+                                    userSelect: "none" as const, WebkitUserSelect: "none" as const,
+                                    background: active
+                                        ? COLOR.gold.solid
+                                        : isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)",
+                                    border: active
+                                        ? `0.5px solid ${COLOR.gold.border}`
+                                        : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.28)",
+                                    color: active
+                                        ? TEXT_DARK.primary
+                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    fontFamily: FONT.sans,
+                                    transition: `all ${TIMING.fast} ${EASE.spring}`,
+                                })
+
+                                const hoverHandlers = (active: boolean) => ({
+                                    onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
+                                        if (!active) {
+                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgSubtle
+                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
+                                        }
+                                    },
+                                    onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
+                                        if (!active) {
+                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)"
+                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : "rgba(255,255,255,0.28)"
+                                        }
+                                    },
+                                })
+
+                                const truncate = (name: string, max: number = 25) =>
+                                    name.length > max ? name.slice(0, max) + "\u2026" : name
+
+                                return <>
+                                    {/* "All" pill — no doc_ids filter, searches everything */}
                                     <button
-                                        key={c.corpus_id}
+                                        key="__all__"
                                         onClick={() => {
-                                            setCustomCorpus(c.name)
-                                            localStorage.setItem("neolex_custom_corpus", c.corpus_id)
-                                            localStorage.setItem("neolex_custom_corpus_name", c.name)
+                                            setCustomCorpus("All Documents")
+                                            localStorage.setItem("neolex_custom_corpus", corpusId)
+                                            localStorage.setItem("neolex_custom_corpus_name", "All Documents")
+                                            localStorage.removeItem("neolex_selected_collection")
+                                            localStorage.removeItem("neolex_selected_doc_ids")
                                         }}
-                                        style={{
-                                            fontSize: TYPE_SCALE.sm, fontWeight: isActive ? 700 : 500,
-                                            padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.sm,
-                                            cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                                            userSelect: "none", WebkitUserSelect: "none",
-                                            background: isActive
-                                                ? COLOR.gold.solid
-                                                : isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)",
-                                            border: isActive
-                                                ? `0.5px solid ${COLOR.gold.border}`
-                                                : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.28)",
-                                            color: isActive
-                                                ? TEXT_DARK.primary
-                                                : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
-                                            fontFamily: FONT.sans,
-                                            transition: `all ${TIMING.fast} ${EASE.spring}`,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!isActive) {
-                                                e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgSubtle
-                                                e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isActive) {
-                                                e.currentTarget.style.background = isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)"
-                                                e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : "rgba(255,255,255,0.28)"
-                                            }
-                                        }}
+                                        style={pillStyle(isAllActive)}
+                                        {...hoverHandlers(isAllActive)}
                                     >
-                                        {c.name} ({c.doc_count})
+                                        All ({totalDocs})
                                     </button>
-                                )
-                            })
+                                    {/* Collection pills */}
+                                    {availableCorpora.map((c) => {
+                                        const isActive = storedCollection === c.name
+                                        const docCount = c.doc_count ?? c.doc_ids?.length ?? 0
+                                        return (
+                                            <button
+                                                key={c.name}
+                                                onClick={() => {
+                                                    setCustomCorpus(c.name)
+                                                    localStorage.setItem("neolex_custom_corpus", c.corpus_id)
+                                                    localStorage.setItem("neolex_custom_corpus_name", c.name)
+                                                    localStorage.setItem("neolex_selected_collection", c.name)
+                                                    if (c.doc_ids && c.doc_ids.length > 0) {
+                                                        localStorage.setItem("neolex_selected_doc_ids", JSON.stringify(c.doc_ids))
+                                                    } else {
+                                                        localStorage.removeItem("neolex_selected_doc_ids")
+                                                    }
+                                                }}
+                                                title={`${c.name} (${docCount} ${docCount === 1 ? "doc" : "docs"})`}
+                                                style={pillStyle(isActive)}
+                                                {...hoverHandlers(isActive)}
+                                            >
+                                                {truncate(c.name)}{docCount > 0 ? ` (${docCount})` : ""}
+                                            </button>
+                                        )
+                                    })}
+                                </>
+                            })()
                         ) : (
                             <button
                                 onClick={() => router.push("/documents")}
@@ -1397,8 +1444,8 @@ export default function ChatPage() {
                 {/* Input */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px ${SPACE['5']}px` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
-                    borderTop: `0.5px solid ${GLASS.dark.border}`,
-                    flexShrink: 0, background: GLASS.dark.bgSubtle,
+                    borderTop: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+                    flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                 }}>
                     <ChatInput onSend={onSend} disabled={isStreaming} onFocusRef={inputFocusRef}/>
                     <p style={{
@@ -1506,8 +1553,8 @@ export default function ChatPage() {
                         {/* Ask button */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['5']}px 80px` : `${SPACE['3']}px ${SPACE['5']}px ${SPACE['4']}px`,
-                            borderTop: `0.5px solid ${GLASS.dark.border}`,
-                            flexShrink: 0, background: GLASS.dark.bgSubtle,
+                            borderTop: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+                            flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
                         }}>
                             <button
                                 onClick={() => onSend(presetQuestions[previewIndex!].full)}
