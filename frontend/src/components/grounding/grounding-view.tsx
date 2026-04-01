@@ -337,7 +337,7 @@ function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageCl
             docId={source.doc_id}
             page={page}
             className="h-full"
-            highlightText={answer.slice(0, 200)}
+            highlightText={(source.text ?? answer).slice(0, 200)}
             onError={() => setPdfFailed(true)}
         />
     )
@@ -353,7 +353,36 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
 }) {
     const [expanded, setExpanded] = useState(false)
 
-    const raw = source.text ?? answer
+    // Use the retrieved chunk text directly. Never fall back to the AI answer —
+    // that would show the LLM's own output as if it were the source document.
+    const raw = source.text ?? ""
+
+    // When there is no source text (e.g. PDF-only corpus without chunk text),
+    // show a graceful fallback rather than rendering nothing or the AI answer.
+    if (!raw.trim()) {
+        const mutedColorFallback = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+        return (
+            <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
+                background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
+                border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+            }}>
+                <p style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: mutedColorFallback, fontFamily: FONT.sans}}>
+                    Source text not available for this document.
+                </p>
+            </div>
+        )
+    }
+
+    // When `source.text` is present it IS the retrieved chunk — the entire chunk
+    // is relevant. Skip trigram scoring against the AI answer in that case and
+    // treat all paragraphs as cited so the user sees the full cited passage highlighted.
+    const isChunkMode = source.text != null
+
     const headerMatch = raw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
     const lawName = headerMatch?.[1] ?? ""
     const breadcrumb = headerMatch?.[2]?.trim() ?? ""
@@ -497,7 +526,9 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
                 gap: SPACE["3"],
             }}>
                 {paragraphs.map((para, pi) => {
-                    const isCited = fullCitationScores[pi] >= CITATION_SCORE_THRESHOLD
+                    // In chunk mode every paragraph is part of the retrieved chunk and is
+                    // therefore fully relevant — no need to score against the AI answer.
+                    const isCited = isChunkMode || fullCitationScores[pi] >= CITATION_SCORE_THRESHOLD
                     return (
                         <p
                             key={pi}
@@ -677,9 +708,17 @@ function resolveSource(
     focusPage: number | undefined
 ): SourceRef | null {
     if (!focusDocId) return sources[0] ?? null
-    // 1. Exact
-    const exact = sources.find(s => s.doc_id === focusDocId)
-    if (exact) return exact
+    // 1. Exact match — when multiple sources share the same doc_id (different chunks),
+    //    prefer the one whose page_numbers include focusPage so [DOC-N] citations navigate
+    //    to the correct chunk rather than always landing on the first occurrence.
+    const exactMatches = sources.filter(s => s.doc_id === focusDocId)
+    if (exactMatches.length > 0) {
+        if (focusPage) {
+            const withPage = exactMatches.find(s => s.page_numbers.includes(focusPage))
+            if (withPage) return withPage
+        }
+        return exactMatches[0]
+    }
     // 2. Prefix — scored
     const candidates = sources.filter(s =>
         s.doc_id.startsWith(focusDocId) || focusDocId.startsWith(s.doc_id)
@@ -831,8 +870,8 @@ export function GroundingView({answer, sources, isDark = false, isMobile = false
                 <SourceCitationCard
                     key={`${source.doc_id}-${i}`}
                     source={source}
-                    isActive={activeSource?.doc_id === source.doc_id}
-                    activePage={activeSource?.doc_id === source.doc_id ? activePage : null}
+                    isActive={activeSource === source}
+                    activePage={activeSource === source ? activePage : null}
                     onPageClick={(page) => handleSourceClick(source, page)}
                     isDark={isDark}
                     compact
