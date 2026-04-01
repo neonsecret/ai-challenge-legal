@@ -306,7 +306,8 @@ class LlamaServerReranker:
                     scores[global_idx] = item["relevance_score"]
 
                 done = batch_end
-                on_progress(done, total)
+                if on_progress:
+                    on_progress(done, total)
 
             return scores
         except Exception as e:

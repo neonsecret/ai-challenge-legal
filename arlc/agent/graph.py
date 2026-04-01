@@ -177,9 +177,11 @@ def build_agent_graph():
         doc_section = build_document_context(state)
         state_messages = list(state["messages"])
         if doc_section:
-            for i, msg in enumerate(state_messages):
-                if isinstance(msg, HumanMessage):
-                    state_messages[i] = HumanMessage(content=f"{doc_section}\n\n---\n\n{msg.content}")
+            # Scan in REVERSE to find the LAST HumanMessage (current question),
+            # not the first one (which may be historical in multi-turn sessions).
+            for i in range(len(state_messages) - 1, -1, -1):
+                if isinstance(state_messages[i], HumanMessage):
+                    state_messages[i] = HumanMessage(content=f"{doc_section}\n\n---\n\n{state_messages[i].content}")
                     break
 
         messages: list[BaseMessage] = [SystemMessage(content=system)] + state_messages

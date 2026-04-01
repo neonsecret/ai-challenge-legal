@@ -1064,18 +1064,21 @@ def _get_system_prompt(
     else:
         # free_text: choose between law, case, and trick prompts
         if _is_trick_question(question):
-            base = _SYSTEM_FREE_TEXT_TRICK
+            prompt = _SYSTEM_FREE_TEXT_TRICK
         elif _is_case_question(question):
-            base = _SYSTEM_FREE_TEXT_CASE
+            prompt = _SYSTEM_FREE_TEXT_CASE
         else:
-            base = _SYSTEM_FREE_TEXT_LAW
-        return _apply_web_mode(base) if web_mode else base
+            prompt = _SYSTEM_FREE_TEXT_LAW
 
     # Replace DIFC jurisdiction label for non-DIFC corpora so the model
     # knows it is operating in the correct legal domain.
     if corpus != "difc":
         jurisdiction_label = _JURISDICTION_EXPERT_LABELS.get(corpus, f"{corpus.upper()} laws and regulations")
         prompt = prompt.replace(_DIFC_EXPERT_LABEL, jurisdiction_label)
+
+    # Apply web mode after jurisdiction substitution
+    if answer_type == "free_text" and web_mode:
+        prompt = _apply_web_mode(prompt)
 
     return prompt
 
