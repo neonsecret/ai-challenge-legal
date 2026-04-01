@@ -40,7 +40,7 @@
 
 | Plan | Price | Daily Limit |
 |------|-------|-------------|
-| Free | $0 | 3/month |
+| Free | $0 | 3/day |
 | Starter | $29/mo | 30/day |
 | Pro | $179/mo | 200/day |
 | Enterprise | $499/mo | unlimited |

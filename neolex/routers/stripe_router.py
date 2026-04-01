@@ -45,8 +45,8 @@ _PLAN_INTERVAL_TO_PRICE: dict[tuple[str, str], str] = {}
 # Plan limits for billing-status response
 _PLAN_LIMITS: dict[str, dict] = {
     "free": {
-        "daily_limit": None,
-        "monthly_limit": settings.free_monthly_limit,
+        "daily_limit": 3,
+        "monthly_limit": None,
         "max_corpora": 0,
         "max_docs_per_corpus": 0,
         "max_corpus_size_mb": 0,
@@ -456,15 +456,15 @@ async def billing_status(
         if v  # only include configured prices
     }
 
-    # Flatten usage fields for frontend compatibility
-    is_monthly_limit = effective_plan == "free"
-    daily_queries_used = usage.get("daily_queries_used", 0) if not is_monthly_limit else 0
-    daily_queries_limit = usage.get("daily_limit", 0) if not is_monthly_limit else 0
+    # Flatten usage fields for frontend compatibility — all plans use daily limits now
+    is_monthly_limit = False
+    daily_queries_used = usage.get("daily_queries_used", 0)
+    daily_queries_limit = usage.get("daily_limit", 0) or limits.get("daily_limit", 0)
     # Enterprise unlimited → -1 sentinel
-    if usage.get("daily_limit") == "unlimited":
-        daily_queries_limit = -1
-    monthly_queries_used = usage.get("monthly_queries_used", 0) if is_monthly_limit else 0
-    monthly_queries_limit = usage.get("monthly_limit", 0) if is_monthly_limit else 0
+    if daily_queries_limit == "unlimited" or daily_queries_limit == 0:
+        daily_queries_limit = -1 if effective_plan == "enterprise" else daily_queries_limit
+    monthly_queries_used = 0
+    monthly_queries_limit = 0
 
     # Corpus usage: count distinct collections from the user's .meta sidecar files
     from neolex.services.document_manager import get_collection_names

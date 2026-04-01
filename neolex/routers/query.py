@@ -45,6 +45,8 @@ _BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech", "uk", "au"})
 UNLIMITED_DAILY_QUERIES = 0
 
 _PLAN_DAILY_LIMITS: dict[str, int] = {
+    "free": 3,
+    "trial": 3,
     "starter": settings.starter_daily_limit,
     "pro": settings.pro_daily_limit,
     "enterprise": settings.enterprise_daily_limit,  # UNLIMITED_DAILY_QUERIES (0) = unlimited
@@ -68,37 +70,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     if status not in _ACTIVE_STATUSES:
         raise HTTPException(status_code=402, detail="Active subscription required.")
 
-    # Free / legacy trial: monthly limit (atomic increment)
-    if status in ("free", "trial"):
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-        # Reset if needed
-        if user.monthly_queries_reset_at is None or user.monthly_queries_reset_at < month_start:
-            await db.execute(
-                sql_update(User)
-                .where(User.id == user.id)
-                .values(monthly_queries_used=0, monthly_queries_reset_at=month_start)
-            )
-            await db.commit()
-            await db.refresh(user)
-
-        # Atomic increment with limit check
-        result = await db.execute(
-            sql_update(User)
-            .where(User.id == user.id, User.monthly_queries_used < settings.free_monthly_limit)
-            .values(monthly_queries_used=User.monthly_queries_used + 1)
-            .returning(User.monthly_queries_used)
-        )
-        new_count = result.scalar_one_or_none()
-        if new_count is None:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Free tier limit reached ({settings.free_monthly_limit} queries/month). Upgrade to Starter for 50/day.",
-            )
-        await db.commit()
-        return
-
-    # Paid plans: daily limit (UNLIMITED_DAILY_QUERIES means no cap)
+    # All plans use daily limits (free=3/day, starter=30/day, etc.)
     daily_limit = _PLAN_DAILY_LIMITS.get(status, 0)
 
     # Reset daily counter if before today

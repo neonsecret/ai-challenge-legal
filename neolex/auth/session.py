@@ -117,17 +117,11 @@ async def require_active_subscription(
     - starter / pro / enterprise: always allow (daily limits enforced at query time)
     - canceled / anything else: reject with 402
     """
-    from neolex.config import settings
 
     status = user.subscription_status
 
-    # Legacy 'trial' users are treated as 'free'
+    # Free/trial users: daily limit checked in _enforce_query_limit (query.py)
     if status in ("free", "trial"):
-        if user.monthly_queries_used >= settings.free_monthly_limit:
-            raise HTTPException(
-                status_code=402,
-                detail="Free monthly query limit reached. Please upgrade to continue.",
-            )
         return user
 
     if status in ("starter", "pro", "enterprise"):
