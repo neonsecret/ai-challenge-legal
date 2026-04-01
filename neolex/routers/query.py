@@ -307,9 +307,11 @@ async def query_stream(
                 # submitting coroutines from foreign threads.
                 future = asyncio.run_coroutine_threadsafe(coro, loop)
                 future.add_done_callback(
-                    lambda f: logger.error("Background task failed: %s", f.exception())
-                    if not f.cancelled() and f.exception()
-                    else None
+                    lambda f: (
+                        logger.error("Background task failed: %s", f.exception())
+                        if not f.cancelled() and f.exception()
+                        else None
+                    )
                 )
 
         def _update_job_status_detail(stage: str):
@@ -475,6 +477,20 @@ async def query_stream(
         try:
             response = pipeline_dict_to_response(pipeline_result)
             sources_json = json.dumps([s.model_dump() for s in response.sources])
+
+            # Start follow-up generation concurrently with audit logging so the
+            # two I/O-bound operations overlap and add minimal latency overall.
+            from neolex.services.follow_ups import generate_follow_ups
+
+            follow_ups_task = asyncio.create_task(
+                generate_follow_ups(
+                    question=body.question,
+                    answer=str(response.answer) if response.answer is not None else "",
+                    corpus=corpus,
+                )
+            )
+            follow_ups_task.add_done_callback(_log_task_exception)
+
             async with get_audit_db() as db:
                 await db.log_query(
                     key_hash=key_row["key_hash"],
@@ -514,6 +530,19 @@ async def query_stream(
                 t.add_done_callback(_log_task_exception)
 
             yield {"event": "answer", "data": response.model_dump_json()}
+
+            # Collect follow-up questions (may already be ready since we started early)
+            try:
+                follow_up_questions = await asyncio.wait_for(asyncio.shield(follow_ups_task), timeout=3.0)
+                if follow_up_questions:
+                    yield {
+                        "event": "follow_ups",
+                        "data": json.dumps({"questions": follow_up_questions}),
+                    }
+            except (asyncio.TimeoutError, Exception):
+                # Non-fatal — frontend falls back to static suggestions
+                pass
+
         except Exception as exc:
             logger.exception("SSE post-processing error: %s", exc)
             if pipeline_job_id:

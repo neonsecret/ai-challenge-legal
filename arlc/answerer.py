@@ -1072,8 +1072,12 @@ def _get_system_prompt(
 
     # Replace DIFC jurisdiction label for non-DIFC corpora so the model
     # knows it is operating in the correct legal domain.
+    # UUID corpora (custom user uploads) get a generic label instead of the raw UUID.
     if corpus != "difc":
-        jurisdiction_label = _JURISDICTION_EXPERT_LABELS.get(corpus, f"{corpus.upper()} laws and regulations")
+        if corpus not in _JURISDICTION_EXPERT_LABELS and len(corpus) == 36 and corpus.count("-") == 4:
+            jurisdiction_label = "your uploaded legal documents"
+        else:
+            jurisdiction_label = _JURISDICTION_EXPERT_LABELS.get(corpus, f"{corpus.upper()} laws and regulations")
         prompt = prompt.replace(_DIFC_EXPERT_LABEL, jurisdiction_label)
 
     # Apply web mode after jurisdiction substitution

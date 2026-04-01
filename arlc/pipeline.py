@@ -1174,6 +1174,36 @@ async def _process_question_inner(
             except Exception as _gv_err:
                 print(f"  [grounding] {question_id[:12]}... error: {_gv_err}", file=sys.stderr)
 
+    # Step T-01: Evidence-grounded page re-ranking (free_text only, multiple pages only).
+    # Re-ranks page_numbers within each chunk_page entry using 3-pass evidence matching
+    # so the best-supported page comes first. pns[0] is the primary citation — this
+    # directly improves G-score when multiple pages were retrieved and the second page
+    # is actually the evidence page. Non-destructive: never removes pages, only reorders.
+    if answer_type == "free_text" and result.get("answer") and result.get("chunk_pages"):
+        try:
+            from arlc.evidence_verifier import find_evidence_pages as _find_ev_pages
+
+            _ev_chunk_pages = []
+            for _cp in result["chunk_pages"]:
+                _cp_doc = _cp.get("doc_id", "")
+                _cp_pages = _cp.get("page_numbers", [])
+                # Only re-rank when there are multiple candidate pages — single page is a no-op
+                if _cp_doc and len(_cp_pages) > 1:
+                    _reranked = _find_ev_pages(
+                        result["answer"],
+                        answer_type,
+                        _cp_doc,
+                        _cp_pages,
+                        top_k=len(_cp_pages),  # keep all, just re-order
+                    )
+                    _ev_chunk_pages.append({**_cp, "page_numbers": _reranked})
+                else:
+                    _ev_chunk_pages.append(_cp)
+            result["chunk_pages"] = _ev_chunk_pages
+            _attach_source_text(result["chunk_pages"], source_pages)
+        except Exception as _ev_err:
+            print(f"  [evidence-verifier] {question_id[:12]}... error: {_ev_err}", file=sys.stderr)
+
     # Absence classifier: clear pages when BOTH question pattern AND answer text confirm absence.
     # Conservative — "Does X address Y?" (no case ID) + answer explicitly states absence.
     # Tested against gold: 3 correct clears, 0 false positives.

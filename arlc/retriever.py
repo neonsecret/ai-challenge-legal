@@ -54,6 +54,37 @@ RERANKER_INSTRUCTION = os.environ.get(
     "Given a legal question, retrieve the most relevant passage that directly answers it.",
 )
 
+# Per-answer-type reranker instructions for Qwen3-Reranker (instruction-aware model).
+# Different retrieval objectives per type: factual extraction vs semantic reasoning.
+# Falls back to RERANKER_INSTRUCTION for unknown/empty answer types.
+RERANKER_INSTRUCTIONS_BY_TYPE: dict[str, str] = {
+    "boolean": (
+        "Given a yes/no legal question, retrieve the passage that explicitly "
+        "states the rule, provision, or prohibition being asked about."
+    ),
+    "number": (
+        "Given a question asking for a numeric value, retrieve the passage "
+        "containing the exact number, amount, threshold, or percentage."
+    ),
+    "date": (
+        "Given a question asking for a date or time reference, retrieve the "
+        "passage containing the exact date, deadline, or time period."
+    ),
+    "name": (
+        "Given a question asking for a person's name or case identifier, "
+        "retrieve the passage where that name or case number explicitly appears."
+    ),
+    "names": (
+        "Given a question asking for multiple names or parties, retrieve the "
+        "passage listing all relevant parties, judges, or named individuals."
+    ),
+    "free_text": (
+        "Given a legal question requiring detailed explanation, retrieve the passage "
+        "containing the relevant legal provisions, articles, or case holdings that "
+        "directly address the question."
+    ),
+}
+
 # Embedding backend. Default: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
 # Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
 # Fallback: set EMBEDDING_MODEL=snowflake to use Snowflake Arctic Embed L v2.0 (no server needed).
@@ -121,11 +152,20 @@ def _is_qwen_reranker() -> bool:
     return "qwen" in RERANKER_MODEL.lower()
 
 
-def _format_reranker_pairs(pairs: list[tuple[str, str]]) -> list[tuple[str, str]]:
-    """Prepend instruction to query for Qwen3-Reranker; passthrough for others."""
+def _format_reranker_pairs(
+    pairs: list[tuple[str, str]],
+    instruction: str = "",
+) -> list[tuple[str, str]]:
+    """Prepend instruction to query for Qwen3-Reranker; passthrough for others.
+
+    instruction: when non-empty, overrides the module-level RERANKER_INSTRUCTION.
+                 Pass per-answer-type instructions from RERANKER_INSTRUCTIONS_BY_TYPE
+                 to improve ranking precision for factual vs semantic questions.
+    """
     if not _is_qwen_reranker():
         return pairs
-    prefix = f"Instruct: {RERANKER_INSTRUCTION}\nQuery: "
+    effective = instruction if instruction else RERANKER_INSTRUCTION
+    prefix = f"Instruct: {effective}\nQuery: "
     return [(prefix + q, doc) for q, doc in pairs]
 
 
@@ -198,8 +238,18 @@ def get_local_reranker():
         return _init_local_reranker()
 
 
-def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=None) -> list[dict]:
+def rerank_chunks(
+    question: str,
+    chunks: list[dict],
+    top_k: int = 15,
+    answer_type: str = "",
+    on_status=None,
+) -> list[dict]:
     """Rerank chunks by relevance to question using cross-encoder. Returns top_k.
+
+    answer_type: when provided, selects a per-type instruction from
+                 RERANKER_INSTRUCTIONS_BY_TYPE (date/number/name get exact-match
+                 instructions; free_text gets a semantic-relevance instruction).
 
     Failover chain: primary reranker (remote CUDA if available) → local PyTorch → unranked.
     If remote 3070 goes offline mid-query, falls back to local instantly.
@@ -208,7 +258,8 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=
         return chunks
 
     RERANK_TIMEOUT = 180  # seconds — MPS is slow (~50s/batch for Qwen3-0.6B)
-    pairs = _format_reranker_pairs([(question, chunk["text"][:1500]) for chunk in chunks])
+    instruction = RERANKER_INSTRUCTIONS_BY_TYPE.get(answer_type, RERANKER_INSTRUCTION)
+    pairs = _format_reranker_pairs([(question, chunk["text"][:1500]) for chunk in chunks], instruction=instruction)
 
     def _progress(done, total):
         if on_status:
@@ -1690,7 +1741,7 @@ def retrieve(
                 merged.append(chunk)
 
         # Cap at 30 chunks before reranking — balances citation coverage with latency
-        ranked = rerank_chunks(question, merged[:30], top_k=20)
+        ranked = rerank_chunks(question, merged[:30], top_k=20, answer_type=answer_type)
 
         # Guarantee each keyword-matched doc has at least 1 chunk in the result.
         # CrossEncoder can rank one doc's chunks so highly that another keyword doc disappears
@@ -1797,7 +1848,7 @@ def retrieve(
                 f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted (vector path)"
             )
 
-        return rerank_chunks(question, final_chunks[:30], top_k=20)
+        return rerank_chunks(question, final_chunks[:30], top_k=20, answer_type=answer_type)
 
 
 # ---------------------------------------------------------------------------
@@ -1864,6 +1915,7 @@ def _retrieve_pages_simple(
     max_per_doc: int = 1,
     max_total: int = 3,
     corpus: str = "czech",
+    answer_type: str = "",
     on_status=None,
     laws: list[str] | None = None,
     cached_query_emb=None,
@@ -1871,13 +1923,28 @@ def _retrieve_pages_simple(
 ) -> list[PageResult]:
     """Simplified retrieval for non-DIFC corpora: vector search + cross-encoder reranking.
 
+    answer_type: used for per-type vector candidate pool depth (T-03) and per-type
+                 reranker instructions (T-04). Falls back to defaults for unknown types.
     No text search fusion, no routing metadata, no DIFC-specific heuristics.
     """
-    print(f"[retriever] simple retrieval for corpus={corpus!r}")
+    print(f"[retriever] simple retrieval for corpus={corpus!r} answer_type={answer_type!r}")
     if on_status:
         on_status("retrieving:searching corpus")
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    top_k = min(100, get_chunk_count(corpus=corpus))  # 100 candidates for better recall on large corpora
+    # Per-type candidate pool depth for the non-DIFC simple path (T-03).
+    # This path only reranks chunks[:40], so fetching >100 candidates is wasteful.
+    # Exact-match types (date/number/name) are served well by a tighter pool; the
+    # right chunk is almost always in the top-50 by embedding similarity.
+    # free_text benefits from broader coverage to catch paraphrased provisions.
+    _SIMPLE_TOP_K_BY_TYPE: dict[str, int] = {
+        "date": 50,
+        "number": 50,
+        "name": 50,
+        "names": 60,
+        "boolean": 75,
+        "free_text": 100,
+    }
+    top_k = min(_SIMPLE_TOP_K_BY_TYPE.get(answer_type, 100), get_chunk_count(corpus=corpus))
     if on_status:
         on_status("retrieving:searching corpus")
     vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
@@ -1906,7 +1973,7 @@ def _retrieve_pages_simple(
     # Cross-encoder reranking
     if on_status:
         on_status(f"retrieving:reranking {len(chunks[:40])} passages")
-    ranked = rerank_chunks(question, chunks[:40], top_k=20, on_status=on_status)
+    ranked = rerank_chunks(question, chunks[:40], top_k=20, answer_type=answer_type, on_status=on_status)
 
     # Aggregate chunks to pages, pick best per (doc_id, page)
     page_scores: dict[tuple[str, int], tuple[float, str, str]] = {}
@@ -1999,6 +2066,7 @@ def retrieve_pages(
             max_per_doc,
             max_total,
             corpus=corpus,
+            answer_type=answer_type,
             on_status=on_status,
             laws=laws,
             cached_query_emb=_question_emb,
@@ -2221,6 +2289,10 @@ def _retrieve_pages_targeted(
     chunks_by_doc_map = get_chunks_by_doc()
     ranker = get_reranker()
 
+    # Per-type reranker instruction: use answer-type-specific prefix for Qwen3-Reranker.
+    # Computed once here and reused for both dense and BM25 reranking paths below.
+    _rr_instruction = RERANKER_INSTRUCTIONS_BY_TYPE.get(answer_type, RERANKER_INSTRUCTION)
+
     # Detect metadata questions (date, judge, claimant) that are answered on page 1
     is_metadata_q = answer_type in ("date", "name") and bool(_METADATA_QUESTION_PATTERNS.search(question))
 
@@ -2373,7 +2445,10 @@ def _retrieve_pages_targeted(
                 except Exception as _inj_err:  # nosec B110
                     pass  # Injection is best-effort; never block page scoring
 
-            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:1500]) for chunk in top_chunks])
+            pairs = _format_reranker_pairs(
+                [(_ce_query, chunk["text"][:1500]) for chunk in top_chunks],
+                instruction=_rr_instruction,
+            )
             if on_status:
                 on_status(f"retrieving:reranking {len(pairs)} passages")
             try:
@@ -2408,7 +2483,10 @@ def _retrieve_pages_targeted(
             # Original: Score all chunks against the question using cross-encoder
             # Use 4000 chars to match reranker context window (-c 4096) and capture full legal context
             # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
-            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:1500]) for chunk in doc_chunks])
+            pairs = _format_reranker_pairs(
+                [(_ce_query, chunk["text"][:1500]) for chunk in doc_chunks],
+                instruction=_rr_instruction,
+            )
             if on_status:
                 on_status(f"retrieving:reranking {len(pairs)} passages")
             try:

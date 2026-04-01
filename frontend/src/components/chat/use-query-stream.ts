@@ -134,6 +134,7 @@ interface StreamState {
     streamingStatus: string | null
     streamingProgress: Progress | null
     thinkingPreview: string | null
+    followUps: string[] | null
     error: string | null
 }
 
@@ -153,6 +154,7 @@ export function useQueryStream(): UseQueryStreamReturn {
         streamingStatus: null,
         streamingProgress: null,
         thinkingPreview: null,
+        followUps: null,
         error: null,
     })
     const abortRef = useRef<AbortController | null>(null)
@@ -178,6 +180,7 @@ export function useQueryStream(): UseQueryStreamReturn {
             streamingStatus: null,
             streamingProgress: null,
             thinkingPreview: null,
+            followUps: null,
             error: null,
         })
     }, [])
@@ -243,6 +246,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                 streamingStatus: "Connecting...",
                 streamingProgress: null,
                 thinkingPreview: null,
+                followUps: null,
                 error: null,
             })
 
@@ -339,6 +343,14 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 // Hidden status but with progress — update progress only
                                 setState((prev) => ({...prev, streamingProgress: progress}))
                             }
+                        }
+                    } else if (eventType === "follow_ups") {
+                        const parsed = JSON.parse(data)
+                        const questions: string[] = Array.isArray(parsed.questions)
+                            ? parsed.questions.filter((q: unknown) => typeof q === "string" && q.length > 0)
+                            : []
+                        if (questions.length > 0) {
+                            setState((prev) => ({...prev, followUps: questions}))
                         }
                     } else if (eventType === "error") {
                         const parsed = JSON.parse(data)

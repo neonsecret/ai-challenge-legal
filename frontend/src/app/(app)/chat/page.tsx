@@ -332,7 +332,7 @@ export default function ChatPage() {
         sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
-    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, error, clearError} = stream
+    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, clearError} = stream
 
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[]; focusDocId?: string; focusPage?: number; focusSeq: number }>({answer: "", sources: [], focusSeq: 0})
@@ -1492,7 +1492,7 @@ export default function ChatPage() {
                     {showFollowUps && (
                         <div className="mb-4 animate-fade-in-up">
                             <div style={{display: "flex", gap: SPACE['2'], overflowX: "auto", paddingBottom: SPACE['1']}}>
-                                {FOLLOWUP_SUGGESTIONS.slice(0, 3).map((suggestion) => (
+                                {(followUps && followUps.length > 0 ? followUps : FOLLOWUP_SUGGESTIONS).slice(0, 3).map((suggestion) => (
                                     <button key={suggestion} onClick={() => onSend(suggestion)} style={{
                                         flexShrink: 0, fontSize: TYPE_SCALE.xs, padding: `${SPACE['2']}px ${SPACE['4']}px`,
                                         borderRadius: RADIUS.full, cursor: "pointer",

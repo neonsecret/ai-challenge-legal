@@ -365,7 +365,12 @@ def build_system_prompt(state: AgentState) -> str:
     """
     corpus = state["corpus"]
     lang = _CORPUS_LANGUAGES.get(corpus, "the same language as the legal documents")
-    jurisdiction = _JURISDICTION_LABELS.get(corpus, corpus.upper())
+    # UUID corpora (custom user uploads, 36-char hex UUIDs) get a human-friendly label
+    # instead of the raw UUID string that would otherwise appear in the system prompt.
+    if corpus not in _JURISDICTION_LABELS and len(corpus) == 36 and corpus.count("-") == 4:
+        jurisdiction = "Custom uploaded legal corpus"
+    else:
+        jurisdiction = _JURISDICTION_LABELS.get(corpus, corpus.upper())
 
     # --- Semi-static: jurisdiction context ---
     semi_static_parts = [
