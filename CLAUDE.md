@@ -7,7 +7,7 @@
 3. Use `uv` for Python (always `uv run`, `uv add`, `uv pip` — NEVER use system pip, system python, or modify system packages), `npm` for Node.js
 4. Agent is the production path (`use_agent=True`); deterministic pipeline for benchmarks only
 5. All status messages must be user-friendly — no internal details (model names, fallback info, algorithm names)
-6. When working with llms, remember that we use the latest 2026 ones, e.g. sonnet/opus 4.6, haiku 4.5.
+6. It's 2026 — latest LLMs are Claude Sonnet/Opus 4.6, Haiku 4.5, GPT-5.4, Gemini 3.1 Pro. We use Claude Sonnet 4.6 (via Vertex AI) for answers, Haiku 4.5 for fast tasks (query formulation, follow-ups).
 7. It is very imporant to remember that is is a production level application, which includes we don't apply any shortcuts or easy solutions/quick wins. each problem has to be thoroughly investigated for reasons why it appears, proper analytics conducted, and a production ready solution has to be implemeneted.
 8. Use teammates and subagents to not clutter your own context. Ignore this if you're a subagent or a teammate yourself.
 9. When writing code, modularize, don't write unreadable code, follow pep8, try writing tests that will actually test something reasonable with real data, not just test something that's obvious to work.
@@ -40,7 +40,7 @@
 
 | Plan | Price | Daily Limit |
 |------|-------|-------------|
-| Free | $0 | 3/day |
+| Free | $0 | 3/month |
 | Starter | $29/mo | 30/day |
 | Pro | $179/mo | 200/day |
 | Enterprise | $499/mo | unlimited |

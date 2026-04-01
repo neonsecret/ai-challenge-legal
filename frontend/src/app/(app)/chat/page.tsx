@@ -787,7 +787,7 @@ export default function ChatPage() {
                         scrollbarWidth: "none",
                         WebkitOverflowScrolling: "touch",
                     }}>
-                        {(["difc", "cz", "eu", "uk", "us", "au", "custom"] as Jurisdiction[]).map((key) => {
+                        {(["difc", "cz", "uk", "au", "custom"] as Jurisdiction[]).map((key) => {
                             const config = JURISDICTIONS[key]
                             const isActive = jurisdiction === key
                             const isEnabled = key === "difc" || key === "cz" || key === "uk" || key === "au" || key === "custom"
