@@ -102,6 +102,72 @@ def _semantic_score(answer: str, page_text: str) -> float:
         return 0.0
 
 
+def score_source(answer: str, doc_id: str, page_num: int) -> float:
+    """Score a single (doc_id, page) pair against the answer using passes 1 + 2.
+
+    Pass 3 (semantic) is skipped here — it doubles latency and is too expensive
+    to call for every source in the agent's accumulated doc list.
+
+    Returns a float in [0, 1].  Falls back to 0.0 on any error.
+    """
+    if not answer:
+        return 0.0
+    try:
+        from arlc.retriever import _extract_page_text  # lazy import
+
+        page_text = _extract_page_text(doc_id, page_num) or ""
+        if not page_text:
+            return 0.0
+        answer_str = str(answer)
+        keywords = _extract_keywords(answer_str, "free_text")
+        page_lower = page_text.lower()
+        p1 = sum(1 for kw in keywords if kw.lower() in page_lower) / max(len(keywords), 1)
+        p2 = _fuzzy_match_score(answer_str, page_text)
+        return 0.6 * p1 + 0.4 * p2
+    except Exception:
+        return 0.0
+
+
+def rerank_agent_sources(answer: str, sources: list[dict]) -> list[dict]:
+    """Re-rank a list of agent source dicts by evidence quality.
+
+    Each source is expected to be ``{"doc_id": str, "page_numbers": [int], ...}``.
+    Web sources (``doc_id`` starting with ``"web:"``) are always appended last
+    and never re-ranked against corpus sources.
+
+    Non-destructive: never removes sources, only changes order.
+    Falls back to the original list on any error.
+    """
+    if not answer or not sources:
+        return sources
+
+    try:
+        corpus_srcs = [s for s in sources if not s.get("doc_id", "").startswith("web:")]
+        web_srcs = [s for s in sources if s.get("doc_id", "").startswith("web:")]
+
+        scored: list[tuple[float, dict]] = []
+        for src in corpus_srcs:
+            doc_id = src.get("doc_id", "")
+            pns = src.get("page_numbers", [])
+            # Score the first (usually only) page for this source entry
+            s = score_source(answer, doc_id, pns[0]) if doc_id and pns else 0.0
+            scored.append((s, src))
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        result = [s for _, s in scored] + web_srcs
+
+        if result and sources and result[0].get("doc_id") != sources[0].get("doc_id"):
+            logger.info(
+                "evidence_verifier: agent sources re-ranked — top source %s (was %s)",
+                result[0].get("doc_id", "?")[:20],
+                sources[0].get("doc_id", "?")[:20],
+            )
+        return result
+    except Exception as exc:
+        logger.warning("evidence_verifier: rerank_agent_sources failed: %s", exc)
+        return sources
+
+
 def find_evidence_pages(
     answer: str,
     answer_type: str,

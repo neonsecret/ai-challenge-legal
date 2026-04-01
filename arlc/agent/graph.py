@@ -617,6 +617,19 @@ async def run_agent_turn(
     if final_answer and sources and corpus == "difc":
         sources = verify_agent_pages(question, final_answer, sources)
 
+    # T-01: Evidence-grounded source re-ranking (all corpora).
+    # Re-ranks corpus sources by how well each cited page supports the final answer
+    # (passes 1 + 2: exact keyword + fuzzy match).  Web sources are kept at the end.
+    # This surfaces the most evidence-backed citations first in the UI and ensures
+    # the agent's best-supported page leads when multiple pages exist per doc.
+    if final_answer and sources:
+        try:
+            from arlc.evidence_verifier import rerank_agent_sources
+
+            sources = rerank_agent_sources(final_answer, sources)
+        except Exception as _ev_err:
+            logger.warning("[agent] evidence verifier failed: %s", _ev_err)
+
     logger.info(
         "[agent] turn complete: %d docs, %d searches, answer=%d chars",
         len(final_docs),
