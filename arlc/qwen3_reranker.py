@@ -202,7 +202,7 @@ class LlamaServerReranker:
             r.raise_for_status()
             logger.info("llama-server reranker at %s is healthy", self.url)
         except Exception as e:
-            raise RuntimeError(f"llama-server reranker at {self.url} not reachable: {e}")
+            raise RuntimeError(f"llama-server reranker at {self.url} not reachable: {e}") from e
 
     # Connect timeout: how long to wait for TCP handshake (seconds).
     # Keeps failures fast when the remote host is unreachable — avoids 75s

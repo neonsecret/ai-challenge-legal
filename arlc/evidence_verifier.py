@@ -30,7 +30,7 @@ _STOPWORDS = frozenset(
     "where why how all any each both some no nor more very also just only even still "
     "about after before between through without during because since though although "
     "therefore thus hence moreover furthermore however whereas said states provides "
-    "pursuant under section article law regulation court case".split()
+    "pursuant under section article law regulation court case".split(),
 )
 
 _MIN_KW_LEN = 3

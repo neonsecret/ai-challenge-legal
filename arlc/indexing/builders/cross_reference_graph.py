@@ -160,7 +160,11 @@ def _resolve_article_page(doc_id: str, article_key: str, article_page_index: dic
 
 
 def extract_references(
-    text: str, page_num: int, doc_id: str, law_name_index: dict, article_page_index: dict
+    text: str,
+    page_num: int,
+    doc_id: str,
+    law_name_index: dict,
+    article_page_index: dict,
 ) -> list[dict]:
     """Extract all cross-references from a page of text."""
     refs = []
@@ -181,7 +185,7 @@ def extract_references(
                     "target_page": target_page,
                     "type": "internal_article",
                     "context": m.group(0).strip(),
-                }
+                },
             )
 
     # --- Internal schedule references ---
@@ -196,7 +200,7 @@ def extract_references(
                     "target_page": target_page,
                     "type": "internal_schedule",
                     "context": m.group(0).strip(),
-                }
+                },
             )
 
     # --- Internal part references ---
@@ -211,7 +215,7 @@ def extract_references(
                     "target_page": target_page,
                     "type": "internal_part",
                     "context": m.group(0).strip(),
-                }
+                },
             )
 
     # --- Internal appendix references ---
@@ -226,7 +230,7 @@ def extract_references(
                     "target_page": target_page,
                     "type": "internal_appendix",
                     "context": m.group(0).strip(),
-                }
+                },
             )
 
     # --- External law references (DIFC Law No. X of YYYY) ---
@@ -240,7 +244,7 @@ def extract_references(
                     "target_page": None,
                     "type": "external_law",
                     "context": context_str,
-                }
+                },
             )
 
     # --- Named law references ---
@@ -254,7 +258,7 @@ def extract_references(
                     "target_page": None,
                     "type": "external_law",
                     "context": context_str,
-                }
+                },
             )
 
     # --- Case references ---
@@ -267,7 +271,7 @@ def extract_references(
                 "target_page": None,
                 "type": "case_ref",
                 "context": case_id,
-            }
+            },
         )
 
     # --- RDC references ---
@@ -279,7 +283,7 @@ def extract_references(
                 "target_page": None,
                 "type": "rdc_rule",
                 "context": f"RDC {rule_num}",
-            }
+            },
         )
 
     # --- Consultation Paper references ---
@@ -295,7 +299,7 @@ def extract_references(
                 "target_page": None,
                 "type": "consultation_paper",
                 "context": context_str,
-            }
+            },
         )
 
     return refs

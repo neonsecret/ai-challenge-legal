@@ -102,8 +102,8 @@ def _validate_url(url: str) -> str:
     #      and time the rebind precisely during the request.
     try:
         infos = socket.getaddrinfo(hostname, None)
-    except socket.gaierror:
-        raise HTTPException(status_code=400, detail="Could not resolve hostname")
+    except socket.gaierror as err:
+        raise HTTPException(status_code=400, detail="Could not resolve hostname") from err
     for info in infos:
         ip = info[4][0]
         if _is_private_ip(ip):
@@ -341,15 +341,15 @@ async def proxy_web_content(
                 response = await client.get(redirect_url, headers=_headers)
 
             response.raise_for_status()
-    except httpx.TimeoutException:
-        raise HTTPException(status_code=504, detail="Timed out fetching the page")
+    except httpx.TimeoutException as err:
+        raise HTTPException(status_code=504, detail="Timed out fetching the page") from err
     except httpx.HTTPStatusError as e:
         # Use 424 (not 502) to prevent Cloudflare Tunnel from replacing
         # the JSON response with its own HTML error page (strips CORS headers).
-        raise HTTPException(status_code=424, detail=f"Remote server returned {e.response.status_code}")
+        raise HTTPException(status_code=424, detail=f"Remote server returned {e.response.status_code}") from e
     except httpx.HTTPError as e:
         logger.warning("[web-proxy] fetch failed for %s: %s", url[:80], e)
-        raise HTTPException(status_code=424, detail="Failed to fetch the page")
+        raise HTTPException(status_code=424, detail="Failed to fetch the page") from e
 
     # Check content type — only process HTML
     content_type = response.headers.get("content-type", "")

@@ -1,0 +1,54 @@
+{
+  "elapsed_seconds": 12.004092931747437,
+  "mcq": {
+    "aggregate": {
+      "num_questions": 2,
+      "correct": 1,
+      "accuracy": 0.5,
+      "by_jurisdiction": {
+        "International": {
+          "correct": 1,
+          "total": 1
+        },
+        "Swiss": {
+          "correct": 0,
+          "total": 1
+        }
+      },
+      "by_area": {
+        "Interdisciplinary": {
+          "correct": 0,
+          "total": 1
+        },
+        "Private": {
+          "correct": 1,
+          "total": 1
+        }
+      }
+    },
+    "per_query": [
+      {
+        "id": "7e2f2168-4eeb-4b40-b1cc-bbc009a5a2ae",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "D",
+        "predicted": "A",
+        "correct": false,
+        "question_preview": "Please indicate which of the following statements concerning the principle of th"
+      },
+      {
+        "id": "3651f6dd-458c-4e85-8577-a4d383a0fe01",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "US Business Law",
+        "gold": "A",
+        "predicted": "A",
+        "correct": true,
+        "question_preview": "Before which court would you file a claim based on the Sherman Act?\ni. Depends i"
+      }
+    ]
+  }
+}

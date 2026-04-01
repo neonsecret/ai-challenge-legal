@@ -570,7 +570,7 @@ def _boost_cross_references(pages, question: str):
                     page_number=target_page,
                     score=0.3,  # low score — cross-ref supplement
                     text="",  # text will be empty; answerer handles gracefully
-                )
+                ),
             )
             existing.add((target_doc, target_page))
             print(f"  [cross-ref] Added {target_doc}:p{target_page} from ref in {doc_id}:p{page_num}")
@@ -592,7 +592,7 @@ def _pages_to_source_dicts(pages) -> list[dict]:
                     "page_numbers": [p.page_number],
                     "score": p.score,
                     "text": p.text,
-                }
+                },
             )
         else:
             result.append(p)
@@ -674,7 +674,8 @@ async def _process_question(
                 cached_pages = _retrieval_cache.get("source_pages")
                 if cached_pages:
                     print(
-                        f"  SONNET FALLBACK: {question_id[:16]} using {len(cached_pages)} cached pages", file=sys.stderr
+                        f"  SONNET FALLBACK: {question_id[:16]} using {len(cached_pages)} cached pages",
+                        file=sys.stderr,
                     )
                     try:
                         from arlc.answerer import generate_answer as _gen_answer_fallback
@@ -848,7 +849,7 @@ async def _process_question_inner(
             # Pass boost_pages so expansion uses metadata page numbers (e.g. date=p.2)
             # instead of defaulting to page 1 for all docs.
             all_case_pages = _get_all_case_doc_pages(route_result, boost_pages)
-            chunk_pages = all_case_pages if all_case_pages else oracle_result.chunk_pages
+            chunk_pages = all_case_pages or oracle_result.chunk_pages
         else:
             chunk_pages = oracle_result.chunk_pages
         # Cap oracle pages at 3 (matching pipeline constraints).
@@ -1490,7 +1491,7 @@ def validate_submission(submission: dict) -> list[str]:
                             for m, pn in enumerate(pns):
                                 if not isinstance(pn, int):
                                     errors.append(
-                                        f"{cp_prefix}.page_numbers[{m}]: must be int, got {type(pn).__name__}"
+                                        f"{cp_prefix}.page_numbers[{m}]: must be int, got {type(pn).__name__}",
                                     )
                                 elif pn < 1:
                                     errors.append(f"{cp_prefix}.page_numbers[{m}]: must be >= 1, got {pn}")
@@ -1568,7 +1569,7 @@ def _to_submission_format(results: list[dict]) -> dict:
                     },
                     "model_name": model_name,
                 },
-            }
+            },
         )
 
     return {
@@ -1793,7 +1794,7 @@ async def run_pipeline(
             f"pages={pages_count} "
             f"ttft={ttft_ms}ms "
             f"(elapsed: {elapsed}s) "
-            f"| {answer_display}"
+            f"| {answer_display}",
         )
 
     # Sort results by original question order
@@ -1878,7 +1879,7 @@ async def run_pipeline(
                             print(
                                 f"  Restored: {_r.get('id', '')[:16]} "
                                 f"doc={_law_doc_id[:8]} {_art_key} "
-                                f"p{_current_pages}→p{_cp['page_numbers']}"
+                                f"p{_current_pages}→p{_cp['page_numbers']}",
                             )
         print(f"  Article pages restored: {_art_restored}")
     except Exception as _art_err:
@@ -2165,7 +2166,7 @@ def main():
             workers=args.workers,
             skip_indexing=skip,
             verify_numbers=args.verify_numbers,
-        )
+        ),
     )
 
 

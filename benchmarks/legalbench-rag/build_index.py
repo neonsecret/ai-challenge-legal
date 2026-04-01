@@ -12,6 +12,7 @@ Usage:
 """
 
 import json
+import os
 import sys
 import zipfile
 from pathlib import Path
@@ -130,7 +131,6 @@ def load_and_chunk_corpus() -> list[dict]:
 def main():
     import bm25s
     import faiss
-    from sentence_transformers import SentenceTransformer
 
     # Step 1: Download corpus
     download_corpus()
@@ -146,23 +146,47 @@ def main():
     # Step 3: Build FAISS index
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
-    print("[build_index] Loading embedding model...")
-    import torch
+    _backend = os.environ.get("EMBEDDING_MODEL", "llama-server").lower()
+    print(f"[build_index] Embedding backend: {_backend}")
 
-    device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-    model = SentenceTransformer(
-        "Snowflake/snowflake-arctic-embed-l-v2.0",
-        device=device,
-        trust_remote_code=True,
-    )
+    if _backend == "llama-server":
+        import time
 
-    print(f"[build_index] Embedding {len(texts)} chunks on {device}...")
-    embeddings = model.encode(
-        texts,
-        normalize_embeddings=True,
-        show_progress_bar=True,
-        batch_size=16,
-    )
+        from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+
+        model = LlamaServerEmbedder()
+        print(f"[build_index] Embedding {len(texts)} chunks with llama-server (Qwen3-8B)...")
+        t_emb = time.time()
+        batch_size = 64
+        embeddings_list = []
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            embeddings_list.extend(model.embed_texts(batch))
+            if (i // batch_size) % 20 == 0:
+                elapsed = time.time() - t_emb
+                pct = (i + len(batch)) / len(texts)
+                eta = elapsed / pct * (1 - pct) if pct > 0 else 0
+                print(f"  [{i + len(batch)}/{len(texts)}] {elapsed:.0f}s, ETA {eta:.0f}s")
+        embeddings = np.array(embeddings_list, dtype="float32")
+        print(f"[build_index] Embedding done: {time.time() - t_emb:.1f}s")
+    else:
+        import torch
+
+        from sentence_transformers import SentenceTransformer
+
+        device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+        model = SentenceTransformer(
+            "Snowflake/snowflake-arctic-embed-l-v2.0",
+            device=device,
+            trust_remote_code=True,
+        )
+        print(f"[build_index] Embedding {len(texts)} chunks on {device} (Snowflake)...")
+        embeddings = model.encode(
+            texts,
+            normalize_embeddings=True,
+            show_progress_bar=True,
+            batch_size=16,
+        )
 
     print("[build_index] Building FAISS index...")
     index = faiss.IndexFlatIP(embeddings.shape[1])

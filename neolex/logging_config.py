@@ -97,7 +97,7 @@ class JSONFormatter(logging.Formatter):
             "thread",
             "threadName",
             "taskName",
-        }
+        },
     )
 
     def format(self, record: logging.LogRecord) -> str:

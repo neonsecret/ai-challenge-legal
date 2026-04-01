@@ -390,7 +390,7 @@ def build_system_prompt(state: AgentState) -> str:
             "When the user refers to 'my documents', 'uploaded documents', "
             "or 'my files', they mean the documents in this corpus. "
             "ALWAYS use search_legal_corpus to find and analyze them — "
-            "do NOT tell the user to upload documents."
+            "do NOT tell the user to upload documents.",
         )
 
     semi_static = "\n".join(semi_static_parts)

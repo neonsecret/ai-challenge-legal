@@ -14,7 +14,7 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -89,7 +89,7 @@ async def _cleanup_expired() -> None:
     while True:
         try:
             async with AsyncSessionLocal() as db:
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
 
                 # 1. Expired sessions and auth tokens
                 await db.execute(sql_delete(Session).where(Session.expires_at < now))
@@ -98,7 +98,7 @@ async def _cleanup_expired() -> None:
                 # 2. Conversation messages older than 90 days (GDPR retention)
                 cutoff_90d = now - timedelta(days=90)
                 result = await db.execute(
-                    sql_delete(ConversationMessage).where(ConversationMessage.created_at < cutoff_90d)
+                    sql_delete(ConversationMessage).where(ConversationMessage.created_at < cutoff_90d),
                 )
                 deleted_msgs = result.rowcount
 
@@ -107,9 +107,9 @@ async def _cleanup_expired() -> None:
                     result2 = await db.execute(
                         sql_delete(ConversationDocs).where(
                             ~ConversationDocs.conversation_id.in_(
-                                sql_select(ConversationMessage.conversation_id).distinct()
-                            )
-                        )
+                                sql_select(ConversationMessage.conversation_id).distinct(),
+                            ),
+                        ),
                     )
                     deleted_docs = result2.rowcount
                 else:

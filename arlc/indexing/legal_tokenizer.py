@@ -67,7 +67,7 @@ _STOPWORDS = frozenset(
         "was",
         "will",
         "with",
-    }
+    },
 )
 
 
@@ -83,7 +83,7 @@ def _expand_legal_refs(text: str) -> list[str]:
                 f"enf_{num}_{year}",
                 num,
                 year,
-            ]
+            ],
         )
 
     # Case IDs (skip ENF ones already handled)
@@ -97,7 +97,7 @@ def _expand_legal_refs(text: str) -> list[str]:
                 normalized,
                 num,
                 year,
-            ]
+            ],
         )
 
     # Article refs

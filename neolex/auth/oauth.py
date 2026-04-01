@@ -3,7 +3,7 @@
 Requires SessionMiddleware to be registered in main.py (for OAuth state CSRF).
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends
@@ -46,7 +46,7 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     google_id: str = userinfo["sub"]
     name: str | None = userinfo.get("name")
     avatar_url: str | None = userinfo.get("picture")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -152,5 +152,5 @@ async def get_me(user: User = Depends(get_current_user)):
             "plan": effective_plan,
             "monthly_queries_used": user.monthly_queries_used,
             "max_corpora": user.max_corpora,
-        }
+        },
     )

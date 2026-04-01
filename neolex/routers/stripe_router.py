@@ -6,7 +6,7 @@ Intervals: monthly, biweekly.
 
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
@@ -199,9 +199,9 @@ async def create_checkout_session(
     if not user.stripe_customer_id:
         try:
             customer = stripe.Customer.create(email=user.email, name=user.name or user.email)
-        except stripe.StripeError:
+        except stripe.StripeError as err:
             logger.exception("Failed to create Stripe customer for user %s", user.id)
-            raise HTTPException(status_code=502, detail="Could not reach payment provider. Please try again.")
+            raise HTTPException(status_code=502, detail="Could not reach payment provider. Please try again.") from err
         user.stripe_customer_id = customer.id
         await db.commit()
 
@@ -213,7 +213,7 @@ async def create_checkout_session(
         select(Subscription)
         .where(Subscription.user_id == user.id, Subscription.status == "active")
         .order_by(Subscription.created_at.desc())
-        .limit(1)
+        .limit(1),
     )
     old_sub = result.scalar_one_or_none()
     if old_sub:
@@ -237,10 +237,10 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
     try:
         event = stripe.Webhook.construct_event(payload, sig, settings.stripe_webhook_secret)
-    except stripe.SignatureVerificationError:
-        raise HTTPException(status_code=400, detail="Invalid Stripe signature")
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.SignatureVerificationError as err:
+        raise HTTPException(status_code=400, detail="Invalid Stripe signature") from err
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail="Invalid payload") from err
 
     # Idempotency guard — skip already-processed webhook events.
     event_id = event.id
@@ -312,9 +312,9 @@ async def sync_subscription(
 
     try:
         subs = stripe.Subscription.list(customer=user.stripe_customer_id, status="active", limit=1)
-    except Exception:
+    except Exception as err:
         logger.exception("Failed to query Stripe subscriptions for user %s", user.id)
-        raise HTTPException(status_code=502, detail="Could not reach Stripe")
+        raise HTTPException(status_code=502, detail="Could not reach Stripe") from err
 
     if not subs.data:
         # No active subscription on Stripe — ensure DB reflects that
@@ -358,7 +358,7 @@ async def cancel_subscription(
         select(Subscription)
         .where(Subscription.user_id == user.id, Subscription.status == "active")
         .order_by(Subscription.created_at.desc())
-        .limit(1)
+        .limit(1),
     )
     sub_record = result.scalar_one_or_none()
 
@@ -371,24 +371,24 @@ async def cancel_subscription(
             sub_record.stripe_subscription_id,
             cancel_at_period_end=True,
         )
-    except Exception:
+    except Exception as err:
         logger.exception(
             "Failed to cancel Stripe subscription %s for user %s",
             sub_record.stripe_subscription_id,
             user.id,
         )
-        raise HTTPException(status_code=502, detail="Could not reach Stripe")
+        raise HTTPException(status_code=502, detail="Could not reach Stripe") from err
 
     # Update local record to reflect pending cancellation
     sub_record.cancel_at_period_end = True
-    sub_record.updated_at = datetime.now(timezone.utc)
+    sub_record.updated_at = datetime.now(UTC)
 
     # Sync period_end from Stripe response (item-level in API 2025+)
     items_data = stripe_sub.items.data
     if items_data:
         period_end_ts = getattr(items_data[0], "current_period_end", None)
         if period_end_ts:
-            sub_record.current_period_end = datetime.fromtimestamp(period_end_ts, tz=timezone.utc)
+            sub_record.current_period_end = datetime.fromtimestamp(period_end_ts, tz=UTC)
 
     await db.commit()
     logger.info(
@@ -401,7 +401,7 @@ async def cancel_subscription(
         {
             "status": "canceled_at_period_end",
             "period_end": sub_record.current_period_end.isoformat() if sub_record.current_period_end else None,
-        }
+        },
     )
 
 
@@ -483,7 +483,7 @@ async def billing_status(
             select(Subscription)
             .where(Subscription.user_id == user.id, Subscription.status == "active")
             .order_by(Subscription.created_at.desc())
-            .limit(1)
+            .limit(1),
         )
         active_sub = sub_result.scalar_one_or_none()
         if active_sub:
@@ -517,7 +517,7 @@ async def billing_status(
                 "max_corpus_size_mb": limits.get("max_corpus_size_mb", 0),
             },
             "prices": available_prices,
-        }
+        },
     )
 
 
@@ -561,12 +561,12 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
             )
             # Mark the old DB record as canceled
             old_result = await db.execute(
-                select(Subscription).where(Subscription.stripe_subscription_id == prev_sub_id)
+                select(Subscription).where(Subscription.stripe_subscription_id == prev_sub_id),
             )
             old_sub_record = old_result.scalar_one_or_none()
             if old_sub_record:
                 old_sub_record.status = "canceled"
-                old_sub_record.updated_at = datetime.now(timezone.utc)
+                old_sub_record.updated_at = datetime.now(UTC)
         except Exception:
             logger.error(
                 "BILLING: Failed to cancel old subscription %s during upgrade for user %s. "
@@ -583,7 +583,7 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
 
     # Reset daily counters for the new plan
     user.daily_queries_used = 0
-    user.daily_queries_reset_at = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    user.daily_queries_reset_at = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
 
     # Period fields live on the subscription item, not the top-level sub (Stripe API 2025+)
     period_start = getattr(item, "current_period_start", None) or sub.start_date
@@ -591,17 +591,17 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
 
     # Guard against duplicate Subscription rows (e.g. webhook replay after restart).
     existing_result = await db.execute(
-        select(Subscription).where(Subscription.stripe_subscription_id == subscription_id)
+        select(Subscription).where(Subscription.stripe_subscription_id == subscription_id),
     )
     existing_sub = existing_result.scalar_one_or_none()
     if existing_sub:
         # Update existing record instead of inserting a duplicate
         existing_sub.status = "active"
         existing_sub.stripe_price_id = price_id
-        existing_sub.current_period_start = datetime.fromtimestamp(period_start, tz=timezone.utc)
-        existing_sub.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc)
+        existing_sub.current_period_start = datetime.fromtimestamp(period_start, tz=UTC)
+        existing_sub.current_period_end = datetime.fromtimestamp(period_end, tz=UTC)
         existing_sub.cancel_at_period_end = getattr(sub, "cancel_at_period_end", False)
-        existing_sub.updated_at = datetime.now(timezone.utc)
+        existing_sub.updated_at = datetime.now(UTC)
     else:
         db.add(
             Subscription(
@@ -609,10 +609,10 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
                 stripe_subscription_id=subscription_id,
                 stripe_price_id=price_id,
                 status="active",
-                current_period_start=datetime.fromtimestamp(period_start, tz=timezone.utc),
-                current_period_end=datetime.fromtimestamp(period_end, tz=timezone.utc),
+                current_period_start=datetime.fromtimestamp(period_start, tz=UTC),
+                current_period_end=datetime.fromtimestamp(period_end, tz=UTC),
                 cancel_at_period_end=getattr(sub, "cancel_at_period_end", False),
-            )
+            ),
         )
 
     await db.commit()
@@ -641,7 +641,7 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
                 Subscription.status == "active",
                 Subscription.stripe_subscription_id != sub["id"],
             )
-            .limit(1)
+            .limit(1),
         )
         if other_active.scalar_one_or_none():
             logger.info(
@@ -657,9 +657,11 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
             # Fire-and-forget corpus cleanup (with error logging)
             task = asyncio.create_task(_delete_user_corpora(user))
             task.add_done_callback(
-                lambda t: logger.error("Corpus cleanup failed: %s", t.exception())
-                if not t.cancelled() and t.exception()
-                else None
+                lambda t: (
+                    logger.error("Corpus cleanup failed: %s", t.exception())
+                    if not t.cancelled() and t.exception()
+                    else None
+                ),
             )
             logger.info("User %s subscription canceled, corpora cleanup scheduled", user.id)
     elif stripe_status in ("active",):
@@ -680,8 +682,8 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
         # Period fields may be at item level (Stripe API 2025+) or top level (legacy)
         period_end = first_item.get("current_period_end") or sub.get("current_period_end")
         if period_end:
-            existing.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc)
-        existing.updated_at = datetime.now(timezone.utc)
+            existing.current_period_end = datetime.fromtimestamp(period_end, tz=UTC)
+        existing.updated_at = datetime.now(UTC)
         if price_id:
             existing.stripe_price_id = price_id
 
@@ -730,6 +732,6 @@ async def _on_invoice_paid(invoice: dict, db: AsyncSession) -> None:
             currency=invoice.get("currency", "usd"),
             status="paid",
             invoice_pdf=invoice.get("invoice_pdf"),
-        )
+        ),
     )
     await db.commit()

@@ -30,7 +30,7 @@ _counters: dict[str, dict[str, Any]] = defaultdict(
         "hits": 0,
         "misses": 0,
         "total": 0,
-    }
+    },
 )
 
 # Per-question detail log (for post-run analysis)
@@ -77,7 +77,7 @@ def record_router_hit(question: str, answer_type: str, routed_doc_ids: list[str]
                 "routed": routed_doc_ids,
                 "gold_doc": gold_doc_id,
                 "hit": hit if gold_doc_id else None,
-            }
+            },
         )
 
 
@@ -128,7 +128,7 @@ def record_retrieval_recall(
                 "gold_pages": gold_pages,
                 "top_k": top_k,
                 "recall_hit": hit if gold_pages else None,
-            }
+            },
         )
 
 
@@ -190,7 +190,7 @@ def record_reranker_recall(
                 "gold_pages": gold_pages,
                 "reranker_hit": reranker_hit if gold_pages else None,
                 "reranker_drop": reranker_drop if gold_pages else None,
-            }
+            },
         )
 
 
@@ -237,7 +237,7 @@ def print_summary() -> None:
         print(
             f"  {stage:<30} hit_rate={hr_str}  "
             f"({stats['hits']}/{stats['evaluated']} evaluated, "
-            f"{stats['total_questions']} total)"
+            f"{stats['total_questions']} total)",
         )
         # Print extra counters (e.g. drops)
         for k, v in stats.items():

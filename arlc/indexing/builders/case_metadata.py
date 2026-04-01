@@ -163,21 +163,23 @@ def classify_document(doc_path: Path) -> str:
 
         if case_score >= 3:
             return "CASE"
-        elif law_score >= 2:
+        if law_score >= 2:
             return "LAW"
-        elif case_score >= 1:
+        if case_score >= 1:
             return "CASE"
-        elif law_score >= 1:
+        if law_score >= 1:
             return "LAW"
-        else:
-            return "UNKNOWN"
+        return "UNKNOWN"
     except Exception as e:
         logger.warning("Failed to classify %s: %s", doc_path.name, e)
         return "UNKNOWN"
 
 
 def get_doc_pages(
-    doc_path: Path, n_first: int = 3, n_last: int = 3, max_chars_per_page: int = 2000
+    doc_path: Path,
+    n_first: int = 3,
+    n_last: int = 3,
+    max_chars_per_page: int = 2000,
 ) -> list[tuple[int, str]]:
     """Extract text from first N and last N pages of a PDF."""
     doc = fitz.open(str(doc_path))
@@ -241,7 +243,7 @@ async def extract_case_metadata(
                     {
                         "role": "user",
                         "content": CASE_EXTRACT_PROMPT.format(pages=pages_text),
-                    }
+                    },
                 ],
             )
             text = resp.content[0].text
@@ -285,7 +287,7 @@ async def extract_law_metadata(
                     {
                         "role": "user",
                         "content": LAW_EXTRACT_PROMPT.format(pages=pages_text),
-                    }
+                    },
                 ],
             )
             text = resp.content[0].text
@@ -399,8 +401,8 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
     manual_only = manual_cases - auto_cases
 
     print(f"\n  Cases in both:     {len(matched)}")
-    print(f"  Auto-only:         {len(auto_only)}  {auto_only if auto_only else ''}")
-    print(f"  Manual-only:       {len(manual_only)}  {manual_only if manual_only else ''}")
+    print(f"  Auto-only:         {len(auto_only)}  {auto_only or ''}")
+    print(f"  Manual-only:       {len(manual_only)}  {manual_only or ''}")
 
     # Compare doc counts per case
     print("\n  Per-case doc count comparison:")
@@ -483,7 +485,7 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
     print(
         f"\n  Overall accuracy: {correct_fields}/{total_fields} ({100 * correct_fields / total_fields:.1f}%)"
         if total_fields
-        else ""
+        else "",
     )
 
     print("\n  Per-field accuracy:")

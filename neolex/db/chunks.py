@@ -1,7 +1,7 @@
 """Chunk storage model — pgvector + tsvector for hybrid search."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import Index, Integer, String, Text, func
@@ -12,7 +12,7 @@ from neolex.db.postgres import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Chunk(Base):

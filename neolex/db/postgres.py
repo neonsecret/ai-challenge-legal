@@ -63,7 +63,7 @@ async def init_db() -> None:
                 RETURN NEW;
             END
             $$ LANGUAGE plpgsql;
-        """)
+        """),
         )
         await conn.execute(
             text("""
@@ -73,5 +73,5 @@ async def init_db() -> None:
                     FOR EACH ROW EXECUTE FUNCTION chunks_text_search_trigger();
             EXCEPTION WHEN duplicate_object THEN NULL;
             END $$;
-        """)
+        """),
         )

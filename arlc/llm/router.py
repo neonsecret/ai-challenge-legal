@@ -68,7 +68,7 @@ def _call_backend(
             model=model,
             system_blocks=system_blocks,
         )
-    elif backend == "vertex":
+    if backend == "vertex":
         from arlc.llm import vertex_backend as llm_vertex
 
         return llm_vertex.call_llm(
@@ -78,16 +78,15 @@ def _call_backend(
             model=model,
             system_blocks=system_blocks,
         )
-    else:
-        from arlc.llm import anthropic_backend as llm_anthropic
+    from arlc.llm import anthropic_backend as llm_anthropic
 
-        return llm_anthropic.call_llm(
-            system_prompt,
-            user_message,
-            max_tokens,
-            model=model,
-            system_blocks=system_blocks,
-        )
+    return llm_anthropic.call_llm(
+        system_prompt,
+        user_message,
+        max_tokens,
+        model=model,
+        system_blocks=system_blocks,
+    )
 
 
 def _is_rate_limit(exc: Exception) -> bool:

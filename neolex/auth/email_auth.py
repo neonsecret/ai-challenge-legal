@@ -6,7 +6,7 @@ import secrets
 import shutil
 import time
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import bcrypt
@@ -77,7 +77,7 @@ async def _auth_rate_check(request: Request, action: str) -> None:
         attempts = _fallback_rates[bucket]
         attempts[:] = [t for t in attempts if now - t < _FALLBACK_WINDOW]
         if len(attempts) >= _FALLBACK_MAX:
-            raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
+            raise HTTPException(status_code=429, detail="Too many attempts. Try again later.") from None
         attempts.append(now)
 
 
@@ -104,7 +104,7 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
         # Return same message to prevent email enumeration
         return {"message": "Check your email to verify your account."}
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     user = User(
         email=body.email,
         password_hash=_hash_password(body.password),
@@ -125,7 +125,7 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
             token_hash=_hash(raw_token),
             token_type="email_verify",
             expires_at=now + timedelta(hours=24),
-        )
+        ),
     )
     await db.commit()
 
@@ -135,14 +135,14 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
 
 @router.get("/verify-email")
 async def verify_email(token: str, request: Request, db: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(AuthToken).where(
             AuthToken.token_hash == _hash(token),
             AuthToken.token_type == "email_verify",
             AuthToken.expires_at > now,
             AuthToken.used_at == None,  # noqa: E711
-        )
+        ),
     )
     auth_token = result.scalar_one_or_none()
     if not auth_token:
@@ -177,7 +177,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
     if not user.email_verified:
         raise HTTPException(status_code=403, detail="Please verify your email first")
 
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
     ip = getattr(request.client, "host", None)
     raw_session = await create_session(user, db, ip=ip, user_agent=request.headers.get("user-agent"))
 
@@ -194,7 +194,7 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
 
     # Always 200 — never reveal whether an email is registered
     if user:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         raw_token = secrets.token_urlsafe(32)
         db.add(
             AuthToken(
@@ -202,7 +202,7 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
                 token_hash=_hash(raw_token),
                 token_type="password_reset",
                 expires_at=now + timedelta(hours=1),
-            )
+            ),
         )
         await db.commit()
         await send_password_reset_email(body.email, raw_token)
@@ -213,14 +213,14 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
 @router.post("/reset-password")
 async def reset_password(body: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     await _auth_rate_check(request, "reset")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(AuthToken).where(
             AuthToken.token_hash == _hash(body.token),
             AuthToken.token_type == "password_reset",
             AuthToken.expires_at > now,
             AuthToken.used_at == None,  # noqa: E711
-        )
+        ),
     )
     auth_token = result.scalar_one_or_none()
     if not auth_token:
@@ -241,7 +241,7 @@ async def reset_password(body: ResetPasswordRequest, request: Request, db: Async
             AuthToken.token_type == "password_reset",
             AuthToken.used_at == None,  # noqa: E711
         )
-        .values(used_at=now)
+        .values(used_at=now),
     )
 
     # Invalidate all existing sessions
@@ -279,7 +279,7 @@ async def export_my_data(
 
     # 2. Active sessions (metadata only — not the token hashes)
     sessions_result = await db.execute(
-        select(Session).where(Session.user_id == user.id).order_by(Session.created_at.desc())
+        select(Session).where(Session.user_id == user.id).order_by(Session.created_at.desc()),
     )
     sessions = [
         {
@@ -295,7 +295,7 @@ async def export_my_data(
     msgs_result = await db.execute(
         select(ConversationMessage)
         .where(ConversationMessage.user_id == user.id)
-        .order_by(ConversationMessage.created_at.asc())
+        .order_by(ConversationMessage.created_at.asc()),
     )
     conversations: dict[str, list[dict]] = {}
     for m in msgs_result.scalars():
@@ -305,7 +305,7 @@ async def export_my_data(
                 "role": m.role,
                 "content": m.content,
                 "created_at": m.created_at.isoformat(),
-            }
+            },
         )
 
     # 4. Conversation docs (accumulated source references)
@@ -313,7 +313,7 @@ async def export_my_data(
     conversation_docs = {str(d.conversation_id): d.docs_json for d in docs_result.scalars()}
 
     return {
-        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "exported_at": datetime.now(UTC).isoformat(),
         "profile": profile,
         "sessions": sessions,
         "conversations": conversations,
@@ -402,7 +402,7 @@ async def _delete_user_audit_logs(client_slug: str) -> None:
         from neolex.db.operational_models import ApiKey, Event, Query
 
         async with get_audit_db() as audit_db:
-            session = audit_db._session
+            session = audit_db.get_session()
 
             # 1. Collect all key_hashes for this client
             result = await session.execute(sa_select(ApiKey.key_hash).where(ApiKey.client_slug == client_slug))
@@ -436,7 +436,7 @@ async def _cancel_stripe_subscriptions(user: User, db: AsyncSession) -> None:
         select(Subscription).where(
             Subscription.user_id == user.id,
             Subscription.status.in_(["active", "trialing", "past_due"]),
-        )
+        ),
     )
     active_subs = result.scalars().all()
 

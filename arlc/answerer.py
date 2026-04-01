@@ -458,12 +458,12 @@ def _decompose_question(question: str) -> str:
                         f"Question: {question}\n\n"
                         "Output as a numbered list only, no explanations."
                     ),
-                }
+                },
             ],
         )
         return resp.content[0].text.strip()
     except Exception as e:
-        logger.warning(f"[Decompose] Haiku decomp failed: {e}")
+        logger.warning("[Decompose] Haiku decomp failed: %s", e)
         return ""
 
 
@@ -489,7 +489,9 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
     if not _CASE_META:
         return None
 
-    all_case_matches = re.findall(r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD|ACT)\s+\d+/\d{4}", normalize_text(question), re.I)
+    all_case_matches = re.findall(
+        r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD|ACT)\s+\d+/\d{4}", normalize_text(question), re.IGNORECASE
+    )
     if not all_case_matches:
         return None
 
@@ -535,7 +537,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
 
                 def _norm_judge(name: str) -> str:
                     name = normalize_text(name)
-                    cleaned = re.sub(r"\b(H\.E\.|Justice|Chief|Deputy|Sir|Dr\.?|KC)\b", "", name, flags=re.I)
+                    cleaned = re.sub(r"\b(H\.E\.|Justice|Chief|Deputy|Sir|Dr\.?|KC)\b", "", name, flags=re.IGNORECASE)
                     return re.sub(r"\s+", " ", cleaned).strip().lower()
 
                 def _collect_judges(case_id: str) -> set[str]:
@@ -567,7 +569,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                             else (judge_info.get("page", 1) if isinstance(judge_info, dict) else 1)
                         )
                         pages.append({"doc_id": did, "page_numbers": [judge_page]})
-                logger.info(f"[Oracle] Judge compare: {judges1} vs {judges2} -> {answer}")
+                logger.info("[Oracle] Judge compare: %s vs %s -> %s", judges1, judges2, answer)
                 return AnswerResult(answer=answer, chunk_pages=pages)
 
             # Party comparison
@@ -613,7 +615,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                     did = _get_doc_id(cid)
                     if did:
                         pages.append({"doc_id": did, "page_numbers": [1]})
-                logger.info(f"[Oracle] Party compare: {p1} vs {p2} -> {answer}")
+                logger.info("[Oracle] Party compare: %s vs %s -> %s", p1, p2, answer)
                 return AnswerResult(answer=answer, chunk_pages=pages)
 
     # Single-case "judge change" oracle — boolean questions asking if judges changed
@@ -626,7 +628,10 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
             def _norm_judge_name(name: str) -> str:
                 name = normalize_text(name)
                 cleaned = re.sub(
-                    r"\b(H\.E\.|Justice|Chief|Deputy|Sir|Dr\.?|KC|Judicial|Officer)\b", "", name, flags=re.I
+                    r"\b(H\.E\.|Justice|Chief|Deputy|Sir|Dr\.?|KC|Judicial|Officer)\b",
+                    "",
+                    name,
+                    flags=re.IGNORECASE,
                 )
                 return re.sub(r"\s+", " ", cleaned).strip().lower()
 
@@ -653,7 +658,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                         did = doc_entry.get("doc_id", "")
                         if did:
                             pages.append({"doc_id": did, "page_numbers": [1]})
-                    logger.info(f"[Oracle] Judge change in {all_case_ids[0]}: {list(judge_docs.keys())} -> True")
+                    logger.info("[Oracle] Judge change in %s: %s -> True", all_case_ids[0], list(judge_docs.keys()))
                     return AnswerResult(answer=True, chunk_pages=pages)
 
     # Cross-case name comparison (answer is a case ID, not a person name)
@@ -678,7 +683,12 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                         if did:
                             pages.append({"doc_id": did, "page_numbers": [1]})
                     logger.info(
-                        f"[Oracle] Date comparison: {all_case_ids[0]}={d1} vs {all_case_ids[1]}={d2} -> {winner}"
+                        "[Oracle] Date comparison: %s=%s vs %s=%s -> %s",
+                        all_case_ids[0],
+                        d1,
+                        all_case_ids[1],
+                        d2,
+                        winner,
                     )
                     return AnswerResult(answer=winner, chunk_pages=pages)
 
@@ -712,7 +722,12 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                         if did:
                             pages.append({"doc_id": did, "page_numbers": [1]})
                     logger.info(
-                        f"[Oracle] Claim comparison: {all_case_ids[0]}={v1} vs {all_case_ids[1]}={v2} -> {winner}"
+                        "[Oracle] Claim comparison: %s=%s vs %s=%s -> %s",
+                        all_case_ids[0],
+                        v1,
+                        all_case_ids[1],
+                        v2,
+                        winner,
                     )
                     return AnswerResult(answer=winner, chunk_pages=pages)
 
@@ -724,7 +739,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                     p = m.get(role, [])
                     if isinstance(p, list):
                         return len(p)
-                    elif isinstance(p, dict) and p.get("names"):
+                    if isinstance(p, dict) and p.get("names"):
                         return len(p["names"])
                     return 1 if p else 0
 
@@ -739,7 +754,12 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
                     if did:
                         pages.append({"doc_id": did, "page_numbers": [1]})
                 logger.info(
-                    f"[Oracle] Party count comparison: {all_case_ids[0]}={c1} vs {all_case_ids[1]}={c2} -> {winner}"
+                    "[Oracle] Party count comparison: %s=%s vs %s=%s -> %s",
+                    all_case_ids[0],
+                    c1,
+                    all_case_ids[1],
+                    c2,
+                    winner,
                 )
                 return AnswerResult(answer=winner, chunk_pages=pages)
 
@@ -758,12 +778,12 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
             re.search(
                 r"appeal(?:ed|ing)?\s+to\s+(?:the\s+)?(?:CFI|court\s+of\s+first\s+instance)",
                 q_lower,
-            )
+            ),
         )
         if appeal_q_match:
             appeal_info = _APPEAL_INDEX.get(case_id)
             if appeal_info and appeal_info.get("pta_filed"):
-                logger.info(f"[Oracle] Appeal PTA filed for {case_id}: True")
+                logger.info("[Oracle] Appeal PTA filed for %s: True", case_id)
                 return AnswerResult(
                     answer=True,
                     chunk_pages=[{"doc_id": doc_id, "page_numbers": [1]}] if doc_id else [],
@@ -784,7 +804,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
         doi = meta.get("date_of_issue", {})
         if isinstance(doi, dict) and doi.get("value"):
             page = doi.get("page", 1)
-            logger.info(f"[Oracle] Date: {doi['value']}")
+            logger.info("[Oracle] Date: %s", doi["value"])
             return AnswerResult(
                 answer=doi["value"],
                 chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
@@ -804,7 +824,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
             else:
                 answer = [j["name"] for j in judges]
             page = judges[0].get("page", 1)
-            logger.info(f"[Oracle] Judge: {answer}")
+            logger.info("[Oracle] Judge: %s", answer)
             return AnswerResult(
                 answer=answer,
                 chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
@@ -858,7 +878,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
             result = _extract_party_answer(meta.get("claimant"), answer_type)
             if result:
                 answer, page = result
-                logger.info(f"[Oracle] Claimant: {answer}")
+                logger.info("[Oracle] Claimant: %s", answer)
                 return AnswerResult(
                     answer=answer,
                     chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
@@ -872,7 +892,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
             result = _extract_party_answer(meta.get("defendant"), answer_type)
             if result:
                 answer, page = result
-                logger.info(f"[Oracle] Defendant: {answer}")
+                logger.info("[Oracle] Defendant: %s", answer)
                 return AnswerResult(
                     answer=answer,
                     chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
@@ -883,7 +903,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
         cv = meta.get("claim_value_aed", {})
         if isinstance(cv, dict) and cv.get("value"):
             page = cv.get("page", 1)
-            logger.info(f"[Oracle] Claim value: {cv['value']}")
+            logger.info("[Oracle] Claim value: %s", cv["value"])
             return AnswerResult(
                 answer=cv["value"],
                 chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
@@ -896,7 +916,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
         cv = meta.get("claim_value")
         if isinstance(cv, dict) and cv.get("value"):
             page = cv.get("page", 1)
-            logger.info(f"[Oracle] Enforcement amount: {cv['value']}")
+            logger.info("[Oracle] Enforcement amount: %s", cv["value"])
             return AnswerResult(
                 answer=cv["value"],
                 chunk_pages=[{"doc_id": doc_id, "page_numbers": [page]}] if doc_id else [],
@@ -942,7 +962,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
         if any(k in q_lower for k in _claimant_kw):
             count = _count_unique_party_names(case_id, "claimant")
             if count is not None:
-                logger.info(f"[Oracle] Unique claimants: {count}")
+                logger.info("[Oracle] Unique claimants: %d", count)
                 return AnswerResult(
                     answer=count,
                     chunk_pages=[{"doc_id": doc_id, "page_numbers": [1]}] if doc_id else [],
@@ -950,7 +970,7 @@ def _lookup_oracle(question: str, answer_type: str, source_pages: list[dict]) ->
         if any(k in q_lower for k in _defendant_kw):
             count = _count_unique_party_names(case_id, "defendant")
             if count is not None:
-                logger.info(f"[Oracle] Unique defendants: {count}")
+                logger.info("[Oracle] Unique defendants: %d", count)
                 return AnswerResult(
                     answer=count,
                     chunk_pages=[{"doc_id": doc_id, "page_numbers": [1]}] if doc_id else [],
@@ -1169,7 +1189,7 @@ def _build_user_message(question: str, context: str, answer_type: str, sub_quest
         if _is_case_question(question):
             # Bug 1: Inject case metadata (judge, parties, date) from index so model
             # has correct context even when only later pages are retrieved.
-            case_ids_in_q = re.findall(r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD|ACT)\s+\d+/\d{4}", question, re.I)
+            case_ids_in_q = re.findall(r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD|ACT)\s+\d+/\d{4}", question, re.IGNORECASE)
             metadata_block = ""
             for cid in case_ids_in_q:
                 cid_upper = re.sub(r"\s+", " ", cid).strip().upper()
@@ -1337,7 +1357,7 @@ def _call_llm(
             )
         except Exception as exc:
             last_exc = exc
-            logger.warning(f"[LLM] Attempt {attempt + 1} failed: {exc}")
+            logger.warning("[LLM] Attempt %d failed: %s", attempt + 1, exc)
             str(exc).lower()
             # On rate limit / overloaded, switch to longer backoff schedule
             if _is_rate_limit_error(exc):
@@ -1357,9 +1377,12 @@ def _call_llm(
                     except Exception as rl_exc:
                         last_exc = rl_exc
                         logger.warning(
-                            f"[LLM] Rate-limit retry {rl_attempt + 1}/{MAX_RETRIES_RATE_LIMIT} failed: {rl_exc}"
+                            "[LLM] Rate-limit retry %d/%d failed: %s",
+                            rl_attempt + 1,
+                            MAX_RETRIES_RATE_LIMIT,
+                            rl_exc,
                         )
-                raise last_exc
+                raise last_exc from None
     # All retries exhausted
     raise last_exc
 
@@ -1441,8 +1464,12 @@ def _call_llm_once(
     cache_create = getattr(final.usage, "cache_creation_input_tokens", 0) or 0
     if cache_read or cache_create:
         logger.info(
-            f"[LLM] model={model} ttft={ttft_ms:.0f}ms "
-            f"cache_read={cache_read} cache_create={cache_create} in={input_tokens}"
+            "[LLM] model=%s ttft=%.0fms cache_read=%s cache_create=%s in=%s",
+            model,
+            ttft_ms,
+            cache_read,
+            cache_create,
+            input_tokens,
         )
 
     return answer_text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
@@ -1539,7 +1566,7 @@ def _call_llm_structured(
                 pages_used = tool_input.get("pages_used", [])
                 # Validate pages_used are integers
                 pages_used = [int(p) for p in pages_used if isinstance(p, (int, float))]
-                logger.info(f"[LLM] Structured output: answer={answer_text[:60]} pages={pages_used} model={model}")
+                logger.info("[LLM] Structured output: answer=%s pages=%s model=%s", answer_text[:60], pages_used, model)
                 return answer_text, pages_used, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
 
         # No tool_use block found — extract text content as fallback
@@ -1549,7 +1576,7 @@ def _call_llm_structured(
         return raw, pages, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
 
     except Exception as e:
-        logger.warning(f"[LLM] Structured output failed: {e}, falling back to regular call")
+        logger.warning("[LLM] Structured output failed: %s, falling back to regular call", e)
         err_msg = str(e).lower()
         if "credit balance" in err_msg or "invalid x-api-key" in err_msg or "authentication_error" in err_msg:
             _ANTHROPIC_CREDITS_EXHAUSTED = True
@@ -1622,9 +1649,9 @@ def _self_critique_free_text(question: str, answer: str, source_text: str) -> st
     try:
         raw, _, _, _, _, _ = _call_llm(critique_system, critique_msg, max_tokens=600, model=MODEL_FREE_TEXT)
         result = raw.strip()
-        return result if result else answer
+        return result or answer
     except Exception as e:
-        logger.warning(f"[Critique] Self-critique failed: {e}")
+        logger.warning("[Critique] Self-critique failed: %s", e)
         return answer
 
 
@@ -1666,7 +1693,7 @@ def _extract_pages_used(text: str) -> list[int]:
         PAGES_USED: 3
     Returns empty list if not found or unparseable.
     """
-    match = re.search(r"PAGES_USED:\s*\[?([^\]\n]+)\]?", text, re.I)
+    match = re.search(r"PAGES_USED:\s*\[?([^\]\n]+)\]?", text, re.IGNORECASE)
     if not match:
         return []
     raw = match.group(1).strip()
@@ -1680,12 +1707,12 @@ def _extract_pages_used(text: str) -> list[int]:
 
 def _strip_llm_artifacts(text: str) -> str:
     """Remove SOURCES, PAGES, QUOTE lines, inline [N] markers, and trailing (Source: ...) tags."""
-    text = re.sub(r"\n\s*SOURCES(?:\s+USED)?:\s*[^\n]*", "", text, flags=re.I).strip()
-    text = re.sub(r"\n\s*PAGES?(?:_USED)?:\s*[^\n]*", "", text, flags=re.I | re.MULTILINE).strip()
-    text = re.sub(r"\n\s*QUOTE:\s*[^\n]*", "", text, flags=re.I).strip()
+    text = re.sub(r"\n\s*SOURCES(?:\s+USED)?:\s*[^\n]*", "", text, flags=re.IGNORECASE).strip()
+    text = re.sub(r"\n\s*PAGES?(?:_USED)?:\s*[^\n]*", "", text, flags=re.IGNORECASE | re.MULTILINE).strip()
+    text = re.sub(r"\n\s*QUOTE:\s*[^\n]*", "", text, flags=re.IGNORECASE).strip()
     text = re.sub(r"\s*\[(\d+)\]", "", text).strip()
     # Remove trailing "(Source: Law Name, p.N)" tags — gold never uses them
-    text = re.sub(r"\s*\(Source:\s*[^)]+\)\s*$", "", text, flags=re.I).strip()
+    text = re.sub(r"\s*\(Source:\s*[^)]+\)\s*$", "", text, flags=re.IGNORECASE).strip()
     return text
 
 
@@ -1744,7 +1771,8 @@ def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object
         # Detect leaked numbered CoT format (e.g. "1. QUESTION PARSE:..." / "1. OUTCOME:...")
         # This happens when max_tokens truncates before <answer> tags and no <analysis> tags present
         if re.match(
-            r"^\d+\.\s*(?:QUESTION PARSE|KEY PROVISIONS|CONDITIONS CHECK|GAPS|DRAFT|OUTCOME|ORDER|RULING)", text
+            r"^\d+\.\s*(?:QUESTION PARSE|KEY PROVISIONS|CONDITIONS CHECK|GAPS|DRAFT|OUTCOME|ORDER|RULING)",
+            text,
         ):
             # Try to extract the DRAFT or OUTCOME section content (the actual answer)
             draft_match = re.search(
@@ -1808,7 +1836,7 @@ def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object
             parts = [re.sub(r"^\(\d+\)\s*", "", p).strip() for p in re.split(r"(?=\(\d+\))", first_line) if p.strip()]
             parts = [p for p in parts if p]
         elif "," not in first_line and " and " in first_line.lower():
-            parts = [n.strip() for n in re.split(r"\s+and\s+", first_line, flags=re.I) if n.strip()]
+            parts = [n.strip() for n in re.split(r"\s+and\s+", first_line, flags=re.IGNORECASE) if n.strip()]
         else:
             # Smart comma split: don't split after "CO." or before "LTD/LLC/INC/P.J.S.C"
             # "A.P.F. GROUP CO., LTD" should stay together (CO. in lookbehind + LTD in lookahead)
@@ -1820,7 +1848,7 @@ def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object
                 for n in re.split(
                     r"(?<!CO)(?<!CO\.)(?<!L\.L\.C),\s*(?!(?:LTD|LLC|L\.L\.C|INC|PLC|PJSC|P\.J\.S\.C)\b)",
                     first_line,
-                    flags=re.I,
+                    flags=re.IGNORECASE,
                 )
                 if n.strip()
             ]
@@ -1898,16 +1926,16 @@ def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object
 
         # For chain-of-thought: look for case ID on last line
         last_line = lines[-1]
-        case_full = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC|ACT)\s*\d+/\d{4}", last_line, re.I)
+        case_full = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC|ACT)\s*\d+/\d{4}", last_line, re.IGNORECASE)
         if case_full and len(lines) > 1:
             return _normalize_case_id(case_full.group(0))
         # Search full text for case ID
         if len(lines) > 1:
-            full_case = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC|ACT)\s*\d+/\d{4}", stripped, re.I)
+            full_case = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC|ACT)\s*\d+/\d{4}", stripped, re.IGNORECASE)
             if full_case:
                 return full_case.group(0)
         # Fallback: partial case ID on last line (may have dashes instead of slashes)
-        partial_case = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC|ACT)[\s\-_]*\d+[\s/\-_]*\d+", last_line, re.I)
+        partial_case = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC|ACT)[\s\-_]*\d+[\s/\-_]*\d+", last_line, re.IGNORECASE)
         if partial_case and len(lines) > 1:
             return _normalize_case_id(partial_case.group(0))
 
@@ -1935,12 +1963,12 @@ def _parse_answer(text: str, answer_type: str, web_mode: bool = False) -> object
             return None
         first_line = re.sub(r"\*\*(.+?)\*\*", r"\1", first_line)
         # If explanatory, try to extract case ID
-        case_match = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+", first_line, re.I)
+        case_match = re.search(r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+", first_line, re.IGNORECASE)
         if case_match and len(first_line) > 30:
             return _normalize_case_id(case_match.group(0))
         return _normalize_case_id(first_line) if first_line else None
 
-    return stripped if stripped else None
+    return stripped or None
 
 
 # ---------------------------------------------------------------------------
@@ -2049,9 +2077,9 @@ def _get_law_context(pdf_id: str) -> str:
                 parts.append(f"[PAGE {page_num}]\n{result.strip()}\n")
 
         _LAW_CONTEXTS[pdf_id] = "\n".join(parts)
-        logger.info(f"[LawCtx] Loaded {pdf_id[:16]}: {page_count} pages, {len(parts) - 1} after cleaning")
+        logger.info("[LawCtx] Loaded %s: %d pages, %d after cleaning", pdf_id[:16], page_count, len(parts) - 1)
     except Exception as e:
-        logger.warning(f"[LawCtx] Failed {pdf_id[:16]}: {e}")
+        logger.warning("[LawCtx] Failed %s: %s", pdf_id[:16], e)
         _LAW_CONTEXTS[pdf_id] = ""
     finally:
         if doc is not None:
@@ -2071,15 +2099,17 @@ def _get_law_pages_context(pdf_id: str, pages: list[int]) -> str:
         return ""
     try:
         doc = pymupdf.open(path)
-        title = doc[0].get_text().strip().split("\n")[0][:80]
-        parts = [f"=== {title} ==="]
-        for p in pages:
-            if 1 <= p <= len(doc):
-                text = doc[p - 1].get_text().strip()
-                if text:
-                    parts.append(f"[PAGE {p}]\n{text}")
-        doc.close()
-        return "\n".join(parts) if len(parts) > 1 else ""
+        try:
+            title = doc[0].get_text().strip().split("\n")[0][:80]
+            parts = [f"=== {title} ==="]
+            for p in pages:
+                if 1 <= p <= len(doc):
+                    text = doc[p - 1].get_text().strip()
+                    if text:
+                        parts.append(f"[PAGE {p}]\n{text}")
+            return "\n".join(parts) if len(parts) > 1 else ""
+        finally:
+            doc.close()
     except Exception:
         return ""
 
@@ -2158,10 +2188,10 @@ def _get_law_pages(pdf_id: str, pages: list[int]) -> str:
                 text = doc[p - 1].get_text().strip()
                 if text:
                     parts.append(f"[PAGE {p}]\n{text}\n")
-        logger.info(f"[LawCtx] Windowed {pdf_id[:16]}: {len(pages)} pages (of {len(doc)} total)")
+        logger.info("[LawCtx] Windowed %s: %d pages (of %d total)", pdf_id[:16], len(pages), len(doc))
         return "\n".join(parts)
     except Exception as e:
-        logger.warning(f"[LawCtx] Failed {pdf_id[:16]}: {e}")
+        logger.warning("[LawCtx] Failed %s: %s", pdf_id[:16], e)
         return ""
     finally:
         if doc is not None:
@@ -2264,7 +2294,7 @@ def _build_law_name_mapping():
             if doc is not None:
                 doc.close()
 
-    logger.info(f"[LawRouter] {len(_LAW_NAME_TO_PDF)} hardcoded + {len(_LAW_DYNAMIC_TITLES)} dynamic")
+    logger.info("[LawRouter] %d hardcoded + %d dynamic", len(_LAW_NAME_TO_PDF), len(_LAW_DYNAMIC_TITLES))
 
 
 def _identify_law_from_question(question: str) -> str | None:
@@ -2298,7 +2328,7 @@ def _identify_law_from_question(question: str) -> str | None:
             return pdf_id
 
     # Article-based lookup
-    art_match = re.search(r"article\s+(\d+)", question, re.I)
+    art_match = re.search(r"article\s+(\d+)", question, re.IGNORECASE)
     if art_match:
         art_num = int(art_match.group(1))
         art_key = f"article_{art_num}"
@@ -2352,13 +2382,13 @@ async def generate_answer(
         AnswerResult with answer, citations, and performance metrics.
     """
     qid_short = question_id[:12] if question_id else "?"
-    logger.info(f"[{qid_short}] type={answer_type} pages={len(source_pages)}")
+    logger.info("[%s] type=%s pages=%d", qid_short, answer_type, len(source_pages))
 
     # 0. Router metadata_answer fast path (pre-computed by router.py)
     # Guard: skip for free_text — metadata_answer is a bare case ID string,
     # not a detailed analysis. Free_text needs full LLM generation.
     if metadata_answer is not None and answer_type != "free_text":
-        logger.info(f"[{qid_short}] Router metadata_answer hit: {metadata_answer}")
+        logger.info("[%s] Router metadata_answer hit: %s", qid_short, metadata_answer)
         # Build chunk_pages from source_pages
         pages = []
         seen = set()
@@ -2373,7 +2403,7 @@ async def generate_answer(
     # 1. Oracle fast path for deterministic case metadata
     oracle_result = _lookup_oracle(question, answer_type, source_pages)
     if oracle_result is not None:
-        logger.info(f"[{qid_short}] Oracle hit: {oracle_result.answer}")
+        logger.info("[%s] Oracle hit: %s", qid_short, oracle_result.answer)
         return oracle_result
 
     # Decompose disabled: 30% free_text questions → PPQ=1.30 exactly at limit.
@@ -2506,7 +2536,7 @@ async def generate_answer(
                         # For multi-law, best-effort: assign to first law doc.
                         primary_doc = law_pdf_ids[0]
                         chunk_pages = [{"doc_id": primary_doc, "page_numbers": sorted(set(llm_pages))}]
-                        logger.info(f"[{qid_short}] LLM-guided pages: {llm_pages}")
+                        logger.info("[%s] LLM-guided pages: %s", qid_short, llm_pages)
                     elif source_pages:
                         _pbd: dict[str, list[int]] = {}
                         for sp in source_pages:
@@ -2520,8 +2550,12 @@ async def generate_answer(
                     if not chunk_pages and law_pdf_id:
                         chunk_pages = [{"doc_id": law_pdf_id, "page_numbers": [1]}]
                     logger.info(
-                        f"[{qid_short}] MegaCtx answer={str(parsed)[:60]} "
-                        f"ttft={ttft:.0f}ms total={total:.0f}ms model={ft_model}"
+                        "[%s] MegaCtx answer=%s ttft=%.0fms total=%.0fms model=%s",
+                        qid_short,
+                        str(parsed)[:60],
+                        ttft,
+                        total,
+                        ft_model,
                     )
                     return AnswerResult(
                         answer=parsed,
@@ -2534,12 +2568,12 @@ async def generate_answer(
                         model_name=f"{ft_model}_cached",
                     )
                 except Exception as e:
-                    logger.warning(f"[{qid_short}] MegaCtx failed: {e}, falling back to RAG")
+                    logger.warning("[%s] MegaCtx failed: %s, falling back to RAG", qid_short, e)
 
     # 3. Standard RAG path — use pre-selected source pages
     context = _build_context(source_pages, question)
     if not context and not _is_trick_question(question):
-        logger.warning(f"[{qid_short}] No context available")
+        logger.warning("[%s] No context available", qid_short)
         return AnswerResult(
             answer=None
             if answer_type != "free_text"
@@ -2595,7 +2629,7 @@ async def generate_answer(
         llm_page_set = set(llm_pages)
         filtered = [sp for sp in source_pages if sp.get("page_number") in llm_page_set]
         if filtered:
-            logger.info(f"[{qid_short}] LLM-guided RAG pages: {llm_pages} (from {len(source_pages)} sources)")
+            logger.info("[%s] LLM-guided RAG pages: %s (from %d sources)", qid_short, llm_pages, len(source_pages))
             source_pages_for_cite = filtered
         else:
             # LLM cited pages not in source_pages — fall back
@@ -2615,8 +2649,14 @@ async def generate_answer(
     chunk_pages = [{"doc_id": did, "page_numbers": sorted(pgs)} for did, pgs in pages_by_doc.items()]
 
     logger.info(
-        f"[{qid_short}] RAG answer={str(parsed)[:60]} "
-        f"ttft={ttft:.0f}ms total={total:.0f}ms in={in_tok} out={out_tok} model={ft_model}"
+        "[%s] RAG answer=%s ttft=%.0fms total=%.0fms in=%s out=%s model=%s",
+        qid_short,
+        str(parsed)[:60],
+        ttft,
+        total,
+        in_tok,
+        out_tok,
+        ft_model,
     )
     return AnswerResult(
         answer=parsed,

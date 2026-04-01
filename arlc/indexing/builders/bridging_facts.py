@@ -170,7 +170,7 @@ def generate_bridging_facts_deterministic(bridge_entities: dict, graph: dict, ak
                     "source_docs": doc_ids,
                     "source_pages": source_pages,
                     "bridge_entity": entity,
-                }
+                },
             )
 
     return facts
@@ -238,7 +238,7 @@ def generate_bridging_facts_llm(bridge_entities: dict, graph: dict, aku_index: d
                 "source_docs": doc_ids,
                 "source_pages": source_pages,
                 "bridge_entity": entity,
-            }
+            },
         )
 
     return facts

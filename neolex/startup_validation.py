@@ -78,7 +78,7 @@ def validate_startup(data_dir: str) -> None:
             if difc_count == 0:
                 errors.append(
                     "No chunks found in PostgreSQL for corpus 'difc'. "
-                    "Run the indexer: uv run python3 -m arlc.indexing.indexer"
+                    "Run the indexer: uv run python3 -m arlc.indexing.indexer",
                 )
             else:
                 logger.info("PostgreSQL chunks: difc=%d", difc_count)
@@ -98,7 +98,7 @@ def validate_startup(data_dir: str) -> None:
             errors.append(
                 f"llama-server not reachable at {llama_url}: {exc}. "
                 f"Start it with: llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf "
-                f"--embedding --pooling last -ngl 99 -c 4096 --port 8088"
+                f"--embedding --pooling last -ngl 99 -c 4096 --port 8088",
             )
 
     # --- Auth / billing secret validation ---
@@ -134,7 +134,7 @@ def validate_startup(data_dir: str) -> None:
         for err in errors:
             logger.critical("STARTUP VALIDATION FAILED: %s", err)
         sys.exit(
-            "Vitreon Legal startup failed. Fix the above errors and restart.\n" + "\n".join(f"  - {e}" for e in errors)
+            "Vitreon Legal startup failed. Fix the above errors and restart.\n" + "\n".join(f"  - {e}" for e in errors),
         )
 
     logger.info(

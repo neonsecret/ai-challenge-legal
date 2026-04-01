@@ -6,7 +6,7 @@ This means even if someone reads the DB, they cannot forge sessions.
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
@@ -44,7 +44,7 @@ async def create_session(
     # Evict oldest sessions if at or above the per-user cap.
     # FOR UPDATE serializes concurrent login requests for the same user.
     result = await db.execute(
-        select(DBSession).where(DBSession.user_id == user.id).order_by(DBSession.created_at.asc()).with_for_update()
+        select(DBSession).where(DBSession.user_id == user.id).order_by(DBSession.created_at.asc()).with_for_update(),
     )
     existing = result.scalars().all()
     if len(existing) >= MAX_SESSIONS_PER_USER:
@@ -53,7 +53,7 @@ async def create_session(
         await db.flush()
 
     token = generate_token()
-    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.session_ttl_days)
+    expires_at = datetime.now(UTC) + timedelta(days=settings.session_ttl_days)
     session = DBSession(
         user_id=user.id,
         token_hash=hash_token(token),
@@ -88,12 +88,12 @@ async def get_current_user(
     if not token:
         raise HTTPException(status_code=401, detail="Authentication required")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(DBSession).where(
             DBSession.token_hash == hash_token(token),
             DBSession.expires_at > now,
-        )
+        ),
     )
     session = result.scalar_one_or_none()
     if not session:

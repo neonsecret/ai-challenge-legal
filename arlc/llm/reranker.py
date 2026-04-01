@@ -138,7 +138,7 @@ def llm_rerank_pages(
         if len(page.text) > MAX_PAGE_TEXT_CHARS:
             text_preview += "…"
         candidate_blocks.append(
-            f"[CANDIDATE {i + 1}]\nDocument: {page.doc_id} | Page {page.page_number}\n\n{text_preview}"
+            f"[CANDIDATE {i + 1}]\nDocument: {page.doc_id} | Page {page.page_number}\n\n{text_preview}",
         )
 
     candidates_block = "\n\n---\n\n".join(candidate_blocks)
@@ -223,7 +223,7 @@ def llm_rerank_pages(
             print(
                 f"[llm_rerank] {elapsed_ms:.0f}ms | "
                 f"top: {result[0].doc_id[:12]}:p{result[0].page_number} "
-                f"(combined={scored[0][1]:.2f})"
+                f"(combined={scored[0][1]:.2f})",
             )
 
             return result

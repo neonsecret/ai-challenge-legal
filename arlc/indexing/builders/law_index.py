@@ -43,7 +43,7 @@ def get_law_name_and_year(doc_id: str) -> tuple[str, int] | None:
             {
                 "role": "user",
                 "content": f'What is the official name of this DIFC law? Reply with ONLY the name (e.g. "Employment Law").\n\n{first_page[:500]}',
-            }
+            },
         ],
     )
     name = resp.content[0].text.strip()

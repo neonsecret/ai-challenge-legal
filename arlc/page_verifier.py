@@ -121,7 +121,7 @@ def _extract_answer_keywords(answer, answer_type: str) -> list[str]:
                     dt.strftime("%B %d, %Y"),  # January 15, 2024
                     dt.strftime("%-d %B %Y"),  # 5 January 2024 (no leading zero)
                     dt.strftime("%d/%m/%Y"),  # 15/01/2024
-                ]
+                ],
             )
         except ValueError:
             pass
@@ -350,7 +350,7 @@ def _verify_single_page(
         ratio = matches / len(q_keywords)
         if ratio >= 0.5:
             return CONFIRMED
-        elif ratio >= 0.25:
+        if ratio >= 0.25:
             return WEAK
         return NO_SUPPORT
 
@@ -377,7 +377,7 @@ def _verify_single_page(
         ratio = matched / len(keywords)
         if ratio >= 0.5:
             return CONFIRMED
-        elif ratio > 0:
+        if ratio > 0:
             return WEAK
         return NO_SUPPORT
 
@@ -389,7 +389,7 @@ def _verify_single_page(
         ratio = matched / len(keywords)
         if ratio >= 0.4:
             return CONFIRMED
-        elif ratio >= 0.2:
+        if ratio >= 0.2:
             return WEAK
         return NO_SUPPORT
 

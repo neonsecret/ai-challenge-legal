@@ -228,7 +228,8 @@ def main():
     )
 
     print(
-        f"\nDone. {len(all_new_entries)} new AKUs from {total_pages} pages across {len(doc_ids)} docs.", file=sys.stderr
+        f"\nDone. {len(all_new_entries)} new AKUs from {total_pages} pages across {len(doc_ids)} docs.",
+        file=sys.stderr,
     )
     print(f"Total AKUs in index: {len(combined)}", file=sys.stderr)
     print(f"Index saved to: {AKU_INDEX_PATH}", file=sys.stderr)

@@ -143,19 +143,31 @@ def _load_bm25():
     return _bm25_index, _bm25_ids
 
 
+_EMBEDDING_BACKEND = os.environ.get("EMBEDDING_MODEL", "llama-server").lower()
+
+
 def _get_embedding_model():
-    """Get embedding model (cached)."""
+    """Get embedding model (cached).
+
+    Defaults to llama-server (Qwen3-8B, production embedder).
+    Set EMBEDDING_MODEL=snowflake to use Snowflake Arctic instead.
+    """
     global _embedding_model
     if _embedding_model is None:
-        import torch
-        from sentence_transformers import SentenceTransformer
+        if _EMBEDDING_BACKEND == "llama-server":
+            from neolex.embeddings.llama_embedder import LlamaServerEmbedder
 
-        device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
-        _embedding_model = SentenceTransformer(
-            "Snowflake/snowflake-arctic-embed-l-v2.0",
-            device=device,
-            trust_remote_code=True,
-        )
+            _embedding_model = LlamaServerEmbedder()
+        else:
+            import torch
+            from sentence_transformers import SentenceTransformer
+
+            device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+            _embedding_model = SentenceTransformer(
+                "Snowflake/snowflake-arctic-embed-l-v2.0",
+                device=device,
+                trust_remote_code=True,
+            )
     return _embedding_model
 
 
@@ -235,7 +247,10 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
         # Use only the question part after the semicolon for semantic search
         # (party names add noise; the legal concept is what matters for ranking)
         semantic_query = query.split(";", 1)[-1].strip() if ";" in query else query
-        query_emb = model.encode(semantic_query, prompt_name="query", normalize_embeddings=True)
+        if _EMBEDDING_BACKEND == "llama-server":
+            query_emb = np.array(model.embed_query(semantic_query), dtype="float32")
+        else:
+            query_emb = model.encode(semantic_query, prompt_name="query", normalize_embeddings=True)
         query_np = np.array([query_emb], dtype="float32")
         import faiss
 

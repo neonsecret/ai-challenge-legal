@@ -23,7 +23,7 @@ _FOLLOW_UPS_TOOL = {
                 "minItems": 3,
                 "maxItems": 4,
                 "description": "Follow-up questions, each under 60 characters.",
-            }
+            },
         },
         "required": ["questions"],
     },

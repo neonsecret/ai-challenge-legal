@@ -123,16 +123,16 @@ class LlamaServerEmbedder:
         try:
             r = requests.get(f"{url}/health", timeout=10)
             r.raise_for_status()
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as err:
             raise RuntimeError(
                 f"llama-server not reachable at {url}.\n"
                 f"Start it with:\n"
                 f"  llama-server -m <model.gguf> --embedding --pooling last "
                 f"-ngl 99 -c 4096 --port 8088\n"
-                f"Or set LLAMA_SERVER_URL to the correct address."
-            )
+                f"Or set LLAMA_SERVER_URL to the correct address.",
+            ) from err
         except requests.exceptions.HTTPError as e:
-            raise RuntimeError(f"llama-server health check failed: {e}")
+            raise RuntimeError(f"llama-server health check failed: {e}") from e
 
     def _embed_batch(self, texts: list[str]) -> np.ndarray:
         """POST a single batch to /v1/embeddings; returns (N, dim) float32.

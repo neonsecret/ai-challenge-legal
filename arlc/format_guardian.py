@@ -57,7 +57,7 @@ class FormatGuardian:
                         original_value=value,
                         fixed_value=True,
                         question=question,
-                    )
+                    ),
                 )
                 return True
 
@@ -72,7 +72,7 @@ class FormatGuardian:
                         original_value=value,
                         fixed_value=False,
                         question=question,
-                    )
+                    ),
                 )
                 return False
 
@@ -86,7 +86,7 @@ class FormatGuardian:
                     original_value=value,
                     fixed_value=None,
                     question=question,
-                )
+                ),
             )
             return None
 
@@ -102,7 +102,7 @@ class FormatGuardian:
                     original_value=value,
                     fixed_value=result,
                     question=question,
-                )
+                ),
             )
             return result
         except (ValueError, TypeError, AttributeError):
@@ -140,7 +140,7 @@ class FormatGuardian:
                             original_value=original,
                             fixed_value=result,
                             question=question,
-                        )
+                        ),
                     )
 
                 return result
@@ -154,7 +154,7 @@ class FormatGuardian:
                         original_value=value,
                         fixed_value=None,
                         question=question,
-                    )
+                    ),
                 )
                 return None
 
@@ -198,7 +198,7 @@ class FormatGuardian:
                             original_value=original,
                             fixed_value=iso_date,
                             question=question,
-                        )
+                        ),
                     )
                     return iso_date
                 except ValueError:
@@ -220,7 +220,7 @@ class FormatGuardian:
                             original_value=original,
                             fixed_value=iso_date,
                             question=question,
-                        )
+                        ),
                     )
                     return iso_date
 
@@ -234,7 +234,7 @@ class FormatGuardian:
                     original_value=value,
                     fixed_value=None,
                     question=question,
-                )
+                ),
             )
             return None
 
@@ -279,7 +279,7 @@ class FormatGuardian:
                         original_value=original,
                         fixed_value=cleaned,
                         question=question,
-                    )
+                    ),
                 )
                 break
 
@@ -298,7 +298,7 @@ class FormatGuardian:
                     original_value=original,
                     fixed_value=new_cleaned,
                     question=question,
-                )
+                ),
             )
             cleaned = new_cleaned
 
@@ -313,7 +313,7 @@ class FormatGuardian:
                     original_value=original,
                     fixed_value=cleaned,
                     question=question,
-                )
+                ),
             )
 
         return cleaned
@@ -349,7 +349,7 @@ class FormatGuardian:
                         original_value=value,
                         fixed_value=fixed,
                         question=question,
-                    )
+                    ),
                 )
 
             return fixed
@@ -368,23 +368,22 @@ class FormatGuardian:
                         original_value=value,
                         fixed_value=parts,
                         question=question,
-                    )
+                    ),
                 )
                 return parts
-            else:
-                # Single name as string, convert to array
-                self.issues.append(
-                    FormatIssue(
-                        question_id=question_id,
-                        answer_type=answer_type,
-                        severity="critical",
-                        issue="Single name as string instead of array",
-                        original_value=value,
-                        fixed_value=[value],
-                        question=question,
-                    )
-                )
-                return [value]
+            # Single name as string, convert to array
+            self.issues.append(
+                FormatIssue(
+                    question_id=question_id,
+                    answer_type=answer_type,
+                    severity="critical",
+                    issue="Single name as string instead of array",
+                    original_value=value,
+                    fixed_value=[value],
+                    question=question,
+                ),
+            )
+            return [value]
 
         return value
 
@@ -400,7 +399,7 @@ class FormatGuardian:
                     original_value=value,
                     fixed_value=value,
                     question=question,
-                )
+                ),
             )
             return value
 
@@ -421,7 +420,7 @@ class FormatGuardian:
                     original_value=original,
                     fixed_value=cleaned,
                     question=question,
-                )
+                ),
             )
             return cleaned
 
@@ -446,7 +445,7 @@ class FormatGuardian:
                         original_value=original,
                         fixed_value=cleaned,
                         question=question,
-                    )
+                    ),
                 )
                 break
 
@@ -467,7 +466,7 @@ class FormatGuardian:
                         original_value=original,
                         fixed_value=md_cleaned,
                         question=question,
-                    )
+                    ),
                 )
                 cleaned = md_cleaned
 
@@ -484,14 +483,19 @@ class FormatGuardian:
                     original_value=cleaned[caveat_match.start() : caveat_match.start() + 80] + "...",
                     fixed_value="[removed]",
                     question=question,
-                )
+                ),
             )
             cleaned = caveat_cleaned
 
         return cleaned
 
     def fix_unanswerable(
-        self, answer: Any, chunk_pages: List, answer_type: str, question_id: str, question: str
+        self,
+        answer: Any,
+        chunk_pages: List,
+        answer_type: str,
+        question_id: str,
+        question: str,
     ) -> Tuple[Any, List]:
         """
         Fix unanswerable format.
@@ -517,7 +521,7 @@ class FormatGuardian:
                             original_value=answer,
                             fixed_value=None,
                             question=question,
-                        )
+                        ),
                     )
                     answer = None
 
@@ -533,7 +537,7 @@ class FormatGuardian:
                             original_value=None,
                             fixed_value="The information requested is not available in the provided documents.",
                             question=question,
-                        )
+                        ),
                     )
                     answer = "The information requested is not available in the provided documents."
 
@@ -548,7 +552,7 @@ class FormatGuardian:
                         original_value=len(chunk_pages),
                         fixed_value=0,
                         question=question,
-                    )
+                    ),
                 )
                 chunk_pages = []
 

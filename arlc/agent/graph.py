@@ -222,7 +222,7 @@ def build_agent_graph():
                     ToolMessage(
                         content="Error: empty query.",
                         tool_call_id=tc["id"],
-                    )
+                    ),
                 )
                 continue
 
@@ -235,7 +235,7 @@ def build_agent_graph():
                         ToolMessage(
                             content="Web search is disabled for this conversation. Use search_legal_corpus instead.",
                             tool_call_id=tc["id"],
-                        )
+                        ),
                     )
                     continue
                 if on_status:
@@ -273,14 +273,18 @@ def build_agent_graph():
                     ToolMessage(
                         content="Search failed. Try a different query.",
                         tool_call_id=tc["id"],
-                    )
+                    ),
                 )
                 continue
 
             elapsed = time.monotonic() - t0
             doc_ids = [d["doc_id"] for d in new_docs]
             logger.info(
-                '[agent] search: query="%s" -> %d docs in %.1fs (%s)', query[:60], len(new_docs), elapsed, doc_ids
+                '[agent] search: query="%s" -> %d docs in %.1fs (%s)',
+                query[:60],
+                len(new_docs),
+                elapsed,
+                doc_ids,
             )
 
             if on_status and new_docs:
@@ -345,7 +349,7 @@ def build_agent_graph():
                 ToolMessage(
                     content="Search limit reached. You MUST answer now using the documents already retrieved. Do NOT call any more tools.",
                     tool_call_id=tc["id"],
-                )
+                ),
             )
         return {
             "messages": results,
@@ -606,7 +610,7 @@ async def run_agent_turn(
                 "text": ws.get("snippet", ""),
                 "url": url,
                 "title": ws.get("title", ""),
-            }
+            },
         )
 
     # Post-processing: page verification (DIFC only).

@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
@@ -64,7 +64,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     from sqlalchemy import update as sql_update
 
     status = user.subscription_status
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Whitelist: reject any unknown/canceled status
     if status not in _ACTIVE_STATUSES:
@@ -77,7 +77,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if user.daily_queries_reset_at is None or user.daily_queries_reset_at < today_start:
         await db.execute(
-            sql_update(User).where(User.id == user.id).values(daily_queries_used=0, daily_queries_reset_at=today_start)
+            sql_update(User).where(User.id == user.id).values(daily_queries_used=0, daily_queries_reset_at=today_start),
         )
         await db.commit()
         await db.refresh(user)
@@ -85,7 +85,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     if daily_limit == UNLIMITED_DAILY_QUERIES:
         # Unlimited plan (enterprise) — atomic increment for tracking, no cap enforced
         await db.execute(
-            sql_update(User).where(User.id == user.id).values(daily_queries_used=User.daily_queries_used + 1)
+            sql_update(User).where(User.id == user.id).values(daily_queries_used=User.daily_queries_used + 1),
         )
         await db.commit()
     elif daily_limit > 0:
@@ -93,7 +93,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
             sql_update(User)
             .where(User.id == user.id, User.daily_queries_used < daily_limit)
             .values(daily_queries_used=User.daily_queries_used + 1)
-            .returning(User.daily_queries_used)
+            .returning(User.daily_queries_used),
         )
         new_count = result.scalar_one_or_none()
         if new_count is None:
@@ -154,18 +154,18 @@ async def query(
             corpus=corpus,
             laws=body.laws,
         )
-    except asyncio.TimeoutError:
+    except asyncio.TimeoutError as err:
         logger.error("Pipeline timeout for question: %.80s", body.question)
         raise HTTPException(
             status_code=504,
             detail={"error": "Pipeline timeout", "detail": "Query timed out. Please try again."},
-        )
-    except Exception:
+        ) from err
+    except Exception as err:
         logger.exception("Pipeline error for question: %.80s", body.question)
         raise HTTPException(
             status_code=500,
             detail={"error": "Pipeline failed", "detail": "An internal error occurred. Please try again."},
-        )
+        ) from err
 
     response = pipeline_dict_to_response(result)
     latency_ms = result.get("total_time_ms", 0)
@@ -283,7 +283,7 @@ async def query_stream(
                         logger.error("Background task failed: %s", f.exception())
                         if not f.cancelled() and f.exception()
                         else None
-                    )
+                    ),
                 )
 
         def _update_job_status_detail(stage: str):
@@ -301,7 +301,7 @@ async def query_stream(
                     pipeline_job_id,
                     status=coarse,
                     status_detail=stage,
-                )
+                ),
             )
 
         def on_status(stage: str):
@@ -412,7 +412,7 @@ async def query_stream(
                         pipeline_job_id,
                         status="timeout",
                         detail="Query timed out — the pipeline took too long to process this request.",
-                    )
+                    ),
                 )
                 t.add_done_callback(_log_task_exception)
             yield {
@@ -421,7 +421,7 @@ async def query_stream(
                     {
                         "error": "Pipeline timeout",
                         "detail": "Query timed out. This may be due to heavy load or a complex search. Please try again.",
-                    }
+                    },
                 ),
             }
             return
@@ -434,13 +434,13 @@ async def query_stream(
                         pipeline_job_id,
                         status="failed",
                         detail="An internal error occurred. Please try again.",
-                    )
+                    ),
                 )
                 t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"error": "Pipeline failed", "detail": "An internal error occurred. Please try again."}
+                    {"error": "Pipeline failed", "detail": "An internal error occurred. Please try again."},
                 ),
             }
             return
@@ -459,7 +459,7 @@ async def query_stream(
                     question=body.question,
                     answer=str(response.answer) if response.answer is not None else "",
                     corpus=corpus,
-                )
+                ),
             )
             follow_ups_task.add_done_callback(_log_task_exception)
 
@@ -485,7 +485,7 @@ async def query_stream(
                         conversation_id=conversation_id,
                         question=body.question,
                         answer=str(response.answer),
-                    )
+                    ),
                 )
                 task.add_done_callback(_log_task_exception)
 
@@ -497,7 +497,7 @@ async def query_stream(
                         answer=str(response.answer) if response.answer is not None else "",
                         sources_json=sources_json,
                         confidence=response.confidence,
-                    )
+                    ),
                 )
                 t.add_done_callback(_log_task_exception)
 
@@ -523,13 +523,13 @@ async def query_stream(
                         pipeline_job_id,
                         status="failed",
                         detail="An internal error occurred. Please try again.",
-                    )
+                    ),
                 )
                 t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"error": "Failed to format response", "detail": "An internal error occurred. Please try again."}
+                    {"error": "Failed to format response", "detail": "An internal error occurred. Please try again."},
                 ),
             }
             return
@@ -581,7 +581,7 @@ async def list_corpora(
                         "doc_ids": doc_ids,
                         "doc_count": len(doc_ids),
                         "indexed": True,
-                    }
+                    },
                 )
 
         # Fallback: no .meta files but chunks exist — show single entry
@@ -591,7 +591,7 @@ async def list_corpora(
                     "name": "My Documents",
                     "corpus_id": client_slug,
                     "indexed": True,
-                }
+                },
             )
 
     return {"corpora": corpora}

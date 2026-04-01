@@ -233,7 +233,7 @@ def extract_zip_safely(
             # --- Path traversal ---
             if ".." in name or name.startswith("/"):
                 raise ValueError(
-                    f"Unsafe path detected in ZIP entry: '{name}'. Archive may contain a path traversal attack."
+                    f"Unsafe path detected in ZIP entry: '{name}'. Archive may contain a path traversal attack.",
                 )
 
             # --- Symlinks (Unix external_attr: upper 16 bits contain mode) ---
@@ -253,14 +253,14 @@ def extract_zip_safely(
                 ratio = info.file_size / info.compress_size
                 if ratio > MAX_COMPRESSION_RATIO:
                     raise ValueError(
-                        f"Suspicious compression ratio ({ratio:.0f}:1) for '{basename}'. Possible zip bomb."
+                        f"Suspicious compression ratio ({ratio:.0f}:1) for '{basename}'. Possible zip bomb.",
                     )
 
             # --- Total extracted size guard (pre-extraction estimate) ---
             if total_extracted + info.file_size > max_total_bytes:
                 raise ValueError(
                     f"Total extracted size would exceed {max_total_bytes // (1024 * 1024)} MB. "
-                    f"Possible zip bomb or archive too large."
+                    f"Possible zip bomb or archive too large.",
                 )
 
             # --- Extract bytes ---
@@ -270,7 +270,7 @@ def extract_zip_safely(
                 # Encrypted / password-protected entry
                 if "password" in str(exc).lower() or "encrypted" in str(exc).lower():
                     raise ValueError(
-                        "ZIP archive contains encrypted entries. Password-protected archives are not supported."
+                        "ZIP archive contains encrypted entries. Password-protected archives are not supported.",
                     ) from exc
                 raise
 
@@ -279,7 +279,7 @@ def extract_zip_safely(
             if total_extracted > max_total_bytes:
                 raise ValueError(
                     f"Total extracted size exceeds {max_total_bytes // (1024 * 1024)} MB. "
-                    f"Possible zip bomb or archive too large."
+                    f"Possible zip bomb or archive too large.",
                 )
 
             # --- Non-PDF files ---

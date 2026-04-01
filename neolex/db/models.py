@@ -5,7 +5,7 @@ Operational tables (api_keys, queries, etc.) are in operational_models.py.
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -16,7 +16,7 @@ from neolex.db.postgres import Base
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class User(Base):
@@ -36,7 +36,9 @@ class User(Base):
 
     # Subscription state
     subscription_status: Mapped[str] = mapped_column(
-        String, default="free", nullable=False
+        String,
+        default="free",
+        nullable=False,
     )  # free | starter | pro | enterprise | canceled  (legacy: trial treated as free)
     stripe_customer_id: Mapped[str | None] = mapped_column(String, unique=True)
 
@@ -61,7 +63,9 @@ class Session(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
     token_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
@@ -77,7 +81,9 @@ class AuthToken(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
     token_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     token_type: Mapped[str] = mapped_column(String, nullable=False)  # email_verify | password_reset
@@ -93,7 +99,9 @@ class Subscription(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
     stripe_subscription_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     stripe_price_id: Mapped[str] = mapped_column(String, nullable=False)
@@ -112,7 +120,9 @@ class Invoice(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
     stripe_invoice_id: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -167,7 +177,10 @@ class ConversationDocs(Base):
     )
     docs_json: Mapped[str] = mapped_column(String, nullable=False, default="[]")
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+        TIMESTAMP(timezone=True),
+        default=_utcnow,
+        onupdate=_utcnow,
+        nullable=False,
     )
 
 
@@ -190,7 +203,9 @@ class PipelineJob(Base):
     conversation_id: Mapped[str] = mapped_column(String, nullable=False)
     question: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(
-        String(20), nullable=False, default="processing"
+        String(20),
+        nullable=False,
+        default="processing",
     )  # processing | searching | answering | complete | failed | timeout
     status_detail: Mapped[str | None] = mapped_column(String)
     answer: Mapped[str | None] = mapped_column(String)
@@ -198,7 +213,10 @@ class PipelineJob(Base):
     confidence: Mapped[str | None] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        TIMESTAMP(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+        TIMESTAMP(timezone=True),
+        default=_utcnow,
+        onupdate=_utcnow,
+        nullable=False,
     )
 
     __table_args__ = (Index("ix_pipeline_job_user_conv", "user_id", "conversation_id"),)

@@ -281,7 +281,7 @@ async def upload_document(
                 ip=getattr(request.client, "host", None),
                 user_agent=request.headers.get("user-agent"),
             )
-        raise HTTPException(status_code=status_code, detail=str(exc))
+        raise HTTPException(status_code=status_code, detail=str(exc)) from exc
 
     # --- Persist to document registry (DB) ---
     async with get_audit_db() as audit_db:
@@ -349,7 +349,7 @@ _VALID_ZIP_CONTENT_TYPES = frozenset(
         "application/zip",
         "application/x-zip-compressed",
         "application/x-zip",
-    }
+    },
 )
 
 
@@ -425,7 +425,7 @@ async def upload_zip(
                 ip=getattr(request.client, "host", None),
                 user_agent=request.headers.get("user-agent"),
             )
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     if not valid_pdfs and not skipped_files:
         raise HTTPException(status_code=400, detail="ZIP archive is empty.")
@@ -514,7 +514,7 @@ async def upload_zip(
                     status="error",
                     size_bytes=len(pdf_bytes),
                     error=str(exc),
-                )
+                ),
             )
             continue
 
@@ -539,7 +539,7 @@ async def upload_zip(
                 doc_id=meta["doc_id"],
                 status="uploaded",
                 size_bytes=meta["size_bytes"],
-            )
+            ),
         )
 
     # --- Append skipped files to results ---
@@ -548,7 +548,7 @@ async def upload_zip(
             ZipUploadResult(
                 filename=skipped_name,
                 status=reason,
-            )
+            ),
         )
 
     # --- Trigger ONE reindex job (only if we uploaded at least 1 file) ---
@@ -636,7 +636,7 @@ async def list_documents(
                 "upload_ts": row["upload_ts"],
                 "indexed": bool(row["indexed"]),
                 "collection": meta_collections.get(doc_id, "My Documents"),
-            }
+            },
         )
 
     return {

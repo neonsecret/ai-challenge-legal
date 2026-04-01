@@ -113,7 +113,7 @@ def _extract_structure(text: str, page_map: dict[int, int] | None = None) -> lis
                     "heading": heading,
                     "page": page,
                     "level": level,
-                }
+                },
             )
 
     # Sort by position in document
@@ -200,7 +200,7 @@ def convert_pdf(pdf_path: Path, force: bool = False) -> tuple[Path, Path] | None
         # Check text coverage — if Docling output is >20% shorter, supplement
         if len(docling_text.strip()) < len(pymupdf_text.strip()) * MIN_TEXT_RATIO:
             print(
-                f"  WARNING: {doc_id[:16]}... Docling output {len(docling_text)} chars vs PyMuPDF {len(pymupdf_text)} chars — supplementing"
+                f"  WARNING: {doc_id[:16]}... Docling output {len(docling_text)} chars vs PyMuPDF {len(pymupdf_text)} chars — supplementing",
             )
             # Append PyMuPDF sections that are missing
             docling_text = docling_text + "\n\n---\n<!-- PyMuPDF supplement for missing text -->\n" + pymupdf_text

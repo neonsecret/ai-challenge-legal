@@ -62,9 +62,9 @@ def init():
                 OpenAI(
                     api_key=ep["api_key"],
                     base_url=ep["base_url"],
-                    default_headers=extra_headers if extra_headers else None,
+                    default_headers=extra_headers or None,
                     timeout=120.0,
-                )
+                ),
             )
         _initialized = True
         if _endpoints:

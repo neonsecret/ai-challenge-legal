@@ -43,7 +43,7 @@ async def cmd_list_users(args: argparse.Namespace) -> None:
                 u.subscription_status,
                 "YES" if u.email_verified else "NO",
                 str(u.created_at)[:19] if u.created_at else "",
-            )
+            ),
         )
 
 
@@ -65,7 +65,7 @@ async def cmd_show_log(args: argparse.Namespace) -> None:
             print(
                 f"[{ts}] latency={r.get('latency_ms')}ms | "
                 f"model={r.get('model_name', '')} | "
-                f"q={r.get('question', '')[:60]}"
+                f"q={r.get('question', '')[:60]}",
             )
         else:
             detail = r.get("detail_json", "{}")
@@ -85,7 +85,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_log = sub.add_parser("show-log", help="Display recent audit log entries")
     p_log.add_argument(
-        "--table", choices=["queries", "events"], default="queries", help="Which log table to show (default: queries)"
+        "--table",
+        choices=["queries", "events"],
+        default="queries",
+        help="Which log table to show (default: queries)",
     )
     p_log.add_argument("--limit", type=int, default=20, help="Number of recent entries to show (default: 20)")
 

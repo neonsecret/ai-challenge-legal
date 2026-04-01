@@ -114,7 +114,7 @@ def _load_doc_date_pages() -> None:
                     result[doc_id] = int(doi["page"])
         _DOC_DATE_PAGES = result
     except Exception as e:
-        print(f"[retriever] Warning: could not load date pages: {e}")
+        logger.warning("[retriever] Warning: could not load date pages: %s", e)
 
 
 _load_doc_date_pages()
@@ -164,7 +164,7 @@ def _format_reranker_pairs(
     """
     if not _is_qwen_reranker():
         return pairs
-    effective = instruction if instruction else RERANKER_INSTRUCTION
+    effective = instruction or RERANKER_INSTRUCTION
     prefix = f"Instruct: {effective}\nQuery: "
     return [(prefix + q, doc) for q, doc in pairs]
 
@@ -366,7 +366,10 @@ def _get_sync_engine():
 
 
 def search_chunks_vector(
-    query_embedding: list[float], top_k: int = 50, corpus: str = "difc", doc_ids: list[str] | None = None
+    query_embedding: list[float],
+    top_k: int = 50,
+    corpus: str = "difc",
+    doc_ids: list[str] | None = None,
 ) -> dict:
     """Search chunks via pgvector inner product, returning legacy-compatible format.
 
@@ -497,7 +500,9 @@ def _search_chunks_text_scored(query: str, top_k: int = 200, corpus: str = "difc
 
 
 def _search_chunks_text_page1_scored(
-    query: str, top_k: int = 200, corpus: str = "difc"
+    query: str,
+    top_k: int = 200,
+    corpus: str = "difc",
 ) -> list[tuple[str, str, float]]:
     """Page-1 text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
     engine = _get_sync_engine()
@@ -633,13 +638,20 @@ def _load_all_chunks(corpus: str = "difc"):
                 "chunk_id": row.chunk_id,
                 "text": row.text,
                 "metadata": meta,
-            }
+            },
         )
 
     _corpus_chunk_cache[corpus] = (doc_text_index, chunks_by_doc)
     if corpus == "difc":
         _doc_index = doc_text_index
         _chunks_by_doc = chunks_by_doc
+
+
+def invalidate_corpus_cache(corpus: str) -> None:
+    """Remove a corpus from the in-memory chunk cache so the next retrieval reloads it."""
+    with _doc_index_lock:
+        _corpus_chunk_cache.pop(corpus, None)
+    logger.info("Corpus cache invalidated for %s", corpus)
 
 
 def build_doc_index(corpus: str = "difc") -> dict[str, str]:
@@ -969,7 +981,7 @@ _STOPWORDS = frozenset(
         "shall",
         "will",
         "who",
-    }
+    },
 )
 
 _SCHEDULE_INDICATORS = frozenset({"schedule", "contravention", "appendix", "annex", "fine", "penalty table"})
@@ -990,7 +1002,7 @@ _ENACTMENT_KEYWORDS = frozenset(
         "gazette",
         # Phase 3: 'effective' standalone for "when did X become effective?"
         "effective",
-    }
+    },
 )
 
 # Outcome-related question keywords — used to boost prescore of outcome chunks
@@ -1015,7 +1027,7 @@ _OUTCOME_QUESTION_KEYWORDS = frozenset(
         "conclud",
         "final order",
         "final ruling",
-    }
+    },
 )
 # Outcome keywords that appear IN the actual chunks (order pages, judgment text)
 # Broad 'judgment'/'judgement' removed to prevent false-positive boosting on non-outcome chunks.
@@ -1034,7 +1046,7 @@ _OUTCOME_CHUNK_KEYWORDS = frozenset(
         "claim allowed",
         "appeal dismissed",
         "appeal allowed",
-    }
+    },
 )
 
 
@@ -1187,7 +1199,7 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
             (
                 article_score + enactment_bonus + section_boost + outcome_bonus + page_bonus + overlap + entity_score,
                 chunk,
-            )
+            ),
         )
 
     scored.sort(key=lambda x: x[0], reverse=True)
@@ -1462,8 +1474,10 @@ def _doc_fusion_select(
         else:
             break
 
-    print(
-        f"[doc_fusion] selected {len(selected)} docs: {', '.join(f'{d[:12]}({fused_scores[d]:.3f})' for d in selected)}"
+    logger.debug(
+        "[doc_fusion] selected %d docs: %s",
+        len(selected),
+        ", ".join(f"{d[:12]}({fused_scores[d]:.3f})" for d in selected),
     )
 
     return selected
@@ -1512,7 +1526,7 @@ def _generate_query_variants(question: str, corpus: str = "difc") -> list[str]:
                         "article numbers if applicable, or related legal concepts from the same domain. "
                         "Output ONLY the 2 queries, one per line, no numbering."
                     ),
-                }
+                },
             ],
             max_tokens=100,
             temperature=0.3,
@@ -1526,13 +1540,13 @@ def _generate_query_variants(question: str, corpus: str = "difc") -> list[str]:
 
 def prewarm():
     """Pre-warm all caches before parallel processing to avoid race conditions."""
-    print("Pre-warming retrieval caches...")
+    logger.info("Pre-warming retrieval caches...")
     get_embedding_model()
     get_chunk_count("difc")  # warm DB connection pool
     get_chunk_count("czech")
     build_doc_index()  # populates in-memory chunk cache from PostgreSQL
     get_reranker()
-    print("Caches ready.")
+    logger.info("Caches ready.")
 
 
 def detect_multi_hop(question: str) -> bool:
@@ -1598,7 +1612,7 @@ def decompose_query(question: str) -> list[str]:
                         f"one per document/case. Output each on a separate line.\n"
                         f"Question: {question}"
                     ),
-                }
+                },
             ],
             max_tokens=150,
             temperature=0.0,
@@ -1650,7 +1664,7 @@ def retrieve(
     if False and detect_multi_hop(question):
         sub_queries = decompose_query(question)
         if len(sub_queries) >= 2:
-            print(f"[MULTI-HOP] Decomposed into {len(sub_queries)} sub-queries")
+            logger.debug("[MULTI-HOP] Decomposed into %d sub-queries", len(sub_queries))
             # Retrieve chunks for each sub-query
             all_chunks = []
             seen_ids = set()
@@ -1661,10 +1675,12 @@ def retrieve(
                     if chunk["chunk_id"] not in seen_ids:
                         seen_ids.add(chunk["chunk_id"])
                         all_chunks.append(chunk)
-            print(f"[MULTI-HOP] Retrieved {len(all_chunks)} unique chunks from {len(sub_queries)} sub-queries")
+            logger.debug(
+                "[MULTI-HOP] Retrieved %d unique chunks from %d sub-queries", len(all_chunks), len(sub_queries)
+            )
             return all_chunks
         # If decomposition failed, fall through to standard retrieval
-        print("[MULTI-HOP] Decomposition failed, using standard retrieval")
+        logger.debug("[MULTI-HOP] Decomposition failed, using standard retrieval")
 
     # Step 0: Extract article filter for metadata-aware retrieval
     article_filter = _extract_article_filter(question)
@@ -1687,7 +1703,9 @@ def retrieve(
                     filtered_chunks.append(chunk)
             # Put article-matching chunks first, then others
             keyword_chunks = article_chunks + filtered_chunks
-            print(f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted to top")
+            logger.debug(
+                "[METADATA FILTER] Article %s: %d exact matches promoted to top", article_filter, len(article_chunks)
+            )
 
         # Pre-score keyword chunks by term overlap so article-specific chunks surface first.
         # When multiple docs are retrieved, score per-doc first (top-10 each) to prevent a
@@ -1723,7 +1741,7 @@ def retrieve(
                     "text": vector_results["documents"][0][i],
                     "metadata": vector_results["metadatas"][0][i],
                     "distance": vector_results["distances"][0][i],
-                }
+                },
             )
 
         # Merge: pre-scored keyword matches first, then vector matches
@@ -1761,94 +1779,95 @@ def retrieve(
 
         return ranked
 
-    else:
-        # No keyword matches: use text search + vector with RRF, augmented by HyDE
+    # No keyword matches: use text search + vector with RRF, augmented by HyDE
 
-        # Scale top_k based on metadata filters (need larger pool before filtering)
-        # V5: Raised floor from 50 to 200 — deeper pool gives +0.10 retrieval accuracy
-        base_top_k = max(n_results, 200)
-        top_k = base_top_k * 3 if article_filter else base_top_k
+    # Scale top_k based on metadata filters (need larger pool before filtering)
+    # V5: Raised floor from 50 to 200 — deeper pool gives +0.10 retrieval accuracy
+    base_top_k = max(n_results, 200)
+    top_k = base_top_k * 3 if article_filter else base_top_k
 
-        bm25_ranking = search_chunks_text(question, top_k=top_k, corpus=corpus)
+    bm25_ranking = search_chunks_text(question, top_k=top_k, corpus=corpus)
 
-        # Original query embedding
-        query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-        vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus)
-        vector_ranking = vector_results["ids"][0]
+    # Original query embedding
+    query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
+    vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus)
+    vector_ranking = vector_results["ids"][0]
 
-        # HyDE: generate a hypothetical passage and embed it for additional signal
-        # Only for free_text questions — adds ~500ms Haiku call overhead, worth it for LLM-judged answers
-        hyde_ranking = []
-        hyde_passage = generate_hyde_passage(question, corpus=corpus) if use_hyde else None
-        if hyde_passage:
+    # HyDE: generate a hypothetical passage and embed it for additional signal
+    # Only for free_text questions — adds ~500ms Haiku call overhead, worth it for LLM-judged answers
+    hyde_ranking = []
+    hyde_passage = generate_hyde_passage(question, corpus=corpus) if use_hyde else None
+    if hyde_passage:
+        try:
+            hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
+            hyde_results = search_chunks_vector(hyde_emb, top_k=top_k, corpus=corpus)
+            hyde_ranking = hyde_results["ids"][0]
+        except Exception:  # nosec B110
+            pass
+
+    # Multi-query expansion: generate variant queries for additional text search signal
+    # Only for free_text (use_hyde=True) to avoid TTFT penalty on deterministic questions
+    variant_rankings = []
+    if use_hyde:
+        variants = _generate_query_variants(question, corpus=corpus)
+        for variant in variants[:2]:
             try:
-                hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
-                hyde_results = search_chunks_vector(hyde_emb, top_k=top_k, corpus=corpus)
-                hyde_ranking = hyde_results["ids"][0]
+                v_bm25_ranking = search_chunks_text(variant, top_k=top_k, corpus=corpus)
+                variant_rankings.append(v_bm25_ranking)
             except Exception:  # nosec B110
                 pass
 
-        # Multi-query expansion: generate variant queries for additional text search signal
-        # Only for free_text (use_hyde=True) to avoid TTFT penalty on deterministic questions
-        variant_rankings = []
-        if use_hyde:
-            variants = _generate_query_variants(question, corpus=corpus)
-            for variant in variants[:2]:
-                try:
-                    v_bm25_ranking = search_chunks_text(variant, top_k=top_k, corpus=corpus)
-                    variant_rankings.append(v_bm25_ranking)
-                except Exception:  # nosec B110
-                    pass
+    # RRF over all signals: text search, vector, HyDE-vector, variant queries
+    all_rankings = [r for r in [bm25_ranking, vector_ranking, hyde_ranking] + variant_rankings if r]
+    # Text search gets 2.0x weight — outperforms dense for legal without domain-adapted embeddings (LRAGE 2025)
+    # Phase 3: raised 1.5->2.0 for larger 300-doc corpus (more vector noise at scale)
+    weights = [2.0] + [1.0] * (len(all_rankings) - 1)
+    merged_ranking = reciprocal_rank_fusion(all_rankings, k=60, weights=weights)
 
-        # RRF over all signals: text search, vector, HyDE-vector, variant queries
-        all_rankings = [r for r in [bm25_ranking, vector_ranking, hyde_ranking] + variant_rankings if r]
-        # Text search gets 2.0x weight — outperforms dense for legal without domain-adapted embeddings (LRAGE 2025)
-        # Phase 3: raised 1.5->2.0 for larger 300-doc corpus (more vector noise at scale)
-        weights = [2.0] + [1.0] * (len(all_rankings) - 1)
-        merged_ranking = reciprocal_rank_fusion(all_rankings, k=60, weights=weights)
+    # Build lookup from vector results
+    vector_lookup = {}
+    for i in range(len(vector_results["ids"][0])):
+        chunk_id = vector_results["ids"][0][i]
+        vector_lookup[chunk_id] = {
+            "chunk_id": chunk_id,
+            "text": vector_results["documents"][0][i],
+            "metadata": vector_results["metadatas"][0][i],
+            "distance": vector_results["distances"][0][i],
+        }
 
-        # Build lookup from vector results
-        vector_lookup = {}
-        for i in range(len(vector_results["ids"][0])):
-            chunk_id = vector_results["ids"][0][i]
-            vector_lookup[chunk_id] = {
-                "chunk_id": chunk_id,
-                "text": vector_results["documents"][0][i],
-                "metadata": vector_results["metadatas"][0][i],
-                "distance": vector_results["distances"][0][i],
-            }
+    final_chunks = []
+    for chunk_id in merged_ranking[:60]:
+        if chunk_id in vector_lookup:
+            final_chunks.append(vector_lookup[chunk_id])
+        else:
+            chunk_data = get_chunks_by_ids([chunk_id], corpus=corpus)
+            if len(chunk_data["ids"]) > 0:
+                final_chunks.append(
+                    {
+                        "chunk_id": chunk_data["ids"][0],
+                        "text": chunk_data["documents"][0],
+                        "metadata": chunk_data["metadatas"][0],
+                        "distance": 0.5,
+                    },
+                )
 
-        final_chunks = []
-        for chunk_id in merged_ranking[:60]:
-            if chunk_id in vector_lookup:
-                final_chunks.append(vector_lookup[chunk_id])
+    # Metadata-aware filtering: promote article-matching chunks to the top
+    if article_filter:
+        article_chunks = []
+        other_chunks = []
+        for chunk in final_chunks:
+            if chunk["metadata"].get("article_number") == article_filter:
+                article_chunks.append(chunk)
             else:
-                chunk_data = get_chunks_by_ids([chunk_id], corpus=corpus)
-                if len(chunk_data["ids"]) > 0:
-                    final_chunks.append(
-                        {
-                            "chunk_id": chunk_data["ids"][0],
-                            "text": chunk_data["documents"][0],
-                            "metadata": chunk_data["metadatas"][0],
-                            "distance": 0.5,
-                        }
-                    )
+                other_chunks.append(chunk)
+        final_chunks = article_chunks + other_chunks
+        logger.debug(
+            "[METADATA FILTER] Article %s: %d exact matches promoted (vector path)",
+            article_filter,
+            len(article_chunks),
+        )
 
-        # Metadata-aware filtering: promote article-matching chunks to the top
-        if article_filter:
-            article_chunks = []
-            other_chunks = []
-            for chunk in final_chunks:
-                if chunk["metadata"].get("article_number") == article_filter:
-                    article_chunks.append(chunk)
-                else:
-                    other_chunks.append(chunk)
-            final_chunks = article_chunks + other_chunks
-            print(
-                f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted (vector path)"
-            )
-
-        return rerank_chunks(question, final_chunks[:30], top_k=20, answer_type=answer_type)
+    return rerank_chunks(question, final_chunks[:30], top_k=20, answer_type=answer_type)
 
 
 # ---------------------------------------------------------------------------
@@ -1927,7 +1946,7 @@ def _retrieve_pages_simple(
                  reranker instructions (T-04). Falls back to defaults for unknown types.
     No text search fusion, no routing metadata, no DIFC-specific heuristics.
     """
-    print(f"[retriever] simple retrieval for corpus={corpus!r} answer_type={answer_type!r}")
+    logger.debug("[retriever] simple retrieval for corpus=%r answer_type=%r", corpus, answer_type)
     if on_status:
         on_status("retrieving:searching corpus")
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
@@ -1958,7 +1977,7 @@ def _retrieve_pages_simple(
                 "text": vector_results["documents"][0][i],
                 "metadata": vector_results["metadatas"][0][i],
                 "distance": vector_results["distances"][0][i],
-            }
+            },
         )
 
     # Filter by law prefixes if specified (Czech corpus law selector)
@@ -2110,9 +2129,13 @@ def retrieve_pages(
         if best_score < 0.4:
             if on_status:
                 on_status("retrieving:broadening search")
-            print(f"[retriever] low-confidence targeted ({best_score:.3f} < 0.40), adding fallback")
+            logger.debug("[retriever] low-confidence targeted (%.3f < 0.40), adding fallback", best_score)
             fb_results = _retrieve_pages_fallback(
-                question, max_per_doc=1, max_total=1, answer_type=answer_type, cached_query_emb=_question_emb
+                question,
+                max_per_doc=1,
+                max_total=1,
+                answer_type=answer_type,
+                cached_query_emb=_question_emb,
             )
             seen = {}
             for r in results + fb_results:
@@ -2150,11 +2173,19 @@ def retrieve_pages(
             if not results:
                 # Targeted retrieval found nothing — fall back to hybrid
                 results = _retrieve_pages_fallback(
-                    question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb
+                    question,
+                    max_per_doc,
+                    max_total,
+                    answer_type,
+                    cached_query_emb=_question_emb,
                 )
         else:
             results = _retrieve_pages_fallback(
-                question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb
+                question,
+                max_per_doc,
+                max_total,
+                answer_type,
+                cached_query_emb=_question_emb,
             )
 
     if on_status and results:
@@ -2227,7 +2258,11 @@ def _fair_case_select(
 
 
 def _dense_page_scores(
-    question: str, doc_id: str, chunks: list[dict], cached_query_emb=None, corpus: str = "difc"
+    question: str,
+    doc_id: str,
+    chunks: list[dict],
+    cached_query_emb=None,
+    corpus: str = "difc",
 ) -> dict[int, float]:
     """Rank pages within a document using dense embedding similarity only.
 
@@ -2303,7 +2338,7 @@ def _retrieve_pages_targeted(
             r"\b(date of issue|issue date|issued|earlier.*date|later.*date)\b",
             question,
             re.IGNORECASE,
-        )
+        ),
     )
 
     # Extract article root numbers for content-based definition page boost.
@@ -2312,7 +2347,7 @@ def _retrieve_pages_targeted(
     # Skip when question asks about fines/penalties — the answer is in a schedule,
     # not the article definition page.
     _asks_fine = bool(
-        re.search(r"\b(fine|penalty|penalt|sanction|contravene|contravention)\b", question, re.IGNORECASE)
+        re.search(r"\b(fine|penalty|penalt|sanction|contravene|contravention)\b", question, re.IGNORECASE),
     )
     _art_root_nums = list(set(re.findall(r"Article\s+(\d+)", question, re.IGNORECASE))) if not _asks_fine else []
 
@@ -2325,7 +2360,7 @@ def _retrieve_pages_targeted(
             r"\b(?:law\s+number|official\s+number|law\s+no\.?\s+of|numbered)\b",
             question,
             re.IGNORECASE,
-        )
+        ),
     )
 
     # Detect outcome questions for targeted page boost (mirrors _prescore_keyword_chunks)
@@ -2336,7 +2371,7 @@ def _retrieve_pages_targeted(
             r"\bhigher\b.*\baward\b|\baward\b.*\bvalue\b",
             question,
             re.IGNORECASE,
-        )
+        ),
     )
     # Cleaned CE query: strips long case names (≥25 chars before "[YEAR] DIFC TYPE NUM")
     # that bias the cross-encoder toward title pages. In targeted retrieval the doc is
@@ -2344,7 +2379,7 @@ def _retrieve_pages_targeted(
     # the semantic "what/why" portion of the question.
     _ce_query = _clean_query_for_ce(question)
     if _ce_query != question:
-        print(f"[retriever] CE query cleaned: '{_ce_query[:80]}'")
+        logger.debug("[retriever] CE query cleaned: '%s'", _ce_query[:80])
 
     all_page_scores: list[PageResult] = []
 
@@ -2393,9 +2428,9 @@ def _retrieve_pages_targeted(
                         score=1.0,  # all pages equally scored for small docs
                         text=best_chunk.get("text", ""),
                         chunk_id=best_chunk.get("chunk_id", ""),
-                    )
+                    ),
                 )
-            print(f"[retriever] small-doc full inclusion: {doc_id[:12]} ({len(unique_pages)} pages)")
+            logger.debug("[retriever] small-doc full inclusion: %s (%d pages)", doc_id[:12], len(unique_pages))
             continue
 
         # Per-type page ranking: dense-only for free_text/boolean (IAS Partners insight),
@@ -2627,7 +2662,7 @@ def _retrieve_pages_targeted(
                             or (
                                 re.search(r"^SCHEDULE\s+\d+", ct, re.IGNORECASE)
                                 and re.search(r"\bFINES?\b", ct[:200], re.IGNORECASE)
-                            )
+                            ),
                         )
                         if _is_fine_schedule:
                             page_scores[page_num] += 0.8  # +0.8 (vs +0.4): must beat router's +0.6 article boost
@@ -2656,8 +2691,11 @@ def _retrieve_pages_targeted(
             if best_deep and p1_score > best_deep[1] and (p1_score - best_deep[1]) < 0.15:
                 # Swap: push page 1 just below the best deep page
                 page_scores[1] = best_deep[1] - 0.001
-                print(
-                    f"[retriever] title-page demotion: p1 ({p1_score:.3f}) demoted below p{best_deep[0]} ({best_deep[1]:.3f})"
+                logger.debug(
+                    "[retriever] title-page demotion: p1 (%.3f) demoted below p%d (%.3f)",
+                    p1_score,
+                    best_deep[0],
+                    best_deep[1],
                 )
 
         # Skip docs where the best page scores near-zero: routing false-positives
@@ -2700,7 +2738,7 @@ def _retrieve_pages_targeted(
                     score=score,
                     text=text,
                     chunk_id=page_chunk_ids.get(page_num, ""),
-                )
+                ),
             )
             _selected_count += 1
 
@@ -2726,9 +2764,11 @@ def _retrieve_pages_targeted(
                         else:
                             results.append(candidate)
                         doc_represented.add(doc_id)
-                        print(
-                            f"[retriever] post-fusion rescue: injected {doc_id[:12]}:p{candidate.page_number} "
-                            f"(score={candidate.score:.3f}) to ensure multi-doc coverage"
+                        logger.debug(
+                            "[retriever] post-fusion rescue: injected %s:p%d (score=%.3f) to ensure multi-doc coverage",
+                            doc_id[:12],
+                            candidate.page_number,
+                            candidate.score,
                         )
                         break
         results.sort(key=lambda p: p.score, reverse=True)
@@ -2737,9 +2777,11 @@ def _retrieve_pages_targeted(
 
     ppq = len(results)
     doc_set = {r.doc_id[:12] for r in results}
-    print(
-        f"[retrieve_pages] targeted: {ppq} pages from {len(doc_set)} docs "
-        f"({', '.join(f'{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})' for r in results)})"
+    logger.debug(
+        "[retrieve_pages] targeted: %d pages from %d docs (%s)",
+        ppq,
+        len(doc_set),
+        ", ".join(f"{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})" for r in results),
     )
 
     return results
@@ -2775,7 +2817,7 @@ def _retrieve_pages_fallback(
             r"\b(date of issue|issue date|issued|earlier.*date|later.*date)\b",
             question,
             re.IGNORECASE,
-        )
+        ),
     )
 
     # Group by (doc_id, page_number), take the best chunk position as score
@@ -2820,15 +2862,17 @@ def _retrieve_pages_fallback(
                 score=score,
                 text=text,
                 chunk_id=page_best_chunk_id.get((doc_id, page_num), ""),
-            )
+            ),
         )
         doc_page_count[doc_id] = count + 1
 
     ppq = len(results)
     doc_set = {r.doc_id[:12] for r in results}
-    print(
-        f"[retrieve_pages] fallback: {ppq} pages from {len(doc_set)} docs "
-        f"({', '.join(f'{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})' for r in results)})"
+    logger.debug(
+        "[retrieve_pages] fallback: %d pages from %d docs (%s)",
+        ppq,
+        len(doc_set),
+        ", ".join(f"{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})" for r in results),
     )
 
     return results
@@ -2860,6 +2904,6 @@ def _expand_with_adjacent_pages(results: list[PageResult]) -> list[PageResult]:
                 score=r.score,
                 text="\n\n".join(context_parts),
                 chunk_id=r.chunk_id,
-            )
+            ),
         )
     return expanded

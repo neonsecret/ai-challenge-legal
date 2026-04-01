@@ -122,7 +122,8 @@ def clean_text_for_embedding(text: str, doc_metadata: dict | None = None) -> str
 
 # Legal structure header pattern for structure-aware chunking
 _LEGAL_HEADER_PATTERN = re.compile(
-    r"(?=\n(?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+)", re.IGNORECASE
+    r"(?=\n(?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+)",
+    re.IGNORECASE,
 )
 
 
@@ -161,7 +162,8 @@ Output ONLY the retrieval index entry (max 200 chars), no preamble."""
 
 
 _CHUNK_HEADER_PATTERN = re.compile(
-    r"^((?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+[^.\n]{0,80})", re.IGNORECASE
+    r"^((?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+[^.\n]{0,80})",
+    re.IGNORECASE,
 )
 
 
@@ -238,7 +240,7 @@ def _ocr_page(page, pdf_file: str, page_num: int) -> str:
                             "text": "Extract all text from this legal document page. Return only the extracted text, no commentary.",
                         },
                     ],
-                }
+                },
             ],
         )
 
@@ -437,7 +439,7 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
                     "page": chunk_info["page"],  # 1-based, used for grounding
                     "source_file": pdf_file,
                     "entities": "|".join(entities),
-                }
+                },
             )
             if summary:
                 chunk_key = f"{chunk_info['page']}_{chunk_info['chunk_idx']}"

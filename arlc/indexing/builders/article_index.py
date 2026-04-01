@@ -103,7 +103,7 @@ def extract_articles_from_docling(doc_id: str) -> dict[str, list[int]] | None:
         if page not in articles[key]:
             articles[key].append(page)
 
-    return articles if articles else None
+    return articles or None
 
 
 def classify_document(full_text: str, page_count: int) -> str:
@@ -142,14 +142,13 @@ def classify_document(full_text: str, page_count: int) -> str:
 
     if case_score >= 3:
         return "CASE"
-    elif law_score >= 3:
+    if law_score >= 3:
         return "LAW"
-    elif reg_score >= 2:
+    if reg_score >= 2:
         return "REGULATION"
-    elif case_score > law_score:
+    if case_score > law_score:
         return "CASE"
-    else:
-        return "LAW"
+    return "LAW"
 
 
 def find_order_pages(doc: pymupdf.Document) -> list[int]:
@@ -409,7 +408,9 @@ def extract_subsection_pages(doc: pymupdf.Document, articles: dict[str, list[int
         art_start_pos = None
         # Try "Article N" pattern
         for m in re.finditer(
-            r"(?:^|\n)\s*(?:Article|ARTICLE)\s+" + re.escape(art_num) + r"\b", heading_text, re.MULTILINE
+            r"(?:^|\n)\s*(?:Article|ARTICLE)\s+" + re.escape(art_num) + r"\b",
+            heading_text,
+            re.MULTILINE,
         ):
             art_start_pos = m.start()
             break
@@ -592,7 +593,7 @@ def build_index(merge: bool = True, from_docling: bool = False):
         docling_info = f", +{n_docling} from Docling" if n_docling > 0 else ""
         order_info = f", ORDER pages: {entry.get('order_pages', [])}" if doc_type == "CASE" else ""
         print(
-            f"  {pdf_id[:20]}... [{doc_type}] {page_count}-page, {n_articles} articles{sub_info}{docling_info}{order_info}"
+            f"  {pdf_id[:20]}... [{doc_type}] {page_count}-page, {n_articles} articles{sub_info}{docling_info}{order_info}",
         )
 
     # Save
@@ -604,7 +605,7 @@ def build_index(merge: bool = True, from_docling: bool = False):
     total_sub_entries = sum(len([k for k in e["articles"] if "_sub_" in k]) for e in index.values())
     types = {t: sum(1 for e in index.values() if e["type"] == t) for t in ["LAW", "CASE", "REGULATION"]}
     print(
-        f"\nIndex built: {len(index)} docs, {total_articles} article mappings, {total_sub_entries} subsection mappings"
+        f"\nIndex built: {len(index)} docs, {total_articles} article mappings, {total_sub_entries} subsection mappings",
     )
     print(f"  {articles_with_subs} articles got subsection entries")
     print(f"Types: {types}")

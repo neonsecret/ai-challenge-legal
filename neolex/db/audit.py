@@ -36,6 +36,10 @@ class AuditDB:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
+    def get_session(self) -> AsyncSession:
+        """Return the underlying SQLAlchemy async session for raw query access."""
+        return self._session
+
     # --- Schema (no-op — tables created by init_db()) ---
 
     async def init_schema(self) -> None:
@@ -53,7 +57,7 @@ class AuditDB:
         client_slug: str,
         scope: str = "query",
     ) -> int:
-        ts = _dt.datetime.now(_dt.timezone.utc).isoformat()
+        ts = _dt.datetime.now(_dt.UTC).isoformat()
         key = ApiKey(
             name=name,
             key_hash=key_hash,
@@ -78,7 +82,7 @@ class AuditDB:
 
     async def revoke_key(self, prefix: str) -> int:
         result = await self._session.execute(
-            select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.active == True)  # noqa: E712
+            select(ApiKey).where(ApiKey.key_prefix == prefix, ApiKey.active == True),  # noqa: E712
         )
         rows = result.scalars().all()
         for row in rows:
@@ -89,7 +93,7 @@ class AuditDB:
         result = await self._session.execute(select(ApiKey).where(ApiKey.id == key_id))
         key = result.scalar_one_or_none()
         if key:
-            key.last_used = _dt.datetime.now(_dt.timezone.utc).isoformat()
+            key.last_used = _dt.datetime.now(_dt.UTC).isoformat()
 
     # --- Audit log writes (append-only) ---
 
@@ -107,7 +111,7 @@ class AuditDB:
     ) -> None:
         self._session.add(
             Query(
-                ts=_dt.datetime.now(_dt.timezone.utc).isoformat(),
+                ts=_dt.datetime.now(_dt.UTC).isoformat(),
                 key_hash=key_hash,
                 question=question,
                 answer_text=answer_text,
@@ -116,7 +120,7 @@ class AuditDB:
                 model_name=model_name,
                 ip=ip,
                 user_agent=user_agent,
-            )
+            ),
         )
 
     async def log_event(
@@ -130,13 +134,13 @@ class AuditDB:
     ) -> None:
         self._session.add(
             Event(
-                ts=_dt.datetime.now(_dt.timezone.utc).isoformat(),
+                ts=_dt.datetime.now(_dt.UTC).isoformat(),
                 key_hash=key_hash,
                 event_type=event_type,
                 detail_json=json.dumps(detail),
                 ip=ip,
                 user_agent=user_agent,
-            )
+            ),
         )
 
     # --- Reindex job management ---
@@ -155,7 +159,7 @@ class AuditDB:
                 status="pending",
                 progress=0.0,
                 started_at=started_at,
-            )
+            ),
         )
 
     async def get_reindex_job(self, job_id: str) -> dict | None:
@@ -194,7 +198,7 @@ class AuditDB:
         upload_ts: str,
     ) -> None:
         existing = await self._session.execute(
-            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug),
         )
         if existing.scalar_one_or_none() is None:
             self._session.add(
@@ -205,25 +209,25 @@ class AuditDB:
                     size_bytes=size_bytes,
                     upload_ts=upload_ts,
                     indexed=False,
-                )
+                ),
             )
 
     async def get_document(self, doc_id: str, client_slug: str) -> dict | None:
         result = await self._session.execute(
-            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug),
         )
         row = result.scalar_one_or_none()
         return _to_dict(row) if row else None
 
     async def list_documents(self, client_slug: str) -> list[dict]:
         result = await self._session.execute(
-            select(Document).where(Document.client_slug == client_slug).order_by(Document.upload_ts.desc())
+            select(Document).where(Document.client_slug == client_slug).order_by(Document.upload_ts.desc()),
         )
         return [_to_dict(r) for r in result.scalars()]
 
     async def mark_document_indexed(self, doc_id: str, client_slug: str) -> None:
         result = await self._session.execute(
-            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug),
         )
         doc = result.scalar_one_or_none()
         if doc:
@@ -231,7 +235,7 @@ class AuditDB:
 
     async def delete_document(self, doc_id: str, client_slug: str) -> int:
         result = await self._session.execute(
-            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug),
         )
         doc = result.scalar_one_or_none()
         if doc:
@@ -288,7 +292,7 @@ class AuditDB:
                 .where(ApiKey.client_slug == client_slug)
                 .order_by(Query.id.desc())
                 .limit(limit)
-                .offset(offset)
+                .offset(offset),
             )
         return [_to_dict(r) for r in result.scalars()]
 
@@ -307,7 +311,7 @@ class AuditDB:
                 .where(ApiKey.client_slug == client_slug)
                 .order_by(Event.id.desc())
                 .limit(limit)
-                .offset(offset)
+                .offset(offset),
             )
         return [_to_dict(r) for r in result.scalars()]
 
@@ -324,7 +328,9 @@ class AuditDB:
             from neolex.db.models import ConversationMessage
 
             result = await self._session.execute(
-                select(func.count()).select_from(ConversationMessage).where(ConversationMessage.created_at < cutoff_iso)
+                select(func.count())
+                .select_from(ConversationMessage)
+                .where(ConversationMessage.created_at < cutoff_iso),
             )
             return result.scalar() or 0
         model = Query if table == "queries" else Event
@@ -336,7 +342,7 @@ class AuditDB:
             from neolex.db.models import ConversationMessage
 
             result = await self._session.execute(
-                delete(ConversationMessage).where(ConversationMessage.created_at < cutoff_iso)
+                delete(ConversationMessage).where(ConversationMessage.created_at < cutoff_iso),
             )
             return result.rowcount
         model = Query if table == "queries" else Event

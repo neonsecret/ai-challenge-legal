@@ -756,7 +756,7 @@ class Router:
                     if page:
                         pages[doc_id] = page
 
-        return pages if pages else None
+        return pages or None
 
     def _get_metadata_answer(
         self,
@@ -803,8 +803,7 @@ class Router:
                     if curs[0] == curs[1]:
                         if want_max:
                             return max(values, key=values.get)
-                        else:
-                            return min(values, key=values.get)
+                        return min(values, key=values.get)
 
         # For date comparison questions
         if metadata_type == "date_of_issue" and len(case_ids) >= 2:
@@ -825,8 +824,7 @@ class Router:
                 if len(dates) == len(case_ids):
                     if want_earlier:
                         return min(dates, key=dates.get)
-                    else:
-                        return max(dates, key=dates.get)
+                    return max(dates, key=dates.get)
 
         # For single-case claim value
         if metadata_type == "claim_value" and len(case_ids) == 1:
@@ -836,7 +834,7 @@ class Router:
                     meta = doc.get("metadata", {})
                     if isinstance(meta.get("claim_value_aed"), dict):
                         return meta["claim_value_aed"].get("value")
-                    elif isinstance(meta.get("claim_value"), dict):
+                    if isinstance(meta.get("claim_value"), dict):
                         return meta["claim_value"].get("value")
 
         # For "who is the defendant/claimant" questions
@@ -887,7 +885,7 @@ class Router:
                     pages[doc_id] = page_list[0]
                     break  # One page per doc is enough
 
-        return pages if pages else None
+        return pages or None
 
     def route(self, question: str, answer_type: str) -> RouteResult:
         """Route a question to target documents."""
@@ -975,7 +973,7 @@ class Router:
                 re.search(
                     r"appeal(?:ed|ing)?|permission\s+to\s+appeal|PTA\b",
                     q_lower,
-                )
+                ),
             )
             if is_appeal_q:
                 for case_id in case_ids:
@@ -1042,8 +1040,8 @@ class Router:
         target_doc_ids = unique_docs
 
         result = RouteResult(
-            target_doc_ids=target_doc_ids if target_doc_ids else None,
-            metadata_pages=metadata_pages if metadata_pages else None,
+            target_doc_ids=target_doc_ids or None,
+            metadata_pages=metadata_pages or None,
             metadata_answer=metadata_answer,
             is_cross_case=is_cross_case,
             case_ids=case_ids,

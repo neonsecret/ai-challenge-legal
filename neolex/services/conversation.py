@@ -10,7 +10,7 @@ from __future__ import annotations
 import json as _json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import case, func, select
 from sqlalchemy import update as sql_update
@@ -56,7 +56,7 @@ async def load_history(user_id: str, conversation_id: str) -> list[dict]:
                     ConversationMessage.conversation_id == cid,
                 )
                 .order_by(ConversationMessage.created_at.asc())
-                .limit(MAX_HISTORY_TURNS)
+                .limit(MAX_HISTORY_TURNS),
             )
             rows = result.all()
             return [{"role": row.role, "content": row.content} for row in rows]
@@ -84,7 +84,7 @@ async def load_accumulated_docs(user_id: str, conversation_id: str) -> list[dict
                 _select(ConversationDocs.docs_json).where(
                     ConversationDocs.conversation_id == cid,
                     ConversationDocs.user_id == uid,
-                )
+                ),
             )
             row = result.scalar_one_or_none()
             return _json.loads(row) if row else []
@@ -117,7 +117,7 @@ async def save_accumulated_docs(
                 _select(ConversationDocs).where(
                     ConversationDocs.conversation_id == cid,
                     ConversationDocs.user_id == uid,
-                )
+                ),
             )
             existing = result.scalar_one_or_none()
             if existing:
@@ -128,7 +128,7 @@ async def save_accumulated_docs(
                         conversation_id=cid,
                         user_id=uid,
                         docs_json=docs_str,
-                    )
+                    ),
                 )
             await session.commit()
     except Exception:
@@ -156,7 +156,7 @@ async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
                         case(
                             (ConversationMessage.role == "user", ConversationMessage.content),
                             else_=None,
-                        )
+                        ),
                     ).label("first_user_content"),
                 )
                 .where(ConversationMessage.user_id == uid)
@@ -178,7 +178,7 @@ async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
                         "title": title,
                         "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None,
                         "message_count": row.message_count,
-                    }
+                    },
                 )
             return conversations
     except Exception:
@@ -209,7 +209,7 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                     ConversationMessage.conversation_id == cid,
                 )
                 .order_by(ConversationMessage.created_at.asc())
-                .limit(500)
+                .limit(500),
             )
             rows = result.all()
             return [
@@ -245,14 +245,14 @@ async def delete_conversation(user_id: str, conversation_id: str) -> bool:
                 sql_delete(ConversationMessage).where(
                     ConversationMessage.user_id == uid,
                     ConversationMessage.conversation_id == cid,
-                )
+                ),
             )
             # Delete accumulated docs
             await session.execute(
                 sql_delete(ConversationDocs).where(
                     ConversationDocs.user_id == uid,
                     ConversationDocs.conversation_id == cid,
-                )
+                ),
             )
             await session.commit()
             return msg_result.rowcount > 0
@@ -284,7 +284,7 @@ async def save_turn(
                     user_id=uid,
                     role="user",
                     content=question[:2000],
-                )
+                ),
             )
             session.add(
                 ConversationMessage(
@@ -292,7 +292,7 @@ async def save_turn(
                     user_id=uid,
                     role="assistant",
                     content=answer[:8000],
-                )
+                ),
             )
             await session.commit()
     except Exception:
@@ -322,7 +322,7 @@ async def create_pipeline_job(
                     question=question[:2000],
                     status="processing",
                     status_detail="Processing...",
-                )
+                ),
             )
             await session.commit()
         return job_id
@@ -339,7 +339,7 @@ async def update_pipeline_job_status(
 ) -> None:
     """Update the status/status_detail of a pipeline job. Fire-and-forget safe."""
     try:
-        values: dict = {"updated_at": datetime.now(timezone.utc)}
+        values: dict = {"updated_at": datetime.now(UTC)}
         if status is not None:
             values["status"] = status
         if status_detail is not None:
@@ -370,8 +370,8 @@ async def complete_pipeline_job(
                     answer=answer[:8000],
                     sources_json=sources_json,
                     confidence=confidence,
-                    updated_at=datetime.now(timezone.utc),
-                )
+                    updated_at=datetime.now(UTC),
+                ),
             )
             await session.commit()
     except Exception:
@@ -393,8 +393,8 @@ async def fail_pipeline_job(
                 .values(
                     status=status,
                     status_detail=detail,
-                    updated_at=datetime.now(timezone.utc),
-                )
+                    updated_at=datetime.now(UTC),
+                ),
             )
             await session.commit()
     except Exception:
@@ -420,7 +420,7 @@ async def get_pipeline_job_status(
                     PipelineJob.conversation_id == conversation_id,
                 )
                 .order_by(PipelineJob.created_at.desc())
-                .limit(1)
+                .limit(1),
             )
             job = result.scalar_one_or_none()
             if not job:
