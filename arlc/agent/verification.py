@@ -65,7 +65,9 @@ def verify_agent_pages(
             answer=answer,
             answer_type="free_text",
             pages=pages_for_verifier,
-            use_llm_fallback=False,  # keyword-only, no extra LLM cost
+            # Agent answers are always free_text — LLM fallback improves page citations
+            # when keyword matching fails. Only activates on NO_SUPPORT (cheap Haiku call).
+            use_llm_fallback=True,
         )
     except Exception:
         logger.exception("[agent] page verification failed, keeping original sources")

@@ -56,7 +56,7 @@ from arlc.agent.config import (
     MAX_WEB_SOURCES,
     WEB_SEARCH_ENABLED,
 )
-from arlc.agent.prompts import build_system_prompt
+from arlc.agent.prompts import build_document_context, build_system_prompt
 from arlc.agent.state import AgentState, SourceDocument
 from arlc.agent.tools import (
     execute_search,
@@ -77,17 +77,28 @@ logger = logging.getLogger(__name__)
 
 @tool
 def search_legal_corpus(query: str) -> str:
-    """Search the legal corpus for relevant legislation and case law.
-    Write queries in the corpus language (Czech for Czech law, English for DIFC).
-    Each call returns fresh documents not previously retrieved in this conversation."""
+    """Search the legal corpus for relevant legislation, regulations, and case law.
+
+    Call this tool whenever you need source documents to ground a legal claim, find
+    a specific article or provision, or retrieve case outcomes. Write queries in the
+    corpus language (Czech for Czech law, English for DIFC/UK/AU). Use precise legal
+    terminology — include article numbers, law names, or case identifiers when known.
+    Returns document chunks labelled [DOC-N] with the document ID and page number.
+    Each call returns only documents not yet retrieved in this conversation.
+    Do NOT call for greetings, general chitchat, or questions unrelated to law."""
     raise RuntimeError("search_legal_corpus is schema-only; execution handled by search_node")
 
 
 @tool
 def search_web(query: str) -> str:
-    """Search the internet for current legal information, recent amendments, news, or court decisions not available in the corpus.
-    Use ONLY when corpus search returns insufficient results and the question needs up-to-date information.
-    Web results are unverified — always prefer corpus sources when available."""
+    """Search the internet for current legal information not available in the corpus.
+
+    Use ONLY when: (1) corpus search returned insufficient results AND (2) the question
+    requires up-to-date figures such as minimum wage amounts, interest rates, fee schedules,
+    or recent legislative amendments. Always try corpus search first. Returns snippets with
+    URLs labelled [WEB: "Title"](URL) — treat as unverified. Prefer corpus sources for
+    legal interpretation; web sources only for current numerical values the corpus references
+    but does not specify."""
     raise RuntimeError("search_web is schema-only; execution handled by search_node")
 
 
@@ -158,7 +169,20 @@ def build_agent_graph():
         llm = full_llm if has_prior_ai else fast_llm
 
         system = build_system_prompt(state)
-        messages: list[BaseMessage] = [SystemMessage(content=system)] + state["messages"]
+
+        # Inject accumulated document context before the user's question.
+        # Documents precede instructions per Anthropic long-context guidance
+        # (+30% document attention). The system prompt stays fully cacheable
+        # because it no longer contains the dynamic document section.
+        doc_section = build_document_context(state)
+        state_messages = list(state["messages"])
+        if doc_section:
+            for i, msg in enumerate(state_messages):
+                if isinstance(msg, HumanMessage):
+                    state_messages[i] = HumanMessage(content=f"{doc_section}\n\n---\n\n{msg.content}")
+                    break
+
+        messages: list[BaseMessage] = [SystemMessage(content=system)] + state_messages
         response = llm.invoke(messages)
 
         # Log the agent's decision including which model was used

@@ -4,7 +4,7 @@
 
 1. **NEVER commit .env, API keys, proxy URLs, company names, or sensitive data**
 2. **NEVER push sensitive data (.env, API keys, company names) to any GitHub repo (public or private). The private repo is neonsecret/vitreon-legal.**
-3. Use `uv` for Python, `npm` for Node.js
+3. Use `uv` for Python (always `uv run`, `uv add`, `uv pip` — NEVER use system pip, system python, or modify system packages), `npm` for Node.js
 4. Agent is the production path (`use_agent=True`); deterministic pipeline for benchmarks only
 5. All status messages must be user-friendly — no internal details (model names, fallback info, algorithm names)
 6. When working with llms, remember that we use the latest 2026 ones, e.g. sonnet/opus 4.6, haiku 4.5.
@@ -20,6 +20,7 @@
 16. Never re-order, re-sort, or relabel accumulated documents — the LLM sees [DOC-N] labels during tool calls and the same labels must stay consistent in the system prompt and final source mapping. Sorting by score, deduplication, or any reindexing breaks the citation chain. Speed optimizations must never change what the LLM sees or how its output maps to sources — always run a benchmark before and after.
 17. Don't procrastinate — when optimizations or fixes are identified, implement them immediately in the same session. Don't defer to "later" or "future session" unless blocked by external dependencies (e.g. hardware unavailable).
 18. Always test your own changes end-to-end before deploying — run actual queries via the API, verify the frontend renders correctly, check that sub-components (PDF viewer, streaming, citations) work with real data, not just compile checks. Force-rebuild the frontend (`rm -rf .next && npm run build`) when UI changes aren't taking effect.
+19. Pre-commit hooks (ruff + bandit) are configured — all code must pass linting and security scanning before commit. Always run security reviews (bandit/semgrep) after significant changes. Every feature must be PEP 8 compliant, production-hardened, and grounded end-to-end (citations must trace back to real source chunks, not regex-matched text).
 
 ## Infrastructure
 

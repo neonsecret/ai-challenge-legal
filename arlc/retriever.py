@@ -208,7 +208,7 @@ def rerank_chunks(question: str, chunks: list[dict], top_k: int = 15, on_status=
         return chunks
 
     RERANK_TIMEOUT = 180  # seconds — MPS is slow (~50s/batch for Qwen3-0.6B)
-    pairs = _format_reranker_pairs([(question, chunk["text"][:4000]) for chunk in chunks])
+    pairs = _format_reranker_pairs([(question, chunk["text"][:1500]) for chunk in chunks])
 
     def _progress(done, total):
         if on_status:
@@ -1006,6 +1006,32 @@ def _clean_query_for_ce(question: str) -> str:
     return cleaned if len(cleaned) >= 20 else question
 
 
+# Entity extraction patterns for query-time entity boosting.
+# Same patterns as indexer.extract_entities_from_chunk — defined here to avoid
+# a cross-module import from the indexer (which has LLM-dependent side effects).
+_QUERY_ENTITY_PATTERNS = [
+    re.compile(r"\b((?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+)\b", re.IGNORECASE),
+    re.compile(r"\b(Article\s+\d+(?:\(\w+\))*)\b", re.IGNORECASE),
+    re.compile(r"\b((?:DIFC\s+)?Law\s+No\.?\s*\d+(?:\s+of\s+\d+)?)\b", re.IGNORECASE),
+    re.compile(r"\b(Regulation\s+No\.?\s*\d+)\b", re.IGNORECASE),
+]
+
+
+def _extract_query_entities(question: str) -> set[str]:
+    """Extract legal entities (case IDs, article refs, law numbers) from the question.
+
+    Used at query time to boost chunks whose stored entities match entities in the question.
+    Returns a set of lowercase normalized entity strings.
+    """
+    entities: set[str] = set()
+    for pattern in _QUERY_ENTITY_PATTERNS:
+        for match in pattern.findall(question):
+            entity = re.sub(r"\s+", " ", match.strip()).lower()
+            if entity:
+                entities.add(entity)
+    return entities
+
+
 def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25) -> list[dict]:
     """Pre-rank keyword chunks by term overlap with question before cross-encoder reranking.
 
@@ -1014,6 +1040,9 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
     Always includes page-1 chunks so law title/number is always available.
     Boosts enactment notice chunks when the question asks about enactment dates.
     """
+    # Extract entities from question for entity-aware chunk boosting (see entity_score below)
+    _query_entities = _extract_query_entities(question)
+
     # Extract exact article references (e.g. "Article 14(2)(b)") — high-value signal
     article_refs = [r.lower() for r in re.findall(r"Article\s+\d+[\w\(\)\.]*", question, re.IGNORECASE)]
 
@@ -1095,7 +1124,20 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
         chunk_words = set(re.findall(r"\w+", text_lower))
         overlap = len(q_words & chunk_words)
 
-        scored.append((article_score + enactment_bonus + section_boost + outcome_bonus + page_bonus + overlap, chunk))
+        # Entity-aware boost: chunks whose stored entities (case IDs, article refs,
+        # law numbers) match entities extracted from the question get +2 per match.
+        # This is free signal already in the DB — no extra LLM or regex cost at query time.
+        # Case numbers (e.g. "CFI 010/2024") are NOT captured by article_score, so this
+        # adds new signal rather than double-counting existing article ref logic.
+        chunk_entities = set(chunk["metadata"].get("entities", []))
+        entity_score = len(_query_entities & chunk_entities) * 2 if _query_entities else 0
+
+        scored.append(
+            (
+                article_score + enactment_bonus + section_boost + outcome_bonus + page_bonus + overlap + entity_score,
+                chunk,
+            )
+        )
 
     scored.sort(key=lambda x: x[0], reverse=True)
     return [c for _, c in scored[:top_n]]
@@ -1141,10 +1183,15 @@ def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
         from arlc.llm.router import _call_backend
 
         text, *_ = _call_backend(
-            system_prompt="You are a legal document writer. Write only document text, no preamble.",
+            system_prompt=(
+                f"You are a drafter of official {domain} legislative and judicial texts. "
+                "Reproduce the exact register, section structure, and terminology of official "
+                "legal documents. Output only the document text — no preamble, no metadata, "
+                "no explanations."
+            ),
             user_message=(
-                f"Write a single concise paragraph (3-4 sentences) from a {domain} "
-                f"document that directly answers this question: {question}"
+                f"Write 3-4 sentences as they would appear in an official {domain} legal "
+                f"document or court judgment that contains the answer to this question: {question}"
             ),
             max_tokens=150,
             model=_HAIKU_MODEL,
@@ -1179,7 +1226,9 @@ USE_MULTI_SIGNAL_FUSION = True  # Enable/disable multi-signal document fusion
 
 # Dense-only page ranking insight from IAS Partners (guy4)
 # BM25 hurts page-level ranking within a known document — dense similarity only is better
-PAGE_RANK_USE_BM25 = False  # Set True to re-enable BM25 in page ranking
+PAGE_RANK_USE_BM25 = (
+    True  # Re-enabled: per-type logic in _retrieve_pages_targeted restricts BM25 to exact-match types only
+)
 
 # Adaptive CE pre-filter: scale pool size with document size instead of hard-capping at 50.
 # Formula: min(100, max(50, n_chunks // 2)) — covers ~half of medium docs,
@@ -1369,18 +1418,48 @@ def _doc_fusion_select(
     return selected
 
 
-def _generate_query_variants(question: str) -> list[str]:
-    """Generate 2 alternative query phrasings using Haiku. Returns empty list on failure."""
+# Language names for query variant generation — must match the language of source
+# documents so BM25 text search can find relevant chunks.
+_CORPUS_LANGUAGE_NAMES: dict[str, str] = {
+    "difc": "English",
+    "czech": "Czech",
+    "uk": "English",
+    "au": "English",
+    "eu": "English",
+    "us": "English",
+}
+
+
+def _generate_query_variants(question: str, corpus: str = "difc") -> list[str]:
+    """Generate 2 alternative query phrasings using Haiku. Returns empty list on failure.
+
+    Parameters
+    ----------
+    question : str
+        The original legal question.
+    corpus : str
+        Active corpus identifier.  Controls the output language so that
+        Czech variants are generated in Czech (for BM25 tsvector matching),
+        English variants in English, etc.
+    """
+    corpus_language = _CORPUS_LANGUAGE_NAMES.get(corpus, "English")
     try:
         client = _get_anthropic_client()
         response = client.messages.create(
             model=_HAIKU_MODEL,
+            system=(
+                f"You are a legal search specialist for {corpus_language} legal corpora. "
+                "Generate precise alternative search queries using the same language and "
+                "legal terminology that would appear in the source documents."
+            ),
             messages=[
                 {
                     "role": "user",
                     "content": (
-                        f"Generate 2 alternative search queries for this legal question. "
-                        f"Use different legal terminology and phrasing. Output ONLY the 2 queries, one per line, no numbering:\n{question}"
+                        f"Generate 2 alternative search queries for: {question}\n"
+                        f"Requirements: Use {corpus_language}. Use synonymous legal terms, "
+                        "article numbers if applicable, or related legal concepts from the same domain. "
+                        "Output ONLY the 2 queries, one per line, no numbering."
                     ),
                 }
             ],
@@ -1662,7 +1741,7 @@ def retrieve(
         # Only for free_text (use_hyde=True) to avoid TTFT penalty on deterministic questions
         variant_rankings = []
         if use_hyde:
-            variants = _generate_query_variants(question)
+            variants = _generate_query_variants(question, corpus=corpus)
             for variant in variants[:2]:
                 try:
                     v_bm25_ranking = search_chunks_text(variant, top_k=top_k, corpus=corpus)
@@ -1976,9 +2055,39 @@ def retrieve_pages(
     else:
         if on_status:
             on_status("retrieving:searching corpus")
-        results = _retrieve_pages_fallback(
-            question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb
+        # Multi-signal doc fusion: identify best candidate docs using 5 signals
+        # (BM25-std, dense-std, dense-RRF, BM25-doc, BM25-page1) via RRF, then
+        # run cross-encoder reranking within the selected docs.
+        # This is superior to _retrieve_pages_fallback (inverse-rank scoring, no CE)
+        # and recovers the _doc_fusion_select dead code path (disabled since pgvector migration).
+        # Only for DIFC corpus — non-DIFC returns early via _retrieve_pages_simple.
+        fusion_docs = _doc_fusion_select(
+            question,
+            max_docs=type_cfg.get("max_docs", 3),
+            answer_type=answer_type,
+            cached_query_emb=_question_emb,
         )
+        if fusion_docs:
+            if on_status:
+                on_status(f"retrieving:doc fusion selected {len(fusion_docs)} docs")
+            results = _retrieve_pages_targeted(
+                question,
+                fusion_docs,
+                max_per_doc,
+                max_total,
+                answer_type,
+                on_status=on_status,
+                cached_query_emb=_question_emb,
+            )
+            if not results:
+                # Targeted retrieval found nothing — fall back to hybrid
+                results = _retrieve_pages_fallback(
+                    question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb
+                )
+        else:
+            results = _retrieve_pages_fallback(
+                question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb
+            )
 
     if on_status and results:
         on_status(f"retrieving:found {len(results)} pages")
@@ -2171,10 +2280,15 @@ def _retrieve_pages_targeted(
         if on_status:
             on_status(f"retrieving:reranking passages ({done}/{total})")
 
+    # Per-type BM25: use dense-only for free_text/boolean (IAS Partners empirical finding —
+    # BM25 hurts page-level ranking for semantic types), BM25 path for exact-match types
+    # (date/number/name/names) where lexical signals dominate over semantic similarity.
+    _page_rank_bm25 = PAGE_RANK_USE_BM25 and answer_type in ("date", "number", "name", "names")
+
     # Pre-cache query embedding and BM25 tokenization before the per-document
     # loop. Both are pure functions of `question` — recomputing inside the loop
     # wastes ~200ms per document on embedding and ~50ms on tokenization.
-    if not PAGE_RANK_USE_BM25:
+    if not _page_rank_bm25:
         _cached_query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
     else:
         _cached_query_emb = None
@@ -2212,10 +2326,9 @@ def _retrieve_pages_targeted(
             print(f"[retriever] small-doc full inclusion: {doc_id[:12]} ({len(unique_pages)} pages)")
             continue
 
-        # Dense-only page ranking insight from IAS Partners (guy4)
-        # When PAGE_RANK_USE_BM25 is False, use dense similarity for initial page
-        # scoring, then cross-encoder reranking on top candidates only.
-        if not PAGE_RANK_USE_BM25:
+        # Per-type page ranking: dense-only for free_text/boolean (IAS Partners insight),
+        # BM25 path for exact-match types (date/number/name/names).
+        if not _page_rank_bm25:
             # Phase 1: Dense similarity scoring for all chunks
             dense_scores = _dense_page_scores(question, doc_id, doc_chunks, cached_query_emb=_cached_query_emb)
             # Phase 2: Select top candidate chunks by dense score, then cross-encoder rerank
@@ -2260,7 +2373,7 @@ def _retrieve_pages_targeted(
                 except Exception as _inj_err:  # nosec B110
                     pass  # Injection is best-effort; never block page scoring
 
-            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:4000]) for chunk in top_chunks])
+            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:1500]) for chunk in top_chunks])
             if on_status:
                 on_status(f"retrieving:reranking {len(pairs)} passages")
             try:
@@ -2295,7 +2408,7 @@ def _retrieve_pages_targeted(
             # Original: Score all chunks against the question using cross-encoder
             # Use 4000 chars to match reranker context window (-c 4096) and capture full legal context
             # Use _ce_query (long case names removed) so CE focuses on semantics, not party names
-            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:4000]) for chunk in doc_chunks])
+            pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:1500]) for chunk in doc_chunks])
             if on_status:
                 on_status(f"retrieving:reranking {len(pairs)} passages")
             try:
@@ -2564,7 +2677,14 @@ def _retrieve_pages_fallback(
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
     # Use existing hybrid retrieval to get ranked chunks — pass answer_type for per-type depth
     chunks = retrieve(
-        question, n_results=25, use_hyde=False, answer_type=answer_type, cached_query_emb=cached_query_emb
+        question,
+        n_results=25,
+        # HyDE improves semantic retrieval for free_text by generating a hypothetical
+        # legal passage, bridging the vocabulary gap between question and document text.
+        # Disabled for exact-match types (date/number/name) where keyword matching suffices.
+        use_hyde=(answer_type == "free_text"),
+        answer_type=answer_type,
+        cached_query_emb=cached_query_emb,
     )
 
     if not chunks:

@@ -123,6 +123,17 @@ def _get_client() -> anthropic.Anthropic | None:
 # Type-specific system prompts
 # ---------------------------------------------------------------------------
 
+# Jurisdiction label used in deterministic-type system prompts.
+# Default is DIFC; other corpora override the label via _get_system_prompt().
+_JURISDICTION_EXPERT_LABELS: dict[str, str] = {
+    "difc": "Dubai International Financial Centre (DIFC) laws and regulations",
+    "uk": "United Kingdom legislation and case law",
+    "au": "Australian Commonwealth legislation and case law",
+    "czech": "Czech Republic laws and regulations",
+}
+# Constant used as the find target when replacing DIFC label for other corpora
+_DIFC_EXPERT_LABEL = _JURISDICTION_EXPERT_LABELS["difc"]
+
 _SYSTEM_BOOLEAN = """You are an expert in Dubai International Financial Centre (DIFC) laws and regulations. Answer ONLY based on the provided documents.
 Output ONLY: true, false, or null.
 - true: the statement is supported by the documents (explicitly stated OR clearly inferable)
@@ -135,6 +146,7 @@ For cross-document comparison questions (e.g. "same judge in both cases"):
 Your first line must be: true, false, or null."""
 
 _SYSTEM_NUMBER = """You are an expert in Dubai International Financial Centre (DIFC) laws and regulations. Extract the exact numeric value from the provided documents.
+Base your answer ONLY on the provided document excerpts. Do not use external knowledge.
 Output ONLY the number (integer or decimal). No currency symbols, no units, no text, no explanation.
 - If the value is expressed as words (e.g., "five"), convert to digits (5)
 - If a currency amount, output just the number (e.g., 50000 not AED 50,000)
@@ -142,6 +154,7 @@ Output ONLY the number (integer or decimal). No currency symbols, no units, no t
 Your first line must be: the number or null."""
 
 _SYSTEM_NAME = """You are an expert in Dubai International Financial Centre (DIFC) laws and regulations. Extract the exact name requested from the provided documents.
+Base your answer ONLY on the provided document excerpts. Do not use external knowledge.
 Output ONLY the name exactly as it appears in the document — preserve capitalization and spelling.
 - For case numbers: always include the full format with year (e.g., "SCT 295/2025" not "SCT 295")
 - If multiple possible answers exist, pick the most specific/direct one
@@ -180,12 +193,14 @@ CRITICAL: Output a CASE NUMBER (like "SCT 169/2025" or "TCD 001/2023"), NOT a pa
 Your last line must be: the case number with year."""
 
 _SYSTEM_NAMES = """You are an expert in Dubai International Financial Centre (DIFC) laws and regulations. Extract the list of names requested from the provided documents.
+Base your answer ONLY on the provided document excerpts. Do not use external knowledge.
 Output ONLY comma-separated names exactly as they appear in the documents — preserve capitalization.
 Example: JOHN SMITH, JANE DOE, ACME CORPORATION
 - If the answer cannot be found, output: null
 Your first line must be: the comma-separated names or null."""
 
 _SYSTEM_DATE = """You are an expert in Dubai International Financial Centre (DIFC) laws and regulations. Extract the exact date from the provided documents.
+Base your answer ONLY on the provided document excerpts. Do not use external knowledge.
 Output ONLY in ISO 8601 format: YYYY-MM-DD
 - Convert any date format: "15 January 2024" → 2024-01-15; "Jan 15, 2024" → 2024-01-15
 - If only year+month available: use first day e.g. 2024-03-01
@@ -430,6 +445,10 @@ def _decompose_question(question: str) -> str:
             model=MODEL_DECOMPOSE,
             max_tokens=200,
             temperature=0.0,
+            system=(
+                "You are a legal question analyst. "
+                "Your job is to decompose legal questions into their distinct factual sub-components."
+            ),
             messages=[
                 {
                     "role": "user",
@@ -1014,36 +1033,51 @@ def _apply_web_mode(prompt: str) -> str:
     return prompt
 
 
-def _get_system_prompt(question: str, answer_type: str, web_mode: bool = False) -> str:
+def _get_system_prompt(
+    question: str,
+    answer_type: str,
+    web_mode: bool = False,
+    corpus: str = "difc",
+) -> str:
     """Select the best system prompt for the question type.
 
     web_mode only affects free_text prompts (markdown formatting, no char limit).
     Non-free_text types (boolean/number/name/names/date) are unaffected.
+
+    corpus controls the jurisdiction label in deterministic-type prompts so
+    that UK/AU/Czech questions get the appropriate expert role, not DIFC.
     """
     if answer_type == "boolean":
-        return _SYSTEM_BOOLEAN
-    if answer_type == "number":
-        return _SYSTEM_NUMBER
-    if answer_type == "name":
+        prompt = _SYSTEM_BOOLEAN
+    elif answer_type == "number":
+        prompt = _SYSTEM_NUMBER
+    elif answer_type == "name":
         if _is_date_compare(question):
             return _SYSTEM_NAME_DATE_COMPARE
         if _is_value_compare(question):
             return _SYSTEM_NAME_VALUE_COMPARE
-        return _SYSTEM_NAME
-    if answer_type == "names":
-        return _SYSTEM_NAMES
-    if answer_type == "date":
-        return _SYSTEM_DATE
-
-    # free_text: choose between law, case, and trick prompts
-    if _is_trick_question(question):
-        base = _SYSTEM_FREE_TEXT_TRICK
-    elif _is_case_question(question):
-        base = _SYSTEM_FREE_TEXT_CASE
+        prompt = _SYSTEM_NAME
+    elif answer_type == "names":
+        prompt = _SYSTEM_NAMES
+    elif answer_type == "date":
+        prompt = _SYSTEM_DATE
     else:
-        base = _SYSTEM_FREE_TEXT_LAW
+        # free_text: choose between law, case, and trick prompts
+        if _is_trick_question(question):
+            base = _SYSTEM_FREE_TEXT_TRICK
+        elif _is_case_question(question):
+            base = _SYSTEM_FREE_TEXT_CASE
+        else:
+            base = _SYSTEM_FREE_TEXT_LAW
+        return _apply_web_mode(base) if web_mode else base
 
-    return _apply_web_mode(base) if web_mode else base
+    # Replace DIFC jurisdiction label for non-DIFC corpora so the model
+    # knows it is operating in the correct legal domain.
+    if corpus != "difc":
+        jurisdiction_label = _JURISDICTION_EXPERT_LABELS.get(corpus, f"{corpus.upper()} laws and regulations")
+        prompt = prompt.replace(_DIFC_EXPERT_LABEL, jurisdiction_label)
+
+    return prompt
 
 
 def _get_max_tokens(answer_type: str) -> int:
@@ -2288,8 +2322,9 @@ async def generate_answer(
     on_token=None,
     web_mode: bool = False,
     conversation_history: "list[dict] | None" = None,
+    corpus: str = "difc",
 ) -> AnswerResult:
-    """Generate an answer for a DIFC legal question.
+    """Generate an answer for a legal question.
 
     Args:
         question: The question text.
@@ -2303,6 +2338,8 @@ async def generate_answer(
             and removes the character limit. Affects _get_system_prompt (adds markdown
             instructions) and _parse_answer (skips ** stripping and 705-char cap).
             Only meaningful for free_text answer_type.
+        corpus: Active corpus identifier (e.g. "difc", "uk", "au", "czech").
+            Controls the jurisdiction label in type-specific system prompts.
 
     Returns:
         AnswerResult with answer, citations, and performance metrics.
@@ -2384,7 +2421,7 @@ async def generate_answer(
             else:
                 law_context = "\n\n".join(ctx for pid in law_pdf_ids if (ctx := _get_law_context(pid)))
             if law_context:
-                system = _get_system_prompt(question, answer_type, web_mode=web_mode)
+                system = _get_system_prompt(question, answer_type, web_mode=web_mode, corpus=corpus)
                 max_tok = _get_max_tokens(answer_type)
 
                 # Build user message with law context instead of source pages
@@ -2507,7 +2544,7 @@ async def generate_answer(
             else [],
         )
 
-    system = _get_system_prompt(question, answer_type, web_mode=web_mode)
+    system = _get_system_prompt(question, answer_type, web_mode=web_mode, corpus=corpus)
     max_tok = _get_max_tokens(answer_type)
     user_msg = _build_user_message(question, context, answer_type, sub_questions=_sub_questions)
 
@@ -2535,6 +2572,13 @@ async def generate_answer(
 
     parsed = _parse_answer(raw, answer_type, web_mode=web_mode)
     grounding = _extract_grounding(raw) if answer_type == "free_text" else []
+
+    # Self-critique: evaluate free_text answers against the retrieved source for
+    # correctness, completeness, grounding, and length — rewrites if any of 6
+    # criteria fail. Uses MODEL_FREE_TEXT (Opus). Only for the standard RAG path;
+    # the mega-context (law PDF) path has its own verification via PAGES_USED.
+    if answer_type == "free_text" and isinstance(parsed, str) and parsed:
+        parsed = _self_critique_free_text(question, parsed, context)
 
     # Build chunk_pages: prefer LLM-identified pages for RAG path.
     # The LLM sees [SOURCE N | Page: P] headers and reports which pages

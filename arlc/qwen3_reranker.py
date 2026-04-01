@@ -186,7 +186,11 @@ class LlamaServerReranker:
     """
 
     # Default batch size, overridable via RERANKER_BATCH_SIZE env var.
-    DEFAULT_BATCH_SIZE = int(os.environ.get("RERANKER_BATCH_SIZE", "10"))
+    # llama-server's /v1/rerank packs ALL documents into ONE context window
+    # (measured: ~540 tokens per 2051-char doc, ~597 tokens with instruction prefix).
+    # With -c 4096 context: max 6 docs × ~597 tokens = 3582 tokens (safe margin).
+    # Documents are truncated to 1500 chars before sending (see retriever.py).
+    DEFAULT_BATCH_SIZE = int(os.environ.get("RERANKER_BATCH_SIZE", "6"))
 
     def __init__(self, url: str) -> None:
         import requests as _requests
@@ -241,9 +245,10 @@ class LlamaServerReranker:
     ) -> np.ndarray:
         """Score (query, document) pairs via llama-server /v1/rerank.
 
-        When ``on_progress`` is provided and ``batch_size`` < total documents,
-        documents are sent in batches with progress callbacks after each batch.
-        Otherwise a single request is used (fast path, no overhead).
+        Documents are always sent in batches of ``batch_size`` (default 6) to
+        avoid context-window overflow. llama-server packs all documents in a
+        single request into ONE context window, so large batches overflow the
+        4096-token limit. Progress callbacks are fired after each batch.
 
         Parameters
         ----------
@@ -268,8 +273,11 @@ class LlamaServerReranker:
         read_timeout = timeout or 180
         bs = batch_size if batch_size is not None else self.DEFAULT_BATCH_SIZE
 
-        # Fast path: single request when batching adds no value
-        if bs >= total or on_progress is None:
+        # Fast path: single request when all documents fit in one safe batch.
+        # IMPORTANT: always respect batch_size — the `on_progress is None` bypass
+        # was removed because it caused context overflow (all docs in one 4096-token
+        # window, crashing llama-server with "context size exceeded" / "input too large").
+        if bs >= total:
             try:
                 results = self._rerank_single_batch(query, documents, read_timeout)
                 results.sort(key=lambda x: x["index"])

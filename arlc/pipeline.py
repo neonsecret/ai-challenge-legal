@@ -1026,7 +1026,6 @@ async def _process_question_inner(
     # This is deterministic (no LLM) so it adds 0 PPQ.
     if result.get("answer") is not None and result.get("model_name") != "oracle":
         try:
-            import arlc.page_verifier as _pv_mod
             from arlc.page_verifier import verify_pages as _verify_pages
 
             _chunk_pages = result.get("chunk_pages", [])
@@ -1036,7 +1035,10 @@ async def _process_question_inner(
                     result["answer"],
                     answer_type,
                     _chunk_pages,
-                    use_llm_fallback=_pv_mod.ENABLE_LLM_FALLBACK,
+                    # Enable LLM fallback for free_text and boolean — keyword matching is
+                    # unreliable for paraphrased answers. Exact-match types (date/number/name)
+                    # have strong keyword signals and don't benefit from an extra LLM call.
+                    use_llm_fallback=(answer_type in ("free_text", "boolean")),
                 )
                 _step4_changed = str(_chunk_pages) != str(_verified_pages)
                 if _step4_changed:
