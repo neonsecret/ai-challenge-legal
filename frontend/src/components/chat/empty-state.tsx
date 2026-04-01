@@ -41,6 +41,36 @@ const CZ_QUESTIONS: PresetQuestion[] = [
     },
 ]
 
+const UK_QUESTIONS: PresetQuestion[] = [
+    {
+        before: "What are the statutory duties of a director under the ",
+        law: "Companies Act 2006",
+        after: "?",
+        full: "What are the statutory duties of a director under the Companies Act 2006?",
+    },
+    {
+        before: "What constitutes unfair dismissal under the ",
+        law: "Employment Rights Act 1996",
+        after: "?",
+        full: "What constitutes unfair dismissal under the Employment Rights Act 1996?",
+    },
+]
+
+const AU_QUESTIONS: PresetQuestion[] = [
+    {
+        before: "What is the insolvent trading duty under the ",
+        law: "Corporations Act 2001",
+        after: "?",
+        full: "What is the insolvent trading duty under the Corporations Act 2001?",
+    },
+    {
+        before: "What constitutes unconscionable conduct under ",
+        law: "Australian Consumer Law",
+        after: "?",
+        full: "What constitutes unconscionable conduct under Australian Consumer Law?",
+    },
+]
+
 const CUSTOM_QUESTIONS: PresetQuestion[] = [
     {
         before: "Summarize the key provisions in ",
@@ -59,6 +89,8 @@ const CUSTOM_QUESTIONS: PresetQuestion[] = [
 const QUESTIONS_BY_JURISDICTION: Record<string, PresetQuestion[]> = {
     difc: DIFC_QUESTIONS,
     cz: CZ_QUESTIONS,
+    uk: UK_QUESTIONS,
+    au: AU_QUESTIONS,
     custom: CUSTOM_QUESTIONS,
 }
 

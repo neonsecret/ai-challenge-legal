@@ -373,11 +373,54 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
             .filter(Boolean)
     }, [displayBody])
 
+    // Score against the FULL body so citations beyond the truncation limit are found
+    const fullParagraphs = useMemo(() => {
+        return cleanedBody
+            .split(/\n{2,}/)
+            .map((p) => p.trim())
+            .filter(Boolean)
+    }, [cleanedBody])
+
     const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
     const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
 
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
+    const firstCitedRef = useRef<HTMLParagraphElement>(null)
+
+    const fullCitationScores = useMemo(
+        () => fullParagraphs.map(p => paragraphCitationScore(p, answer)),
+        [fullParagraphs, answer]
+    )
+    const firstCitedIdxFull = fullCitationScores.findIndex(s => s >= CITATION_SCORE_THRESHOLD)
+
+    // If the first cited paragraph is hidden by truncation, auto-expand so it's visible
+    useEffect(() => {
+        if (!expanded && needsTruncation && firstCitedIdxFull >= paragraphs.length) {
+            setExpanded(true)
+        }
+    }, [firstCitedIdxFull, paragraphs.length, needsTruncation, expanded])
+
+    // firstCitedIdx into the currently displayed paragraphs array
+    const firstCitedIdx = firstCitedIdxFull !== -1 && firstCitedIdxFull < paragraphs.length
+        ? firstCitedIdxFull
+        : -1
+
+    // Scroll to the first cited paragraph when the viewed source changes
+    useEffect(() => {
+        const t = setTimeout(() => {
+            const container = scrollContainerRef.current
+            const el = firstCitedRef.current
+            if (!container || !el) return
+            const relTop = el.getBoundingClientRect().top
+                - container.getBoundingClientRect().top
+                + container.scrollTop
+            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
+        }, 200)
+        return () => clearTimeout(t)
+    }, [source.doc_id, firstCitedIdx])
+
     return (
-        <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
+        <div ref={scrollContainerRef} className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
             background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
             border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
             backdropFilter: "blur(20px)",
@@ -411,24 +454,75 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
                 </div>
             )}
 
-            {/* Body text — paragraph-split with legal highlighting */}
+            {/* Jump to cited passage — shown when citation scoring found a match */}
+            {firstCitedIdx >= 0 && (
+                <div style={{marginBottom: SPACE["3"]}}>
+                    <button
+                        onClick={() => {
+                            const container = scrollContainerRef.current
+                            const el = firstCitedRef.current
+                            if (!container || !el) return
+                            const relTop = el.getBoundingClientRect().top
+                                - container.getBoundingClientRect().top
+                                + container.scrollTop
+                            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
+                        }}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACE["1"],
+                            padding: `3px ${SPACE["2"]}px`,
+                            borderRadius: RADIUS.sm,
+                            background: COLOR.gold.tint,
+                            border: `0.5px solid ${COLOR.gold.border}`,
+                            fontSize: TYPE_SCALE.xs,
+                            fontWeight: 600,
+                            color: COLOR.gold.base,
+                            cursor: "pointer",
+                            fontFamily: FONT.sans,
+                            transition: `background ${TIMING.fast}`,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
+                    >
+                        ↓ Jump to cited passage
+                    </button>
+                </div>
+            )}
+
+            {/* Body text — paragraph-split with citation scoring + legal term highlighting */}
             <div style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: SPACE['3'],
+                gap: SPACE["3"],
             }}>
-                {paragraphs.map((para, pi) => (
-                    <p key={pi} style={{
-                        fontSize: TYPE_SCALE.sm,
-                        lineHeight: 1.7,
-                        color: textColor,
-                        fontFamily: FONT.sans,
-                        margin: 0,
-                        wordBreak: "break-word",
-                    }}>
-                        <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick}/>
-                    </p>
-                ))}
+                {paragraphs.map((para, pi) => {
+                    const isCited = fullCitationScores[pi] >= CITATION_SCORE_THRESHOLD
+                    return (
+                        <p
+                            key={pi}
+                            ref={pi === firstCitedIdx ? firstCitedRef : undefined}
+                            style={{
+                                fontSize: TYPE_SCALE.sm,
+                                lineHeight: 1.7,
+                                color: textColor,
+                                fontFamily: FONT.sans,
+                                margin: 0,
+                                wordBreak: "break-word",
+                                ...(isCited ? {
+                                    background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.06)",
+                                    borderLeft: `3px solid ${isDark ? "rgba(201,168,76,0.55)" : "rgba(196,124,0,0.45)"}`,
+                                    paddingLeft: SPACE["2"],
+                                    paddingTop: 6,
+                                    paddingBottom: 6,
+                                    borderRadius: `0 ${RADIUS.xs}px ${RADIUS.xs}px 0`,
+                                } : {})
+                            }}
+                        >
+                            <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick}/>
+                        </p>
+                    )
+                })}
             </div>
 
             {/* Truncation: "Show more" / "Show less" toggle */}
@@ -554,6 +648,27 @@ function HighlightedLegalText({text, isDark, onPageClick}: {
             })}
         </>
     )
+}
+
+// ── Citation scoring ──────────────────────────────────────────────────────────
+
+const CITATION_SCORE_THRESHOLD = 0.12
+
+/** Score how relevant a source paragraph is to the answer using 3-gram overlap.
+ *  Returns [0, 1]; higher means more trigrams from the paragraph appear verbatim
+ *  in the answer text. Used to highlight paragraphs the AI drew from. */
+function paragraphCitationScore(para: string, answer: string): number {
+    const normalize = (s: string) =>
+        s.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").toLowerCase().trim()
+    const normPara = normalize(para)
+    const normAnswer = normalize(answer)
+    const words = normPara.split(" ").filter(w => w.length > 3)
+    if (words.length < 4) return 0
+    let matches = 0
+    for (let i = 0; i <= words.length - 3; i++) {
+        if (normAnswer.includes(words.slice(i, i + 3).join(" "))) matches++
+    }
+    return matches / Math.max(1, words.length - 2)
 }
 
 function resolveSource(

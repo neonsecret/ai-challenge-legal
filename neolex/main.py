@@ -162,6 +162,8 @@ async def lifespan(app: FastAPI):
         logger.info("Pre-warming retriever singletons (PostgreSQL, cross-encoder)...")
         await asyncio.to_thread(_ret.get_chunk_count, "difc")
         await asyncio.to_thread(_ret.get_chunk_count, "czech")
+        await asyncio.to_thread(_ret.get_chunk_count, "uk")
+        await asyncio.to_thread(_ret.get_chunk_count, "au")
         await asyncio.to_thread(_ret.get_chunks_by_doc)
         reranker = await asyncio.to_thread(_ret.get_reranker)
         await asyncio.to_thread(_ret.get_embedding_model)

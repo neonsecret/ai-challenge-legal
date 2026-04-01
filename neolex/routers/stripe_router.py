@@ -465,9 +465,14 @@ async def billing_status(
     monthly_queries_used = usage.get("monthly_queries_used", 0) if is_monthly_limit else 0
     monthly_queries_limit = usage.get("monthly_limit", 0) if is_monthly_limit else 0
 
-    # Corpus usage: corpora_count not yet tracked per-user; default to 0
-    corpora_used = 0
+    # Corpus usage: count distinct collections from the user's .meta sidecar files
+    from neolex.services.document_manager import get_collection_names
+
+    client_slug = str(user.id)
+    existing_collections = await asyncio.to_thread(get_collection_names, client_slug)
+    corpora_used = len(existing_collections)
     corpora_limit = limits["max_corpora"]
+    corpora_over_limit = corpora_used > corpora_limit
 
     # Look up active subscription for cancellation info
     cancel_at_period_end = False
@@ -496,6 +501,7 @@ async def billing_status(
         "monthly_queries_limit": monthly_queries_limit,
         "corpora_used": corpora_used,
         "corpora_limit": corpora_limit,
+        "corpora_over_limit": corpora_over_limit,
         # Cancellation state
         "cancel_at_period_end": cancel_at_period_end,
         "current_period_end": current_period_end,

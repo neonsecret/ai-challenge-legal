@@ -189,9 +189,113 @@ const CUSTOM_SCENARIOS: DemoScenario[] = [
     },
 ]
 
+const UK_SCENARIOS: DemoScenario[] = [
+    {
+        jurisdiction: "United Kingdom",
+        question: "What are the statutory duties of a director under the Companies Act 2006?",
+        answer: "",
+        pdfTitle: "Companies Act 2006",
+        pdfArticleHeader: "Section 172 — Duty to promote the success of the company",
+        pdfClauses: [
+            {
+                id: "172(1)",
+                text: "A director of a company must act in the way he considers, in good faith, would be most likely to promote the success of the company for the benefit of its members as a whole."
+            },
+            {
+                id: "172(1)(a)",
+                text: "In doing so, he must have regard to the likely consequences of any decision in the long term."
+            },
+            {
+                id: "172(1)(b)",
+                text: "The interests of the company's employees, the impact on the community and the environment, and the desirability of maintaining a reputation for high standards of business conduct."
+            },
+        ],
+        highlightRange: [0, 1],
+        sourceBadge: "Companies Act 2006 · s.172 · p.329",
+        pageBadge: "Page 329",
+    },
+    {
+        jurisdiction: "United Kingdom",
+        question: "What constitutes unfair dismissal under the Employment Rights Act 1996?",
+        answer: "",
+        pdfTitle: "Employment Rights Act 1996",
+        pdfArticleHeader: "Section 98 — General right not to be unfairly dismissed",
+        pdfClauses: [
+            {
+                id: "98(1)",
+                text: "In determining whether the dismissal of an employee is fair or unfair, it is for the employer to show the reason for the dismissal."
+            },
+            {
+                id: "98(2)",
+                text: "A reason falls within this subsection if it relates to the capability or qualifications of the employee, the conduct of the employee, or that the employee was redundant."
+            },
+            {
+                id: "98(4)",
+                text: "The determination of whether the dismissal is fair or unfair shall depend on whether the employer acted reasonably in treating it as a sufficient reason."
+            },
+        ],
+        highlightRange: [0, 2],
+        sourceBadge: "Employment Rights Act 1996 · s.98 · p.432",
+        pageBadge: "Page 432",
+    },
+]
+
+const AU_SCENARIOS: DemoScenario[] = [
+    {
+        jurisdiction: "Australia",
+        question: "What is the insolvent trading duty under the Corporations Act 2001?",
+        answer: "",
+        pdfTitle: "Corporations Act 2001",
+        pdfArticleHeader: "Section 588G — Director's duty to prevent insolvent trading",
+        pdfClauses: [
+            {
+                id: "588G(1)",
+                text: "This section applies if a company incurs a debt at a time when the company is insolvent, or becomes insolvent by incurring that debt."
+            },
+            {
+                id: "588G(2)",
+                text: "The director contravenes this section if the director was aware that there were grounds for suspecting the company was insolvent, or a reasonable person would have been so aware."
+            },
+            {
+                id: "588G(3)",
+                text: "A person who contravenes this section commits an offence punishable by imprisonment for up to 5 years or 200 penalty units."
+            },
+        ],
+        highlightRange: [0, 1],
+        sourceBadge: "Corporations Act 2001 · s.588G · p.5290",
+        pageBadge: "Page 5290",
+    },
+    {
+        jurisdiction: "Australia",
+        question: "What constitutes unconscionable conduct under Australian Consumer Law?",
+        answer: "",
+        pdfTitle: "Competition and Consumer Act 2010 — Schedule 2",
+        pdfArticleHeader: "Section 21 — Unconscionable conduct in connection with goods or services",
+        pdfClauses: [
+            {
+                id: "21(1)",
+                text: "A person must not, in trade or commerce, in connection with the supply or acquisition of goods or services, engage in conduct that is, in all the circumstances, unconscionable."
+            },
+            {
+                id: "21(4)(a)",
+                text: "The court may have regard to the relative bargaining strengths of the parties and whether any conditions were reasonably necessary for the protection of legitimate interests."
+            },
+            {
+                id: "21(4)(b)",
+                text: "Whether the consumer was able to understand any documents relating to the supply or acquisition of the goods or services."
+            },
+        ],
+        highlightRange: [0, 1],
+        sourceBadge: "ACL Schedule 2 · s.21 · p.2396",
+        pageBadge: "Page 2396",
+    },
+]
+
 const PREVIEW_SCENARIOS_MAP: Record<string, DemoScenario[]> = {
     difc: DIFC_SCENARIOS,
     cz: CZ_SCENARIOS,
+    uk: UK_SCENARIOS,
+    au: AU_SCENARIOS,
     custom: CUSTOM_SCENARIOS,
 }
 
@@ -253,23 +357,26 @@ export default function ChatPage() {
     const isMobile = useIsMobile()
     const documentIndex = useDocumentIndex(messages)
 
-    // Czech law selector: fetch available laws from backend (cached)
+    // Law selector: fetch available laws from backend based on jurisdiction
     const [availableLaws, setAvailableLaws] = useState<{id: string; name: string; name_en: string}[]>([])
     useEffect(() => {
+        const corpus = jurisdiction === "cz" ? "czech" : jurisdiction === "uk" ? "uk" : jurisdiction === "au" ? "au" : ""
+        if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return }
         const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? ""
-        fetch(`${sseBase}/api/v1/laws`)
+        fetch(`${sseBase}/api/v1/laws?corpus=${corpus}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (data?.laws) {
+                if (data?.laws?.length) {
                     setAvailableLaws(data.laws)
-                    // Default: all laws selected (visually active)
-                    if (selectedLaws.length === 0) {
-                        setSelectedLaws(data.laws.map((l: {id: string}) => l.id))
-                    }
+                    setSelectedLaws(data.laws.map((l: {id: string}) => l.id))
+                    setLawPaneOpen(true)
+                } else {
+                    setAvailableLaws([])
+                    setLawPaneOpen(false)
                 }
             })
-            .catch(() => {})
-    }, [])
+            .catch(() => { setAvailableLaws([]); setLawPaneOpen(false) })
+    }, [jurisdiction])
 
     const scrollAreaRef = useRef<HTMLDivElement>(null)
     const inputFocusRef = useRef<(() => void) | null>(null)
@@ -683,8 +790,8 @@ export default function ChatPage() {
                         {(["difc", "cz", "eu", "uk", "us", "au", "custom"] as Jurisdiction[]).map((key) => {
                             const config = JURISDICTIONS[key]
                             const isActive = jurisdiction === key
-                            const isEnabled = key === "difc" || key === "cz" || key === "custom"
-                            const hasLawPane = key === "cz" && availableLaws.length > 0
+                            const isEnabled = key === "difc" || key === "cz" || key === "uk" || key === "au" || key === "custom"
+                            const hasLawPane = (key === "cz" || key === "uk" || key === "au") && availableLaws.length > 0 && jurisdiction === key
                             // Wrap "custom" pill in a relative container so the dropdown anchors to it
                             const pillButton = (
                                 <button
@@ -1062,7 +1169,7 @@ export default function ChatPage() {
                 </AnimatePresence>
 
                 {/* Czech law selector pills — toggle via country pill click */}
-                {jurisdiction === "cz" && lawPaneOpen && availableLaws.length > 0 && (
+                {(jurisdiction === "cz" || jurisdiction === "uk" || jurisdiction === "au") && lawPaneOpen && availableLaws.length > 0 && (
                     <div style={{
                         padding: isMobile ? `${SPACE['1']}px ${SPACE['3']}px` : `${SPACE['1']}px ${SPACE['6']}px`,
                         borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.bgSubtle}`,

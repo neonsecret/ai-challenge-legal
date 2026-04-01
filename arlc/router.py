@@ -1079,6 +1079,98 @@ def route(question: str, answer_type: str) -> RouteResult:
     return get_router().route(question, answer_type)
 
 
+# ---------------------------------------------------------------------------
+# UK and AU citation pattern extraction
+# ---------------------------------------------------------------------------
+# These are lightweight extractors that pull case citations and legislation
+# references from questions. Unlike the DIFC router (which resolves citations
+# to doc_ids via metadata indices), these only extract citation strings for
+# use as search keywords — the actual document matching happens in pgvector
+# via the standard retrieval path.
+
+# UK case citation patterns: [YEAR] COURT NNN
+_UK_CASE_CITATION = re.compile(
+    r"\[(\d{4})\]\s+"
+    r"(UKSC|UKHL|EWCA\s+(?:Civ|Crim)|EWHC|UKUT|UKFTT|UKPC|EWFC|UKEAT)"
+    r"\s+(\d+)",
+    re.IGNORECASE,
+)
+
+# UK legislation references: "section X of the [Act Name] [Year]" or "s.X [Act Name]"
+_UK_LEGISLATION_REF = re.compile(
+    r"(?:section|s\.?)\s*(\d+(?:\(\d+\))?)\s+(?:of\s+(?:the\s+)?)?("
+    r"Companies\s+Act(?:\s+\d{4})?"
+    r"|Employment\s+Rights\s+Act(?:\s+\d{4})?"
+    r"|Equality\s+Act(?:\s+\d{4})?"
+    r"|Human\s+Rights\s+Act(?:\s+\d{4})?"
+    r"|Insolvency\s+Act(?:\s+\d{4})?"
+    r"|Consumer\s+Rights\s+Act(?:\s+\d{4})?"
+    r"|Data\s+Protection\s+Act(?:\s+\d{4})?"
+    r"|Financial\s+Services\s+and\s+Markets\s+Act(?:\s+\d{4})?"
+    r"|Limitation\s+Act(?:\s+\d{4})?"
+    r"|Senior\s+Courts\s+Act(?:\s+\d{4})?"
+    r"|Arbitration\s+Act(?:\s+\d{4})?"
+    r")",
+    re.IGNORECASE,
+)
+
+# AU case citation patterns: [YEAR] COURT NNN
+_AU_CASE_CITATION = re.compile(
+    r"\[(\d{4})\]\s+"
+    r"(HCA|FCA|FCAFC|NSWCA|NSWSC|VSCA|VSC|QCA|QSC|SASC|SASCA|WASCA|WASC|TASSC|TASSCA|ACTSC|ACTCA|NTSC|NTCA|FamCA|FamCAFC|AATA|FCCA)"
+    r"\s+(\d+)",
+    re.IGNORECASE,
+)
+
+# AU legislation references: "section X of the [Act Name] [Year]" or "s.X [Act Name]"
+_AU_LEGISLATION_REF = re.compile(
+    r"(?:section|s\.?)\s*(\d+(?:\(\d+\))?)\s+(?:of\s+(?:the\s+)?)?("
+    r"Corporations\s+Act(?:\s+\d{4})?"
+    r"|Fair\s+Work\s+Act(?:\s+\d{4})?"
+    r"|Competition\s+and\s+Consumer\s+Act(?:\s+\d{4})?"
+    r"|Privacy\s+Act(?:\s+\d{4})?"
+    r"|Migration\s+Act(?:\s+\d{4})?"
+    r"|Bankruptcy\s+Act(?:\s+\d{4})?"
+    r"|Environmental\s+Protection\s+and\s+Biodiversity\s+Conservation\s+Act(?:\s+\d{4})?"
+    r"|Commonwealth\s+Electoral\s+Act(?:\s+\d{4})?"
+    r"|Native\s+Title\s+Act(?:\s+\d{4})?"
+    r"|Judiciary\s+Act(?:\s+\d{4})?"
+    r"|Trade\s+Marks\s+Act(?:\s+\d{4})?"
+    r"|Family\s+Law\s+Act(?:\s+\d{4})?"
+    r"|Income\s+Tax\s+Assessment\s+Act(?:\s+\d{4})?"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def extract_uk_citations(question: str) -> list[str]:
+    """Extract UK case citations and legislation references from a question.
+
+    Returns citation strings (e.g. '[2021] UKSC 5', 'section 994 of the Companies Act 2006')
+    for use as search keywords in pgvector retrieval.
+    """
+    citations: list[str] = []
+    for m in _UK_CASE_CITATION.finditer(question):
+        citations.append(m.group(0).strip())
+    for m in _UK_LEGISLATION_REF.finditer(question):
+        citations.append(m.group(0).strip())
+    return citations
+
+
+def extract_au_citations(question: str) -> list[str]:
+    """Extract Australian case citations and legislation references from a question.
+
+    Returns citation strings (e.g. '[2023] HCA 1', 'section 181 of the Corporations Act 2001')
+    for use as search keywords in pgvector retrieval.
+    """
+    citations: list[str] = []
+    for m in _AU_CASE_CITATION.finditer(question):
+        citations.append(m.group(0).strip())
+    for m in _AU_LEGISLATION_REF.finditer(question):
+        citations.append(m.group(0).strip())
+    return citations
+
+
 # ── Testing ──────────────────────────────────────────────────────────────
 
 def test_routing_coverage():

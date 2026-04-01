@@ -1015,6 +1015,8 @@ def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
     _HYDE_DOMAIN_LABELS = {
         "difc": "DIFC (Dubai International Financial Centre) law",
         "czech": "Czech law",
+        "uk": "United Kingdom legislation and case law",
+        "au": "Australian Commonwealth legislation and case law",
     }
     domain = _HYDE_DOMAIN_LABELS.get(corpus, "legal")
 

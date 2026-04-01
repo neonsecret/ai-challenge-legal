@@ -34,7 +34,7 @@ def _log_task_exception(task: asyncio.Task) -> None:
 # Corpus access control
 # ---------------------------------------------------------------------------
 
-_BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech"})
+_BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech", "uk", "au"})
 
 # ---------------------------------------------------------------------------
 # Plan-based query rate limiting
@@ -567,10 +567,8 @@ async def list_corpora(
     return {"corpora": corpora}
 
 
-@router.get("/laws")
-async def list_laws():
-    """Return the available Czech law corpus entries for the law selector UI."""
-    return {"laws": [
+_LAWS_BY_CORPUS: dict[str, list[dict[str, str]]] = {
+    "czech": [
         {"id": "obcansky_zakonik", "name": "Občanský zákoník", "name_en": "Civil Code"},
         {"id": "trestni_zakonik", "name": "Trestní zákoník", "name_en": "Criminal Code"},
         {"id": "zakonik_prace", "name": "Zákoník práce", "name_en": "Labour Code"},
@@ -582,7 +580,49 @@ async def list_laws():
         {"id": "zakon_dane_prijmu", "name": "Zákon o daních z příjmů", "name_en": "Income Tax Act"},
         {"id": "zakon_nemocenske_pojisteni", "name": "Zákon o nem. pojištění", "name_en": "Sickness Insurance Act"},
         {"id": "danovy_rad", "name": "Daňový řád", "name_en": "Tax Procedure Code"},
-    ]}
+    ],
+    "uk": [
+        {"id": "companies_act_2006", "name": "Companies Act 2006", "name_en": "Companies Act 2006"},
+        {"id": "employment_rights_act_1996", "name": "Employment Rights Act 1996", "name_en": "Employment Rights Act 1996"},
+        {"id": "consumer_rights_act_2015", "name": "Consumer Rights Act 2015", "name_en": "Consumer Rights Act 2015"},
+        {"id": "equality_act_2010", "name": "Equality Act 2010", "name_en": "Equality Act 2010"},
+        {"id": "data_protection_act_2018", "name": "Data Protection Act 2018", "name_en": "Data Protection Act 2018"},
+        {"id": "insolvency_act_1986", "name": "Insolvency Act 1986", "name_en": "Insolvency Act 1986"},
+        {"id": "financial_services_markets_act_2000", "name": "FSMA 2000", "name_en": "Financial Services and Markets Act 2000"},
+        {"id": "limitation_act_1980", "name": "Limitation Act 1980", "name_en": "Limitation Act 1980"},
+        {"id": "arbitration_act_1996", "name": "Arbitration Act 1996", "name_en": "Arbitration Act 1996"},
+        {"id": "human_rights_act_1998", "name": "Human Rights Act 1998", "name_en": "Human Rights Act 1998"},
+        {"id": "bribery_act_2010", "name": "Bribery Act 2010", "name_en": "Bribery Act 2010"},
+        {"id": "modern_slavery_act_2015", "name": "Modern Slavery Act 2015", "name_en": "Modern Slavery Act 2015"},
+        {"id": "competition_act_1998", "name": "Competition Act 1998", "name_en": "Competition Act 1998"},
+        {"id": "partnership_act_1890", "name": "Partnership Act 1890", "name_en": "Partnership Act 1890"},
+        {"id": "sale_of_goods_act_1979", "name": "Sale of Goods Act 1979", "name_en": "Sale of Goods Act 1979"},
+    ],
+    "au": [
+        {"id": "corporations_act_2001", "name": "Corporations Act 2001", "name_en": "Corporations Act 2001"},
+        {"id": "competition_consumer_act_2010", "name": "Competition and Consumer Act 2010", "name_en": "Competition and Consumer Act 2010"},
+        {"id": "fair_work_act_2009", "name": "Fair Work Act 2009", "name_en": "Fair Work Act 2009"},
+        {"id": "privacy_act_1988", "name": "Privacy Act 1988", "name_en": "Privacy Act 1988"},
+        {"id": "bankruptcy_act_1966", "name": "Bankruptcy Act 1966", "name_en": "Bankruptcy Act 1966"},
+        {"id": "insurance_contracts_act_1984", "name": "Insurance Contracts Act 1984", "name_en": "Insurance Contracts Act 1984"},
+        {"id": "asic_act_2001", "name": "ASIC Act 2001", "name_en": "Australian Securities and Investments Commission Act 2001"},
+        {"id": "superannuation_supervision_act_1993", "name": "Superannuation (SIS) Act 1993", "name_en": "Superannuation Industry (Supervision) Act 1993"},
+        {"id": "telecommunications_act_1997", "name": "Telecommunications Act 1997", "name_en": "Telecommunications Act 1997"},
+        {"id": "epbc_act_1999", "name": "EPBC Act 1999", "name_en": "Environment Protection and Biodiversity Conservation Act 1999"},
+        {"id": "migration_act_1958", "name": "Migration Act 1958", "name_en": "Migration Act 1958"},
+        {"id": "income_tax_assessment_act_1997", "name": "Income Tax Assessment Act 1997", "name_en": "Income Tax Assessment Act 1997"},
+        {"id": "aml_ctf_act_2006", "name": "AML/CTF Act 2006", "name_en": "Anti-Money Laundering and Counter-Terrorism Financing Act 2006"},
+        {"id": "whs_act_2011", "name": "Work Health and Safety Act 2011", "name_en": "Work Health and Safety Act 2011"},
+        {"id": "consumer_credit_act_2009", "name": "Consumer Credit Act 2009", "name_en": "National Consumer Credit Protection Act 2009"},
+    ],
+}
+
+
+@router.get("/laws")
+async def list_laws(corpus: str = "czech"):
+    """Return the available law corpus entries for the law selector UI."""
+    laws = _LAWS_BY_CORPUS.get(corpus, [])
+    return {"laws": laws}
 
 
 @router.get("/conversations/{conversation_id}/last-answer")

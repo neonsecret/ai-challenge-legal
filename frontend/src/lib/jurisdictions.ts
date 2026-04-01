@@ -75,6 +75,10 @@ export function jurisdictionToCorpus(j: Jurisdiction): string {
             return "czech";
         case "difc":
             return "difc";
+        case "uk":
+            return "uk";
+        case "au":
+            return "au";
         case "custom":
             // Custom corpus name is stored separately in localStorage
             if (typeof window !== "undefined") {

@@ -42,6 +42,7 @@ from neolex.services.document_manager import (
     client_docs_dir,
     delete_document,
     extract_zip_safely,
+    get_collection_names,
     save_doc_meta,
     save_upload,
 )
@@ -85,11 +86,12 @@ _PLAN_MAX_SIZE_MB: dict[str, int] = {
 
 
 async def _enforce_upload_limits(
-    user: User, content_size: int, db_audit,
+    user: User, content_size: int, db_audit, collection: str,
 ) -> None:
     """Check subscription plan limits for document uploads.
 
     Raises 403 for free-tier users and 429 when paid-plan limits are exceeded.
+    Checks (in order): plan tier, document count, corpus size, corpora count.
     """
     status = user.subscription_status
 
@@ -129,6 +131,31 @@ async def _enforce_upload_limits(
             status_code=429,
             detail=f"Corpus size limit reached ({max_mb} MB on {status.title()} plan). "
                    f"Delete existing documents or upgrade your plan.",
+        )
+
+    # Enforce corpora (collections) count limit
+    max_corpora = _PLAN_MAX_CORPORA.get(status, 0)
+    existing_collections = await asyncio.to_thread(get_collection_names, client_slug)
+
+    if len(existing_collections) > max_corpora:
+        # User is already over the limit — most likely due to a plan downgrade.
+        # Block all new uploads until they delete collections to get under the limit.
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"You have {len(existing_collections)} collections but your {status.title()} plan "
+                f"allows {max_corpora}. Delete collections or upgrade to continue uploading."
+            ),
+        )
+
+    if collection not in existing_collections and len(existing_collections) >= max_corpora:
+        # This upload would create a new collection that exceeds the plan limit.
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Collection limit reached ({max_corpora} collections on {status.title()} plan). "
+                f"Delete a collection or upgrade your plan to create new ones."
+            ),
         )
 
 
@@ -193,7 +220,7 @@ async def upload_document(
 
     # Check plan limits (needs content size for corpus size enforcement)
     async with get_audit_db() as audit_db:
-        await _enforce_upload_limits(user, len(content), audit_db)
+        await _enforce_upload_limits(user, len(content), audit_db, collection)
 
     # Reject empty files
     if len(content) == 0:
@@ -434,6 +461,30 @@ async def upload_zip(
             status_code=429,
             detail=f"Would exceed corpus size limit ({max_mb} MB on {status.title()} plan). "
                    f"Delete existing documents or upgrade your plan.",
+        )
+
+    # Enforce corpora (collections) count limit
+    max_corpora = _PLAN_MAX_CORPORA.get(status, 0)
+    existing_collections = await asyncio.to_thread(get_collection_names, client_slug)
+
+    if len(existing_collections) > max_corpora:
+        # User is over the limit (likely due to a plan downgrade) — block all uploads.
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"You have {len(existing_collections)} collections but your {status.title()} plan "
+                f"allows {max_corpora}. Delete collections or upgrade to continue uploading."
+            ),
+        )
+
+    if collection not in existing_collections and len(existing_collections) >= max_corpora:
+        # This upload would create a new collection that exceeds the plan limit.
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Collection limit reached ({max_corpora} collections on {status.title()} plan). "
+                f"Delete a collection or upgrade your plan to create new ones."
+            ),
         )
 
     # --- Save each valid PDF ---

@@ -78,6 +78,20 @@ def execute_search(
         except Exception:
             logger.warning("[search] router failed, falling back to corpus-wide search")
 
+    # UK/AU: extract citations for logging (retrieval is corpus-wide via pgvector)
+    if corpus in ("uk", "au"):
+        try:
+            if corpus == "uk":
+                from arlc.router import extract_uk_citations
+                cites = extract_uk_citations(query)
+            else:
+                from arlc.router import extract_au_citations
+                cites = extract_au_citations(query)
+            if cites:
+                logger.info("[search] %s citations extracted: %s", corpus.upper(), cites[:5])
+        except Exception:
+            pass  # citation extraction is best-effort
+
     # Request more than we need to account for exclusions
     fetch_total = target_new + len(exclude_doc_pages)
 

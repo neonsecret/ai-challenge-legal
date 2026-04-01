@@ -176,6 +176,12 @@ different legal terms or article references.
 ## CITATION FORMAT
 - Cite sources inline: "According to Article 12 of the Employment Law [DOC-3], ..."
 - When multiple documents support a point, cite all: "... [DOC-1][DOC-4]."
+- When stating a specific legal rule, threshold, or definition, include a brief \
+verbatim excerpt (5–20 words) from the source in quotation marks, immediately \
+followed by the [DOC-N] tag. Example: "Article 38 provides that 'a proceeding \
+must not be commenced more than 6 years after the date of the events that give \
+rise to the proceedings' [DOC-3]." This makes the grounding verifiable. Reserve \
+direct quotes for key operative language — do not quote entire paragraphs.
 - NEVER add a "Sources", "References", or "Bibliography" section at the end. \
 The application renders source citations automatically from your [DOC-N] tags. \
 Any trailing source list will appear duplicated to the user.

@@ -119,6 +119,26 @@ def list_documents(client_slug: str) -> list[dict]:
     return results
 
 
+def get_collection_names(client_slug: str) -> set[str]:
+    """Return the set of distinct collection names for a client's corpus.
+
+    Reads collection names from .meta sidecar files.  Corrupt or missing files
+    are silently skipped.  Falls back to the default collection name so that
+    documents without a sidecar are counted as occupying one collection slot.
+    """
+    import json
+
+    docs_dir = client_docs_dir(client_slug)
+    collections: set[str] = set()
+    for meta_path in docs_dir.glob("*.meta"):
+        try:
+            meta = json.loads(meta_path.read_text())
+            collections.add(meta.get("collection", "My Documents"))
+        except Exception:
+            pass
+    return collections
+
+
 def save_doc_meta(client_slug: str, meta: dict) -> None:
     """Write document metadata to a sidecar .meta file."""
     import json
