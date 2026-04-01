@@ -91,8 +91,8 @@ _load_doc_date_pages()
 # Module-level caches
 _doc_index = None  # pdf_id -> full text (for keyword matching)
 _chunks_by_doc = None  # pdf_id -> list[dict] (for fast page retrieval)
-_reranker = None          # primary (remote if available, else local)
-_local_reranker = None    # always local PyTorch — used as fallback when remote fails mid-query
+_reranker = None  # primary (remote if available, else local)
+_local_reranker = None  # always local PyTorch — used as fallback when remote fails mid-query
 _embedding_model = None
 _sync_engine = None  # Sync SQLAlchemy engine for PostgreSQL (retriever runs in threads)
 _sync_engine_lock = threading.Lock()
@@ -109,10 +109,12 @@ _doc_index_lock = threading.Lock()
 @dataclass
 class PageResult:
     """A single page retrieved for answering a question."""
+
     doc_id: str
     page_number: int
     score: float
     text: str
+    chunk_id: str = ""
 
 
 def _is_qwen_reranker() -> bool:
@@ -140,6 +142,7 @@ def _init_local_reranker():
 
     local_reranker_url = os.environ.get("RERANKER_LOCAL_URL", "http://localhost:8089")
     from arlc.qwen3_reranker import LlamaServerReranker
+
     _local_reranker = LlamaServerReranker(url=local_reranker_url)
     logger.info("Using local llama-server reranker at %s", local_reranker_url)
     return _local_reranker
@@ -162,6 +165,7 @@ def get_reranker():
                 if remote_url:
                     try:
                         from arlc.qwen3_reranker import LlamaServerReranker
+
                         _reranker = LlamaServerReranker(url=remote_url)
                         logger.info("Using remote reranker at %s (local ready as fallback)", remote_url)
                         return _reranker
@@ -261,19 +265,18 @@ def get_embedding_model():
             if _embedding_model is None:
                 if _is_llama_server():
                     from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+
                     _embedding_model = LlamaServerEmbedder()
                 else:
                     import torch
+
                     device = (
-                        'mps' if torch.backends.mps.is_available()
-                        else 'cuda' if torch.cuda.is_available()
-                        else 'cpu'
+                        "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
                     )
                     model_kwargs = {"trust_remote_code": True} if _is_arctic_model() else {}
                     from sentence_transformers import SentenceTransformer
-                    _embedding_model = SentenceTransformer(
-                        EMBEDDING_MODEL, device=device, **model_kwargs
-                    )
+
+                    _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device, **model_kwargs)
     return _embedding_model
 
 
@@ -287,7 +290,7 @@ def embed_query(question: str) -> list[float]:
     model = get_embedding_model()
     with _embedding_lock:  # tokenizer is not thread-safe
         if _is_llama_server() or _is_arctic_model():
-            embedding = model.encode(question, prompt_name='query', normalize_embeddings=True)
+            embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
         else:
             embedding = model.encode(question, normalize_embeddings=True)
     return embedding.tolist()
@@ -310,7 +313,10 @@ def _get_sync_engine():
 # PostgreSQL-backed search functions (replace FAISS + BM25 + ChromaDB)
 # ---------------------------------------------------------------------------
 
-def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: str = "difc", doc_ids: list[str] | None = None) -> dict:
+
+def search_chunks_vector(
+    query_embedding: list[float], top_k: int = 50, corpus: str = "difc", doc_ids: list[str] | None = None
+) -> dict:
     """Search chunks via pgvector inner product, returning legacy-compatible format.
 
     Returns dict with keys: ids, documents, metadatas, distances
@@ -328,7 +334,7 @@ def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: 
     if norm > 0:
         query_np = query_np / norm
 
-    vec_literal = '[' + ','.join(str(float(x)) for x in query_np) + ']'
+    vec_literal = "[" + ",".join(str(float(x)) for x in query_np) + "]"
 
     # Build WHERE clause — optionally filter by specific doc_ids
     where_clause = "WHERE corpus = :corpus"
@@ -338,14 +344,17 @@ def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: 
         params["doc_ids"] = doc_ids
 
     with SASession(engine) as session:
-        rows = session.execute(sa_text(f"""
+        rows = session.execute(
+            sa_text(f"""
             SELECT chunk_id, doc_id, pdf_id, page, source_file, text,
                    metadata_extra, (embedding <#> cast(:vec as vector)) AS neg_ip
             FROM chunks
             {where_clause}
             ORDER BY embedding <#> cast(:vec as vector)
             LIMIT :top_k
-        """), params).fetchall()
+        """),
+            params,
+        ).fetchall()
 
     ids, documents, metadatas, distances = [], [], [], []
     for row in rows:
@@ -356,6 +365,7 @@ def search_chunks_vector(query_embedding: list[float], top_k: int = 50, corpus: 
             "pdf_id": row.pdf_id,
             "page": row.page,
             "source_file": row.source_file,
+            "chunk_id": row.chunk_id,
         }
         if row.metadata_extra and row.metadata_extra.get("entities"):
             meta["entities"] = row.metadata_extra["entities"]
@@ -370,13 +380,16 @@ def search_chunks_text(query: str, top_k: int = 200, corpus: str = "difc") -> li
     """Search chunks via tsvector full-text search, returning ranked chunk_ids."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
             FROM chunks
             WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
             ORDER BY rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "top_k": top_k},
+        ).fetchall()
     return [row.chunk_id for row in rows]
 
 
@@ -384,13 +397,16 @@ def search_chunks_text_page1(query: str, top_k: int = 200, corpus: str = "difc")
     """Text search over page-1 chunks only (document identification signal)."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
             FROM chunks
             WHERE corpus = :corpus AND page = 1 AND text_search @@ plainto_tsquery('simple', :query)
             ORDER BY rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "top_k": top_k},
+        ).fetchall()
     return [row.chunk_id for row in rows]
 
 
@@ -398,14 +414,17 @@ def search_docs_text(query: str, top_k: int = 200, corpus: str = "difc") -> list
     """Text search aggregated to document level (sum of chunk ranks per doc)."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT pdf_id, SUM(ts_rank(text_search, plainto_tsquery('simple', :query))) AS total_rank
             FROM chunks
             WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
             GROUP BY pdf_id
             ORDER BY total_rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "top_k": top_k},
+        ).fetchall()
     return [row.pdf_id for row in rows]
 
 
@@ -413,27 +432,35 @@ def _search_chunks_text_scored(query: str, top_k: int = 200, corpus: str = "difc
     """Text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, pdf_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
             FROM chunks
             WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
             ORDER BY rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "top_k": top_k},
+        ).fetchall()
     return [(row.chunk_id, row.pdf_id, float(row.rank)) for row in rows]
 
 
-def _search_chunks_text_page1_scored(query: str, top_k: int = 200, corpus: str = "difc") -> list[tuple[str, str, float]]:
+def _search_chunks_text_page1_scored(
+    query: str, top_k: int = 200, corpus: str = "difc"
+) -> list[tuple[str, str, float]]:
     """Page-1 text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, pdf_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
             FROM chunks
             WHERE corpus = :corpus AND page = 1 AND text_search @@ plainto_tsquery('simple', :query)
             ORDER BY rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "top_k": top_k},
+        ).fetchall()
     return [(row.chunk_id, row.pdf_id, float(row.rank)) for row in rows]
 
 
@@ -441,14 +468,17 @@ def _search_docs_text_scored(query: str, top_k: int = 200, corpus: str = "difc")
     """Doc-level text search returning (pdf_id, total_rank) tuples for fusion scoring."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT pdf_id, SUM(ts_rank(text_search, plainto_tsquery('simple', :query))) AS total_rank
             FROM chunks
             WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
             GROUP BY pdf_id
             ORDER BY total_rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "top_k": top_k},
+        ).fetchall()
     return [(row.pdf_id, float(row.total_rank)) for row in rows]
 
 
@@ -456,14 +486,17 @@ def _search_chunks_text_for_doc(query: str, pdf_id: str, corpus: str = "difc", t
     """Text search within a specific document, returning chunk_ids."""
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
             FROM chunks
             WHERE corpus = :corpus AND pdf_id = :pdf_id
               AND text_search @@ plainto_tsquery('simple', :query)
             ORDER BY rank DESC
             LIMIT :top_k
-        """), {"query": query, "corpus": corpus, "pdf_id": pdf_id, "top_k": top_k}).fetchall()
+        """),
+            {"query": query, "corpus": corpus, "pdf_id": pdf_id, "top_k": top_k},
+        ).fetchall()
     return [row.chunk_id for row in rows]
 
 
@@ -506,18 +539,22 @@ def get_chunks_by_ids(chunk_ids: list[str], corpus: str | None = None) -> dict:
 # In-memory chunk caches (populated from PostgreSQL on first access)
 # ---------------------------------------------------------------------------
 
+
 def _load_all_chunks(corpus: str = "difc"):
     """Load all chunks from PostgreSQL into memory. Builds both indexes simultaneously."""
     global _doc_index, _chunks_by_doc, _corpus_chunk_cache
 
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, doc_id, pdf_id, page, source_file, text, metadata_extra
             FROM chunks
             WHERE corpus = :corpus
             ORDER BY pdf_id, page
-        """), {"corpus": corpus}).fetchall()
+        """),
+            {"corpus": corpus},
+        ).fetchall()
 
     doc_text_index: dict[str, str] = {}
     chunks_by_doc: dict[str, list[dict]] = {}
@@ -540,11 +577,13 @@ def _load_all_chunks(corpus: str = "difc"):
         doc_text_index[pdf_id] += row.text + "\n"
         if pdf_id not in chunks_by_doc:
             chunks_by_doc[pdf_id] = []
-        chunks_by_doc[pdf_id].append({
-            "chunk_id": row.chunk_id,
-            "text": row.text,
-            "metadata": meta,
-        })
+        chunks_by_doc[pdf_id].append(
+            {
+                "chunk_id": row.chunk_id,
+                "text": row.text,
+                "metadata": meta,
+            }
+        )
 
     _corpus_chunk_cache[corpus] = (doc_text_index, chunks_by_doc)
     if corpus == "difc":
@@ -582,8 +621,6 @@ def get_chunks_by_doc(corpus: str = "difc") -> dict[str, list[dict]]:
             if _chunks_by_doc is None:
                 _load_all_chunks()
     return _chunks_by_doc
-
-
 
 
 # Known DIFC law name patterns — map question phrases to searchable keywords
@@ -634,12 +671,12 @@ def extract_identifiers(question: str) -> list[str]:
         # Case numbers with context anchors (Phase 3): "Case No. SCT 295/2025", "Case SCT ...", "No. SCT ..."
         # Capturing group returns just the case number, not the anchor prefix.
         # Reduces false positives at 300-doc scale where bare codes appear in citation text.
-        r'(?:case\s+no\.?\s*|case\s+|no\.\s*)((?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+)',
+        r"(?:case\s+no\.?\s*|case\s+|no\.\s*)((?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+)",
         # Bare case numbers: direct references in question text (e.g., "What happened in SCT 295/2025?")
-        r'(?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+',
-        r'Law\s+No\.?\s*\d+\s+of\s+\d+',
-        r'DIFC\s+Law\s+No\.?\s*\d+(?:\s+of\s+\d+)?',
-        r'Regulation\s+No\.?\s*\d+',
+        r"(?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+",
+        r"Law\s+No\.?\s*\d+\s+of\s+\d+",
+        r"DIFC\s+Law\s+No\.?\s*\d+(?:\s+of\s+\d+)?",
+        r"Regulation\s+No\.?\s*\d+",
         r'"([^"]+)"',  # Party names in quotes
     ]
     identifiers = []
@@ -669,7 +706,7 @@ def _score_doc_by_law_name(law_name: str, doc_index: dict) -> list[str]:
     law_lower = law_name.lower()
 
     # Exact match pattern: law name with word boundaries
-    exact_pattern = r'\b' + re.escape(law_lower) + r'\b'
+    exact_pattern = r"\b" + re.escape(law_lower) + r"\b"
 
     for pdf_id, text in doc_index.items():
         text_lower = text.lower()
@@ -693,10 +730,10 @@ def _score_doc_by_law_name(law_name: str, doc_index: dict) -> list[str]:
             sac_prefix = text_lower[:200]
             is_court = "court case" in sac_prefix
             is_law = "[document:" in sac_prefix and (
-                    "difc law" in sac_prefix
-                    or "law/enactment" in sac_prefix
-                    or "enactment" in sac_prefix
-                    or "regulation" in sac_prefix
+                "difc law" in sac_prefix
+                or "law/enactment" in sac_prefix
+                or "enactment" in sac_prefix
+                or "regulation" in sac_prefix
             )
             # Law docs get 1000× score boost; court cases marked separately
             boosted_score = score * 1000 if is_law else score
@@ -752,14 +789,14 @@ def find_docs_by_keyword(question: str) -> list[str]:
         # reference "DIFC Law No. 2 of 2022" once each). Frequency scoring finds the PRIMARY
         # law doc (mentions the number many times in its title/header/body) and applies the
         # 10% relative-threshold filter to exclude docs with rare/incidental mentions.
-        _is_law_no_pattern = bool(re.match(r'(?:DIFC\s+)?Law\s+No\.?\s*\d+', identifier, re.IGNORECASE))
+        _is_law_no_pattern = bool(re.match(r"(?:DIFC\s+)?Law\s+No\.?\s*\d+", identifier, re.IGNORECASE))
         if _is_law_no_pattern:
             primary_docs = _score_doc_by_law_name(identifier, doc_index)
             if primary_docs:
                 matching_pdf_ids.update(primary_docs)
                 continue
 
-        normalized = re.sub(r'[\s\-_/\(\)]+', r'[\\s\\-_/]*', identifier.strip())
+        normalized = re.sub(r"[\s\-_/\(\)]+", r"[\\s\\-_/]*", identifier.strip())
         try:
             pattern = re.compile(normalized, re.IGNORECASE)
             for pdf_id, text in doc_index.items():
@@ -773,7 +810,7 @@ def find_docs_by_keyword(question: str) -> list[str]:
 
     # Support partial matches: "CFI 10/2024" should match "CFI 010/2024"
     case_patterns = re.findall(
-        r'(CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*(\d+)[\s/\-_]*(\d+)',
+        r"(CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*(\d+)[\s/\-_]*(\d+)",
         question,
         re.IGNORECASE,
     )
@@ -808,7 +845,7 @@ def find_docs_by_keyword(question: str) -> list[str]:
     # Post-filter: if question mentions a year, only keep docs containing that year.
     # Critical for 300-doc corpus where multiple versions of same law exist (2018, 2019, 2020, etc).
     # Safety: only apply filter if it doesn't eliminate all docs (bad year extraction fallback).
-    year_pattern = r'\b(19\d{2}|20\d{2})\b'
+    year_pattern = r"\b(19\d{2}|20\d{2})\b"
     years_in_question = re.findall(year_pattern, question)
 
     if years_in_question and matching_pdf_ids:
@@ -831,23 +868,79 @@ def find_docs_by_keyword(question: str) -> list[str]:
     return matching_pdf_ids
 
 
-_STOPWORDS = frozenset({
-    'the', 'a', 'an', 'of', 'in', 'is', 'are', 'was', 'were', 'to', 'for',
-    'and', 'or', 'by', 'how', 'many', 'what', 'which', 'according', 'under',
-    'does', 'did', 'do', 'has', 'have', 'be', 'any', 'if', 'at', 'this',
-    'that', 'with', 'from', 'as', 'its', 'it', 'on', 'not', 'no', 'than',
-    'such', 'same', 'both', 'also', 'may', 'shall', 'will', 'who',
-})
+_STOPWORDS = frozenset(
+    {
+        "the",
+        "a",
+        "an",
+        "of",
+        "in",
+        "is",
+        "are",
+        "was",
+        "were",
+        "to",
+        "for",
+        "and",
+        "or",
+        "by",
+        "how",
+        "many",
+        "what",
+        "which",
+        "according",
+        "under",
+        "does",
+        "did",
+        "do",
+        "has",
+        "have",
+        "be",
+        "any",
+        "if",
+        "at",
+        "this",
+        "that",
+        "with",
+        "from",
+        "as",
+        "its",
+        "it",
+        "on",
+        "not",
+        "no",
+        "than",
+        "such",
+        "same",
+        "both",
+        "also",
+        "may",
+        "shall",
+        "will",
+        "who",
+    }
+)
 
-_SCHEDULE_INDICATORS = frozenset({'schedule', 'contravention', 'appendix', 'annex', 'fine', 'penalty table'})
+_SCHEDULE_INDICATORS = frozenset({"schedule", "contravention", "appendix", "annex", "fine", "penalty table"})
 
-_ENACTMENT_KEYWORDS = frozenset({
-    'enacted', 'enact', 'enactment', 'promulgated', 'came into force', 'effective date',
-    # V4BH: added phrasing variants found in legal questions (RESEARCH_RETRIEVAL.md)
-    'published', 'commencement', 'date of commencement', 'gazetted', 'gazette',
-    # Phase 3: 'effective' standalone for "when did X become effective?"
-    'effective',
-})
+_ENACTMENT_KEYWORDS = frozenset(
+    {
+        "enacted",
+        "enact",
+        "enactment",
+        "promulgated",
+        "came into force",
+        "effective date",
+        # V4BH: added phrasing variants found in legal questions (RESEARCH_RETRIEVAL.md)
+        "published",
+        "commencement",
+        "date of commencement",
+        "gazetted",
+        "gazette",
+        # Phase 3: 'effective' standalone for "when did X become effective?"
+        "effective",
+    }
+)
 
 # Outcome-related question keywords — used to boost prescore of outcome chunks
 # NOTE: 'judgment'/'judgement' intentionally EXCLUDED — questions referencing
@@ -855,17 +948,43 @@ _ENACTMENT_KEYWORDS = frozenset({
 # about the OUTCOME; they're asking about content within the judgment document.
 # Including them caused "claim value in judgment" to trigger outcome boosting,
 # promoting wrong chunks (e.g., ordered amount instead of claimed amount).
-_OUTCOME_QUESTION_KEYWORDS = frozenset({
-    'outcome', 'result', 'ruling', 'decision', 'verdict', 'held', 'ordered',
-    'dismissed', 'awarded', 'granted', 'refused', 'conclud', 'final order', 'final ruling',
-})
+_OUTCOME_QUESTION_KEYWORDS = frozenset(
+    {
+        "outcome",
+        "result",
+        "ruling",
+        "decision",
+        "verdict",
+        "held",
+        "ordered",
+        "dismissed",
+        "awarded",
+        "granted",
+        "refused",
+        "conclud",
+        "final order",
+        "final ruling",
+    }
+)
 # Outcome keywords that appear IN the actual chunks (order pages, judgment text)
 # Broad 'judgment'/'judgement' removed to prevent false-positive boosting on non-outcome chunks.
-_OUTCOME_CHUNK_KEYWORDS = frozenset({
-    'dismissed', 'awarded', 'granted', 'ordered', 'hereby ordered',
-    'it is ordered', 'it is hereby', 'costs awarded', 'claim dismissed',
-    'application dismissed', 'claim allowed', 'appeal dismissed', 'appeal allowed',
-})
+_OUTCOME_CHUNK_KEYWORDS = frozenset(
+    {
+        "dismissed",
+        "awarded",
+        "granted",
+        "ordered",
+        "hereby ordered",
+        "it is ordered",
+        "it is hereby",
+        "costs awarded",
+        "claim dismissed",
+        "application dismissed",
+        "claim allowed",
+        "appeal dismissed",
+        "appeal allowed",
+    }
+)
 
 
 def _clean_query_for_ce(question: str) -> str:
@@ -879,8 +998,8 @@ def _clean_query_for_ce(question: str) -> str:
     Only triggers when party segment is ≥25 chars, avoiding removal of short case refs.
     """
     cleaned = re.sub(
-        r'\s+in\s+[A-Z][^?\[\]]{25,}\[\d{4}\]\s+DIFC\s+[A-Z]+\s+\d+[^?]*',
-        '',
+        r"\s+in\s+[A-Z][^?\[\]]{25,}\[\d{4}\]\s+DIFC\s+[A-Z]+\s+\d+[^?]*",
+        "",
         question,
         flags=re.IGNORECASE,
     ).strip()
@@ -896,7 +1015,7 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
     Boosts enactment notice chunks when the question asks about enactment dates.
     """
     # Extract exact article references (e.g. "Article 14(2)(b)") — high-value signal
-    article_refs = [r.lower() for r in re.findall(r'Article\s+\d+[\w\(\)\.]*', question, re.IGNORECASE)]
+    article_refs = [r.lower() for r in re.findall(r"Article\s+\d+[\w\(\)\.]*", question, re.IGNORECASE)]
 
     # Extract quoted section phrases (e.g., "IT IS HEREBY ORDERED THAT") — chunks containing
     # these phrases get a strong boost so section-specific questions find the right page
@@ -904,7 +1023,7 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
     _section_phrase = (_section_quotes[0][0] or _section_quotes[0][1]).strip().lower() if _section_quotes else ""
 
     # General question terms (stopwords removed)
-    q_words = {w.lower() for w in re.findall(r'\w+', question)} - _STOPWORDS
+    q_words = {w.lower() for w in re.findall(r"\w+", question)} - _STOPWORDS
 
     # Detect enactment-related questions (e.g. "Was X enacted earlier than Y?")
     q_lower = question.lower()
@@ -914,18 +1033,18 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
     asks_outcome = any(kw in q_lower for kw in _OUTCOME_QUESTION_KEYWORDS)
 
     # Page-1 chunk IDs — always include these (law title/number is typically on page 1)
-    page1_ids = {c['chunk_id'] for c in chunks if c['metadata'].get('page', 0) == 1}
+    page1_ids = {c["chunk_id"] for c in chunks if c["metadata"].get("page", 0) == 1}
 
     # Also extract bare article numbers (legal docs often omit "Article" prefix in body text)
     # e.g. "Article 14(2)(b)" → also check for "14(2)(b)" substring
-    bare_art_nums = [re.sub(r'^article\s+', '', ref) for ref in article_refs]
+    bare_art_nums = [re.sub(r"^article\s+", "", ref) for ref in article_refs]
     # Article root numbers for header detection: "14(2)(b)" → "14"
-    art_root_nums = list({re.match(r'(\d+)', num).group(1) for num in bare_art_nums if re.match(r'\d+', num)})
+    art_root_nums = list({re.match(r"(\d+)", num).group(1) for num in bare_art_nums if re.match(r"\d+", num)})
 
     scored = []
     for chunk in chunks:
-        text_lower = chunk['text'].lower()
-        chunk_text = chunk['text']  # original case for pattern matching
+        text_lower = chunk["text"].lower()
+        chunk_text = chunk["text"]  # original case for pattern matching
 
         # High-value: article reference with "Article" prefix (title/cross-reference style)
         article_score = sum(3 for ref in article_refs if ref in text_lower)
@@ -946,7 +1065,7 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
         # Enactment notice boost: when question asks about enactment dates, chunks from
         # enactment notices are critical (they contain the actual enactment date)
         enactment_bonus = 0
-        if asks_enactment and 'enactment notice' in text_lower:
+        if asks_enactment and "enactment notice" in text_lower:
             enactment_bonus = 6  # Strong boost — enactment notices have the date we need
 
         # Quoted section boost: if question quotes a section name (e.g., "IT IS HEREBY ORDERED THAT"),
@@ -970,10 +1089,10 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
                 outcome_bonus = 5  # Fallback: outcome keywords present
 
         # Page 1: always boost (contains law title, law number, preamble)
-        page_bonus = 4 if chunk['chunk_id'] in page1_ids else 0
+        page_bonus = 4 if chunk["chunk_id"] in page1_ids else 0
 
         # General: question term overlap
-        chunk_words = set(re.findall(r'\w+', text_lower))
+        chunk_words = set(re.findall(r"\w+", text_lower))
         overlap = len(q_words & chunk_words)
 
         scored.append((article_score + enactment_bonus + section_boost + outcome_bonus + page_bonus + overlap, chunk))
@@ -989,8 +1108,6 @@ def get_all_pages_for_docs(pdf_ids: list[str]) -> list[dict]:
     for pdf_id in pdf_ids:
         chunks.extend(chunks_by_doc.get(pdf_id, []))
     return chunks
-
-
 
 
 def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
@@ -1022,6 +1139,7 @@ def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
 
     try:
         from arlc.llm.router import _call_backend
+
         text, *_ = _call_backend(
             system_prompt="You are a legal document writer. Write only document text, no preamble.",
             user_message=(
@@ -1105,10 +1223,10 @@ DOC_FUSION_GAP_THRESHOLD = 0.15  # Adaptive doc selection gap
 
 
 def _doc_fusion_select(
-        question: str,
-        max_docs: int = 3,
-        answer_type: str = "",
-        cached_query_emb=None,
+    question: str,
+    max_docs: int = 3,
+    answer_type: str = "",
+    cached_query_emb=None,
 ) -> list[str] | None:
     """Select target documents using multi-signal fusion.
 
@@ -1152,9 +1270,7 @@ def _doc_fusion_select(
     dense_std_doc_scores: dict[str, float] = {}
     dense_rrf_doc_scores: dict[str, float] = {}
     k_rrf = 60
-    for rank, (meta, dist) in enumerate(
-            zip(vector_results["metadatas"][0], vector_results["distances"][0])
-    ):
+    for rank, (meta, dist) in enumerate(zip(vector_results["metadatas"][0], vector_results["distances"][0])):
         doc_id = meta["pdf_id"]
         sim = 1.0 - float(dist)  # cosine distance -> similarity
         # Signal 2: max dense score per doc
@@ -1200,8 +1316,13 @@ def _doc_fusion_select(
     # RRF formula: score = sum(weight / (k + rank_i)) for each signal, k=60 (standard).
     # Credit: RRF confirmed by CPBD (1st place) and Legal RAG Bench testing (40% -> 60% recall).
     all_doc_ids = set()
-    for scores_dict in [bm25_std_doc_scores, dense_std_doc_scores, dense_rrf_doc_scores,
-                        bm25_doc_doc_scored, bm25_p1_doc_scored]:
+    for scores_dict in [
+        bm25_std_doc_scores,
+        dense_std_doc_scores,
+        dense_rrf_doc_scores,
+        bm25_doc_doc_scored,
+        bm25_p1_doc_scored,
+    ]:
         all_doc_ids.update(scores_dict.keys())
 
     # Build per-signal rankings (sorted by score descending)
@@ -1241,8 +1362,9 @@ def _doc_fusion_select(
         else:
             break
 
-    print(f"[doc_fusion] selected {len(selected)} docs: "
-          f"{', '.join(f'{d[:12]}({fused_scores[d]:.3f})' for d in selected)}")
+    print(
+        f"[doc_fusion] selected {len(selected)} docs: {', '.join(f'{d[:12]}({fused_scores[d]:.3f})' for d in selected)}"
+    )
 
     return selected
 
@@ -1253,13 +1375,15 @@ def _generate_query_variants(question: str) -> list[str]:
         client = _get_anthropic_client()
         response = client.messages.create(
             model=_HAIKU_MODEL,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Generate 2 alternative search queries for this legal question. "
-                    f"Use different legal terminology and phrasing. Output ONLY the 2 queries, one per line, no numbering:\n{question}"
-                ),
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Generate 2 alternative search queries for this legal question. "
+                        f"Use different legal terminology and phrasing. Output ONLY the 2 queries, one per line, no numbering:\n{question}"
+                    ),
+                }
+            ],
             max_tokens=100,
             temperature=0.3,
         )
@@ -1274,7 +1398,7 @@ def prewarm():
     """Pre-warm all caches before parallel processing to avoid race conditions."""
     print("Pre-warming retrieval caches...")
     get_embedding_model()
-    get_chunk_count("difc")   # warm DB connection pool
+    get_chunk_count("difc")  # warm DB connection pool
     get_chunk_count("czech")
     build_doc_index()  # populates in-memory chunk cache from PostgreSQL
     get_reranker()
@@ -1292,23 +1416,23 @@ def detect_multi_hop(question: str) -> bool:
     to enable cross-document comparison/synthesis.
     """
     # Count case numbers in the question
-    case_pattern = r'(?:SCT|CFI|CA|ARB|ENF|DEC|TCD)\s+\d{3}/\d{4}'
+    case_pattern = r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD)\s+\d{3}/\d{4}"
     case_matches = re.findall(case_pattern, question, re.IGNORECASE)
     if len(case_matches) >= 2:
         return True
 
     # Check for cross-document comparison indicators
     cross_doc_indicators = [
-        r'\bboth case(?:s)?\b',
-        r'\bany of the same\b',
-        r'\bcommon to both\b',
-        r'\bbetween\b',
-        r'\bwhich case\b',
-        r'\bany main party\b',
-        r'\bany judge\b',
-        r'\bsame judge\b',
-        r'\beither\b',
-        r'\bacross\b',
+        r"\bboth case(?:s)?\b",
+        r"\bany of the same\b",
+        r"\bcommon to both\b",
+        r"\bbetween\b",
+        r"\bwhich case\b",
+        r"\bany main party\b",
+        r"\bany judge\b",
+        r"\bsame judge\b",
+        r"\beither\b",
+        r"\bacross\b",
     ]
 
     q_lower = question.lower()
@@ -1336,14 +1460,16 @@ def decompose_query(question: str) -> list[str]:
         client = _get_anthropic_client()
         response = client.messages.create(
             model=_HAIKU_MODEL,
-            messages=[{
-                "role": "user",
-                "content": (
-                    f"Split this legal question into 2 independent sub-questions, "
-                    f"one per document/case. Output each on a separate line.\n"
-                    f"Question: {question}"
-                ),
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        f"Split this legal question into 2 independent sub-questions, "
+                        f"one per document/case. Output each on a separate line.\n"
+                        f"Question: {question}"
+                    ),
+                }
+            ],
             max_tokens=150,
             temperature=0.0,
         )
@@ -1361,13 +1487,20 @@ def _extract_article_filter(question: str) -> str | None:
     a specific article like "Article 28" or "Article 14(2)".
     """
     # Match "Article 28", "Article 14(2)", "Article 3(a)"
-    article_match = re.search(r'\bArticle\s+(\d+)', question, re.IGNORECASE)
+    article_match = re.search(r"\bArticle\s+(\d+)", question, re.IGNORECASE)
     if article_match:
         return article_match.group(1)
     return None
 
 
-def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_type: str = "", corpus: str = "difc", cached_query_emb=None) -> list[dict]:
+def retrieve(
+    question: str,
+    n_results: int = 15,
+    use_hyde: bool = True,
+    answer_type: str = "",
+    corpus: str = "difc",
+    cached_query_emb=None,
+) -> list[dict]:
     """
     Hybrid retrieval: keyword match + BM25 + vector search with RRF.
 
@@ -1432,6 +1565,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
         if len(keyword_chunks) > 20:
             if len(keyword_pdf_ids) > 1:
                 from collections import defaultdict as _dd
+
                 _by_doc: dict[str, list] = _dd(list)
                 for c in keyword_chunks:
                     _by_doc[c["metadata"]["pdf_id"]].append(c)
@@ -1453,12 +1587,14 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
 
         vector_chunks = []
         for i in range(len(vector_results["ids"][0])):
-            vector_chunks.append({
-                "chunk_id": vector_results["ids"][0][i],
-                "text": vector_results["documents"][0][i],
-                "metadata": vector_results["metadatas"][0][i],
-                "distance": vector_results["distances"][0][i],
-            })
+            vector_chunks.append(
+                {
+                    "chunk_id": vector_results["ids"][0][i],
+                    "text": vector_results["documents"][0][i],
+                    "metadata": vector_results["metadatas"][0][i],
+                    "distance": vector_results["distances"][0][i],
+                }
+            )
 
         # Merge: pre-scored keyword matches first, then vector matches
         seen_ids = set()
@@ -1519,7 +1655,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                 hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
                 hyde_results = search_chunks_vector(hyde_emb, top_k=top_k, corpus=corpus)
                 hyde_ranking = hyde_results["ids"][0]
-            except Exception:
+            except Exception:  # nosec B110
                 pass
 
         # Multi-query expansion: generate variant queries for additional text search signal
@@ -1531,7 +1667,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                 try:
                     v_bm25_ranking = search_chunks_text(variant, top_k=top_k, corpus=corpus)
                     variant_rankings.append(v_bm25_ranking)
-                except Exception:
+                except Exception:  # nosec B110
                     pass
 
         # RRF over all signals: text search, vector, HyDE-vector, variant queries
@@ -1559,12 +1695,14 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
             else:
                 chunk_data = get_chunks_by_ids([chunk_id], corpus=corpus)
                 if len(chunk_data["ids"]) > 0:
-                    final_chunks.append({
-                        "chunk_id": chunk_data["ids"][0],
-                        "text": chunk_data["documents"][0],
-                        "metadata": chunk_data["metadatas"][0],
-                        "distance": 0.5,
-                    })
+                    final_chunks.append(
+                        {
+                            "chunk_id": chunk_data["ids"][0],
+                            "text": chunk_data["documents"][0],
+                            "metadata": chunk_data["metadatas"][0],
+                            "distance": 0.5,
+                        }
+                    )
 
         # Metadata-aware filtering: promote article-matching chunks to the top
         if article_filter:
@@ -1577,7 +1715,8 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
                     other_chunks.append(chunk)
             final_chunks = article_chunks + other_chunks
             print(
-                f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted (vector path)")
+                f"[METADATA FILTER] Article {article_filter}: {len(article_chunks)} exact matches promoted (vector path)"
+            )
 
         return rerank_chunks(question, final_chunks[:30], top_k=20)
 
@@ -1585,6 +1724,7 @@ def retrieve(question: str, n_results: int = 15, use_hyde: bool = True, answer_t
 # ---------------------------------------------------------------------------
 # Page-level retrieval (new pipeline)
 # ---------------------------------------------------------------------------
+
 
 @functools.lru_cache(maxsize=20)
 def _open_pdf_cached(pdf_path: str):
@@ -1610,7 +1750,7 @@ def _extract_page_text(doc_id: str, page_number: int) -> str:
             doc = _open_pdf_cached(pdf_path)
             if 1 <= page_number <= len(doc):
                 return doc[page_number - 1].get_text().strip()
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     # Fallback: concatenate chunk texts for this page from the in-memory index.
@@ -1619,37 +1759,36 @@ def _extract_page_text(doc_id: str, page_number: int) -> str:
         chunks_by_doc = get_chunks_by_doc()
         doc_chunks = chunks_by_doc.get(doc_id, [])
         page_texts = [
-            c["text"] for c in doc_chunks
-            if c.get("metadata", {}).get("page", c.get("page", 0)) == page_number
+            c["text"] for c in doc_chunks if c.get("metadata", {}).get("page", c.get("page", 0)) == page_number
         ]
         if page_texts:
             return "\n".join(page_texts)
-    except Exception:
+    except Exception:  # nosec B110
         pass
 
     return ""
 
 
 _METADATA_QUESTION_PATTERNS = re.compile(
-    r'\b(date of issue|issue date|issued|when was .* issued'
-    r'|who (?:is|was|are|were) the judge'
-    r'|presiding judge|name of.*judge'
-    r'|claimants?|defendants?|respondents?|appellants?'
-    r'|claim value|amount claimed|value of.*claim'
-    r'|title page)\b',
+    r"\b(date of issue|issue date|issued|when was .* issued"
+    r"|who (?:is|was|are|were) the judge"
+    r"|presiding judge|name of.*judge"
+    r"|claimants?|defendants?|respondents?|appellants?"
+    r"|claim value|amount claimed|value of.*claim"
+    r"|title page)\b",
     re.IGNORECASE,
 )
 
 
 def _retrieve_pages_simple(
-        question: str,
-        max_per_doc: int = 1,
-        max_total: int = 3,
-        corpus: str = "czech",
-        on_status=None,
-        laws: list[str] | None = None,
-        cached_query_emb=None,
-        doc_ids: list[str] | None = None,
+    question: str,
+    max_per_doc: int = 1,
+    max_total: int = 3,
+    corpus: str = "czech",
+    on_status=None,
+    laws: list[str] | None = None,
+    cached_query_emb=None,
+    doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
     """Simplified retrieval for non-DIFC corpora: vector search + cross-encoder reranking.
 
@@ -1667,12 +1806,14 @@ def _retrieve_pages_simple(
     # Convert to chunk dicts for reranking
     chunks = []
     for i in range(len(vector_results["ids"][0])):
-        chunks.append({
-            "chunk_id": vector_results["ids"][0][i],
-            "text": vector_results["documents"][0][i],
-            "metadata": vector_results["metadatas"][0][i],
-            "distance": vector_results["distances"][0][i],
-        })
+        chunks.append(
+            {
+                "chunk_id": vector_results["ids"][0][i],
+                "text": vector_results["documents"][0][i],
+                "metadata": vector_results["metadatas"][0][i],
+                "distance": vector_results["distances"][0][i],
+            }
+        )
 
     # Filter by law prefixes if specified (Czech corpus law selector)
     if laws:
@@ -1689,14 +1830,14 @@ def _retrieve_pages_simple(
     ranked = rerank_chunks(question, chunks[:40], top_k=20, on_status=on_status)
 
     # Aggregate chunks to pages, pick best per (doc_id, page)
-    page_scores: dict[tuple[str, int], tuple[float, str]] = {}
+    page_scores: dict[tuple[str, int], tuple[float, str, str]] = {}
     for chunk in ranked:
         doc_id = chunk["metadata"].get("doc_id", chunk["metadata"]["pdf_id"])
         page = int(chunk["metadata"]["page"])
         score = chunk.get("rerank_score", 0.5)
         key = (doc_id, page)
         if key not in page_scores or score > page_scores[key][0]:
-            page_scores[key] = (score, chunk["text"])
+            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""))
 
     # Inject vector top-1 if the reranker dropped it — the embedding model's
     # best pick often outperforms the reranker on cross-language queries.
@@ -1705,37 +1846,37 @@ def _retrieve_pages_simple(
         ft_page = int(vector_top["metadata"]["page"])
         ft_key = (ft_doc, ft_page)
         if ft_key not in page_scores:
-            page_scores[ft_key] = (0.5, vector_top["text"])
+            page_scores[ft_key] = (0.5, vector_top["text"], vector_top["metadata"].get("chunk_id", ""))
 
     # Sort by score descending, apply per-doc and total limits
     sorted_pages = sorted(page_scores.items(), key=lambda x: x[1][0], reverse=True)
     doc_counts: dict[str, int] = {}
     results: list[PageResult] = []
-    for (doc_id, page), (score, text) in sorted_pages:
+    for (doc_id, page), (score, text, chunk_id) in sorted_pages:
         if len(results) >= max_total:
             break
         if doc_counts.get(doc_id, 0) >= max_per_doc:
             continue
         doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
-        results.append(PageResult(doc_id=doc_id, page_number=page, score=score, text=text))
+        results.append(PageResult(doc_id=doc_id, page_number=page, score=score, text=text, chunk_id=chunk_id))
 
     return results
 
 
 def retrieve_pages(
-        question: str,
-        target_doc_ids: list[str] | None = None,
-        max_per_doc: int = 1,
-        max_total: int = 3,
-        answer_type: str = "",
-        include_context_pages: bool = False,
-        use_llm_rerank: bool = False,
-        boost_pages: dict[str, int] | None = None,
-        case_doc_groups: dict[str, list[str]] | None = None,
-        corpus: str = "difc",
-        on_status=None,
-        laws: list[str] | None = None,
-        doc_ids: list[str] | None = None,
+    question: str,
+    target_doc_ids: list[str] | None = None,
+    max_per_doc: int = 1,
+    max_total: int = 3,
+    answer_type: str = "",
+    include_context_pages: bool = False,
+    use_llm_rerank: bool = False,
+    boost_pages: dict[str, int] | None = None,
+    case_doc_groups: dict[str, list[str]] | None = None,
+    corpus: str = "difc",
+    on_status=None,
+    laws: list[str] | None = None,
+    doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
     """Retrieve the best pages for answering a question.
 
@@ -1774,7 +1915,16 @@ def retrieve_pages(
     # Czech and other non-DIFC corpora use pgvector search + cross-encoder reranking.
     # They don't have routing metadata or DIFC-specific heuristics.
     if corpus != "difc":
-        return _retrieve_pages_simple(question, max_per_doc, max_total, corpus=corpus, on_status=on_status, laws=laws, cached_query_emb=_question_emb, doc_ids=doc_ids)
+        return _retrieve_pages_simple(
+            question,
+            max_per_doc,
+            max_total,
+            corpus=corpus,
+            on_status=on_status,
+            laws=laws,
+            cached_query_emb=_question_emb,
+            doc_ids=doc_ids,
+        )
 
     # Per-type configs inspired by IAS Partners dual-pipeline (guy4)
     # Apply per-answer-type retrieval config if available, using caller's values as overrides
@@ -1790,20 +1940,33 @@ def retrieve_pages(
         if on_status:
             on_status(f"retrieving:searching {len(target_doc_ids)} target docs")
         effective_mpd = max_per_doc
-        if (answer_type in ("name", "names") and boost_pages
-                and len(target_doc_ids) == 2
-                and all(d in boost_pages for d in target_doc_ids)
-                and any(boost_pages[d] != 1 for d in target_doc_ids)):
+        if (
+            answer_type in ("name", "names")
+            and boost_pages
+            and len(target_doc_ids) == 2
+            and all(d in boost_pages for d in target_doc_ids)
+            and any(boost_pages[d] != 1 for d in target_doc_ids)
+        ):
             effective_mpd = 1
-        results = _retrieve_pages_targeted(question, target_doc_ids, effective_mpd, max_total, answer_type,
-                                           boost_pages=boost_pages, case_doc_groups=case_doc_groups,
-                                           on_status=on_status, cached_query_emb=_question_emb)
+        results = _retrieve_pages_targeted(
+            question,
+            target_doc_ids,
+            effective_mpd,
+            max_total,
+            answer_type,
+            boost_pages=boost_pages,
+            case_doc_groups=case_doc_groups,
+            on_status=on_status,
+            cached_query_emb=_question_emb,
+        )
         best_score = max((r.score for r in results), default=0.0)
         if best_score < 0.4:
             if on_status:
                 on_status("retrieving:broadening search")
             print(f"[retriever] low-confidence targeted ({best_score:.3f} < 0.40), adding fallback")
-            fb_results = _retrieve_pages_fallback(question, max_per_doc=1, max_total=1, answer_type=answer_type, cached_query_emb=_question_emb)
+            fb_results = _retrieve_pages_fallback(
+                question, max_per_doc=1, max_total=1, answer_type=answer_type, cached_query_emb=_question_emb
+            )
             seen = {}
             for r in results + fb_results:
                 key = (r.doc_id, r.page_number)
@@ -1813,13 +1976,16 @@ def retrieve_pages(
     else:
         if on_status:
             on_status("retrieving:searching corpus")
-        results = _retrieve_pages_fallback(question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb)
+        results = _retrieve_pages_fallback(
+            question, max_per_doc, max_total, answer_type, cached_query_emb=_question_emb
+        )
 
     if on_status and results:
         on_status(f"retrieving:found {len(results)} pages")
 
     if use_llm_rerank and len(results) > 1:
         from arlc.llm.reranker import llm_rerank_pages
+
         results = llm_rerank_pages(question, results)
 
     if include_context_pages:
@@ -1829,9 +1995,9 @@ def retrieve_pages(
 
 
 def _fair_case_select(
-        pages: list["PageResult"],
-        case_doc_groups: dict[str, list[str]],
-        max_total: int,
+    pages: list["PageResult"],
+    case_doc_groups: dict[str, list[str]],
+    max_total: int,
 ) -> list["PageResult"]:
     """Select pages ensuring at least 1 page per case group.
 
@@ -1883,9 +2049,9 @@ def _fair_case_select(
     return selected
 
 
-def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
-                        cached_query_emb=None,
-                        corpus: str = "difc") -> dict[int, float]:
+def _dense_page_scores(
+    question: str, doc_id: str, chunks: list[dict], cached_query_emb=None, corpus: str = "difc"
+) -> dict[int, float]:
     """Rank pages within a document using dense embedding similarity only.
 
     # Dense-only page ranking insight from IAS Partners (guy4)
@@ -1902,7 +2068,7 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
         return {}
 
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    vec_literal = '[' + ','.join(str(float(x)) for x in query_emb) + ']'
+    vec_literal = "[" + ",".join(str(float(x)) for x in query_emb) + "]"
 
     chunk_ids = [c.get("chunk_id") for c in chunks if c.get("chunk_id")]
     if not chunk_ids:
@@ -1910,11 +2076,14 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
 
     engine = _get_sync_engine()
     with SASession(engine) as session:
-        rows = session.execute(sa_text("""
+        rows = session.execute(
+            sa_text("""
             SELECT chunk_id, page, (embedding <#> cast(:vec as vector)) * -1 AS similarity
             FROM chunks
             WHERE chunk_id = ANY(:ids)
-        """), {"vec": vec_literal, "ids": chunk_ids}).fetchall()
+        """),
+            {"vec": vec_literal, "ids": chunk_ids},
+        ).fetchall()
 
     page_scores: dict[int, float] = {}
     for row in rows:
@@ -1925,15 +2094,15 @@ def _dense_page_scores(question: str, doc_id: str, chunks: list[dict],
 
 
 def _retrieve_pages_targeted(
-        question: str,
-        target_doc_ids: list[str],
-        max_per_doc: int,
-        max_total: int,
-        answer_type: str,
-        boost_pages: dict[str, int] | None = None,
-        case_doc_groups: dict[str, list[str]] | None = None,
-        on_status=None,
-        cached_query_emb=None,
+    question: str,
+    target_doc_ids: list[str],
+    max_per_doc: int,
+    max_total: int,
+    answer_type: str,
+    boost_pages: dict[str, int] | None = None,
+    case_doc_groups: dict[str, list[str]] | None = None,
+    on_status=None,
+    cached_query_emb=None,
 ) -> list[PageResult]:
     """Retrieve pages by reranking all chunks from target documents."""
     # Small-doc full inclusion: for documents with ≤8 pages, skip reranking and
@@ -1944,17 +2113,17 @@ def _retrieve_pages_targeted(
     ranker = get_reranker()
 
     # Detect metadata questions (date, judge, claimant) that are answered on page 1
-    is_metadata_q = (
-            answer_type in ("date", "name")
-            and bool(_METADATA_QUESTION_PATTERNS.search(question))
-    )
+    is_metadata_q = answer_type in ("date", "name") and bool(_METADATA_QUESTION_PATTERNS.search(question))
 
     # Detect date-related questions regardless of answer_type (e.g. "which doc has
     # the earlier issue date?" has answer_type=name but needs the date page).
-    _is_date_question = bool(re.search(
-        r'\b(date of issue|issue date|issued|earlier.*date|later.*date)\b',
-        question, re.IGNORECASE,
-    ))
+    _is_date_question = bool(
+        re.search(
+            r"\b(date of issue|issue date|issued|earlier.*date|later.*date)\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
 
     # Extract article root numbers for content-based definition page boost.
     # Acts as a fallback when the router's article_page_index doesn't have a mapping.
@@ -1962,25 +2131,32 @@ def _retrieve_pages_targeted(
     # Skip when question asks about fines/penalties — the answer is in a schedule,
     # not the article definition page.
     _asks_fine = bool(
-        re.search(r'\b(fine|penalty|penalt|sanction|contravene|contravention)\b', question, re.IGNORECASE))
-    _art_root_nums = list(set(re.findall(r'Article\s+(\d+)', question, re.IGNORECASE))) if not _asks_fine else []
+        re.search(r"\b(fine|penalty|penalt|sanction|contravene|contravention)\b", question, re.IGNORECASE)
+    )
+    _art_root_nums = list(set(re.findall(r"Article\s+(\d+)", question, re.IGNORECASE))) if not _asks_fine else []
 
     # Law-title-page boost: "What is the law number / official number of X?"
     # Law numbers (e.g. "DIFC LAW NO. 5 OF 2020") appear on the title page (p1/p2).
     # CE over-ranks body articles (e.g. "cited as 'X Law'") vs the title page.
     # Strong +1.2 boost to p1 overrides CE preference for body text on this pattern.
-    _asks_law_number = bool(re.search(
-        r'\b(?:law\s+number|official\s+number|law\s+no\.?\s+of|numbered)\b',
-        question, re.IGNORECASE,
-    ))
+    _asks_law_number = bool(
+        re.search(
+            r"\b(?:law\s+number|official\s+number|law\s+no\.?\s+of|numbered)\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
 
     # Detect outcome questions for targeted page boost (mirrors _prescore_keyword_chunks)
     _asks_outcome_q = any(kw in question.lower() for kw in _OUTCOME_QUESTION_KEYWORDS)
     # Award-value detection: comparison questions about arbitral/judgment award amounts
-    _asks_award_value = bool(re.search(
-        r'\bhigher\b.*\baward\b|\baward\b.*\bvalue\b',
-        question, re.IGNORECASE,
-    ))
+    _asks_award_value = bool(
+        re.search(
+            r"\bhigher\b.*\baward\b|\baward\b.*\bvalue\b",
+            question,
+            re.IGNORECASE,
+        )
+    )
     # Cleaned CE query: strips long case names (≥25 chars before "[YEAR] DIFC TYPE NUM")
     # that bias the cross-encoder toward title pages. In targeted retrieval the doc is
     # already identified so the case name is redundant; removing it lets CE focus on
@@ -2024,12 +2200,15 @@ def _retrieve_pages_targeted(
                     (c for c in doc_chunks if c["metadata"].get("page", 1) == pg),
                     key=lambda c: len(c.get("text", "")),
                 )
-                all_page_scores.append(PageResult(
-                    doc_id=doc_id,
-                    page_number=pg,
-                    score=1.0,  # all pages equally scored for small docs
-                    text=best_chunk.get("text", ""),
-                ))
+                all_page_scores.append(
+                    PageResult(
+                        doc_id=doc_id,
+                        page_number=pg,
+                        score=1.0,  # all pages equally scored for small docs
+                        text=best_chunk.get("text", ""),
+                        chunk_id=best_chunk.get("chunk_id", ""),
+                    )
+                )
             print(f"[retriever] small-doc full inclusion: {doc_id[:12]} ({len(unique_pages)} pages)")
             continue
 
@@ -2038,8 +2217,7 @@ def _retrieve_pages_targeted(
         # scoring, then cross-encoder reranking on top candidates only.
         if not PAGE_RANK_USE_BM25:
             # Phase 1: Dense similarity scoring for all chunks
-            dense_scores = _dense_page_scores(question, doc_id, doc_chunks,
-                                              cached_query_emb=_cached_query_emb)
+            dense_scores = _dense_page_scores(question, doc_id, doc_chunks, cached_query_emb=_cached_query_emb)
             # Phase 2: Select top candidate chunks by dense score, then cross-encoder rerank
             chunk_dense = []
             for chunk in doc_chunks:
@@ -2066,7 +2244,9 @@ def _retrieve_pages_targeted(
                     _pool_cid_set = {c["chunk_id"] for c in top_chunks}
                     _cid_to_chunk = {c["chunk_id"]: c for c in doc_chunks}
                     _text_hits = _search_chunks_text_for_doc(
-                        question, pdf_id=doc_id, corpus="difc",
+                        question,
+                        pdf_id=doc_id,
+                        corpus="difc",
                         top_k=BM25_INJECTION_K * 4,
                     )
                     _injected = 0
@@ -2077,7 +2257,7 @@ def _retrieve_pages_targeted(
                             top_chunks.append(_cid_to_chunk[_cid])
                             _pool_cid_set.add(_cid)
                             _injected += 1
-                except Exception as _inj_err:
+                except Exception as _inj_err:  # nosec B110
                     pass  # Injection is best-effort; never block page scoring
 
             pairs = _format_reranker_pairs([(_ce_query, chunk["text"][:4000]) for chunk in top_chunks])
@@ -2104,11 +2284,13 @@ def _retrieve_pages_targeted(
                     ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
             # Merge: use cross-encoder scores for the top candidates
             page_scores: dict[int, float] = {}
+            page_chunk_ids: dict[int, str] = {}
             for chunk, score in zip(top_chunks, ce_scores):
                 page_num = chunk["metadata"].get("page", 1)
                 score_val = float(score)
                 if page_num not in page_scores or score_val > page_scores[page_num]:
                     page_scores[page_num] = score_val
+                    page_chunk_ids[page_num] = chunk.get("chunk_id", "")
         else:
             # Original: Score all chunks against the question using cross-encoder
             # Use 4000 chars to match reranker context window (-c 4096) and capture full legal context
@@ -2136,11 +2318,13 @@ def _retrieve_pages_targeted(
                         on_status("retrieving:scoring results")
                     scores = [0.5] * len(doc_chunks)
             page_scores: dict[int, float] = {}
+            page_chunk_ids: dict[int, str] = {}
             for chunk, score in zip(doc_chunks, scores):
                 page_num = chunk["metadata"].get("page", 1)
                 score_val = float(score)
                 if page_num not in page_scores or score_val > page_scores[page_num]:
                     page_scores[page_num] = score_val
+                    page_chunk_ids[page_num] = chunk.get("chunk_id", "")
 
         # Track which pages contain article DEFINITION headers.
         _art_def_pages: set[int] = set()
@@ -2150,9 +2334,9 @@ def _retrieve_pages_targeted(
                 page_num = chunk["metadata"].get("page", 1)
                 chunk_text = chunk["text"]
                 for art_num in _art_root_nums:
-                    if re.search(rf'(?:^|\n)\s*{re.escape(art_num)}\.\s*\n', chunk_text):
+                    if re.search(rf"(?:^|\n)\s*{re.escape(art_num)}\.\s*\n", chunk_text):
                         _art_def_pages.add(page_num)
-                    elif re.search(rf'(?:^|\n)\s*(?:Article|ARTICLE)\s+{re.escape(art_num)}\s*[\n(]', chunk_text):
+                    elif re.search(rf"(?:^|\n)\s*(?:Article|ARTICLE)\s+{re.escape(art_num)}\s*[\n(]", chunk_text):
                         _art_def_pages.add(page_num)
 
         # Outcome page boost: when question asks about outcomes, boost pages with outcome
@@ -2182,9 +2366,7 @@ def _retrieve_pages_targeted(
             _award_boosted: set[int] = set()
             for chunk in doc_chunks:
                 pg = chunk["metadata"].get("page", 1)
-                if pg not in _award_boosted and re.search(
-                        r'(?:EUR|USD|AED|GBP)\s+[\d,]+', chunk["text"]
-                ):
+                if pg not in _award_boosted and re.search(r"(?:EUR|USD|AED|GBP)\s+[\d,]+", chunk["text"]):
                     page_scores[pg] = page_scores.get(pg, 0.0) + 0.30
                     _award_boosted.add(pg)
 
@@ -2218,10 +2400,7 @@ def _retrieve_pages_targeted(
             # For name/names comparison questions targeting a non-p1 page (e.g. claim value on p2),
             # use a stronger +1.0 boost since p1 (case header) typically scores ~0.85 pts higher.
             if boost_pages and doc_id in boost_pages and page_num == boost_pages[doc_id]:
-                _boost_amt = (
-                    1.2 if (answer_type in ("name", "names") and boost_pages[doc_id] != 1)
-                    else 0.6
-                )
+                _boost_amt = 1.2 if (answer_type in ("name", "names") and boost_pages[doc_id] != 1) else 0.6
                 page_scores[page_num] += _boost_amt
 
             # Content-based article definition boost (fallback only).
@@ -2252,10 +2431,12 @@ def _retrieve_pages_targeted(
                         # - "SCHEDULE 3\nFINES" (IP Law)
                         # - "APPENDIX\nFINES" (other laws)
                         _is_fine_schedule = bool(
-                            re.search(r'SCHEDULE\s+\d+\s*\n\s*(?:CONTRAVENTIONS\s+AND\s+)?FINES', ct, re.IGNORECASE)
-                            or re.search(r'SCHEDULE\s+\d+\s*\n\s*FINES\s+AND\s+FEES', ct, re.IGNORECASE)
-                            or (re.search(r'^SCHEDULE\s+\d+', ct, re.IGNORECASE) and re.search(r'\bFINES?\b', ct[:200],
-                                                                                               re.IGNORECASE))
+                            re.search(r"SCHEDULE\s+\d+\s*\n\s*(?:CONTRAVENTIONS\s+AND\s+)?FINES", ct, re.IGNORECASE)
+                            or re.search(r"SCHEDULE\s+\d+\s*\n\s*FINES\s+AND\s+FEES", ct, re.IGNORECASE)
+                            or (
+                                re.search(r"^SCHEDULE\s+\d+", ct, re.IGNORECASE)
+                                and re.search(r"\bFINES?\b", ct[:200], re.IGNORECASE)
+                            )
                         )
                         if _is_fine_schedule:
                             page_scores[page_num] += 0.8  # +0.8 (vs +0.4): must beat router's +0.6 article boost
@@ -2268,8 +2449,13 @@ def _retrieve_pages_targeted(
         # (e.g. defendants/claimants questions where p1 IS the answer page).
         _p1_is_boosted = bool(boost_pages and doc_id in boost_pages and boost_pages[doc_id] == 1)
         _demotion_types = {"free_text", "number", "date", "name", "names"}
-        if answer_type in _demotion_types and not is_metadata_q and not _p1_is_boosted and 1 in page_scores and len(
-                page_scores) > 1:
+        if (
+            answer_type in _demotion_types
+            and not is_metadata_q
+            and not _p1_is_boosted
+            and 1 in page_scores
+            and len(page_scores) > 1
+        ):
             p1_score = page_scores[1]
             best_deep = max(
                 ((pn, sc) for pn, sc in page_scores.items() if pn > 1),
@@ -2280,7 +2466,8 @@ def _retrieve_pages_targeted(
                 # Swap: push page 1 just below the best deep page
                 page_scores[1] = best_deep[1] - 0.001
                 print(
-                    f"[retriever] title-page demotion: p1 ({p1_score:.3f}) demoted below p{best_deep[0]} ({best_deep[1]:.3f})")
+                    f"[retriever] title-page demotion: p1 ({p1_score:.3f}) demoted below p{best_deep[0]} ({best_deep[1]:.3f})"
+                )
 
         # Skip docs where the best page scores near-zero: routing false-positives
         # that got included (e.g. a law doc cited in the case but not the primary doc).
@@ -2315,12 +2502,15 @@ def _retrieve_pages_targeted(
                 if score / sorted_pages[0][1] < _gap_threshold:
                     break
             text = _extract_page_text(doc_id, page_num)
-            all_page_scores.append(PageResult(
-                doc_id=doc_id,
-                page_number=page_num,
-                score=score,
-                text=text,
-            ))
+            all_page_scores.append(
+                PageResult(
+                    doc_id=doc_id,
+                    page_number=page_num,
+                    score=score,
+                    text=text,
+                    chunk_id=page_chunk_ids.get(page_num, ""),
+                )
+            )
             _selected_count += 1
 
     # Sort by score across all documents, then apply fair-case selection or top-k
@@ -2345,8 +2535,10 @@ def _retrieve_pages_targeted(
                         else:
                             results.append(candidate)
                         doc_represented.add(doc_id)
-                        print(f"[retriever] post-fusion rescue: injected {doc_id[:12]}:p{candidate.page_number} "
-                              f"(score={candidate.score:.3f}) to ensure multi-doc coverage")
+                        print(
+                            f"[retriever] post-fusion rescue: injected {doc_id[:12]}:p{candidate.page_number} "
+                            f"(score={candidate.score:.3f}) to ensure multi-doc coverage"
+                        )
                         break
         results.sort(key=lambda p: p.score, reverse=True)
     else:
@@ -2354,39 +2546,44 @@ def _retrieve_pages_targeted(
 
     ppq = len(results)
     doc_set = {r.doc_id[:12] for r in results}
-    print(f"[retrieve_pages] targeted: {ppq} pages from {len(doc_set)} docs "
-          f"({', '.join(f'{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})' for r in results)})")
+    print(
+        f"[retrieve_pages] targeted: {ppq} pages from {len(doc_set)} docs "
+        f"({', '.join(f'{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})' for r in results)})"
+    )
 
     return results
 
 
 def _retrieve_pages_fallback(
-        question: str,
-        max_per_doc: int,
-        max_total: int,
-        answer_type: str,
-        cached_query_emb=None,
+    question: str,
+    max_per_doc: int,
+    max_total: int,
+    answer_type: str,
+    cached_query_emb=None,
 ) -> list[PageResult]:
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
     # Use existing hybrid retrieval to get ranked chunks — pass answer_type for per-type depth
-    chunks = retrieve(question, n_results=25, use_hyde=False, answer_type=answer_type, cached_query_emb=cached_query_emb)
+    chunks = retrieve(
+        question, n_results=25, use_hyde=False, answer_type=answer_type, cached_query_emb=cached_query_emb
+    )
 
     if not chunks:
         return []
 
     # Detect metadata questions
-    is_metadata_q = (
-            answer_type in ("date", "name")
-            and bool(_METADATA_QUESTION_PATTERNS.search(question))
+    is_metadata_q = answer_type in ("date", "name") and bool(_METADATA_QUESTION_PATTERNS.search(question))
+    _is_date_question = bool(
+        re.search(
+            r"\b(date of issue|issue date|issued|earlier.*date|later.*date)\b",
+            question,
+            re.IGNORECASE,
+        )
     )
-    _is_date_question = bool(re.search(
-        r'\b(date of issue|issue date|issued|earlier.*date|later.*date)\b',
-        question, re.IGNORECASE,
-    ))
 
     # Group by (doc_id, page_number), take the best chunk position as score
     # Lower position = higher score (first chunk is most relevant)
     page_best: dict[tuple[str, int], float] = {}
+    page_best_chunk_id: dict[tuple[str, int], str] = {}
     for rank, chunk in enumerate(chunks):
         doc_id = chunk["metadata"]["pdf_id"]
         page_num = chunk["metadata"].get("page", 1)
@@ -2395,14 +2592,13 @@ def _retrieve_pages_fallback(
         score = 1.0 / (rank + 1)
         if key not in page_best or score > page_best[key]:
             page_best[key] = score
+            page_best_chunk_id[key] = chunk.get("chunk_id", "")
 
     # Apply bonuses — same targeted-page logic as _retrieve_pages_targeted()
     for (doc_id, page_num), score in list(page_best.items()):
         page_best[(doc_id, page_num)] = score + 0.02 / page_num
         if is_metadata_q:
-            meta_target_page = (
-                _DOC_DATE_PAGES.get(doc_id, 1) if (answer_type == "date" or _is_date_question) else 1
-            )
+            meta_target_page = _DOC_DATE_PAGES.get(doc_id, 1) if (answer_type == "date" or _is_date_question) else 1
             if page_num == meta_target_page:
                 page_best[(doc_id, page_num)] += 0.5
 
@@ -2419,18 +2615,23 @@ def _retrieve_pages_fallback(
         if count >= max_per_doc:
             continue
         text = _extract_page_text(doc_id, page_num)
-        results.append(PageResult(
-            doc_id=doc_id,
-            page_number=page_num,
-            score=score,
-            text=text,
-        ))
+        results.append(
+            PageResult(
+                doc_id=doc_id,
+                page_number=page_num,
+                score=score,
+                text=text,
+                chunk_id=page_best_chunk_id.get((doc_id, page_num), ""),
+            )
+        )
         doc_page_count[doc_id] = count + 1
 
     ppq = len(results)
     doc_set = {r.doc_id[:12] for r in results}
-    print(f"[retrieve_pages] fallback: {ppq} pages from {len(doc_set)} docs "
-          f"({', '.join(f'{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})' for r in results)})")
+    print(
+        f"[retrieve_pages] fallback: {ppq} pages from {len(doc_set)} docs "
+        f"({', '.join(f'{r.doc_id[:12]}:p{r.page_number}({r.score:.2f})' for r in results)})"
+    )
 
     return results
 
@@ -2454,10 +2655,13 @@ def _expand_with_adjacent_pages(results: list[PageResult]) -> list[PageResult]:
         if next_text:
             context_parts.append(f"[FOLLOWING PAGE {r.page_number + 1}]\n{next_text}")
 
-        expanded.append(PageResult(
-            doc_id=r.doc_id,
-            page_number=r.page_number,
-            score=r.score,
-            text="\n\n".join(context_parts),
-        ))
+        expanded.append(
+            PageResult(
+                doc_id=r.doc_id,
+                page_number=r.page_number,
+                score=r.score,
+                text="\n\n".join(context_parts),
+                chunk_id=r.chunk_id,
+            )
+        )
     return expanded

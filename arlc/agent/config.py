@@ -3,6 +3,7 @@
 All magic numbers and tunable parameters in one place.
 Override via environment variables where noted.
 """
+
 import os
 
 # --- Search ---

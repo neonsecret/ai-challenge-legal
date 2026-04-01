@@ -42,13 +42,13 @@ def _load_case_metadata() -> dict:
 # Regex patterns for entity extraction from chunk text
 _ENTITY_PATTERNS = [
     # Case numbers: SCT 295/2025, CFI 010/2024, ENF-022-2023, etc.
-    re.compile(r'\b((?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+)\b', re.IGNORECASE),
+    re.compile(r"\b((?:CFI|CA|ARB|ENF|SCT|TCD|DEC)[\s\-_]*\d+[\s/\-_]*\d+)\b", re.IGNORECASE),
     # Article references: Article 14, Article 14(2)(b)
-    re.compile(r'\b(Article\s+\d+(?:\(\w+\))*)\b', re.IGNORECASE),
+    re.compile(r"\b(Article\s+\d+(?:\(\w+\))*)\b", re.IGNORECASE),
     # Law number references: Law No. 5 of 2020, DIFC Law No. 2
-    re.compile(r'\b((?:DIFC\s+)?Law\s+No\.?\s*\d+(?:\s+of\s+\d+)?)\b', re.IGNORECASE),
+    re.compile(r"\b((?:DIFC\s+)?Law\s+No\.?\s*\d+(?:\s+of\s+\d+)?)\b", re.IGNORECASE),
     # Regulation references: Regulation No. 1
-    re.compile(r'\b(Regulation\s+No\.?\s*\d+)\b', re.IGNORECASE),
+    re.compile(r"\b(Regulation\s+No\.?\s*\d+)\b", re.IGNORECASE),
 ]
 
 
@@ -61,7 +61,7 @@ def extract_entities_from_chunk(text: str) -> list[str]:
     entities: set[str] = set()
     for pattern in _ENTITY_PATTERNS:
         for match in pattern.findall(text):
-            entity = re.sub(r'\s+', ' ', match.strip()).lower()
+            entity = re.sub(r"\s+", " ", match.strip()).lower()
             if entity:
                 entities.add(entity)
     return sorted(entities)
@@ -80,16 +80,16 @@ _doc_summary_cache: dict[str, str] = {}
 # Boilerplate patterns that dominate embedding space, making all pages of the
 # same document cluster together instead of discriminating by content.
 _BOILERPLATE_PATTERNS = [
-    re.compile(r'IN\s+THE\s+DUBAI\s+INTERNATIONAL\s+FINANCIAL\s+CENTRE\s+COURTS?', re.IGNORECASE),
-    re.compile(r'IN\s+THE\s+COURT\s+OF\s+FIRST\s+INSTANCE', re.IGNORECASE),
-    re.compile(r'IN\s+THE\s+SMALL\s+CLAIMS\s+TRIBUNAL', re.IGNORECASE),
-    re.compile(r'COURT\s+OF\s+APPEAL', re.IGNORECASE),
-    re.compile(r'(?:Claim|Case)\s+No\s*:\s*\S+', re.IGNORECASE),
-    re.compile(r'^BETWEEN\s*$', re.MULTILINE | re.IGNORECASE),
-    re.compile(r'^(?:Claimant|Defendant|Respondent|Applicant)s?\s*$', re.MULTILINE | re.IGNORECASE),
-    re.compile(r'Page\s+\d+\s+of\s+\d+', re.IGNORECASE),
-    re.compile(r'^\s*\d{1,3}\s*$', re.MULTILINE),  # standalone page numbers
-    re.compile(r'^\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\s*$', re.MULTILINE),  # date stamps on their own line
+    re.compile(r"IN\s+THE\s+DUBAI\s+INTERNATIONAL\s+FINANCIAL\s+CENTRE\s+COURTS?", re.IGNORECASE),
+    re.compile(r"IN\s+THE\s+COURT\s+OF\s+FIRST\s+INSTANCE", re.IGNORECASE),
+    re.compile(r"IN\s+THE\s+SMALL\s+CLAIMS\s+TRIBUNAL", re.IGNORECASE),
+    re.compile(r"COURT\s+OF\s+APPEAL", re.IGNORECASE),
+    re.compile(r"(?:Claim|Case)\s+No\s*:\s*\S+", re.IGNORECASE),
+    re.compile(r"^BETWEEN\s*$", re.MULTILINE | re.IGNORECASE),
+    re.compile(r"^(?:Claimant|Defendant|Respondent|Applicant)s?\s*$", re.MULTILINE | re.IGNORECASE),
+    re.compile(r"Page\s+\d+\s+of\s+\d+", re.IGNORECASE),
+    re.compile(r"^\s*\d{1,3}\s*$", re.MULTILINE),  # standalone page numbers
+    re.compile(r"^\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\s*$", re.MULTILINE),  # date stamps on their own line
 ]
 
 
@@ -107,14 +107,14 @@ def clean_text_for_embedding(text: str, doc_metadata: dict | None = None) -> str
     if doc_metadata and doc_metadata.get("title"):
         title = doc_metadata["title"]
         # Remove exact and near-exact title occurrences (case-insensitive)
-        cleaned = re.sub(re.escape(title), '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(re.escape(title), "", cleaned, flags=re.IGNORECASE)
 
     # Strip known boilerplate patterns
     for pattern in _BOILERPLATE_PATTERNS:
-        cleaned = pattern.sub('', cleaned)
+        cleaned = pattern.sub("", cleaned)
 
     # Collapse excessive whitespace left by removals
-    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned)
     cleaned = cleaned.strip()
 
     return cleaned
@@ -122,8 +122,7 @@ def clean_text_for_embedding(text: str, doc_metadata: dict | None = None) -> str
 
 # Legal structure header pattern for structure-aware chunking
 _LEGAL_HEADER_PATTERN = re.compile(
-    r'(?=\n(?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+)',
-    re.IGNORECASE
+    r"(?=\n(?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+)", re.IGNORECASE
 )
 
 
@@ -162,8 +161,7 @@ Output ONLY the retrieval index entry (max 200 chars), no preamble."""
 
 
 _CHUNK_HEADER_PATTERN = re.compile(
-    r'^((?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+[^.\n]{0,80})',
-    re.IGNORECASE
+    r"^((?:Article|Section|Part|Schedule|Appendix|Chapter)\s+[\dIVXivx]+[^.\n]{0,80})", re.IGNORECASE
 )
 
 
@@ -225,18 +223,23 @@ def _ocr_page(page, pdf_file: str, page_num: int) -> str:
         # Call vision API via LLM router
         # Note: call_llm doesn't support image blocks, so we use the anthropic SDK directly
         import anthropic as _anthropic_sdk
+
         _client = _anthropic_sdk.Anthropic()
         response = _client.messages.create(
             model=_ocr_model,
             max_tokens=2048,
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
-                    {"type": "text",
-                     "text": "Extract all text from this legal document page. Return only the extracted text, no commentary."}
-                ]
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": img_b64}},
+                        {
+                            "type": "text",
+                            "text": "Extract all text from this legal document page. Return only the extracted text, no commentary.",
+                        },
+                    ],
+                }
+            ],
         )
 
         text = response.content[0].text.strip()
@@ -264,7 +267,7 @@ def split_page_into_chunks(text: str, page_num: int, max_chars: int = 500, overl
         paragraphs = [s.strip() for s in header_splits if s.strip()]
     else:
         # Fallback: standard paragraph splitting
-        paragraphs = [p.strip() for p in re.split(r'\n{2,}', text) if p.strip()]
+        paragraphs = [p.strip() for p in re.split(r"\n{2,}", text) if p.strip()]
 
     chunks = []
     current = ""
@@ -280,14 +283,17 @@ def split_page_into_chunks(text: str, page_num: int, max_chars: int = 500, overl
             # Check if paragraph itself exceeds max_chars — split at sentence boundaries
             if len(para) > max_chars:
                 # Try sentence splitting first (on periods, question marks, exclamation marks)
-                sentences = re.split(r'(?<=[.!?])\s+', para)
+                sentences = re.split(r"(?<=[.!?])\s+", para)
 
                 # If no sentence boundaries found (e.g., legal lists with semicolons),
                 # try splitting on semicolons or line breaks
                 if len(sentences) == 1:
                     # Try semicolon splits for legal lists
-                    sentences = [s.strip() + ';' if i < len(para.split(';')) - 1 else s.strip()
-                                 for i, s in enumerate(para.split(';')) if s.strip()]
+                    sentences = [
+                        s.strip() + ";" if i < len(para.split(";")) - 1 else s.strip()
+                        for i, s in enumerate(para.split(";"))
+                        if s.strip()
+                    ]
 
                 # If still one giant chunk, force split at max_chars
                 if len(sentences) == 1 and len(sentences[0]) > max_chars:
@@ -357,11 +363,13 @@ def _get_embedding_function():
     For SentenceTransformer models: loads locally with GPU auto-detection.
     """
     from arlc.retriever import _embedding_lock, get_embedding_model
+
     model = get_embedding_model()
     print("  Embedding via llama-server (same as retriever)")
 
     def encode(texts: list[str]) -> list[list[float]]:
         import numpy as np
+
         with _embedding_lock:
             embeddings = model.encode(texts, normalize_embeddings=True)
         return np.array(embeddings).tolist()
@@ -411,9 +419,7 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
         chunks = extract_pages(pdf_path)
 
         # SAC: generate per-document summary from first 2-3 pages
-        first_pages_text = "\n\n".join(
-            c["text"] for c in chunks if c["page"] <= 3
-        )
+        first_pages_text = "\n\n".join(c["text"] for c in chunks if c["page"] <= 3)
         summary = _generate_doc_summary(pdf_id, first_pages_text) if first_pages_text else ""
         if summary:
             print(f"  SAC summary for {pdf_file}: {summary}")
@@ -424,17 +430,18 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
             all_texts.append(chunk_info["text"])  # raw text; SAC prefix prepended below
             # Entity extraction at index time
             entities = extract_entities_from_chunk(chunk_info["text"])
-            all_metadatas.append({
-                "pdf_id": pdf_id,
-                "doc_id": canonical_doc_id,  # canonical UUID from .meta (matches frontend doc_ids)
-                "page": chunk_info["page"],  # 1-based, used for grounding
-                "source_file": pdf_file,
-                "entities": "|".join(entities),
-            })
+            all_metadatas.append(
+                {
+                    "pdf_id": pdf_id,
+                    "doc_id": canonical_doc_id,  # canonical UUID from .meta (matches frontend doc_ids)
+                    "page": chunk_info["page"],  # 1-based, used for grounding
+                    "source_file": pdf_file,
+                    "entities": "|".join(entities),
+                }
+            )
             if summary:
                 chunk_key = f"{chunk_info['page']}_{chunk_info['chunk_idx']}"
-                pending_contexts.append((len(all_ids) - 1, pdf_id, summary,
-                                         chunk_info["text"], chunk_key))
+                pending_contexts.append((len(all_ids) - 1, pdf_id, summary, chunk_info["text"], chunk_key))
 
     # Generate per-chunk contexts concurrently.
     # Fast path (70%+ of chunks): rule-based header extraction — no LLM call.

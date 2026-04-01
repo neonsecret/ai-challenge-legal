@@ -28,6 +28,7 @@ LLAMA_SERVER_URL   URL of the running server (default: http://localhost:8088)
 LLAMA_MODEL_PATH   Path to .gguf file — used only by start_server()
 LLAMA_N_GPU_LAYERS Number of layers to offload to GPU/Metal (default: 99)
 """
+
 from __future__ import annotations
 
 import logging
@@ -170,10 +171,10 @@ class LlamaServerEmbedder:
     # ------------------------------------------------------------------
 
     def embed_texts(
-            self,
-            texts: list[str],
-            batch_size: Optional[int] = None,
-            **kwargs,
+        self,
+        texts: list[str],
+        batch_size: Optional[int] = None,
+        **kwargs,
     ) -> np.ndarray:
         """Embed document passages without an instruction prefix.
 
@@ -182,13 +183,13 @@ class LlamaServerEmbedder:
         bs = batch_size or self.batch_size
         chunks = []
         for start in range(0, len(texts), bs):
-            chunks.append(self._embed_batch(texts[start: start + bs]))
+            chunks.append(self._embed_batch(texts[start : start + bs]))
         return np.concatenate(chunks, axis=0)
 
     def embed_query(
-            self,
-            query: str,
-            task: str = QWEN_QUERY_TASK,
+        self,
+        query: str,
+        task: str = QWEN_QUERY_TASK,
     ) -> np.ndarray:
         """Embed a single query with the Qwen3 instruction prefix.
 
@@ -198,11 +199,11 @@ class LlamaServerEmbedder:
         return self._embed_batch([prefixed])[0]
 
     def encode(
-            self,
-            sentences: Union[str, list[str]],
-            normalize_embeddings: bool = True,
-            prompt_name: Optional[str] = None,
-            **kwargs,
+        self,
+        sentences: Union[str, list[str]],
+        normalize_embeddings: bool = True,
+        prompt_name: Optional[str] = None,
+        **kwargs,
     ) -> np.ndarray:
         """SentenceTransformer-compatible encode() API.
 
@@ -224,6 +225,7 @@ class LlamaServerEmbedder:
 # Server lifecycle helpers
 # ------------------------------------------------------------------
 
+
 def _find_llama_server() -> str:
     """Return path to llama-server binary, searching common locations."""
     # Prefer the system PATH first (e.g. Homebrew on Mac)
@@ -239,9 +241,7 @@ def _find_llama_server() -> str:
     for c in candidates:
         if os.path.isfile(c):
             return c
-    raise FileNotFoundError(
-        "llama-server not found. Install via 'brew install llama.cpp' or build from source."
-    )
+    raise FileNotFoundError("llama-server not found. Install via 'brew install llama.cpp' or build from source.")
 
 
 def _wait_for_port(host: str, port: int, timeout: float = 60.0) -> None:
@@ -258,10 +258,10 @@ def _wait_for_port(host: str, port: int, timeout: float = 60.0) -> None:
 
 @contextmanager
 def start_server(
-        model_path: Optional[str] = None,
-        port: int = 8088,
-        n_gpu_layers: int = 99,
-        context_size: int = 4096,
+    model_path: Optional[str] = None,
+    port: int = 8088,
+    n_gpu_layers: int = 99,
+    context_size: int = 4096,
 ):
     """Context manager that starts a llama-server subprocess and yields its URL.
 
@@ -276,9 +276,7 @@ def start_server(
     """
     model_path = model_path or os.environ.get("LLAMA_MODEL_PATH")
     if not model_path:
-        raise ValueError(
-            "model_path is required. Pass it directly or set LLAMA_MODEL_PATH."
-        )
+        raise ValueError("model_path is required. Pass it directly or set LLAMA_MODEL_PATH.")
 
     # Check if something is already on the port
     already_running = False
@@ -296,13 +294,19 @@ def start_server(
     binary = _find_llama_server()
     cmd = [
         binary,
-        "-m", model_path,
+        "-m",
+        model_path,
         "--embedding",
-        "--pooling", "last",
-        "-ngl", str(n_gpu_layers),
-        "-c", str(context_size),
-        "--port", str(port),
-        "--host", "127.0.0.1",
+        "--pooling",
+        "last",
+        "-ngl",
+        str(n_gpu_layers),
+        "-c",
+        str(context_size),
+        "--port",
+        str(port),
+        "--host",
+        "127.0.0.1",
         "--log-disable",  # suppress verbose output to stderr
     ]
     logger.info("Starting llama-server: %s", " ".join(cmd))

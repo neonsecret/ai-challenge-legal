@@ -33,62 +33,62 @@ ARTICLE_PAGE_INDEX_PATH = Path("data/article_page_index.json")
 
 # Internal article/section/schedule/part references
 INTERNAL_ARTICLE_RE = re.compile(
-    r'\b(?:Article|Art\.)\s+(\d+[A-Z]?)(?:\((\d+)\))?',
+    r"\b(?:Article|Art\.)\s+(\d+[A-Z]?)(?:\((\d+)\))?",
     re.IGNORECASE,
 )
 INTERNAL_SECTION_RE = re.compile(
-    r'\bSection\s+(\d+[A-Z]?)(?:\((\d+)\))?',
+    r"\bSection\s+(\d+[A-Z]?)(?:\((\d+)\))?",
     re.IGNORECASE,
 )
 INTERNAL_RULE_RE = re.compile(
-    r'\bRule\s+(\d+[A-Z]?(?:\.\d+)*)(?:\((\d+)\))?',
+    r"\bRule\s+(\d+[A-Z]?(?:\.\d+)*)(?:\((\d+)\))?",
     re.IGNORECASE,
 )
 INTERNAL_REGULATION_RE = re.compile(
-    r'\bRegulation\s+(\d+(?:\.\d+)*)(?:\((\d+)\))?',
+    r"\bRegulation\s+(\d+(?:\.\d+)*)(?:\((\d+)\))?",
     re.IGNORECASE,
 )
 INTERNAL_SCHEDULE_RE = re.compile(
-    r'\bSchedule\s+(\d+)',
+    r"\bSchedule\s+(\d+)",
     re.IGNORECASE,
 )
 INTERNAL_PART_RE = re.compile(
-    r'\bPart\s+(\d+)',
+    r"\bPart\s+(\d+)",
     re.IGNORECASE,
 )
 INTERNAL_APPENDIX_RE = re.compile(
-    r'\b(?:Appendix|Annex)\s+(\d+)',
+    r"\b(?:Appendix|Annex)\s+(\d+)",
     re.IGNORECASE,
 )
 INTERNAL_CHAPTER_RE = re.compile(
-    r'\bChapter\s+(\d+)',
+    r"\bChapter\s+(\d+)",
     re.IGNORECASE,
 )
 
 # External law references: "DIFC Law No. X of YYYY" or full named laws
 DIFC_LAW_NO_RE = re.compile(
-    r'(?:DIFC\s+)?(?:[\w\s]+?\s+)?Law\s+No\.?\s*(\d+)\s+of\s+(\d{4})',
+    r"(?:DIFC\s+)?(?:[\w\s]+?\s+)?Law\s+No\.?\s*(\d+)\s+of\s+(\d{4})",
     re.IGNORECASE,
 )
 NAMED_LAW_RE = re.compile(
-    r'(?:the\s+)?(?:DIFC\s+)?((?:[A-Z][a-z]+\s+){1,5})(?:Law|Regulations?|Rules?)(?:\s+\d{4})?',
+    r"(?:the\s+)?(?:DIFC\s+)?((?:[A-Z][a-z]+\s+){1,5})(?:Law|Regulations?|Rules?)(?:\s+\d{4})?",
 )
 
 # Case references
 CASE_REF_RE = re.compile(
-    r'\b(CFI|SCT|CA|ARB|ENF|DEC|TCD|ACT)[\s\-/]*(\d{1,4})\s*(?:/|\-|\s+of\s+)(\d{4})',
+    r"\b(CFI|SCT|CA|ARB|ENF|DEC|TCD|ACT)[\s\-/]*(\d{1,4})\s*(?:/|\-|\s+of\s+)(\d{4})",
     re.IGNORECASE,
 )
 
 # RDC references
 RDC_REF_RE = re.compile(
-    r'\bRDC\s+(?:Part\s+)?(\d+[\.\d]*)',
+    r"\bRDC\s+(?:Part\s+)?(\d+[\.\d]*)",
     re.IGNORECASE,
 )
 
 # Consultation Paper references
 CP_REF_RE = re.compile(
-    r'Consultation\s+Paper\s+(?:No\.?\s*)?(\d+)(?:\s+of\s+(\d{4}))?',
+    r"Consultation\s+Paper\s+(?:No\.?\s*)?(\d+)(?:\s+of\s+(\d{4}))?",
     re.IGNORECASE,
 )
 
@@ -159,8 +159,9 @@ def _resolve_article_page(doc_id: str, article_key: str, article_page_index: dic
     return None
 
 
-def extract_references(text: str, page_num: int, doc_id: str,
-                       law_name_index: dict, article_page_index: dict) -> list[dict]:
+def extract_references(
+    text: str, page_num: int, doc_id: str, law_name_index: dict, article_page_index: dict
+) -> list[dict]:
     """Extract all cross-references from a page of text."""
     refs = []
 
@@ -174,12 +175,14 @@ def extract_references(text: str, page_num: int, doc_id: str,
         target_page = _resolve_article_page(doc_id, article_key, article_page_index)
         # Only record if it refers to a different page (cross-ref, not self-def)
         if target_page is not None and target_page != page_num + 1:
-            refs.append({
-                "target_doc": doc_id,
-                "target_page": target_page,
-                "type": "internal_article",
-                "context": m.group(0).strip(),
-            })
+            refs.append(
+                {
+                    "target_doc": doc_id,
+                    "target_page": target_page,
+                    "type": "internal_article",
+                    "context": m.group(0).strip(),
+                }
+            )
 
     # --- Internal schedule references ---
     for m in INTERNAL_SCHEDULE_RE.finditer(text):
@@ -187,12 +190,14 @@ def extract_references(text: str, page_num: int, doc_id: str,
         article_key = f"schedule_{sched_num}"
         target_page = _resolve_article_page(doc_id, article_key, article_page_index)
         if target_page is not None and target_page != page_num + 1:
-            refs.append({
-                "target_doc": doc_id,
-                "target_page": target_page,
-                "type": "internal_schedule",
-                "context": m.group(0).strip(),
-            })
+            refs.append(
+                {
+                    "target_doc": doc_id,
+                    "target_page": target_page,
+                    "type": "internal_schedule",
+                    "context": m.group(0).strip(),
+                }
+            )
 
     # --- Internal part references ---
     for m in INTERNAL_PART_RE.finditer(text):
@@ -200,12 +205,14 @@ def extract_references(text: str, page_num: int, doc_id: str,
         article_key = f"part_{part_num}"
         target_page = _resolve_article_page(doc_id, article_key, article_page_index)
         if target_page is not None and target_page != page_num + 1:
-            refs.append({
-                "target_doc": doc_id,
-                "target_page": target_page,
-                "type": "internal_part",
-                "context": m.group(0).strip(),
-            })
+            refs.append(
+                {
+                    "target_doc": doc_id,
+                    "target_page": target_page,
+                    "type": "internal_part",
+                    "context": m.group(0).strip(),
+                }
+            )
 
     # --- Internal appendix references ---
     for m in INTERNAL_APPENDIX_RE.finditer(text):
@@ -213,57 +220,67 @@ def extract_references(text: str, page_num: int, doc_id: str,
         article_key = f"appendix_{app_num}"
         target_page = _resolve_article_page(doc_id, article_key, article_page_index)
         if target_page is not None and target_page != page_num + 1:
-            refs.append({
-                "target_doc": doc_id,
-                "target_page": target_page,
-                "type": "internal_appendix",
-                "context": m.group(0).strip(),
-            })
+            refs.append(
+                {
+                    "target_doc": doc_id,
+                    "target_page": target_page,
+                    "type": "internal_appendix",
+                    "context": m.group(0).strip(),
+                }
+            )
 
     # --- External law references (DIFC Law No. X of YYYY) ---
     for m in DIFC_LAW_NO_RE.finditer(text):
         context_str = m.group(0).strip()
         target_doc = _resolve_law_name(context_str, law_name_index)
         if target_doc and target_doc != doc_id:
-            refs.append({
-                "target_doc": target_doc,
-                "target_page": None,
-                "type": "external_law",
-                "context": context_str,
-            })
+            refs.append(
+                {
+                    "target_doc": target_doc,
+                    "target_page": None,
+                    "type": "external_law",
+                    "context": context_str,
+                }
+            )
 
     # --- Named law references ---
     for m in NAMED_LAW_RE.finditer(text):
         context_str = m.group(0).strip()
         target_doc = _resolve_law_name(context_str, law_name_index)
         if target_doc and target_doc != doc_id:
-            refs.append({
-                "target_doc": target_doc,
-                "target_page": None,
-                "type": "external_law",
-                "context": context_str,
-            })
+            refs.append(
+                {
+                    "target_doc": target_doc,
+                    "target_page": None,
+                    "type": "external_law",
+                    "context": context_str,
+                }
+            )
 
     # --- Case references ---
     for m in CASE_REF_RE.finditer(text):
         prefix, number, year = m.group(1), m.group(2), m.group(3)
         case_id = _normalize_case_id(prefix, number, year)
-        refs.append({
-            "target_doc": None,  # Would need case_metadata_index to resolve
-            "target_page": None,
-            "type": "case_ref",
-            "context": case_id,
-        })
+        refs.append(
+            {
+                "target_doc": None,  # Would need case_metadata_index to resolve
+                "target_page": None,
+                "type": "case_ref",
+                "context": case_id,
+            }
+        )
 
     # --- RDC references ---
     for m in RDC_REF_RE.finditer(text):
         rule_num = m.group(1)
-        refs.append({
-            "target_doc": None,
-            "target_page": None,
-            "type": "rdc_rule",
-            "context": f"RDC {rule_num}",
-        })
+        refs.append(
+            {
+                "target_doc": None,
+                "target_page": None,
+                "type": "rdc_rule",
+                "context": f"RDC {rule_num}",
+            }
+        )
 
     # --- Consultation Paper references ---
     for m in CP_REF_RE.finditer(text):
@@ -272,12 +289,14 @@ def extract_references(text: str, page_num: int, doc_id: str,
         context_str = f"Consultation Paper No. {cp_num}"
         if cp_year:
             context_str += f" of {cp_year}"
-        refs.append({
-            "target_doc": None,
-            "target_page": None,
-            "type": "consultation_paper",
-            "context": context_str,
-        })
+        refs.append(
+            {
+                "target_doc": None,
+                "target_page": None,
+                "type": "consultation_paper",
+                "context": context_str,
+            }
+        )
 
     return refs
 
@@ -345,8 +364,7 @@ def build_graph():
         for page_num, text in enumerate(pages_text):
             if not text.strip():
                 continue
-            refs = extract_references(text, page_num, doc_id,
-                                      law_name_index, article_page_index)
+            refs = extract_references(text, page_num, doc_id, law_name_index, article_page_index)
             refs = _deduplicate_refs(refs)
             if refs:
                 doc_refs[str(page_num + 1)] = refs  # 1-indexed pages

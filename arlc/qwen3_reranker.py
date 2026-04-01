@@ -12,6 +12,7 @@ Usage:
     reranker = Qwen3Reranker()
     scores = reranker.predict([("query", "document"), ...])  # returns numpy array
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # System prompt used by all Qwen3-Reranker model variants
 _SYSTEM_PROMPT = (
-    'Judge whether the Document meets the requirements based on the Query and the Instruct. '
+    "Judge whether the Document meets the requirements based on the Query and the Instruct. "
     'Note that the answer can only be "yes" or "no".'
 )
 
@@ -51,22 +52,18 @@ class Qwen3Reranker:
     """
 
     def __init__(
-            self,
-            model_name: str = "Qwen/Qwen3-Reranker-0.6B",
-            instruction: str = "Given a legal question, retrieve the most relevant passage that directly answers it.",
-            device: Optional[str] = None,
-            batch_size: int = 16,
+        self,
+        model_name: str = "Qwen/Qwen3-Reranker-0.6B",
+        instruction: str = "Given a legal question, retrieve the most relevant passage that directly answers it.",
+        device: Optional[str] = None,
+        batch_size: int = 16,
     ) -> None:
         self.model_name = model_name
         self.instruction = instruction
         self.batch_size = batch_size
 
         if device is None:
-            device = (
-                "cuda" if torch.cuda.is_available()
-                else "mps" if torch.backends.mps.is_available()
-                else "cpu"
-            )
+            device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
         self.device = device
 
         from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -87,9 +84,7 @@ class Qwen3Reranker:
         # Token IDs for "yes" and "no" in Qwen tokenizer
         self._yes_id = self.tokenizer.convert_tokens_to_ids("yes")
         self._no_id = self.tokenizer.convert_tokens_to_ids("no")
-        logger.info(
-            "Qwen3-Reranker loaded. yes_id=%d, no_id=%d", self._yes_id, self._no_id
-        )
+        logger.info("Qwen3-Reranker loaded. yes_id=%d, no_id=%d", self._yes_id, self._no_id)
 
     def _make_prompt(self, query: str, document: str) -> str:
         """Build the full chat-template prompt for one (query, document) pair."""
@@ -97,11 +92,7 @@ class Qwen3Reranker:
             {"role": "system", "content": _SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": (
-                    f"<Instruct>: {self.instruction}\n"
-                    f"<Query>: {query}\n"
-                    f"<Document>: {document}"
-                ),
+                "content": (f"<Instruct>: {self.instruction}\n<Query>: {query}\n<Document>: {document}"),
             },
         ]
         return self.tokenizer.apply_chat_template(
@@ -140,12 +131,12 @@ class Qwen3Reranker:
         return scores
 
     def predict(
-            self,
-            sentences: list[tuple[str, str]],
-            batch_size: Optional[int] = None,
-            on_progress=None,
-            timeout: Optional[float] = None,
-            **kwargs,
+        self,
+        sentences: list[tuple[str, str]],
+        batch_size: Optional[int] = None,
+        on_progress=None,
+        timeout: Optional[float] = None,
+        **kwargs,
     ) -> np.ndarray:
         """Score (query, document) pairs. Returns float32 numpy array of relevance scores.
 
@@ -161,10 +152,8 @@ class Qwen3Reranker:
         t_start = time.monotonic()
         for start in range(0, total, bs):
             if timeout and (time.monotonic() - t_start) > timeout:
-                raise TimeoutError(
-                    f"Reranking exceeded {timeout}s after {len(all_scores)}/{total} pairs"
-                )
-            batch = prompts[start: start + bs]
+                raise TimeoutError(f"Reranking exceeded {timeout}s after {len(all_scores)}/{total} pairs")
+            batch = prompts[start : start + bs]
             all_scores.extend(self._score_batch(batch))
             if on_progress:
                 on_progress(min(start + bs, total), total)
@@ -201,6 +190,7 @@ class LlamaServerReranker:
 
     def __init__(self, url: str) -> None:
         import requests as _requests
+
         self._requests = _requests
         self.url = url.rstrip("/")
         try:
@@ -216,10 +206,10 @@ class LlamaServerReranker:
     CONNECT_TIMEOUT = 5
 
     def _rerank_single_batch(
-            self,
-            query: str,
-            documents: list[str],
-            read_timeout: float,
+        self,
+        query: str,
+        documents: list[str],
+        read_timeout: float,
     ) -> list[dict]:
         """Send one /v1/rerank request and return raw results list.
 
@@ -234,18 +224,20 @@ class LlamaServerReranker:
         if not r.ok:
             logger.warning(
                 "llama-server rerank %s returned %d: %s",
-                self.url, r.status_code, r.text[:300],
+                self.url,
+                r.status_code,
+                r.text[:300],
             )
         r.raise_for_status()
         return r.json()["results"]
 
     def predict(
-            self,
-            sentences: list[tuple[str, str]],
-            batch_size: Optional[int] = None,
-            on_progress=None,
-            timeout: Optional[float] = None,
-            **kwargs,
+        self,
+        sentences: list[tuple[str, str]],
+        batch_size: Optional[int] = None,
+        on_progress=None,
+        timeout: Optional[float] = None,
+        **kwargs,
     ) -> np.ndarray:
         """Score (query, document) pairs via llama-server /v1/rerank.
 

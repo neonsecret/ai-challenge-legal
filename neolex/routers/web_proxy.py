@@ -182,9 +182,7 @@ def _extract_text_bs4(html: str) -> tuple[str, str]:
             title = title_tag.get_text(strip=True)
 
         # 1. Remove script, style, nav, footer, header, aside, noscript tags
-        for tag in soup.find_all(
-            ["script", "style", "nav", "footer", "header", "aside", "noscript", "iframe", "svg"]
-        ):
+        for tag in soup.find_all(["script", "style", "nav", "footer", "header", "aside", "noscript", "iframe", "svg"]):
             tag.decompose()
 
         # 2. Remove elements with ARIA roles that indicate non-content
@@ -231,7 +229,8 @@ def _extract_text_bs4(html: str) -> tuple[str, str]:
                 # always picking the outermost wrapper)
                 direct_text = div.find_all(string=True, recursive=False)
                 p_text = "".join(
-                    p.get_text(strip=True) for p in div.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "blockquote"])
+                    p.get_text(strip=True)
+                    for p in div.find_all(["p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "td", "blockquote"])
                 )
                 text_len = len(p_text) + sum(len(t.strip()) for t in direct_text)
                 if text_len > best_text_len:

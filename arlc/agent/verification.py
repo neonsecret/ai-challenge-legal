@@ -57,10 +57,7 @@ def verify_agent_pages(
 
     # Build the pages list in the format verify_pages expects:
     # [{doc_id: str, page_numbers: [int]}, ...]
-    pages_for_verifier = [
-        {"doc_id": s["doc_id"], "page_numbers": list(s.get("page_numbers", []))}
-        for s in sources
-    ]
+    pages_for_verifier = [{"doc_id": s["doc_id"], "page_numbers": list(s.get("page_numbers", []))} for s in sources]
 
     try:
         verified = verify_pages(
@@ -85,7 +82,9 @@ def verify_agent_pages(
             changes += 1
             logger.info(
                 "[agent] page verified: %s pages %s -> %s",
-                original["doc_id"], old_pages, new_pages,
+                original["doc_id"],
+                old_pages,
+                new_pages,
             )
 
     if changes:

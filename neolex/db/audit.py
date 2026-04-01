@@ -3,6 +3,7 @@
 AuditDB is the single interface for all operational database operations.
 It is accessed through the get_audit_db() async context manager.
 """
+
 import datetime as _dt
 import json
 from contextlib import asynccontextmanager
@@ -44,13 +45,13 @@ class AuditDB:
     # --- Key management ---
 
     async def create_key(
-            self,
-            *,
-            name: str,
-            key_hash: str,
-            key_prefix: str,
-            client_slug: str,
-            scope: str = "query",
+        self,
+        *,
+        name: str,
+        key_hash: str,
+        key_prefix: str,
+        client_slug: str,
+        scope: str = "query",
     ) -> int:
         ts = _dt.datetime.now(_dt.timezone.utc).isoformat()
         key = ApiKey(
@@ -67,9 +68,7 @@ class AuditDB:
         return key.id
 
     async def get_key_by_hash(self, key_hash: str) -> dict | None:
-        result = await self._session.execute(
-            select(ApiKey).where(ApiKey.key_hash == key_hash)
-        )
+        result = await self._session.execute(select(ApiKey).where(ApiKey.key_hash == key_hash))
         row = result.scalar_one_or_none()
         return _to_dict(row) if row else None
 
@@ -87,9 +86,7 @@ class AuditDB:
         return len(rows)
 
     async def update_last_used(self, key_id: int) -> None:
-        result = await self._session.execute(
-            select(ApiKey).where(ApiKey.id == key_id)
-        )
+        result = await self._session.execute(select(ApiKey).where(ApiKey.id == key_id))
         key = result.scalar_one_or_none()
         if key:
             key.last_used = _dt.datetime.now(_dt.timezone.utc).isoformat()
@@ -97,16 +94,16 @@ class AuditDB:
     # --- Audit log writes (append-only) ---
 
     async def log_query(
-            self,
-            *,
-            key_hash: str,
-            question: str,
-            answer_text: str,
-            sources_json: str,
-            latency_ms: int,
-            model_name: str,
-            ip: str | None,
-            user_agent: str | None,
+        self,
+        *,
+        key_hash: str,
+        question: str,
+        answer_text: str,
+        sources_json: str,
+        latency_ms: int,
+        model_name: str,
+        ip: str | None,
+        user_agent: str | None,
     ) -> None:
         self._session.add(
             Query(
@@ -123,13 +120,13 @@ class AuditDB:
         )
 
     async def log_event(
-            self,
-            *,
-            key_hash: str | None,
-            event_type: str,
-            detail: dict,
-            ip: str | None,
-            user_agent: str | None,
+        self,
+        *,
+        key_hash: str | None,
+        event_type: str,
+        detail: dict,
+        ip: str | None,
+        user_agent: str | None,
     ) -> None:
         self._session.add(
             Event(
@@ -145,11 +142,11 @@ class AuditDB:
     # --- Reindex job management ---
 
     async def create_reindex_job(
-            self,
-            *,
-            job_id: str,
-            client_slug: str,
-            started_at: str,
+        self,
+        *,
+        job_id: str,
+        client_slug: str,
+        started_at: str,
     ) -> None:
         self._session.add(
             ReindexJob(
@@ -162,25 +159,21 @@ class AuditDB:
         )
 
     async def get_reindex_job(self, job_id: str) -> dict | None:
-        result = await self._session.execute(
-            select(ReindexJob).where(ReindexJob.job_id == job_id)
-        )
+        result = await self._session.execute(select(ReindexJob).where(ReindexJob.job_id == job_id))
         row = result.scalar_one_or_none()
         return _to_dict(row) if row else None
 
     async def update_reindex_job(
-            self,
-            job_id: str,
-            *,
-            status: str,
-            progress: float = 0.0,
-            completed_at: str | None = None,
-            error: str | None = None,
-            doc_count: int = 0,
+        self,
+        job_id: str,
+        *,
+        status: str,
+        progress: float = 0.0,
+        completed_at: str | None = None,
+        error: str | None = None,
+        doc_count: int = 0,
     ) -> None:
-        result = await self._session.execute(
-            select(ReindexJob).where(ReindexJob.job_id == job_id)
-        )
+        result = await self._session.execute(select(ReindexJob).where(ReindexJob.job_id == job_id))
         job = result.scalar_one_or_none()
         if job:
             job.status = status
@@ -192,18 +185,16 @@ class AuditDB:
     # --- Document registry ---
 
     async def register_document(
-            self,
-            *,
-            doc_id: str,
-            client_slug: str,
-            filename: str,
-            size_bytes: int,
-            upload_ts: str,
+        self,
+        *,
+        doc_id: str,
+        client_slug: str,
+        filename: str,
+        size_bytes: int,
+        upload_ts: str,
     ) -> None:
         existing = await self._session.execute(
-            select(Document).where(
-                Document.doc_id == doc_id, Document.client_slug == client_slug
-            )
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
         )
         if existing.scalar_one_or_none() is None:
             self._session.add(
@@ -219,26 +210,20 @@ class AuditDB:
 
     async def get_document(self, doc_id: str, client_slug: str) -> dict | None:
         result = await self._session.execute(
-            select(Document).where(
-                Document.doc_id == doc_id, Document.client_slug == client_slug
-            )
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
         )
         row = result.scalar_one_or_none()
         return _to_dict(row) if row else None
 
     async def list_documents(self, client_slug: str) -> list[dict]:
         result = await self._session.execute(
-            select(Document)
-            .where(Document.client_slug == client_slug)
-            .order_by(Document.upload_ts.desc())
+            select(Document).where(Document.client_slug == client_slug).order_by(Document.upload_ts.desc())
         )
         return [_to_dict(r) for r in result.scalars()]
 
     async def mark_document_indexed(self, doc_id: str, client_slug: str) -> None:
         result = await self._session.execute(
-            select(Document).where(
-                Document.doc_id == doc_id, Document.client_slug == client_slug
-            )
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
         )
         doc = result.scalar_one_or_none()
         if doc:
@@ -246,9 +231,7 @@ class AuditDB:
 
     async def delete_document(self, doc_id: str, client_slug: str) -> int:
         result = await self._session.execute(
-            select(Document).where(
-                Document.doc_id == doc_id, Document.client_slug == client_slug
-            )
+            select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug)
         )
         doc = result.scalar_one_or_none()
         if doc:
@@ -259,21 +242,17 @@ class AuditDB:
     # --- Rate limiting ---
 
     async def check_and_increment_rate(
-            self,
-            bucket: str,
-            window_seconds: float,
-            limit: int,
-            now: float,
+        self,
+        bucket: str,
+        window_seconds: float,
+        limit: int,
+        now: float,
     ) -> tuple[int, bool]:
-        result = await self._session.execute(
-            select(RateLimit).where(RateLimit.bucket == bucket)
-        )
+        result = await self._session.execute(select(RateLimit).where(RateLimit.bucket == bucket))
         rl = result.scalar_one_or_none()
 
         if rl is None:
-            self._session.add(
-                RateLimit(bucket=bucket, window_start=now, request_count=1)
-            )
+            self._session.add(RateLimit(bucket=bucket, window_start=now, request_count=1))
             return 1, 1 > limit
 
         if (now - rl.window_start) >= window_seconds:
@@ -286,9 +265,7 @@ class AuditDB:
 
     async def get_ip_failure_count(self, bucket: str) -> tuple[int, float] | None:
         """Return (request_count, window_start) or None."""
-        result = await self._session.execute(
-            select(RateLimit).where(RateLimit.bucket == bucket)
-        )
+        result = await self._session.execute(select(RateLimit).where(RateLimit.bucket == bucket))
         rl = result.scalar_one_or_none()
         if rl is None:
             return None
@@ -297,15 +274,13 @@ class AuditDB:
     # --- Audit log reads (admin use) ---
 
     async def get_queries(
-            self,
-            limit: int = 50,
-            offset: int = 0,
-            client_slug: str | None = None,
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        client_slug: str | None = None,
     ) -> list[dict]:
         if client_slug is None:
-            result = await self._session.execute(
-                select(Query).order_by(Query.id.desc()).limit(limit).offset(offset)
-            )
+            result = await self._session.execute(select(Query).order_by(Query.id.desc()).limit(limit).offset(offset))
         else:
             result = await self._session.execute(
                 select(Query)
@@ -318,15 +293,13 @@ class AuditDB:
         return [_to_dict(r) for r in result.scalars()]
 
     async def get_events(
-            self,
-            limit: int = 50,
-            offset: int = 0,
-            client_slug: str | None = None,
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        client_slug: str | None = None,
     ) -> list[dict]:
         if client_slug is None:
-            result = await self._session.execute(
-                select(Event).order_by(Event.id.desc()).limit(limit).offset(offset)
-            )
+            result = await self._session.execute(select(Event).order_by(Event.id.desc()).limit(limit).offset(offset))
         else:
             result = await self._session.execute(
                 select(Event)
@@ -349,31 +322,25 @@ class AuditDB:
     async def count_purgeable(self, table: str, cutoff_iso: str) -> int:
         if table == "conversation_messages":
             from neolex.db.models import ConversationMessage
+
             result = await self._session.execute(
-                select(func.count()).select_from(ConversationMessage).where(
-                    ConversationMessage.created_at < cutoff_iso
-                )
+                select(func.count()).select_from(ConversationMessage).where(ConversationMessage.created_at < cutoff_iso)
             )
             return result.scalar() or 0
         model = Query if table == "queries" else Event
-        result = await self._session.execute(
-            select(func.count()).select_from(model).where(model.ts < cutoff_iso)
-        )
+        result = await self._session.execute(select(func.count()).select_from(model).where(model.ts < cutoff_iso))
         return result.scalar() or 0
 
     async def purge_table(self, table: str, cutoff_iso: str) -> int:
         if table == "conversation_messages":
             from neolex.db.models import ConversationMessage
+
             result = await self._session.execute(
-                delete(ConversationMessage).where(
-                    ConversationMessage.created_at < cutoff_iso
-                )
+                delete(ConversationMessage).where(ConversationMessage.created_at < cutoff_iso)
             )
             return result.rowcount
         model = Query if table == "queries" else Event
-        result = await self._session.execute(
-            delete(model).where(model.ts < cutoff_iso)
-        )
+        result = await self._session.execute(delete(model).where(model.ts < cutoff_iso))
         return result.rowcount
 
 

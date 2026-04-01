@@ -7,6 +7,7 @@ emitted during request handling includes the request_id automatically.
 The request_id is included in all JSON error responses and in the
 X-Request-ID response header for client-side correlation.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,6 +30,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         import time
+
         request_id = str(uuid.uuid4())
         request.state.request_id = request_id
 
@@ -64,6 +66,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # Import lazily to avoid circular imports at module load time.
         try:
             import neolex.main as _main
+
             _main._request_count += 1
             _main._latency_sum_ms += duration_ms
             _main._latency_count += 1

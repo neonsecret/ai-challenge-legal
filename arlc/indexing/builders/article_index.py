@@ -24,15 +24,15 @@ OUTPUT = "data/article_page_index.json"
 
 # Map Docling heading prefixes to article_page_index key prefixes
 _DOCLING_HEADING_RE = re.compile(
-    r'^(Article|ARTICLE)\s+(\d+[A-Z]?(?:\(\d+\))?)'
-    r'|^(Section|SECTION)\s+(\d+[A-Z]?)'
-    r'|^(Rule|RULE)\s+(\d+[A-Z]?)'
-    r'|^(Regulation|REGULATION)\s+(\d+(?:\.\d+)?)'
-    r'|^(Schedule|SCHEDULE)\s+(\d+)'
-    r'|^(Part|PART)\s+([\dIVXLivxl]+)'
-    r'|^(Appendix|APPENDIX)\s+(\d+)'
-    r'|^(Chapter|CHAPTER)\s+([\dIVXLivxl]+)',
-    re.IGNORECASE
+    r"^(Article|ARTICLE)\s+(\d+[A-Z]?(?:\(\d+\))?)"
+    r"|^(Section|SECTION)\s+(\d+[A-Z]?)"
+    r"|^(Rule|RULE)\s+(\d+[A-Z]?)"
+    r"|^(Regulation|REGULATION)\s+(\d+(?:\.\d+)?)"
+    r"|^(Schedule|SCHEDULE)\s+(\d+)"
+    r"|^(Part|PART)\s+([\dIVXLivxl]+)"
+    r"|^(Appendix|APPENDIX)\s+(\d+)"
+    r"|^(Chapter|CHAPTER)\s+([\dIVXLivxl]+)",
+    re.IGNORECASE,
 )
 
 
@@ -52,7 +52,7 @@ def _heading_to_key(heading: str) -> str | None:
             prefix = groups[i].lower()
             number = groups[i + 1]
             # Handle "Article 5(1)" -> article_5_sub_1
-            sub_match = re.match(r'(\d+)\((\d+)\)', number)
+            sub_match = re.match(r"(\d+)\((\d+)\)", number)
             if sub_match:
                 return f"{prefix}_{sub_match.group(1)}_sub_{sub_match.group(2)}"
             return f"{prefix}_{number}"
@@ -110,13 +110,31 @@ def classify_document(full_text: str, page_count: int) -> str:
     """Classify document as LAW, CASE, or REGULATION."""
     text_lower = full_text.lower()
     # Court cases have "ORDER" sections, judges, claimant/defendant
-    case_signals = ["claimant", "defendant", "respondent", "it is hereby ordered",
-                    "order of the court", "judgment", "his honour", "her honour",
-                    "chief justice", "deputy chief justice", "j."]
+    case_signals = [
+        "claimant",
+        "defendant",
+        "respondent",
+        "it is hereby ordered",
+        "order of the court",
+        "judgment",
+        "his honour",
+        "her honour",
+        "chief justice",
+        "deputy chief justice",
+        "j.",
+    ]
     case_score = sum(1 for s in case_signals if s in text_lower)
 
-    law_signals = ["difc law no.", "law no.", "enacted by", "enactment notice",
-                   "preamble", "short title", "interpretation", "commencement"]
+    law_signals = [
+        "difc law no.",
+        "law no.",
+        "enacted by",
+        "enactment notice",
+        "preamble",
+        "short title",
+        "interpretation",
+        "commencement",
+    ]
     law_score = sum(1 for s in law_signals if s in text_lower)
 
     regulation_signals = ["rules of the", "regulation no.", "schedule"]
@@ -140,13 +158,16 @@ def find_order_pages(doc: pymupdf.Document) -> list[int]:
     for page_num in range(len(doc)):
         text = doc[page_num].get_text()
         # Common ORDER section markers
-        if any(marker in text for marker in [
-            "IT IS HEREBY ORDERED",
-            "ORDER OF THE COURT",
-            "THE COURT HEREBY ORDERS",
-            "The Court orders",
-            "DISPOSITION",
-        ]):
+        if any(
+            marker in text
+            for marker in [
+                "IT IS HEREBY ORDERED",
+                "ORDER OF THE COURT",
+                "THE COURT HEREBY ORDERS",
+                "The Court orders",
+                "DISPOSITION",
+            ]
+        ):
             order_pages.append(page_num + 1)  # 1-based
 
     # If no explicit ORDER found, last 2 pages often contain the order
@@ -163,7 +184,7 @@ def find_order_pages(doc: pymupdf.Document) -> list[int]:
         while next_idx < len(doc):
             next_text = doc[next_idx].get_text().strip()[:300]
             # Continuation: page starts with a numbered item (e.g., "3." or "4.")
-            if re.match(r'^\d+\.', next_text):
+            if re.match(r"^\d+\.", next_text):
                 continuation_pages.append(next_idx + 1)  # 1-based
                 next_idx += 1
             else:
@@ -185,19 +206,22 @@ def find_date_of_issue_page(doc: pymupdf.Document) -> int:
     """Find the page containing date of issue (usually page 1)."""
     for page_num in range(min(3, len(doc))):
         text = doc[page_num].get_text()
-        if any(marker in text for marker in [
-            "Date of Issue",
-            "Date of Hearing",
-            "Date:",
-            "Issued:",
-        ]):
+        if any(
+            marker in text
+            for marker in [
+                "Date of Issue",
+                "Date of Hearing",
+                "Date:",
+                "Issued:",
+            ]
+        ):
             return page_num + 1  # 1-based
     return 1  # Default to page 1
 
 
 def _is_toc_page(text: str) -> bool:
     """Detect if a page is a table of contents (many dotted lines)."""
-    dot_lines = len(re.findall(r'\.{5,}', text))
+    dot_lines = len(re.findall(r"\.{5,}", text))
     return dot_lines >= 3
 
 
@@ -231,7 +255,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
         # Pattern 1: "Article N" or "ARTICLE N" — explicit article keyword
         # Works for both laws AND cases (cases cite articles from other laws)
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Article|ARTICLE)\s+(\d+[A-Z]?)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Article|ARTICLE)\s+(\d+[A-Z]?)\b", text):
                 key = f"article_{m.group(1)}"
                 page = page_num + 1  # 1-based
                 if key not in articles:
@@ -243,7 +267,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
         # ONLY for laws/regulations — court cases use same pattern for paragraph numbers
         # which are NOT articles (e.g., "1. The claimant seeks..." is paragraph 1, not Article 1)
         if not is_toc and not is_case:
-            for m in re.finditer(r'(?:^|\n)\s*(\d{1,3})\.\s*\n\s*([A-Z])', text):
+            for m in re.finditer(r"(?:^|\n)\s*(\d{1,3})\.\s*\n\s*([A-Z])", text):
                 num = m.group(1)
                 if int(num) > 300:
                     continue
@@ -254,14 +278,14 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
                 if page not in articles[key]:
                     articles[key].append(page)
             # Also: "N. Title" on same line
-            for m in re.finditer(r'(?:^|\n)\s*(\d{1,3})\.\s+([A-Z][a-z])', text):
+            for m in re.finditer(r"(?:^|\n)\s*(\d{1,3})\.\s+([A-Z][a-z])", text):
                 num = m.group(1)
                 if int(num) > 300:
                     continue
                 # Verify it's not followed by dots (TOC entry)
                 after_pos = m.end()
-                after_text = text[after_pos:after_pos + 50]
-                if '.....' in after_text:
+                after_text = text[after_pos : after_pos + 50]
+                if "....." in after_text:
                     continue
                 key = f"article_{num}"
                 page = page_num + 1
@@ -272,7 +296,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
 
         # Pattern 3: "Rule N" headers (not on TOC pages)
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Rule|RULE)\s+(\d+[A-Z]?)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Rule|RULE)\s+(\d+[A-Z]?)\b", text):
                 key = f"rule_{m.group(1)}"
                 page = page_num + 1
                 if key not in articles:
@@ -282,7 +306,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
 
         # Pattern 4: "Section N" headers
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Section|SECTION)\s+(\d+[A-Z]?)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Section|SECTION)\s+(\d+[A-Z]?)\b", text):
                 key = f"section_{m.group(1)}"
                 page = page_num + 1
                 if key not in articles:
@@ -292,7 +316,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
 
         # Pattern 5: "Part N" headers
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Part|PART)\s+(\d+|[IVXL]+)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Part|PART)\s+(\d+|[IVXL]+)\b", text):
                 key = f"part_{m.group(1)}"
                 page = page_num + 1
                 if key not in articles:
@@ -302,7 +326,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
 
         # Pattern 6: "Schedule N" headers
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Schedule|SCHEDULE)\s+(\d+)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Schedule|SCHEDULE)\s+(\d+)\b", text):
                 key = f"schedule_{m.group(1)}"
                 page = page_num + 1
                 if key not in articles:
@@ -312,7 +336,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
 
         # Pattern 7: "Regulation N" or "Regulation N.N" headers (DIFC regulations)
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Regulation|REGULATION)\s+(\d+(?:\.\d+)?)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Regulation|REGULATION)\s+(\d+(?:\.\d+)?)\b", text):
                 key = f"regulation_{m.group(1)}"
                 page = page_num + 1
                 if key not in articles:
@@ -322,7 +346,7 @@ def extract_article_pages(doc: pymupdf.Document) -> dict[str, list[int]]:
 
         # Pattern 8: "Appendix N" headers
         if not is_toc:
-            for m in re.finditer(r'(?:^|\n)\s*(?:Appendix|APPENDIX)\s+(\d+)\b', text):
+            for m in re.finditer(r"(?:^|\n)\s*(?:Appendix|APPENDIX)\s+(\d+)\b", text):
                 key = f"appendix_{m.group(1)}"
                 page = page_num + 1
                 if key not in articles:
@@ -346,23 +370,22 @@ def extract_subsection_pages(doc: pymupdf.Document, articles: dict[str, list[int
     subsections: dict[str, list[int]] = {}
 
     # Numbered subsection pattern: standalone "(1)", "(2)" etc. at line start or after whitespace
-    sub_num_re = re.compile(r'(?:^|\n)\s*\((\d+)\)\s', re.MULTILINE)
+    sub_num_re = re.compile(r"(?:^|\n)\s*\((\d+)\)\s", re.MULTILINE)
 
     # Article heading patterns (same ones used in extract_article_pages)
     art_heading_re = re.compile(
-        r'(?:^|\n)\s*(?:'
-        r'(?:Article|ARTICLE)\s+\d+[A-Z]?\b'
-        r'|'
-        r'\d{1,3}\.\s*\n\s*[A-Z]'
-        r'|'
-        r'\d{1,3}\.\s+[A-Z][a-z]'
-        r')',
-        re.MULTILINE
+        r"(?:^|\n)\s*(?:"
+        r"(?:Article|ARTICLE)\s+\d+[A-Z]?\b"
+        r"|"
+        r"\d{1,3}\.\s*\n\s*[A-Z]"
+        r"|"
+        r"\d{1,3}\.\s+[A-Z][a-z]"
+        r")",
+        re.MULTILINE,
     )
 
     # Collect article keys that start with "article_" and have pages
-    article_keys = [(k, v) for k, v in articles.items()
-                    if k.startswith("article_") and v]
+    article_keys = [(k, v) for k, v in articles.items() if k.startswith("article_") and v]
 
     for art_key, pages in article_keys:
         art_num = art_key.replace("article_", "")
@@ -386,17 +409,13 @@ def extract_subsection_pages(doc: pymupdf.Document, articles: dict[str, list[int
         art_start_pos = None
         # Try "Article N" pattern
         for m in re.finditer(
-                r'(?:^|\n)\s*(?:Article|ARTICLE)\s+' + re.escape(art_num) + r'\b',
-                heading_text, re.MULTILINE
+            r"(?:^|\n)\s*(?:Article|ARTICLE)\s+" + re.escape(art_num) + r"\b", heading_text, re.MULTILINE
         ):
             art_start_pos = m.start()
             break
         # Try "N.\n" or "N. Title" pattern
         if art_start_pos is None:
-            for m in re.finditer(
-                    r'(?:^|\n)\s*' + re.escape(art_num) + r'\.\s',
-                    heading_text, re.MULTILINE
-            ):
+            for m in re.finditer(r"(?:^|\n)\s*" + re.escape(art_num) + r"\.\s", heading_text, re.MULTILINE):
                 art_start_pos = m.start()
                 break
 
@@ -417,7 +436,7 @@ def extract_subsection_pages(doc: pymupdf.Document, articles: dict[str, list[int
 
         if next_art_match:
             # Restrict search to text between this heading and the next
-            search_text = search_text[:next_art_match.start()]
+            search_text = search_text[: next_art_match.start()]
 
         # Find subsections on the heading page
         for m in sub_num_re.finditer(search_text):
@@ -439,7 +458,7 @@ def extract_subsection_pages(doc: pymupdf.Document, articles: dict[str, list[int
                 next_heading = art_heading_re.search(page_text)
                 if next_heading:
                     # Only search up to the next heading
-                    scan_region = page_text[:next_heading.start()]
+                    scan_region = page_text[: next_heading.start()]
                 else:
                     scan_region = page_text
 
@@ -573,7 +592,8 @@ def build_index(merge: bool = True, from_docling: bool = False):
         docling_info = f", +{n_docling} from Docling" if n_docling > 0 else ""
         order_info = f", ORDER pages: {entry.get('order_pages', [])}" if doc_type == "CASE" else ""
         print(
-            f"  {pdf_id[:20]}... [{doc_type}] {page_count}-page, {n_articles} articles{sub_info}{docling_info}{order_info}")
+            f"  {pdf_id[:20]}... [{doc_type}] {page_count}-page, {n_articles} articles{sub_info}{docling_info}{order_info}"
+        )
 
     # Save
     with open(OUTPUT, "w") as f:
@@ -584,7 +604,8 @@ def build_index(merge: bool = True, from_docling: bool = False):
     total_sub_entries = sum(len([k for k in e["articles"] if "_sub_" in k]) for e in index.values())
     types = {t: sum(1 for e in index.values() if e["type"] == t) for t in ["LAW", "CASE", "REGULATION"]}
     print(
-        f"\nIndex built: {len(index)} docs, {total_articles} article mappings, {total_sub_entries} subsection mappings")
+        f"\nIndex built: {len(index)} docs, {total_articles} article mappings, {total_sub_entries} subsection mappings"
+    )
     print(f"  {articles_with_subs} articles got subsection entries")
     print(f"Types: {types}")
     print(f"Saved to {OUTPUT}")

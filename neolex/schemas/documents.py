@@ -2,6 +2,7 @@
 
 DOC-01 through DOC-07 request/response contracts.
 """
+
 from __future__ import annotations
 
 from typing import Literal

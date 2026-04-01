@@ -9,6 +9,7 @@ lives in ``arlc.retriever`` — this module just adapts it for the agent:
   2. Calls ``retrieve_pages()`` with exclusion of already-seen docs.
   3. Converts ``PageResult`` objects to ``SourceDocument`` dicts.
 """
+
 from __future__ import annotations
 
 import logging
@@ -70,11 +71,11 @@ def execute_search(
     if target_docs is None and corpus == "difc":
         try:
             from arlc.router import route
+
             route_result = route(query, SEARCH_ANSWER_TYPE)
             target_docs = getattr(route_result, "target_doc_ids", None) or None
             if target_docs:
-                logger.info("[search] router found %d target docs: %s",
-                           len(target_docs), target_docs[:3])
+                logger.info("[search] router found %d target docs: %s", len(target_docs), target_docs[:3])
         except Exception:
             logger.warning("[search] router failed, falling back to corpus-wide search")
 
@@ -83,13 +84,15 @@ def execute_search(
         try:
             if corpus == "uk":
                 from arlc.router import extract_uk_citations
+
                 cites = extract_uk_citations(query)
             else:
                 from arlc.router import extract_au_citations
+
                 cites = extract_au_citations(query)
             if cites:
                 logger.info("[search] %s citations extracted: %s", corpus.upper(), cites[:5])
-        except Exception:
+        except Exception:  # nosec B110
             pass  # citation extraction is best-effort
 
     # Request more than we need to account for exclusions
@@ -108,14 +111,16 @@ def execute_search(
     )
 
     # Filter out already-seen docs and take top_k new
-    new_pages = [
-        p for p in pages
-        if (p.doc_id, p.page_number) not in exclude_doc_pages
-    ][:target_new]
+    new_pages = [p for p in pages if (p.doc_id, p.page_number) not in exclude_doc_pages][:target_new]
 
-    logger.info("[search] query=\"%s\" corpus=%s → %d/%d pages (excluded %d seen)",
-               query[:60], corpus, len(new_pages), len(pages),
-               len(pages) - len(new_pages))
+    logger.info(
+        '[search] query="%s" corpus=%s → %d/%d pages (excluded %d seen)',
+        query[:60],
+        corpus,
+        len(new_pages),
+        len(pages),
+        len(pages) - len(new_pages),
+    )
 
     return [
         SourceDocument(
@@ -123,6 +128,7 @@ def execute_search(
             page=p.page_number,
             text=p.text or "",
             score=p.score,
+            chunk_id=p.chunk_id,
             _corpus=corpus,
         )
         for p in new_pages
@@ -141,9 +147,19 @@ def format_search_results(docs: list[SourceDocument], offset: int = 0) -> str:
 
 
 _BLOCKED_DOMAINS = {
-    "instagram.com", "facebook.com", "twitter.com", "x.com", "tiktok.com",
-    "linkedin.com", "youtube.com", "reddit.com", "pinterest.com",
-    "t.me", "telegram.org", "vk.com", "ok.ru",
+    "instagram.com",
+    "facebook.com",
+    "twitter.com",
+    "x.com",
+    "tiktok.com",
+    "linkedin.com",
+    "youtube.com",
+    "reddit.com",
+    "pinterest.com",
+    "t.me",
+    "telegram.org",
+    "vk.com",
+    "ok.ru",
 }
 
 
@@ -156,6 +172,7 @@ def _is_useful_result(r: dict) -> bool:
         return False
 
     from urllib.parse import urlparse
+
     try:
         domain = urlparse(url).netloc.lstrip("www.")
     except Exception:
@@ -180,6 +197,7 @@ def execute_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) ->
     """
     try:
         from ddgs import DDGS
+
         # Fetch more than needed to account for filtered-out results
         fetch_count = max_results * 3
         with DDGS() as ddgs:
@@ -187,10 +205,7 @@ def execute_web_search(query: str, max_results: int = WEB_SEARCH_MAX_RESULTS) ->
         useful = [r for r in raw if _is_useful_result(r)]
         results = useful[:max_results]
         logger.info("[web-search] fetched %d, kept %d after filtering", len(raw), len(results))
-        return [
-            {"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")}
-            for r in results
-        ]
+        return [{"title": r.get("title", ""), "url": r.get("href", ""), "snippet": r.get("body", "")} for r in results]
     except Exception as e:
         logger.warning("[web-search] failed: %s", e)
         return []
@@ -213,18 +228,16 @@ def format_web_results(results: list[dict]) -> str:
 
     parts = []
     for r in results:
-        snippet = (r['snippet'] or "")[:_WEB_SNIPPET_MAX_CHARS]
+        snippet = (r["snippet"] or "")[:_WEB_SNIPPET_MAX_CHARS]
         # Escape closing tags in ALL fields to prevent prompt injection
-        title = _esc(r.get('title', '') or '')
-        url = _esc(r.get('url', '') or '')
+        title = _esc(r.get("title", "") or "")
+        url = _esc(r.get("url", "") or "")
         snippet = _esc(snippet)
-        parts.append(f"[WEB: \"{title}\"]({url})\n{snippet}")
+        parts.append(f'[WEB: "{title}"]({url})\n{snippet}')
     return "<web_content>\n" + "\n---\n".join(parts) + "\n</web_content>"
 
 
-def verify_source_relevance(
-    answer: str, docs: list[SourceDocument]
-) -> list[SourceDocument]:
+def verify_source_relevance(answer: str, docs: list[SourceDocument]) -> list[SourceDocument]:
     """Flag sources with low keyword overlap against the answer.
 
     Informational only — does not remove sources, just adds a 'verified'

@@ -1,4 +1,5 @@
 """Tests for append-only audit log (AUDIT-01, AUDIT-03, AUDIT-04, AUDIT-05, NFR-04)."""
+
 import asyncio
 import json
 from unittest.mock import MagicMock
@@ -9,9 +10,11 @@ from httpx import ASGITransport, AsyncClient
 # NFR-04: WAL mode
 # ---------------------------------------------------------------------------
 
+
 async def test_wal_mode(tmp_db_path, monkeypatch):
     """SQLite DB must be opened in WAL mode (NFR-04)."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
     from neolex.db.audit import get_audit_db
 
@@ -25,6 +28,7 @@ async def test_wal_mode(tmp_db_path, monkeypatch):
 # ---------------------------------------------------------------------------
 # AUDIT-05: No delete methods on log tables
 # ---------------------------------------------------------------------------
+
 
 def test_no_delete_methods():
     """AuditDB must not expose delete or update methods for log tables (AUDIT-05)."""
@@ -47,6 +51,7 @@ def test_no_delete_methods():
 # AUDIT-01: Query logged after POST /query
 # ---------------------------------------------------------------------------
 
+
 async def test_query_logged(authed_client, seeded_db):
     """Successful POST /api/v1/query -> row appears in queries table (AUDIT-01)."""
     client, raw_key = authed_client
@@ -60,6 +65,7 @@ async def test_query_logged(authed_client, seeded_db):
     assert response.status_code == 200
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         rows = await db.get_queries(limit=10)
 
@@ -74,6 +80,7 @@ async def test_query_logged(authed_client, seeded_db):
 # AUDIT-03: Auth failure logged with IP and key_prefix
 # ---------------------------------------------------------------------------
 
+
 async def test_auth_failure_logged(authed_client, seeded_db):
     """POST /api/v1/query with no key -> auth_failure event logged (AUDIT-03)."""
     client, _ = authed_client
@@ -87,6 +94,7 @@ async def test_auth_failure_logged(authed_client, seeded_db):
     assert response.status_code == 401
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         rows = await db.get_events(limit=10)
 
@@ -99,6 +107,7 @@ async def test_auth_failure_logged(authed_client, seeded_db):
 # ---------------------------------------------------------------------------
 # AUDIT-04: Admin endpoint scoping
 # ---------------------------------------------------------------------------
+
 
 async def test_admin_audit_requires_admin_scope(seeded_db, monkeypatch):
     """Query-scoped key on GET /api/v1/admin/audit -> 403 (AUDIT-04)."""
@@ -128,7 +137,6 @@ async def test_admin_audit_returns_rows(seeded_db, monkeypatch):
     """Admin-scoped key on GET /api/v1/admin/audit -> 200 with rows list."""
     from neolex.auth.keys import generate_key, hash_key
     from neolex.auth.keys import key_prefix as kp
-
     from neolex.config import settings
     from neolex.db.audit import get_audit_db
     from neolex.main import app

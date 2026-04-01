@@ -22,7 +22,6 @@ import json
 import os
 import sys
 import time
-import threading
 from pathlib import Path
 
 import numpy as np
@@ -34,15 +33,17 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 def get_device():
     import torch
+
     if torch.backends.mps.is_available():
-        return 'mps'
+        return "mps"
     if torch.cuda.is_available():
-        return 'cuda'
-    return 'cpu'
+        return "cuda"
+    return "cpu"
 
 
 def load_embedding_model(model_name: str):
     from sentence_transformers import SentenceTransformer
+
     device = get_device()
     print(f"[eval] Loading embedding model: {model_name} on {device}")
     t0 = time.time()
@@ -66,12 +67,12 @@ def embed_query(model, question: str, model_name: str) -> np.ndarray:
     if "qwen3" in model_name.lower() or "qwen/qwen3" in model_name.lower():
         # Qwen3-Embedding uses 'query' task prefix
         try:
-            emb = model.encode(question, prompt_name='query', normalize_embeddings=True)
+            emb = model.encode(question, prompt_name="query", normalize_embeddings=True)
         except Exception:
             emb = model.encode(question, normalize_embeddings=True)
     else:
         try:
-            emb = model.encode(question, prompt_name='query', normalize_embeddings=True)
+            emb = model.encode(question, prompt_name="query", normalize_embeddings=True)
         except Exception:
             emb = model.encode(question, normalize_embeddings=True)
     return emb
@@ -79,9 +80,9 @@ def embed_query(model, question: str, model_name: str) -> np.ndarray:
 
 def build_index(model, model_name: str, data_dir: Path):
     """Build FAISS + BM25 indexes for the corpus."""
-    from datasets import load_dataset as hf_load
-    import faiss
     import bm25s
+    import faiss
+    from datasets import load_dataset as hf_load
 
     data_dir.mkdir(parents=True, exist_ok=True)
 
@@ -100,7 +101,7 @@ def build_index(model, model_name: str, data_dir: Path):
         try:
             embeddings = model.encode(
                 texts,
-                prompt_name='passage',
+                prompt_name="passage",
                 normalize_embeddings=True,
                 show_progress_bar=True,
                 batch_size=8,
@@ -128,8 +129,7 @@ def build_index(model, model_name: str, data_dir: Path):
     index.add(embeddings.astype(np.float32))
     faiss.write_index(index, str(data_dir / "faiss_index.bin"))
 
-    metadata = [{"id": pid, "text": text, "title": title}
-                for pid, text, title in zip(ids, texts, titles)]
+    metadata = [{"id": pid, "text": text, "title": title} for pid, text, title in zip(ids, texts, titles)]
     with open(data_dir / "faiss_metadata.json", "w") as f:
         json.dump(metadata, f)
     print(f"[eval] FAISS: {index.ntotal} vectors, dim={embeddings.shape[1]}")
@@ -137,6 +137,7 @@ def build_index(model, model_name: str, data_dir: Path):
     # BM25 index
     print("[eval] Building BM25 index...")
     from arlc.indexing.legal_tokenizer import legal_tokenize_corpus
+
     tokenized = legal_tokenize_corpus(texts)
     bm25 = bm25s.BM25()
     bm25.index(tokenized)
@@ -153,16 +154,17 @@ def build_index(model, model_name: str, data_dir: Path):
 
 
 def hybrid_retrieve(
-        question: str,
-        model,
-        model_name: str,
-        data_dir: Path,
-        top_k: int = 10,
-        use_reranker: bool = True,
+    question: str,
+    model,
+    model_name: str,
+    data_dir: Path,
+    top_k: int = 10,
+    use_reranker: bool = True,
 ) -> list[dict]:
     """Hybrid BM25 + vector + cross-encoder retrieval."""
-    import faiss
     import bm25s
+    import faiss
+
     from arlc.indexing.legal_tokenizer import legal_tokenize_queries
 
     faiss_index_path = data_dir / "faiss_index.bin"
@@ -187,7 +189,7 @@ def hybrid_retrieve(
 
     # Vector search
     query_emb = embed_query(model, question, model_name)
-    query_np = np.array([query_emb], dtype='float32')
+    query_np = np.array([query_emb], dtype="float32")
     faiss.normalize_L2(query_np)
     k_vec = min(200, faiss_index.ntotal)
     D, I = faiss_index.search(query_np, k_vec)
@@ -234,7 +236,8 @@ def hybrid_retrieve(
 
     candidates = [
         {"id": pid, "score": rrf_scores[pid], **passage_info.get(pid, {"text": "", "title": ""})}
-        for pid in all_pids if pid in passage_info
+        for pid in all_pids
+        if pid in passage_info
     ]
     candidates.sort(key=lambda x: x["score"], reverse=True)
     candidates = candidates[:100]
@@ -244,10 +247,12 @@ def hybrid_retrieve(
         reranker_model = os.environ.get("RERANKER_MODEL", "Qwen/Qwen3-Reranker-0.6B")
         if "qwen" in reranker_model.lower():
             from arlc.qwen3_reranker import Qwen3Reranker
+
             reranker = Qwen3Reranker(model_name=reranker_model)
             pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
         else:
             from sentence_transformers import CrossEncoder
+
             reranker = CrossEncoder(reranker_model, max_length=2048)
             pairs = [(question, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
         rerank_scores = reranker.predict(pairs)
@@ -272,6 +277,7 @@ def main():
     use_reranker = not args.no_reranker
 
     import psutil
+
     mem = psutil.virtual_memory()
     print(f"[eval] RAM: {mem.total / 1e9:.1f}GB total, {mem.available / 1e9:.1f}GB available")
 
@@ -289,9 +295,10 @@ def main():
 
     # Load dataset
     from datasets import load_dataset as hf_load
+
     print("[eval] Loading QA dataset...")
     qa_ds = hf_load("isaacus/legal-rag-bench", "qa", split="test")
-    qa_items = list(qa_ds)[:args.limit]
+    qa_items = list(qa_ds)[: args.limit]
     print(f"[eval] Evaluating {len(qa_items)} questions...")
 
     hits = 0
@@ -302,20 +309,19 @@ def main():
         question = item["question"]
         gold_id = item["relevant_passage_id"]
 
-        retrieved = hybrid_retrieve(
-            question, model, args.model, data_dir,
-            top_k=10, use_reranker=use_reranker
-        )
+        retrieved = hybrid_retrieve(question, model, args.model, data_dir, top_k=10, use_reranker=use_reranker)
         retrieved_ids = [r["id"] for r in retrieved]
         hit = 1.0 if gold_id in retrieved_ids else 0.0
         hits += hit
 
-        results.append({
-            "question": question[:80],
-            "gold_id": gold_id,
-            "retrieved_ids": retrieved_ids[:5],
-            "hit": hit,
-        })
+        results.append(
+            {
+                "question": question[:80],
+                "gold_id": gold_id,
+                "retrieved_ids": retrieved_ids[:5],
+                "hit": hit,
+            }
+        )
         print(f"  [{i + 1}/{len(qa_items)}] {'HIT' if hit else 'MISS'} — {question[:60]}...")
 
     n = len(results)

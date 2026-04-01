@@ -12,6 +12,7 @@ It does NOT call the real arlc indexer — reindexing runs the stub path
 (which writes a manifest.json and marks docs indexed).
 Does NOT require the pipeline to be warmed up.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -72,9 +73,7 @@ async def lifecycle_client(tmp_path, monkeypatch):
 
     app.dependency_overrides[get_api_key] = mock_get_api_key
 
-    async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 
     app.dependency_overrides.pop(get_api_key, None)
@@ -236,9 +235,7 @@ async def test_client_isolation_in_listing(lifecycle_client, tmp_path, monkeypat
 
     app.dependency_overrides[get_api_key] = other_key
 
-    async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-    ) as other_client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as other_client:
         # other-corp uploads their own doc
         await other_client.post(
             "/api/v1/documents",

@@ -16,6 +16,7 @@ Output:
     data/corpus/au/<short_name>.txt   — plain text per act
     data/corpus/au/manifest.json      — metadata manifest
 """
+
 from __future__ import annotations
 
 import argparse
@@ -27,7 +28,6 @@ from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urljoin
 
 import requests
 
@@ -81,6 +81,7 @@ logger = logging.getLogger(__name__)
 # HTML text extraction
 # ---------------------------------------------------------------------------
 
+
 class LegislationTextExtractor(HTMLParser):
     """Extract plain text from legislation.gov.au EPUB HTML pages.
 
@@ -89,8 +90,27 @@ class LegislationTextExtractor(HTMLParser):
     """
 
     SKIP_TAGS = {"script", "style", "nav", "header", "footer", "iframe", "svg", "meta", "link"}
-    BLOCK_TAGS = {"p", "div", "h1", "h2", "h3", "h4", "h5", "h6", "li", "tr", "br",
-                  "section", "article", "blockquote", "dt", "dd", "figcaption", "td", "th"}
+    BLOCK_TAGS = {
+        "p",
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "li",
+        "tr",
+        "br",
+        "section",
+        "article",
+        "blockquote",
+        "dt",
+        "dd",
+        "figcaption",
+        "td",
+        "th",
+    }
 
     def __init__(self) -> None:
         super().__init__()
@@ -145,6 +165,7 @@ def extract_text_from_html(html: str) -> str:
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
+
 def fetch_url(session: requests.Session, url: str) -> Optional[str]:
     """Fetch URL with retries and rate limiting."""
     for attempt in range(MAX_RETRIES):
@@ -175,6 +196,7 @@ def fetch_url(session: requests.Session, url: str) -> Optional[str]:
 # EPUB URL discovery
 # ---------------------------------------------------------------------------
 
+
 def discover_epub_urls(session: requests.Session, catalog_id: str) -> list[str]:
     """Discover EPUB document HTML URLs for a given act.
 
@@ -190,14 +212,12 @@ def discover_epub_urls(session: requests.Session, catalog_id: str) -> list[str]:
     # Extract the effective date from the page to build EPUB URLs
     # Pattern: /{catalog_id}/{date1}/{date2}/text/original/epub/OEBPS/document_N/document_N.html
     epub_pattern = re.compile(
-        rf'{re.escape(catalog_id)}/(\d{{4}}-\d{{2}}-\d{{2}})/(\d{{4}}-\d{{2}}-\d{{2}})/text/original/epub'
+        rf"{re.escape(catalog_id)}/(\d{{4}}-\d{{2}}-\d{{2}})/(\d{{4}}-\d{{2}}-\d{{2}})/text/original/epub"
     )
     match = epub_pattern.search(html)
     if not match:
         # Try alternative pattern without double date
-        epub_pattern2 = re.compile(
-            rf'{re.escape(catalog_id)}/(\d{{4}}-\d{{2}}-\d{{2}})/text/original/epub'
-        )
+        epub_pattern2 = re.compile(rf"{re.escape(catalog_id)}/(\d{{4}}-\d{{2}}-\d{{2}})/text/original/epub")
         match2 = epub_pattern2.search(html)
         if not match2:
             logger.warning("  Could not find EPUB date path for %s", catalog_id)
@@ -209,10 +229,10 @@ def discover_epub_urls(session: requests.Session, catalog_id: str) -> list[str]:
         epub_base = f"{BASE_URL}/{catalog_id}/{date1}/{date2}/text/original/epub/OEBPS"
 
     # Find all document_N references in the page
-    doc_refs = set(re.findall(r'document_(\d+)/document_\1\.html', html))
+    doc_refs = set(re.findall(r"document_(\d+)/document_\1\.html", html))
     if not doc_refs:
         # Try simpler pattern
-        doc_refs = set(re.findall(r'document_(\d+)', html))
+        doc_refs = set(re.findall(r"document_(\d+)", html))
 
     if not doc_refs:
         # Default: try document_1
@@ -231,6 +251,7 @@ def discover_epub_urls(session: requests.Session, catalog_id: str) -> list[str]:
 # Text cleaning
 # ---------------------------------------------------------------------------
 
+
 def clean_text(raw: str) -> str:
     """Clean extracted text: remove duplicate blank lines, trim whitespace."""
     lines = raw.splitlines()
@@ -248,10 +269,7 @@ def clean_text(raw: str) -> str:
 
     # Remove common boilerplate from legislation.gov.au
     # e.g. "Prepared by the Office of Parliamentary Counsel, Canberra"
-    text = re.sub(
-        r'Prepared by the Office of Parliamentary Counsel,?\s*Canberra\s*',
-        '', text
-    )
+    text = re.sub(r"Prepared by the Office of Parliamentary Counsel,?\s*Canberra\s*", "", text)
 
     return text
 
@@ -259,6 +277,7 @@ def clean_text(raw: str) -> str:
 # ---------------------------------------------------------------------------
 # Download a single act
 # ---------------------------------------------------------------------------
+
 
 def download_act(
     session: requests.Session,
@@ -337,6 +356,7 @@ def download_act(
 # Manifest
 # ---------------------------------------------------------------------------
 
+
 def load_manifest() -> list[dict]:
     """Load existing manifest or return empty list."""
     if MANIFEST_PATH.exists():
@@ -355,6 +375,7 @@ def save_manifest(docs: list[dict]) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download Australian legislation corpus")
@@ -384,13 +405,15 @@ def main() -> None:
 
         if result is None:
             stats["failed"] += 1
-            manifest.append({
-                "catalog_id": catalog_id,
-                "short_name": short_name,
-                "title": title,
-                "status": "failed",
-                "scraped_at": datetime.now(timezone.utc).isoformat(),
-            })
+            manifest.append(
+                {
+                    "catalog_id": catalog_id,
+                    "short_name": short_name,
+                    "title": title,
+                    "status": "failed",
+                    "scraped_at": datetime.now(timezone.utc).isoformat(),
+                }
+            )
         elif result["status"] == "skipped":
             stats["skipped"] += 1
             # Update manifest entry if it exists, otherwise add
@@ -405,16 +428,16 @@ def main() -> None:
 
         save_manifest(manifest)
 
-    print(f"\n{'='*60}")
-    print(f"Australian Corpus Download Summary")
-    print(f"{'='*60}")
+    print(f"\n{'=' * 60}")
+    print("Australian Corpus Download Summary")
+    print(f"{'=' * 60}")
     print(f"  Downloaded: {stats['downloaded']}")
     print(f"  Skipped:    {stats['skipped']}")
     print(f"  Failed:     {stats['failed']}")
     print(f"  Total acts: {len(ACTS)}")
 
     # Show file sizes
-    print(f"\nCorpus files:")
+    print("\nCorpus files:")
     total_size = 0
     for txt_file in sorted(OUTPUT_DIR.glob("*.txt")):
         size = txt_file.stat().st_size

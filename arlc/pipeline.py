@@ -64,9 +64,7 @@ if os.path.exists(_XREF_GRAPH_PATH):
         _xref_graph = {}
 
 # Comparison keywords for cross-ref expansion
-_COMPARISON_RE = re.compile(
-    r"\b(compar|differ|both|earlier|later|versus|vs\.?|distinguish|contrast)\b", re.IGNORECASE
-)
+_COMPARISON_RE = re.compile(r"\b(compar|differ|both|earlier|later|versus|vs\.?|distinguish|contrast)\b", re.IGNORECASE)
 
 # Architecture summary for submission
 ARCHITECTURE_SUMMARY = (
@@ -77,7 +75,6 @@ ARCHITECTURE_SUMMARY = (
 )
 
 
-
 def _import_pipeline_modules():
     """Import pipeline modules. Fails fast with clear error if missing."""
     route_fn = None
@@ -86,6 +83,7 @@ def _import_pipeline_modules():
 
     try:
         from arlc.router import route as _route
+
         route_fn = _route
         print("  router.route: OK")
     except ImportError:
@@ -93,6 +91,7 @@ def _import_pipeline_modules():
 
     try:
         from arlc.retriever import retrieve_pages as _retrieve_pages
+
         retrieve_fn = _retrieve_pages
         print("  retriever.retrieve_pages: OK")
     except (ImportError, AttributeError):
@@ -100,6 +99,7 @@ def _import_pipeline_modules():
 
     try:
         from arlc.answerer import generate_answer as _generate_answer
+
         answer_fn = _generate_answer
         print("  answerer_v3.generate_answer: OK")
     except ImportError:
@@ -112,21 +112,27 @@ def _import_pipeline_modules():
 # Fallback implementations (used when teammate modules aren't ready yet)
 # ---------------------------------------------------------------------------
 
+
 def _fallback_route(question: str, answer_type: str) -> list[str]:
     """Fallback: return empty list (retriever will do corpus-wide search)."""
     return []
 
 
-def _fallback_retrieve_pages(question: str, target_doc_ids: list[str] | None = None,
-                              max_per_doc: int = 1, max_total: int = 3,
-                              answer_type: str = "",
-                              include_context_pages: bool = False,
-                              use_llm_rerank: bool = False,
-                              boost_pages: dict | None = None,
-                              case_doc_groups: dict | None = None,
-                              corpus: str = "difc") -> list[dict]:
+def _fallback_retrieve_pages(
+    question: str,
+    target_doc_ids: list[str] | None = None,
+    max_per_doc: int = 1,
+    max_total: int = 3,
+    answer_type: str = "",
+    include_context_pages: bool = False,
+    use_llm_rerank: bool = False,
+    boost_pages: dict | None = None,
+    case_doc_groups: dict | None = None,
+    corpus: str = "difc",
+) -> list[dict]:
     """Fallback: use existing retriever.retrieve() and convert format."""
     from arlc.retriever import retrieve
+
     chunks = retrieve(question, n_results=25)
 
     # Group by doc_id, take top-1 page per doc
@@ -149,8 +155,7 @@ def _fallback_retrieve_pages(question: str, target_doc_ids: list[str] | None = N
     return list(seen_docs.values())
 
 
-def _fallback_generate_answer(question: str, answer_type: str,
-                               source_pages: list[dict]) -> dict:
+def _fallback_generate_answer(question: str, answer_type: str, source_pages: list[dict]) -> dict:
     """Fallback: use existing answerer.answer_question()."""
     from arlc.answerer import answer_question
     from arlc.retriever import retrieve
@@ -163,6 +168,7 @@ def _fallback_generate_answer(question: str, answer_type: str,
 # ---------------------------------------------------------------------------
 # Format checking (inline from FormatGuardian — key checks only)
 # ---------------------------------------------------------------------------
+
 
 def _format_check(result: dict) -> dict:
     """Run programmatic format checks on a single result. No LLM calls."""
@@ -186,66 +192,124 @@ def _format_check(result: dict) -> dict:
 # cast a wider net than the warmup-era 28-keyword list.
 _TRICK_KEYWORDS = [
     # Miranda rights
-    "miranda", "miranda rights", "miranda warning",
+    "miranda",
+    "miranda rights",
+    "miranda warning",
     # Jury system (NOTE: bare "jury" omitted — it matches "injury"; use regex Level 2 instead)
-    "grand jury", "trial by jury", "jury trial", "jury system",
-    "jury decide", "did the jury", "what did the jury",
-    "jury verdict", "jury deliberat",
+    "grand jury",
+    "trial by jury",
+    "jury trial",
+    "jury system",
+    "jury decide",
+    "did the jury",
+    "what did the jury",
+    "jury verdict",
+    "jury deliberat",
     # Plea
-    "plea bargain", "plea deal", "plea guilty", "guilty plea", "plea agreement",
-    "no contest plea", "nolo contendere",
+    "plea bargain",
+    "plea deal",
+    "plea guilty",
+    "guilty plea",
+    "plea agreement",
+    "no contest plea",
+    "nolo contendere",
     # Parole (avoid bare "probation" — matches "probation period" in employment law)
-    "parole", "parole board", "parole officer",
-    "criminal probation", "probation order", "on probation",
+    "parole",
+    "parole board",
+    "parole officer",
+    "criminal probation",
+    "probation order",
+    "on probation",
     "community service order",
     # Bail / bond (avoid bare "bail" — matches "bailment" in property law)
-    "bail bond", "post bail", "bail hearing", "bail application",
-    "granted bail", "denied bail", "release on bail", "bail amount", "bail conditions",
+    "bail bond",
+    "post bail",
+    "bail hearing",
+    "bail application",
+    "granted bail",
+    "denied bail",
+    "release on bail",
+    "bail amount",
+    "bail conditions",
     # Criminal procedure concepts
-    "criminal jurisdiction", "criminal law", "criminal case", "criminal charge",
-    "criminal prosecution", "criminal conviction", "criminal sentencing",
-    "criminal proceeding", "criminal court", "criminal trial", "criminal matter",
-    "criminal record", "criminal defendant", "criminal liability",
-    "criminal penalty", "criminal sanction", "criminal fine",
+    "criminal jurisdiction",
+    "criminal law",
+    "criminal case",
+    "criminal charge",
+    "criminal prosecution",
+    "criminal conviction",
+    "criminal sentencing",
+    "criminal proceeding",
+    "criminal court",
+    "criminal trial",
+    "criminal matter",
+    "criminal record",
+    "criminal defendant",
+    "criminal liability",
+    "criminal penalty",
+    "criminal sanction",
+    "criminal fine",
     # Habeas corpus
     "habeas corpus",
     # Arraignment / indictment
-    "arraignment", "indictment", "grand jury indictment",
+    "arraignment",
+    "indictment",
+    "grand jury indictment",
     # Felony / misdemeanor
-    "felony", "misdemeanor", "petty crime",
+    "felony",
+    "misdemeanor",
+    "petty crime",
     # Acquittal
-    "acquittal", "criminal acquittal", "not guilty verdict",
+    "acquittal",
+    "criminal acquittal",
+    "not guilty verdict",
     # Criminal appeal
     "criminal appeal",
     # Police powers
-    "police caution", "police custody", "right to remain silent",
-    "right to silence", "police arrest", "search warrant", "arrest warrant",
+    "police caution",
+    "police custody",
+    "right to remain silent",
+    "right to silence",
+    "police arrest",
+    "search warrant",
+    "arrest warrant",
     # Constitutional protections (US/UK specific)
-    "fifth amendment", "fourth amendment", "sixth amendment",
-    "double jeopardy", "self-incrimination",
+    "fifth amendment",
+    "fourth amendment",
+    "sixth amendment",
+    "double jeopardy",
+    "self-incrimination",
     # Prison / custody
-    "prison sentence", "jail sentence", "imprisonment", "incarceration",
-    "prison term", "custodial sentence",
+    "prison sentence",
+    "jail sentence",
+    "imprisonment",
+    "incarceration",
+    "prison term",
+    "custodial sentence",
     # Extradition
     "extradition",
     # Death penalty
-    "death penalty", "capital punishment",
+    "death penalty",
+    "capital punishment",
     # Prosecution
-    "district attorney", "prosecutor", "prosecution witness",
-    "beyond reasonable doubt", "prosecution case",
+    "district attorney",
+    "prosecutor",
+    "prosecution witness",
+    "beyond reasonable doubt",
+    "prosecution case",
 ]
 
 # Level 2 regex: catch "criminal X", "convicted of", "jury" as whole word, etc.
 # Using word boundaries avoids false positives like "injury" matching "jury".
 _CRIMINAL_PREFIX_RE = re.compile(
-    r"\bcriminal\s+\w+"           # "criminal law", "criminal charge", etc.
-    r"|\b\w+\s+crime\b"           # "war crime", "organized crime", etc.
-    r"|\bconvicted\s+of\b"        # "convicted of fraud"
-    r"|\bsentenced\s+to\b"        # "sentenced to prison"
-    r"|\bjury\b"                   # "use a jury", "a jury of peers" (avoids "injury")
-    r"|\bprosecutor\b"             # "the prosecutor argued"
-    r"|\bprison\b"                 # "prison sentence", "prison term"
-    r"|\bjail\b",                  # "jail time", "post bail/jail"
+    r"\bcriminal\s+\w+"  # "criminal law", "criminal charge", etc.
+    r"|\b\w+\s+crime\b"  # "war crime", "organized crime", etc.
+    r"|\bconvicted\s+of\b"  # "convicted of fraud"
+    r"|\bsentenced\s+to\b"  # "sentenced to prison"
+    r"|\bjury\b"  # "use a jury", "a jury of peers" (avoids "injury")
+    r"|\bprosecutor\b"  # "the prosecutor argued"
+    r"|\bprison\b"  # "prison sentence", "prison term"
+    r"|\bjail\b",  # "jail time", "post bail/jail"
     re.IGNORECASE,
 )
 
@@ -287,11 +351,23 @@ def _is_trick_question(question: str, source_text: str = "") -> bool:
         # "bail" removed — appears in bailment, property law
         # "probation" removed — appears in employment probation periods
         CONCEPT_MARKERS = [
-            "prison", "jail", "criminal", "prosecution",
-            "conviction", "verdict", "jury", "plea",
-            "parole", "arraign", "indictment", "felony",
-            "misdemeanor", "acquittal", "habeas",
-            "extradition", "criminal jurisdiction",
+            "prison",
+            "jail",
+            "criminal",
+            "prosecution",
+            "conviction",
+            "verdict",
+            "jury",
+            "plea",
+            "parole",
+            "arraign",
+            "indictment",
+            "felony",
+            "misdemeanor",
+            "acquittal",
+            "habeas",
+            "extradition",
+            "criminal jurisdiction",
         ]
         q_has_concept = any(m in q for m in CONCEPT_MARKERS)
         src_has_concept = any(m in src_lower for m in CONCEPT_MARKERS)
@@ -331,20 +407,31 @@ def _get_all_case_doc_pages(route_result, meta_pages: dict | None = None, max_pe
 # Single question processor
 # ---------------------------------------------------------------------------
 
+
 def _pages_to_chunk_pages(pages) -> list[dict]:
-    """Convert PageResult list to chunk_pages format, grouping by doc_id."""
+    """Convert PageResult list to chunk_pages format, grouping by doc_id.
+
+    Carries the chunk_id of the first (highest-scored) page seen per doc,
+    since callers typically pass pages already sorted by descending score.
+    """
     from collections import defaultdict
-    by_doc = defaultdict(list)
+
+    by_doc: dict[str, list[int]] = defaultdict(list)
+    # Track the first chunk_id seen per doc (highest-scored when pre-sorted).
+    doc_chunk_id: dict[str, str] = {}
 
     for p in pages:
         # Handle both PageResult dataclass and dict
         doc_id = p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", "")
         page_num = p.page_number if hasattr(p, "page_number") else p.get("page_number", p.get("page", 1))
+        chunk_id = (p.chunk_id if hasattr(p, "chunk_id") else p.get("chunk_id", "")) or ""
         if doc_id:
             by_doc[doc_id].append(page_num)
+            if doc_id not in doc_chunk_id and chunk_id:
+                doc_chunk_id[doc_id] = chunk_id
 
     return [
-        {"doc_id": doc_id, "page_numbers": sorted(set(pns))}
+        {"doc_id": doc_id, "page_numbers": sorted(set(pns)), "chunk_id": doc_chunk_id.get(doc_id, "")}
         for doc_id, pns in by_doc.items()
     ]
 
@@ -360,16 +447,14 @@ def _validate_chunk_pages(answer_result: dict, retrieved_pages) -> list[dict]:
     for p in retrieved_pages:
         # Handle both PageResult dataclass and dict
         doc_id = p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", "")
-        page_num = (p.page_number if hasattr(p, "page_number")
-                    else p.get("page_number", p.get("page", 1)))
+        page_num = p.page_number if hasattr(p, "page_number") else p.get("page_number", p.get("page", 1))
         if doc_id:
             retrieved_set.add((doc_id, page_num))
 
     valid_chunks = []
     for cp in answer_result.get("chunk_pages", []):
         doc_id = cp.get("doc_id", "")
-        valid_pages = [pn for pn in cp.get("page_numbers", [])
-                       if (doc_id, pn) in retrieved_set]
+        valid_pages = [pn for pn in cp.get("page_numbers", []) if (doc_id, pn) in retrieved_set]
         if valid_pages:
             valid_chunks.append({"doc_id": doc_id, "page_numbers": valid_pages})
 
@@ -416,16 +501,9 @@ def _attach_source_text(chunk_pages: list[dict], source_pages: list[dict]) -> No
     if not source_pages or not chunk_pages:
         return
     # Exact lookup: (doc_id, page_number) -> text
-    text_by_page = {
-        (sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "")
-        for sp in source_pages
-    }
+    text_by_page = {(sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "") for sp in source_pages}
     # Fallback lookup: doc_id -> first non-empty text
-    text_by_doc = {
-        sp["doc_id"]: sp.get("text", "")
-        for sp in source_pages
-        if sp.get("text")
-    }
+    text_by_doc = {sp["doc_id"]: sp.get("text", "") for sp in source_pages if sp.get("text")}
     for cp in chunk_pages:
         if cp.get("text"):
             continue
@@ -485,12 +563,15 @@ def _boost_cross_references(pages, question: str):
                 continue
             # Create a lightweight PageResult-like object
             from types import SimpleNamespace
-            additions.append(SimpleNamespace(
-                doc_id=target_doc,
-                page_number=target_page,
-                score=0.3,  # low score — cross-ref supplement
-                text="",    # text will be empty; answerer handles gracefully
-            ))
+
+            additions.append(
+                SimpleNamespace(
+                    doc_id=target_doc,
+                    page_number=target_page,
+                    score=0.3,  # low score — cross-ref supplement
+                    text="",  # text will be empty; answerer handles gracefully
+                )
+            )
             existing.add((target_doc, target_page))
             print(f"  [cross-ref] Added {target_doc}:p{target_page} from ref in {doc_id}:p{page_num}")
 
@@ -504,13 +585,15 @@ def _pages_to_source_dicts(pages) -> list[dict]:
     result = []
     for p in pages:
         if hasattr(p, "doc_id"):
-            result.append({
-                "doc_id": p.doc_id,
-                "page_number": p.page_number,
-                "page_numbers": [p.page_number],
-                "score": p.score,
-                "text": p.text,
-            })
+            result.append(
+                {
+                    "doc_id": p.doc_id,
+                    "page_number": p.page_number,
+                    "page_numbers": [p.page_number],
+                    "score": p.score,
+                    "text": p.text,
+                }
+            )
         else:
             result.append(p)
     return result
@@ -560,8 +643,12 @@ async def _process_question(
                 # 600s: worst case = lock_wait(120s) + cross_encoder(60s) + LLM retries(100s) + LLM(90s)
                 result = await asyncio.wait_for(
                     _process_question_inner(
-                        question, answer_type, question_id,
-                        route_result, retrieve_fn, answer_fn,
+                        question,
+                        answer_type,
+                        question_id,
+                        route_result,
+                        retrieve_fn,
+                        answer_fn,
                         _retrieval_cache=_retrieval_cache,
                         on_status=on_status,
                         on_token=on_token,
@@ -575,8 +662,10 @@ async def _process_question(
 
             except asyncio.TimeoutError:
                 if _q_attempt < MAX_QUESTION_RETRIES:
-                    print(f"  TIMEOUT processing {question_id[:16]} (>600s), retry {_q_attempt + 1}/{MAX_QUESTION_RETRIES}",
-                          file=sys.stderr)
+                    print(
+                        f"  TIMEOUT processing {question_id[:16]} (>600s), retry {_q_attempt + 1}/{MAX_QUESTION_RETRIES}",
+                        file=sys.stderr,
+                    )
                     await asyncio.sleep(10)  # brief pause before retry
                     continue
 
@@ -584,13 +673,19 @@ async def _process_question(
                 print(f"  TIMEOUT processing {question_id[:16]} (>600s), all retries exhausted", file=sys.stderr)
                 cached_pages = _retrieval_cache.get("source_pages")
                 if cached_pages:
-                    print(f"  SONNET FALLBACK: {question_id[:16]} using {len(cached_pages)} cached pages", file=sys.stderr)
+                    print(
+                        f"  SONNET FALLBACK: {question_id[:16]} using {len(cached_pages)} cached pages", file=sys.stderr
+                    )
                     try:
                         from arlc.answerer import generate_answer as _gen_answer_fallback
+
                         t_fb_start = time.monotonic()
                         fb_result = await asyncio.wait_for(
                             _gen_answer_fallback(
-                                question, answer_type, cached_pages, question_id,
+                                question,
+                                answer_type,
+                                cached_pages,
+                                question_id,
                                 metadata_answer=_retrieval_cache.get("metadata_answer"),
                                 force_model="claude-sonnet-4-6",
                             ),
@@ -607,7 +702,10 @@ async def _process_question(
                             "output_tokens": getattr(fb_result, "output_tokens", 0),
                             "model_name": "sonnet-fallback",
                         }
-                        print(f"  SONNET FALLBACK OK: {question_id[:16]} answer={str(fb_result.answer)[:60]}", file=sys.stderr)
+                        print(
+                            f"  SONNET FALLBACK OK: {question_id[:16]} answer={str(fb_result.answer)[:60]}",
+                            file=sys.stderr,
+                        )
                         break
                     except Exception as fb_exc:
                         print(f"  SONNET FALLBACK FAILED: {question_id[:16]} {fb_exc}", file=sys.stderr)
@@ -628,12 +726,12 @@ async def _process_question(
 
             except Exception as e:
                 if _q_attempt < MAX_QUESTION_RETRIES:
-                    print(f"  ERROR processing {question_id[:16]}: {e}, retry {_q_attempt + 1}",
-                          file=sys.stderr)
+                    print(f"  ERROR processing {question_id[:16]}: {e}, retry {_q_attempt + 1}", file=sys.stderr)
                     await asyncio.sleep(5)
                     continue
                 print(f"  ERROR processing {question_id[:16]}: {e}", file=sys.stderr)
                 import traceback
+
                 traceback.print_exc(file=sys.stderr)
                 result = {
                     "answer": None,
@@ -713,8 +811,10 @@ async def _process_question_inner(
     # Fast path A: router pre-computed the answer (date/claim comparisons)
     # Guard: skip if answer is a list of dicts (router bug for list-format parties) or
     # if it's a free_text question (parties metadata is never a valid free_text answer).
-    if metadata_answer is not None and answer_type != "free_text" and not (
-        isinstance(metadata_answer, list) and metadata_answer and isinstance(metadata_answer[0], dict)
+    if (
+        metadata_answer is not None
+        and answer_type != "free_text"
+        and not (isinstance(metadata_answer, list) and metadata_answer and isinstance(metadata_answer[0], dict))
     ):
         t_total = time.monotonic() - t_start
         # Use metadata_pages from router for correct data page citations (e.g. date=p.2, claim=p.5)
@@ -724,10 +824,7 @@ async def _process_question_inner(
         fallback_pages = _get_all_case_doc_pages(route_result, meta_pages)
         if not fallback_pages:
             # Fallback to target_docs if no case metadata found
-            fallback_pages = [
-                {"doc_id": d, "page_numbers": [meta_pages.get(d, 1)]}
-                for d in (target_docs or [])
-            ]
+            fallback_pages = [{"doc_id": d, "page_numbers": [meta_pages.get(d, 1)]} for d in (target_docs or [])]
         return {
             "answer": metadata_answer,
             "chunk_pages": _enforce_page_limit(fallback_pages),
@@ -793,7 +890,7 @@ async def _process_question_inner(
     # Step 2b: Retrieve pages from target documents (normal path)
     if on_status is not None:
         on_status("retrieving")
-    is_free_text = (answer_type == "free_text")
+    is_free_text = answer_type == "free_text"
     # Adaptive max_per_doc by answer type (verified against gold distribution):
     # - free_text: 33% need 2+ pages from same doc → mpd=2
     # - boolean: 22% need 2+ pages → mpd=2 (appeals span pages)
@@ -816,17 +913,19 @@ async def _process_question_inner(
         _groups: dict[str, list[str]] = {}
         for _cid in _route_case_ids:
             _cinfo = _case_meta_for_oracle.get(_cid.upper().strip(), {})
-            _cdocs = [
-                d.get("doc_id", "") for d in _cinfo.get("docs", [])
-                if d.get("doc_id", "") in _target_set
-            ]
+            _cdocs = [d.get("doc_id", "") for d in _cinfo.get("docs", []) if d.get("doc_id", "") in _target_set]
             if _cdocs:
                 _groups[_cid] = _cdocs
         if len(_groups) >= 2:
             _case_doc_groups = _groups
 
     pages = await asyncio.to_thread(
-        retrieve_fn, question, target_docs, _mpd, _max_total, answer_type,
+        retrieve_fn,
+        question,
+        target_docs,
+        _mpd,
+        _max_total,
+        answer_type,
         include_context_pages=is_free_text,
         use_llm_rerank=is_free_text,  # re-enabled: now uses llm_router (working endpoints)
         boost_pages=boost_pages,
@@ -878,8 +977,15 @@ async def _process_question_inner(
     try:
         if asyncio.iscoroutinefunction(answer_fn):
             answer_result = await asyncio.wait_for(
-                answer_fn(question, answer_type, source_pages, question_id,
-                          metadata_answer=metadata_answer, on_token=on_token, web_mode=web_mode),
+                answer_fn(
+                    question,
+                    answer_type,
+                    source_pages,
+                    question_id,
+                    metadata_answer=metadata_answer,
+                    on_token=on_token,
+                    web_mode=web_mode,
+                ),
                 timeout=300.0,
             )
         else:
@@ -890,6 +996,7 @@ async def _process_question_inner(
     except asyncio.TimeoutError:
         print(f"  INNER TIMEOUT: {question_id[:12]} answer_fn >300s", file=sys.stderr)
         from arlc.answerer import AnswerResult
+
         answer_result = AnswerResult(answer=None, chunk_pages=[])
 
     t_total = time.monotonic() - t_start
@@ -921,17 +1028,20 @@ async def _process_question_inner(
         try:
             import arlc.page_verifier as _pv_mod
             from arlc.page_verifier import verify_pages as _verify_pages
+
             _chunk_pages = result.get("chunk_pages", [])
             if _chunk_pages:
                 _verified_pages = _verify_pages(
-                    question, result["answer"], answer_type, _chunk_pages,
+                    question,
+                    result["answer"],
+                    answer_type,
+                    _chunk_pages,
                     use_llm_fallback=_pv_mod.ENABLE_LLM_FALLBACK,
                 )
                 _step4_changed = str(_chunk_pages) != str(_verified_pages)
                 if _step4_changed:
                     print(
-                        f"  [page-verify-v2] {question_id[:12]}... pages updated: "
-                        f"{_chunk_pages} -> {_verified_pages}",
+                        f"  [page-verify-v2] {question_id[:12]}... pages updated: {_chunk_pages} -> {_verified_pages}",
                         file=sys.stderr,
                     )
                 result["chunk_pages"] = _verified_pages
@@ -961,6 +1071,7 @@ async def _process_question_inner(
         try:
             from arlc.answerer import _extract_pages_used as _extract_vp
             from arlc.llm import router as _verify_router
+
             # Build numbered page list from top-5 retrieved pages.
             # Track (doc_id, page_num) pairs so verification is unambiguous
             # when multiple docs share the same page number.
@@ -976,9 +1087,8 @@ async def _process_question_inner(
                 f"Question: {question}\n"
                 f"Answer: {str(result.get('answer', ''))[:300]}\n\n"
                 f"Which pages below directly support this answer? "
-                f"Return ONLY page numbers as comma-separated integers (e.g. \"3, 7\"). "
-                f"If none are relevant, return \"none\".\n\n"
-                + "\n\n".join(_verify_page_texts)
+                f'Return ONLY page numbers as comma-separated integers (e.g. "3, 7"). '
+                f'If none are relevant, return "none".\n\n' + "\n\n".join(_verify_page_texts)
             )
             _verify_system = "You identify which pages directly support an answer. Be concise."
             _verify_raw, _, _, _, _, _ = await asyncio.to_thread(
@@ -990,10 +1100,7 @@ async def _process_question_inner(
             _verified_page_nums = _extract_vp(f"PAGES_USED: {_verify_raw}")
             # Also try plain integer extraction if PAGES_USED pattern didn't match
             if not _verified_page_nums:
-                _verified_page_nums = [
-                    int(t) for t in re.split(r"[,\s]+", _verify_raw.strip())
-                    if t.strip().isdigit()
-                ]
+                _verified_page_nums = [int(t) for t in re.split(r"[,\s]+", _verify_raw.strip()) if t.strip().isdigit()]
             if _verified_page_nums:
                 _verified_set = set(_verified_page_nums)
                 # Filter chunk_pages to verified page numbers, but only for (doc_id, page_num)
@@ -1004,7 +1111,8 @@ async def _process_question_inner(
                 for _cp in result.get("chunk_pages", []):
                     _cp_doc = _cp.get("doc_id", "")
                     _kept = [
-                        pn for pn in _cp.get("page_numbers", [])
+                        pn
+                        for pn in _cp.get("page_numbers", [])
                         if pn in _verified_set and (_cp_doc, pn) in _retrieved_pairs
                     ]
                     if _kept:
@@ -1037,15 +1145,9 @@ async def _process_question_inner(
         # answers cite articles from across the FULL law PDF. Haiku incorrectly flags these
         # as "ungrounded" and rewrites them, destroying correct answers.
         _has_leaked_cot = (
-            _ans_text.lstrip().startswith("1.")
-            or "QUESTION PARSE" in _ans_text
-            or "KEY PROVISIONS" in _ans_text
+            _ans_text.lstrip().startswith("1.") or "QUESTION PARSE" in _ans_text or "KEY PROVISIONS" in _ans_text
         )
-        _skip_grounding = (
-            ("'" in _ans_text or '"' in _ans_text)
-            and len(_ans_text) >= 300
-            and not _has_leaked_cot
-        )
+        _skip_grounding = ("'" in _ans_text or '"' in _ans_text) and len(_ans_text) >= 300 and not _has_leaked_cot
         if _skip_grounding:
             print(
                 f"  [grounding] {question_id[:12]}... skip (Opus inline, {len(_ans_text)} chars)",
@@ -1054,9 +1156,8 @@ async def _process_question_inner(
         else:
             try:
                 from grounding_verifier import verify_grounding
-                verification = await asyncio.to_thread(
-                    verify_grounding, question, result["answer"], source_pages
-                )
+
+                verification = await asyncio.to_thread(verify_grounding, question, result["answer"], source_pages)
                 if verification.get("needs_rewrite"):
                     rewritten = verification.get("rewritten_answer", "").strip()
                     if rewritten and 100 <= len(rewritten) <= 900:
@@ -1077,20 +1178,17 @@ async def _process_question_inner(
     if answer_type == "free_text" and isinstance(result.get("answer"), str):
         _q_low = question.lower()
         _a_low = result["answer"].lower()[:150]
-        _has_case_id = bool(re.search(
-            r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD|ACT)\s+\d+/\d{4}", question, re.IGNORECASE
-        ))
+        _has_case_id = bool(re.search(r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD|ACT)\s+\d+/\d{4}", question, re.IGNORECASE))
         # Question must be "Does X address Y?" with no case ID reference
-        _q_absence = (
-            _q_low.startswith("does")
-            and "address" in _q_low
-            and not _has_case_id
-        )
+        _q_absence = _q_low.startswith("does") and "address" in _q_low and not _has_case_id
         _absence_markers = [
-            "do not address", "does not address",
-            "do not contain", "does not contain",
+            "do not address",
+            "does not address",
+            "do not contain",
+            "does not contain",
             "not address or specify",
-            "no information about", "no information on",
+            "no information about",
+            "no information on",
             "cannot be determined from the provided",
         ]
         _a_absence = any(m in _a_low for m in _absence_markers)
@@ -1135,10 +1233,8 @@ async def _process_question_inner(
     # _enforce_page_limit) rebuild chunk_pages dicts without text.
     # We do this once at the very end to avoid patching each step.
     if web_mode and source_pages and result.get("chunk_pages"):
-        _txt_by_key = {(sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "")
-                       for sp in source_pages}
-        _txt_by_doc = {sp["doc_id"]: sp.get("text", "")
-                       for sp in source_pages if sp.get("text")}
+        _txt_by_key = {(sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "") for sp in source_pages}
+        _txt_by_doc = {sp["doc_id"]: sp.get("text", "") for sp in source_pages if sp.get("text")}
         for cp in result["chunk_pages"]:
             if not cp.get("text"):
                 for pn in cp.get("page_numbers", []):
@@ -1161,34 +1257,34 @@ async def _process_question_inner(
 # causing exact-match failures when the platform compares against gold answers.
 _CYRILLIC_TO_LATIN: dict[str, str] = {
     # Uppercase
-    '\u0410': 'A',  # А → A
-    '\u0412': 'B',  # В → B
-    '\u0421': 'C',  # С → C
-    '\u0415': 'E',  # Е → E
-    '\u041d': 'H',  # Н → H
-    '\u0406': 'I',  # І → I
-    '\u041a': 'K',  # К → K
-    '\u041c': 'M',  # М → M
-    '\u041e': 'O',  # О → O
-    '\u0420': 'P',  # Р → P
-    '\u0422': 'T',  # Т → T
-    '\u0425': 'X',  # Х → X
-    '\u0423': 'Y',  # У → Y
+    "\u0410": "A",  # А → A
+    "\u0412": "B",  # В → B
+    "\u0421": "C",  # С → C
+    "\u0415": "E",  # Е → E
+    "\u041d": "H",  # Н → H
+    "\u0406": "I",  # І → I
+    "\u041a": "K",  # К → K
+    "\u041c": "M",  # М → M
+    "\u041e": "O",  # О → O
+    "\u0420": "P",  # Р → P
+    "\u0422": "T",  # Т → T
+    "\u0425": "X",  # Х → X
+    "\u0423": "Y",  # У → Y
     # Lowercase
-    '\u0430': 'a',  # а → a
-    '\u0435': 'e',  # е → e
-    '\u043e': 'o',  # о → o
-    '\u0440': 'p',  # р → p
-    '\u0441': 'c',  # с → c
-    '\u0443': 'y',  # у → y
-    '\u0445': 'x',  # х → x
-    '\u0456': 'i',  # і → i
+    "\u0430": "a",  # а → a
+    "\u0435": "e",  # е → e
+    "\u043e": "o",  # о → o
+    "\u0440": "p",  # р → p
+    "\u0441": "c",  # с → c
+    "\u0443": "y",  # у → y
+    "\u0445": "x",  # х → x
+    "\u0456": "i",  # і → i
 }
 
 
 def _check_homoglyphs(text: str) -> str:
     """Replace Cyrillic lookalike characters with their Latin equivalents."""
-    return ''.join(_CYRILLIC_TO_LATIN.get(c, c) for c in text)
+    return "".join(_CYRILLIC_TO_LATIN.get(c, c) for c in text)
 
 
 def _normalize_answer(answer: object) -> object:
@@ -1202,8 +1298,7 @@ def _normalize_answer(answer: object) -> object:
         return _check_homoglyphs(normalized)
     if isinstance(answer, list):
         return [
-            _check_homoglyphs(unicodedata.normalize("NFKC", item)) if isinstance(item, str) else item
-            for item in answer
+            _check_homoglyphs(unicodedata.normalize("NFKC", item)) if isinstance(item, str) else item for item in answer
         ]
     return answer
 
@@ -1211,6 +1306,7 @@ def _normalize_answer(answer: object) -> object:
 # ---------------------------------------------------------------------------
 # Submission format validation
 # ---------------------------------------------------------------------------
+
 
 def validate_submission(submission: dict) -> list[str]:
     """Validate a submission dict against the platform API spec.
@@ -1305,14 +1401,10 @@ def validate_submission(submission: dict) -> list[str]:
             total = timing.get("total_time_ms", 0) or 0
             if isinstance(ttft, (int, float)) and isinstance(total, (int, float)):
                 if total < ttft:
-                    errors.append(
-                        f"{prefix}.telemetry.timing: total_time_ms ({total}) < ttft_ms ({ttft})"
-                    )
+                    errors.append(f"{prefix}.telemetry.timing: total_time_ms ({total}) < ttft_ms ({ttft})")
             # total_time_ms must be > 0 (platform penalises total_ms=0)
             if total == 0:
-                errors.append(
-                    f"{prefix}.telemetry.timing: total_time_ms is 0 (platform flags as invalid telemetry)"
-                )
+                errors.append(f"{prefix}.telemetry.timing: total_time_ms is 0 (platform flags as invalid telemetry)")
 
         # telemetry.usage
         usage = tel.get("usage")
@@ -1361,7 +1453,9 @@ def validate_submission(submission: dict) -> list[str]:
                         else:
                             for m, pn in enumerate(pns):
                                 if not isinstance(pn, int):
-                                    errors.append(f"{cp_prefix}.page_numbers[{m}]: must be int, got {type(pn).__name__}")
+                                    errors.append(
+                                        f"{cp_prefix}.page_numbers[{m}]: must be int, got {type(pn).__name__}"
+                                    )
                                 elif pn < 1:
                                     errors.append(f"{cp_prefix}.page_numbers[{m}]: must be >= 1, got {pn}")
 
@@ -1380,6 +1474,7 @@ def validate_submission(submission: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 # Results -> submission format conversion
 # ---------------------------------------------------------------------------
+
 
 def _to_submission_format(results: list[dict]) -> dict:
     """Convert internal results to platform submission format.
@@ -1418,25 +1513,27 @@ def _to_submission_format(results: list[dict]) -> dict:
         answer = r["answer"]
         answer = _normalize_answer(answer)
 
-        answers.append({
-            "question_id": r["id"],
-            "answer": answer,
-            "telemetry": {
-                "timing": {
-                    "ttft_ms": ttft_ms,
-                    "tpot_ms": tpot_ms,
-                    "total_time_ms": total_ms,
+        answers.append(
+            {
+                "question_id": r["id"],
+                "answer": answer,
+                "telemetry": {
+                    "timing": {
+                        "ttft_ms": ttft_ms,
+                        "tpot_ms": tpot_ms,
+                        "total_time_ms": total_ms,
+                    },
+                    "retrieval": {
+                        "retrieved_chunk_pages": chunk_pages,
+                    },
+                    "usage": {
+                        "input_tokens": inp,
+                        "output_tokens": out,
+                    },
+                    "model_name": model_name,
                 },
-                "retrieval": {
-                    "retrieved_chunk_pages": chunk_pages,
-                },
-                "usage": {
-                    "input_tokens": inp,
-                    "output_tokens": out,
-                },
-                "model_name": model_name,
-            },
-        })
+            }
+        )
 
     return {
         "architecture_summary": ARCHITECTURE_SUMMARY,
@@ -1447,6 +1544,7 @@ def _to_submission_format(results: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 # Stats printer
 # ---------------------------------------------------------------------------
+
 
 def _print_stats(results: list[dict]):
     """Print sanity statistics after pipeline run."""
@@ -1500,7 +1598,7 @@ def _print_stats(results: list[dict]):
         p50 = sorted_ttfts[len(sorted_ttfts) // 2]
         p95_idx = min(int(len(sorted_ttfts) * 0.95), len(sorted_ttfts) - 1)
         p95 = sorted_ttfts[p95_idx]
-        print(f"  TTFT avg:  {avg_ttft:.0f}ms ({avg_ttft/1000:.2f}s)")
+        print(f"  TTFT avg:  {avg_ttft:.0f}ms ({avg_ttft / 1000:.2f}s)")
         print(f"  TTFT p50:  {p50:.0f}ms")
         print(f"  TTFT p95:  {p95:.0f}ms")
         print(f"  TTFT max:  {max_ttft:.0f}ms")
@@ -1516,6 +1614,7 @@ def _print_stats(results: list[dict]):
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
+
 
 async def run_pipeline(
     questions_path: str = "data/questions.json",
@@ -1552,6 +1651,7 @@ async def run_pipeline(
     # Step 1: Index documents (if needed)
     if not skip_indexing:
         from arlc.retriever import get_chunk_count
+
         if get_chunk_count("difc") == 0:
             print("=== Step 1: Indexing documents ===")
             build_index()
@@ -1596,9 +1696,10 @@ async def run_pipeline(
         # These are thread-safe singletons; calling them now means concurrent workers
         # never race to initialize them.
         import arlc.retriever as _ret_mod
-        _ret_mod.get_chunks_by_doc()      # load all 3000+ ChromaDB chunks into memory
-        _ret_mod.get_reranker()           # load cross-encoder model onto MPS/CPU
-        _ret_mod.get_embedding_model()    # connect to llama-server (Qwen3-Embedding)
+
+        _ret_mod.get_chunks_by_doc()  # load all 3000+ ChromaDB chunks into memory
+        _ret_mod.get_reranker()  # load cross-encoder model onto MPS/CPU
+        _ret_mod.get_embedding_model()  # connect to llama-server (Qwen3-Embedding)
         print("  Retriever warmed up (chunks, reranker, embeddings all loaded).")
     except Exception as e:
         print(f"  Warmup warning (non-fatal): {e}")
@@ -1615,7 +1716,9 @@ async def run_pipeline(
     print("=== Step 3c: Sorting questions for prompt cache efficiency ===")
     try:
         from arlc.router import get_router
+
         _sort_router = get_router()
+
         def _get_sort_key(q):
             r = _sort_router.route(q["question"], q.get("answer_type", "free_text"))
             if r.target_doc_ids:
@@ -1623,6 +1726,7 @@ async def run_pipeline(
                 model_order = 0 if q.get("answer_type", "") != "free_text" else 1
                 return (0, r.target_doc_ids[0], model_order)
             return (1, q.get("id", ""), 0)
+
         questions.sort(key=_get_sort_key)
         print(f"  Sorted {len(questions)} questions by target doc_id + model type")
     except Exception as _sort_err:
@@ -1632,10 +1736,7 @@ async def run_pipeline(
     print(f"=== Step 4: Processing {len(questions)} questions ({workers} workers) ===")
     semaphore = asyncio.Semaphore(workers)
 
-    tasks = [
-        _process_question(q, route_fn, retrieve_fn, answer_fn, semaphore)
-        for q in questions
-    ]
+    tasks = [_process_question(q, route_fn, retrieve_fn, answer_fn, semaphore) for q in questions]
 
     results = []
     completed = 0
@@ -1648,9 +1749,7 @@ async def run_pipeline(
 
         # Progress output
         answer_display = str(result["answer"])[:60] if result["answer"] is not None else "null"
-        pages_count = sum(
-            len(cp.get("page_numbers", [])) for cp in result.get("chunk_pages", [])
-        )
+        pages_count = sum(len(cp.get("page_numbers", [])) for cp in result.get("chunk_pages", []))
         ttft_ms = result.get("ttft_ms", 0)
         print(
             f"  [{completed}/{len(questions)}] "
@@ -1695,6 +1794,7 @@ async def run_pipeline(
         with open(_art_index_path) as f:
             _art_index = json.load(f)
         from arlc.router import get_router
+
         _router_inst = get_router()
         _art_restored = 0
         for _r in _working_results:
@@ -1739,13 +1839,16 @@ async def run_pipeline(
                         if _changed:
                             _cp["page_numbers"] = sorted(set(_new_pages))
                             _art_restored += 1
-                            print(f"  Restored: {_r.get('id', '')[:16]} "
-                                  f"doc={_law_doc_id[:8]} {_art_key} "
-                                  f"p{_current_pages}→p{_cp['page_numbers']}")
+                            print(
+                                f"  Restored: {_r.get('id', '')[:16]} "
+                                f"doc={_law_doc_id[:8]} {_art_key} "
+                                f"p{_current_pages}→p{_cp['page_numbers']}"
+                            )
         print(f"  Article pages restored: {_art_restored}")
     except Exception as _art_err:
         print(f"  WARNING: Article page restoration failed: {_art_err}", file=sys.stderr)
         import traceback
+
         traceback.print_exc(file=sys.stderr)
 
     # Step 5c: DISABLED — Opus S_asst rewrite requires Anthropic credits (all calls fail)
@@ -1758,10 +1861,7 @@ async def run_pipeline(
     for _r in _working_results:
         if isinstance(_r.get("answer"), list):
             _old = _r["answer"]
-            _new = [
-                item.get("name", str(item)) if isinstance(item, dict) else item
-                for item in _old
-            ]
+            _new = [item.get("name", str(item)) if isinstance(item, dict) else item for item in _old]
             if _new != _old:
                 _r["answer"] = _new
                 _names_normalized += 1
@@ -1819,10 +1919,11 @@ async def run_pipeline(
     # — for article-level questions, the article page IS a valid citation even when answer=False.
     print("\n=== Step 5d.7: Absence-based boolean → empty pages ===")
     import re as _re
+
     # "cover" removed — matches "cover page" in cross-case questions (false positive)
     # "address" guarded by _ARTICLE_RE check below (skipped for article-level questions)
     _ABSENCE_PATTERNS = ["deal with", "relate to", "concern", "pertain to", "address"]
-    _ARTICLE_RE = _re.compile(r'\bArticle\s+\d', _re.IGNORECASE)
+    _ARTICLE_RE = _re.compile(r"\bArticle\s+\d", _re.IGNORECASE)
     _absence_fixed = 0
     for _r in _working_results:
         if _r.get("answer_type") == "boolean" and _r.get("answer") is False:
@@ -1862,7 +1963,7 @@ async def run_pipeline(
             else:
                 # LLM boolean False: clear if question has 2+ case IDs (cross-case)
                 _q = _r.get("question", "")
-                _case_ids = _re.findall(r'(?:CFI|SCT|CA|ARB|ENF|DEC|TCD)\s+\d+', _q)
+                _case_ids = _re.findall(r"(?:CFI|SCT|CA|ARB|ENF|DEC|TCD)\s+\d+", _q)
                 if len(set(_case_ids)) >= 2:
                     _r["chunk_pages"] = []
                     _cross_case_fixed += 1
@@ -1873,9 +1974,7 @@ async def run_pipeline(
     # the answer comes from metadata, not from reading a specific page. Gold expects [].
     _oracle_comp_cleared = 0
     for _r in _working_results:
-        if (_r.get("model_name") == "oracle"
-                and _r.get("answer_type") in ("name", "date")
-                and _r.get("chunk_pages")):
+        if _r.get("model_name") == "oracle" and _r.get("answer_type") in ("name", "date") and _r.get("chunk_pages"):
             _q = _r.get("question", "").lower()
             if any(w in _q for w in ["earlier", "later", "higher", "larger", "lower", "first", "most recent"]):
                 _r["chunk_pages"] = []
@@ -1908,7 +2007,7 @@ async def run_pipeline(
                 _valid_chunks.append(_cp)
             else:
                 _docid_fixed += 1
-                print(f"  WARNING: {_r.get('id','')[:16]} has non-existent doc_id {_did[:16]}", file=sys.stderr)
+                print(f"  WARNING: {_r.get('id', '')[:16]} has non-existent doc_id {_did[:16]}", file=sys.stderr)
         _r["chunk_pages"] = _valid_chunks
     print(f"  Invalid doc_ids removed: {_docid_fixed}")
 
@@ -1920,7 +2019,11 @@ async def run_pipeline(
     print(f"  Final results: {results_final_path}")
 
     # Final submission at output/final_submission.json (per team instructions)
-    final_submission_path = Path(output_dir).parent / "final_submission.json" if str(output_dir) != "output" else Path("output/final_submission.json")
+    final_submission_path = (
+        Path(output_dir).parent / "final_submission.json"
+        if str(output_dir) != "output"
+        else Path("output/final_submission.json")
+    )
     final_submission = _to_submission_format(_working_results)
 
     # Run comprehensive validation before writing the submission file.
@@ -1947,10 +2050,13 @@ async def run_pipeline(
         print("\n=== Step 7: Verifying number answers ===")
         try:
             from verify_answers import run_verification
+
             verified_path = results_path.with_stem(results_path.stem + "_verified")
             await run_verification(
-                results_path, verified_path,
-                allowed_types={"number"}, concurrency=workers,
+                results_path,
+                verified_path,
+                allowed_types={"number"},
+                concurrency=workers,
             )
             # Re-convert to submission format with verified results
             with open(verified_path) as f:
@@ -1973,49 +2079,58 @@ async def run_pipeline(
 # CLI
 # ---------------------------------------------------------------------------
 
+
 def main():
     import logging as _logging
+
     _logging.basicConfig(
         level=_logging.INFO,
         format="%(levelname)s %(name)s %(message)s",
         stream=sys.stderr,
     )
-    parser = argparse.ArgumentParser(
-        description="Finals pipeline: route -> retrieve -> answer -> format check"
-    )
+    parser = argparse.ArgumentParser(description="Finals pipeline: route -> retrieve -> answer -> format check")
     parser.add_argument(
-        "--questions", default="data/questions.json",
+        "--questions",
+        default="data/questions.json",
         help="Path to questions JSON file (default: data/questions.json)",
     )
     parser.add_argument(
-        "--output", default="output",
+        "--output",
+        default="output",
         help="Output directory (default: output/)",
     )
     parser.add_argument(
-        "--workers", type=int, default=5,
+        "--workers",
+        type=int,
+        default=5,
         help="Number of concurrent workers (default: 5, prevents cross-encoder lock contention)",
     )
     parser.add_argument(
-        "--skip-indexing", action="store_true",
+        "--skip-indexing",
+        action="store_true",
         help="Skip document indexing step",
     )
     parser.add_argument(
-        "--verify-numbers", action="store_true",
+        "--verify-numbers",
+        action="store_true",
         help="Run number verification as post-step",
     )
     args = parser.parse_args()
 
     # Auto-skip indexing if chunks already exist in PostgreSQL
     from arlc.retriever import get_chunk_count
+
     skip = args.skip_indexing or get_chunk_count("difc") > 0
 
-    asyncio.run(run_pipeline(
-        questions_path=args.questions,
-        output_dir=args.output,
-        workers=args.workers,
-        skip_indexing=skip,
-        verify_numbers=args.verify_numbers,
-    ))
+    asyncio.run(
+        run_pipeline(
+            questions_path=args.questions,
+            output_dir=args.output,
+            workers=args.workers,
+            skip_indexing=skip,
+            verify_numbers=args.verify_numbers,
+        )
+    )
 
 
 if __name__ == "__main__":

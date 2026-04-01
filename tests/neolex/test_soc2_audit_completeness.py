@@ -7,6 +7,7 @@ Verifies that:
 4. Health endpoints are intentionally exempt from audit (no side effects to log).
 5. Demo config endpoint is intentionally exempt from audit (unauthenticated, no data access).
 """
+
 import asyncio
 import json
 from unittest.mock import MagicMock, patch
@@ -27,7 +28,6 @@ async def doc_audit_client(tmp_path, monkeypatch):
     """
     from neolex.auth.keys import generate_key, hash_key
     from neolex.auth.keys import key_prefix as kp
-
     from neolex.config import settings
     from neolex.db.audit import get_audit_db
     from neolex.main import app
@@ -66,6 +66,7 @@ async def doc_audit_client(tmp_path, monkeypatch):
 # SOC2-AUDIT-01: POST /api/v1/query creates a queries row
 # ---------------------------------------------------------------------------
 
+
 async def test_query_endpoint_creates_audit_entry(authed_client, seeded_db):
     """POST /api/v1/query must create a row in the queries audit table."""
     client, raw_key = authed_client
@@ -79,6 +80,7 @@ async def test_query_endpoint_creates_audit_entry(authed_client, seeded_db):
     assert resp.status_code == 200
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         rows = await db.get_queries(limit=5)
 
@@ -94,6 +96,7 @@ async def test_query_endpoint_creates_audit_entry(authed_client, seeded_db):
 # SOC2-AUDIT-02: GET /api/v1/query/stream creates a queries row
 # ---------------------------------------------------------------------------
 
+
 async def test_sse_stream_creates_audit_entry(authed_client, seeded_db):
     """GET /api/v1/query/stream must create a queries audit row on completion."""
     client, raw_key = authed_client
@@ -108,6 +111,7 @@ async def test_sse_stream_creates_audit_entry(authed_client, seeded_db):
     assert resp.status_code == 200
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         rows = await db.get_queries(limit=5)
 
@@ -117,6 +121,7 @@ async def test_sse_stream_creates_audit_entry(authed_client, seeded_db):
 # ---------------------------------------------------------------------------
 # SOC2-AUDIT-03: POST /api/v1/documents creates an upload event
 # ---------------------------------------------------------------------------
+
 
 async def test_upload_creates_audit_event(doc_audit_client):
     """POST /api/v1/documents must log an 'upload' event in the events table."""
@@ -130,6 +135,7 @@ async def test_upload_creates_audit_event(doc_audit_client):
     assert resp.status_code == 201, f"Expected 201, got {resp.status_code}: {resp.text}"
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         events = await db.get_events(limit=20)
 
@@ -142,6 +148,7 @@ async def test_upload_creates_audit_event(doc_audit_client):
 # ---------------------------------------------------------------------------
 # SOC2-AUDIT-04: DELETE /api/v1/documents/{doc_id} creates a delete event
 # ---------------------------------------------------------------------------
+
 
 async def test_delete_creates_audit_event(doc_audit_client):
     """DELETE /api/v1/documents/{doc_id} must log a 'delete' event in the events table."""
@@ -164,6 +171,7 @@ async def test_delete_creates_audit_event(doc_audit_client):
     assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         events = await db.get_events(limit=20)
 
@@ -177,6 +185,7 @@ async def test_delete_creates_audit_event(doc_audit_client):
 # SOC2-AUDIT-05: POST /api/v1/documents/reindex creates a reindex event
 # ---------------------------------------------------------------------------
 
+
 async def test_manual_reindex_creates_audit_event(doc_audit_client):
     """POST /api/v1/documents/reindex must log a 'reindex' event in the events table."""
     client, raw_key, db_path = doc_audit_client
@@ -188,6 +197,7 @@ async def test_manual_reindex_creates_audit_event(doc_audit_client):
     assert resp.status_code == 202, f"Expected 202, got {resp.status_code}: {resp.text}"
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         events = await db.get_events(limit=20)
 
@@ -200,6 +210,7 @@ async def test_manual_reindex_creates_audit_event(doc_audit_client):
 # ---------------------------------------------------------------------------
 # SOC2-AUDIT-06: Auth failure logged with IP and user-agent
 # ---------------------------------------------------------------------------
+
 
 async def test_auth_failure_logged_with_metadata(authed_client, seeded_db):
     """Auth failures must be logged with IP and user-agent in the events table."""
@@ -215,6 +226,7 @@ async def test_auth_failure_logged_with_metadata(authed_client, seeded_db):
     assert resp.status_code == 401
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         events = await db.get_events(limit=20)
 
@@ -258,13 +270,14 @@ async def test_invalid_key_logged_with_prefix(seeded_db, monkeypatch):
     assert resp.status_code == 401
 
     from neolex.db.audit import get_audit_db
+
     async with get_audit_db(db_path=db_path) as db:
         events = await db.get_events(limit=20)
 
     invalid_failures = [
-        e for e in events
-        if e["event_type"] == "auth_failure"
-           and json.loads(e["detail_json"]).get("reason") == "invalid_key"
+        e
+        for e in events
+        if e["event_type"] == "auth_failure" and json.loads(e["detail_json"]).get("reason") == "invalid_key"
     ]
     assert len(invalid_failures) >= 1, "invalid_key auth_failure must be logged"
     detail = json.loads(invalid_failures[0]["detail_json"])
@@ -274,6 +287,7 @@ async def test_invalid_key_logged_with_prefix(seeded_db, monkeypatch):
 # ---------------------------------------------------------------------------
 # SOC2-AUDIT-07: Audit log is append-only (no delete/update methods for log tables)
 # ---------------------------------------------------------------------------
+
 
 def test_audit_log_append_only_no_delete_methods():
     """AuditDB must not expose any method that deletes or updates log rows (AUDIT-05)."""
@@ -287,14 +301,17 @@ def test_audit_log_append_only_no_delete_methods():
     db = AuditDB(conn)
 
     forbidden = [
-        "delete_query", "delete_event",
-        "update_query", "update_event",
-        "truncate_queries", "truncate_events",
-        "clear_log", "purge_log",
+        "delete_query",
+        "delete_event",
+        "update_query",
+        "update_event",
+        "truncate_queries",
+        "truncate_events",
+        "clear_log",
+        "purge_log",
     ]
     for method_name in forbidden:
-        assert not hasattr(db, method_name), \
-            f"AuditDB must not expose '{method_name}' — audit log is append-only"
+        assert not hasattr(db, method_name), f"AuditDB must not expose '{method_name}' — audit log is append-only"
 
 
 def test_no_sql_delete_in_log_tables():
@@ -316,19 +333,20 @@ def test_no_sql_delete_in_log_tables():
 # SOC2-AUDIT-08: Health endpoints are exempt from auth (not in audit scope)
 # ---------------------------------------------------------------------------
 
+
 async def test_health_endpoints_accessible_without_auth(authed_client):
     """Health endpoints must be accessible without authentication."""
     client, _ = authed_client
 
     for path in ["/health", "/health/live", "/health/ready"]:
         resp = await client.get(path)
-        assert resp.status_code in (200, 503), \
-            f"{path} must return 200/503 without auth, got {resp.status_code}"
+        assert resp.status_code in (200, 503), f"{path} must return 200/503 without auth, got {resp.status_code}"
 
 
 # ---------------------------------------------------------------------------
 # SOC2-AUDIT-09: Admin endpoints require admin scope (no query-key access)
 # ---------------------------------------------------------------------------
+
 
 async def test_admin_scope_enforcement(seeded_db, monkeypatch):
     """Query-scoped API key must not access admin endpoints (403)."""
@@ -350,19 +368,22 @@ async def test_admin_scope_enforcement(seeded_db, monkeypatch):
             headers={"Authorization": f"Bearer {raw_key}"},
         )
 
-    assert resp.status_code == 403, \
-        f"Query-scoped key must not access admin audit endpoint; got {resp.status_code}"
+    assert resp.status_code == 403, f"Query-scoped key must not access admin audit endpoint; got {resp.status_code}"
 
 
 # ---------------------------------------------------------------------------
 # SOC2-AUDIT-10: All protected endpoints return 401 without a key
 # ---------------------------------------------------------------------------
 
-@pytest.mark.parametrize("method,path,body", [
-    ("post", "/api/v1/query", {"question": "test question here at minimum", "answer_type": "free_text"}),
-    ("get", "/api/v1/documents", None),
-    ("get", "/api/v1/admin/audit", None),
-])
+
+@pytest.mark.parametrize(
+    "method,path,body",
+    [
+        ("post", "/api/v1/query", {"question": "test question here at minimum", "answer_type": "free_text"}),
+        ("get", "/api/v1/documents", None),
+        ("get", "/api/v1/admin/audit", None),
+    ],
+)
 async def test_all_protected_endpoints_require_auth(method, path, body, seeded_db, monkeypatch):
     """Every protected endpoint must return 401 when no Authorization header is provided."""
     from neolex.config import settings
@@ -383,5 +404,4 @@ async def test_all_protected_endpoints_require_auth(method, path, body, seeded_d
         else:
             resp = await client.get(path)
 
-    assert resp.status_code == 401, \
-        f"{method.upper()} {path} must return 401 without auth; got {resp.status_code}"
+    assert resp.status_code == 401, f"{method.upper()} {path} must return 401 without auth; got {resp.status_code}"

@@ -4,6 +4,7 @@ Entry point for the Vitreon Legal API. The lifespan context manager pre-warms
 all ML model singletons before serving requests — this prevents cross-encoder
 deadlocks under concurrent cold-start load (see arlc/pipeline.py lines 1491-1493).
 """
+
 # Load .env BEFORE any other imports — Settings reads os.environ at class definition time.
 from dotenv import load_dotenv as _load_dotenv
 
@@ -97,8 +98,7 @@ async def _cleanup_expired() -> None:
                 # 2. Conversation messages older than 90 days (GDPR retention)
                 cutoff_90d = now - timedelta(days=90)
                 result = await db.execute(
-                    sql_delete(ConversationMessage)
-                    .where(ConversationMessage.created_at < cutoff_90d)
+                    sql_delete(ConversationMessage).where(ConversationMessage.created_at < cutoff_90d)
                 )
                 deleted_msgs = result.rowcount
 
@@ -117,10 +117,7 @@ async def _cleanup_expired() -> None:
 
                 # 4. Pipeline jobs older than 24 hours (ephemeral status tracking)
                 cutoff_24h = now - timedelta(hours=24)
-                result3 = await db.execute(
-                    sql_delete(PipelineJob)
-                    .where(PipelineJob.created_at < cutoff_24h)
-                )
+                result3 = await db.execute(sql_delete(PipelineJob).where(PipelineJob.created_at < cutoff_24h))
                 deleted_jobs = result3.rowcount
 
                 await db.commit()
@@ -146,6 +143,7 @@ async def lifespan(app: FastAPI):
         # Import inside lifespan so errors are caught here, not at module level.
         # _import_pipeline_modules prints status to stdout for each submodule.
         from arlc.pipeline import _import_pipeline_modules
+
         route_fn, retrieve_fn, answer_fn = _import_pipeline_modules()
 
         app.state.route_fn = route_fn
@@ -159,6 +157,7 @@ async def lifespan(app: FastAPI):
         # the OS thread holding the lock — permanent deadlock.
         # (See arlc/pipeline.py lines 1491-1503 for original pattern.)
         import arlc.retriever as _ret
+
         logger.info("Pre-warming retriever singletons (PostgreSQL, cross-encoder)...")
         await asyncio.to_thread(_ret.get_chunk_count, "difc")
         await asyncio.to_thread(_ret.get_chunk_count, "czech")
@@ -179,6 +178,7 @@ async def lifespan(app: FastAPI):
         # Initialize all PostgreSQL tables (auth + billing + operational).
         if settings.database_url:
             from neolex.db.postgres import init_db as init_pg
+
             await init_pg()
             logger.info("PostgreSQL tables initialized.")
 
@@ -204,6 +204,7 @@ async def lifespan(app: FastAPI):
         cleanup_task.cancel()
     # Dispose the SQLAlchemy async engine to release all pooled connections
     from neolex.db.postgres import engine as pg_engine
+
     await pg_engine.dispose()
     logger.info("PostgreSQL engine disposed.")
     app.state.ready = False
@@ -235,10 +236,12 @@ app = FastAPI(
 # The cleanest approach is to add it as a middleware with a custom handler:
 # ---------------------------------------------------------------------------
 
+
 async def _json_error_handler(request: Request, exc: Exception) -> JSONResponse:
     """Return a JSON 500 response for any unhandled server-side exception."""
     global _last_error_ts
     import datetime
+
     _last_error_ts = datetime.datetime.now(datetime.UTC).isoformat()
     request_id = getattr(request.state, "request_id", "unknown")
     logger.exception(

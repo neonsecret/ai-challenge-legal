@@ -7,6 +7,7 @@ Usage:
 Reads DATABASE_URL from .env (PostgreSQL on RTX 3070).
 Does NOT require the FastAPI server to be running.
 """
+
 from dotenv import load_dotenv as _load_dotenv
 
 _load_dotenv(override=False)
@@ -35,13 +36,15 @@ async def cmd_list_users(args: argparse.Namespace) -> None:
     print(fmt.format("ID", "Email", "Status", "Verified", "Created"))
     print("-" * 110)
     for u in users:
-        print(fmt.format(
-            str(u.id)[:37],
-            (u.email or "")[:29],
-            u.subscription_status,
-            "YES" if u.email_verified else "NO",
-            str(u.created_at)[:19] if u.created_at else "",
-        ))
+        print(
+            fmt.format(
+                str(u.id)[:37],
+                (u.email or "")[:29],
+                u.subscription_status,
+                "YES" if u.email_verified else "NO",
+                str(u.created_at)[:19] if u.created_at else "",
+            )
+        )
 
 
 async def cmd_show_log(args: argparse.Namespace) -> None:
@@ -59,14 +62,14 @@ async def cmd_show_log(args: argparse.Namespace) -> None:
     for r in rows:
         ts = r.get("ts", "")
         if args.table == "queries":
-            print(f"[{ts}] latency={r.get('latency_ms')}ms | "
-                  f"model={r.get('model_name', '')} | "
-                  f"q={r.get('question', '')[:60]}")
+            print(
+                f"[{ts}] latency={r.get('latency_ms')}ms | "
+                f"model={r.get('model_name', '')} | "
+                f"q={r.get('question', '')[:60]}"
+            )
         else:
             detail = r.get("detail_json", "{}")
-            print(f"[{ts}] type={r.get('event_type', '')} | "
-                  f"ip={r.get('ip', '')} | "
-                  f"detail={detail[:80]}")
+            print(f"[{ts}] type={r.get('event_type', '')} | ip={r.get('ip', '')} | detail={detail[:80]}")
     print()
 
 
@@ -81,10 +84,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("list-users", help="List all registered users")
 
     p_log = sub.add_parser("show-log", help="Display recent audit log entries")
-    p_log.add_argument("--table", choices=["queries", "events"], default="queries",
-                       help="Which log table to show (default: queries)")
-    p_log.add_argument("--limit", type=int, default=20,
-                       help="Number of recent entries to show (default: 20)")
+    p_log.add_argument(
+        "--table", choices=["queries", "events"], default="queries", help="Which log table to show (default: queries)"
+    )
+    p_log.add_argument("--limit", type=int, default=20, help="Number of recent entries to show (default: 20)")
 
     return parser
 

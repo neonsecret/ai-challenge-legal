@@ -29,11 +29,13 @@ def _get_backend() -> str:
     if choice == "auto":
         # Try litellm first (multi-endpoint), then vertex, then anthropic
         from arlc.llm import litellm_backend
+
         if litellm_backend.is_configured():
             _backend = "litellm"
             logger.info("[LLM] auto-detected backend: litellm")
         else:
             from arlc.llm import vertex_backend as llm_vertex
+
             if llm_vertex.is_configured():
                 _backend = "vertex"
                 logger.info("[LLM] auto-detected backend: vertex")
@@ -49,30 +51,42 @@ def _get_backend() -> str:
 
 
 def _call_backend(
-        system_prompt: str,
-        user_message: str,
-        max_tokens: int,
-        model: str,
-        system_blocks: list[dict] | None,
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int,
+    model: str,
+    system_blocks: list[dict] | None,
 ) -> tuple[str, float, float, float, int, int]:
     backend = _get_backend()
     if backend == "litellm":
         from arlc.llm import litellm_backend
+
         return litellm_backend.call_llm(
-            system_prompt, user_message, max_tokens,
-            model=model, system_blocks=system_blocks,
+            system_prompt,
+            user_message,
+            max_tokens,
+            model=model,
+            system_blocks=system_blocks,
         )
     elif backend == "vertex":
         from arlc.llm import vertex_backend as llm_vertex
+
         return llm_vertex.call_llm(
-            system_prompt, user_message, max_tokens,
-            model=model, system_blocks=system_blocks,
+            system_prompt,
+            user_message,
+            max_tokens,
+            model=model,
+            system_blocks=system_blocks,
         )
     else:
         from arlc.llm import anthropic_backend as llm_anthropic
+
         return llm_anthropic.call_llm(
-            system_prompt, user_message, max_tokens,
-            model=model, system_blocks=system_blocks,
+            system_prompt,
+            user_message,
+            max_tokens,
+            model=model,
+            system_blocks=system_blocks,
         )
 
 
@@ -82,11 +96,11 @@ def _is_rate_limit(exc: Exception) -> bool:
 
 
 def call_llm(
-        system_prompt: str,
-        user_message: str,
-        max_tokens: int = 512,
-        model: str = "claude-sonnet-4-6",
-        system_blocks: list[dict] | None = None,
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int = 512,
+    model: str = "claude-sonnet-4-6",
+    system_blocks: list[dict] | None = None,
 ) -> tuple[str, float, float, float, int, int]:
     """Call LLM via the configured backend with retry logic."""
     last_exc = None
@@ -95,8 +109,11 @@ def call_llm(
             time.sleep(min(RETRY_DELAYS[attempt - 1], 30))
         try:
             return _call_backend(
-                system_prompt, user_message, max_tokens,
-                model=model, system_blocks=system_blocks,
+                system_prompt,
+                user_message,
+                max_tokens,
+                model=model,
+                system_blocks=system_blocks,
             )
         except Exception as exc:
             last_exc = exc

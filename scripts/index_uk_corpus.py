@@ -13,6 +13,7 @@ Requires:
     - llama-server running on localhost:8088 (or LLAMA_SERVER_URL)
     - PostgreSQL with chunks table (DATABASE_URL in .env)
 """
+
 from __future__ import annotations
 
 import json
@@ -52,6 +53,7 @@ def load_chunks() -> list[dict]:
 def get_embedder():
     """Get the llama-server embedder."""
     from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+
     return LlamaServerEmbedder()
 
 
@@ -62,7 +64,7 @@ def compute_embeddings(embedder, texts: list[str], batch_size: int = BATCH_SIZE)
     max_retries = 5
 
     for i in range(0, total, batch_size):
-        batch = texts[i:i + batch_size]
+        batch = texts[i : i + batch_size]
         batch_end = min(i + batch_size, total)
         logger.info("  Embedding batch %d-%d / %d", i + 1, batch_end, total)
 
@@ -77,8 +79,9 @@ def compute_embeddings(embedder, texts: list[str], batch_size: int = BATCH_SIZE)
             except Exception as e:
                 if attempt < max_retries - 1:
                     wait = 10 * (attempt + 1)
-                    logger.warning("  Batch failed (%s), retrying in %ds (attempt %d/%d)",
-                                   e, wait, attempt + 1, max_retries)
+                    logger.warning(
+                        "  Batch failed (%s), retrying in %ds (attempt %d/%d)", e, wait, attempt + 1, max_retries
+                    )
                     time.sleep(wait)
                 else:
                     logger.error("  Batch permanently failed after %d attempts: %s", max_retries, e)
@@ -89,7 +92,8 @@ def compute_embeddings(embedder, texts: list[str], batch_size: int = BATCH_SIZE)
 
 def insert_chunks(chunks: list[dict], embeddings: list[list[float]]) -> int:
     """Insert chunks with embeddings into PostgreSQL."""
-    from sqlalchemy import create_engine, text as sa_text
+    from sqlalchemy import create_engine
+    from sqlalchemy import text as sa_text
 
     db_url = os.environ.get("DATABASE_URL", "")
     if "+asyncpg" in db_url:
@@ -162,7 +166,8 @@ def insert_chunks(chunks: list[dict], embeddings: list[list[float]]) -> int:
 
 def verify_index() -> None:
     """Run verification queries on the UK corpus."""
-    from sqlalchemy import create_engine, text as sa_text
+    from sqlalchemy import create_engine
+    from sqlalchemy import text as sa_text
 
     db_url = os.environ.get("DATABASE_URL", "")
     if "+asyncpg" in db_url:
@@ -171,25 +176,26 @@ def verify_index() -> None:
 
     with engine.connect() as conn:
         # Count
-        result = conn.execute(sa_text(
-            "SELECT count(*) FROM chunks WHERE corpus = 'uk'"
-        ))
+        result = conn.execute(sa_text("SELECT count(*) FROM chunks WHERE corpus = 'uk'"))
         count = result.scalar()
         logger.info("UK chunks in PostgreSQL: %d", count)
 
         # Count by law
-        result = conn.execute(sa_text("""
+        result = conn.execute(
+            sa_text("""
             SELECT pdf_id, count(*) as cnt
             FROM chunks WHERE corpus = 'uk'
             GROUP BY pdf_id ORDER BY cnt DESC
-        """))
+        """)
+        )
         rows = result.fetchall()
         logger.info("Chunks per law:")
         for law, cnt in rows:
             logger.info("  %s: %d", law, cnt)
 
         # Full-text search test
-        result = conn.execute(sa_text("""
+        result = conn.execute(
+            sa_text("""
             SELECT chunk_id,
                    ts_rank(text_search, plainto_tsquery('simple', 'employment unfair dismissal'))
                    AS rank
@@ -198,7 +204,8 @@ def verify_index() -> None:
               AND text_search @@ plainto_tsquery('simple', 'employment unfair dismissal')
             ORDER BY rank DESC
             LIMIT 5
-        """))
+        """)
+        )
         rows = result.fetchall()
         if rows:
             logger.info("FTS test 'employment unfair dismissal':")
@@ -212,11 +219,11 @@ def verify_index() -> None:
 
 def main() -> None:
     import argparse
+
     parser = argparse.ArgumentParser(description="Index UK corpus into PostgreSQL")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--insert-only", action="store_true",
-                       help="Skip embedding, load from cache and insert only")
+    parser.add_argument("--insert-only", action="store_true", help="Skip embedding, load from cache and insert only")
     args = parser.parse_args()
 
     CACHE_FILE = PROJECT_ROOT / "data" / "corpus" / "uk" / "embeddings_cache.npy"

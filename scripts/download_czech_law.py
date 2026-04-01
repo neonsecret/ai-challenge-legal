@@ -6,6 +6,7 @@ Usage:
 
 Output: data/corpus/czech/<law_id>.txt  (one file per law)
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,9 +63,9 @@ class LawTextExtractor(HTMLParser):
         tag_id = attr_dict.get("id", "")
         tag_class = attr_dict.get("class", "")
         return (
-                tag_id in ("predpis", "content-predpis", "law-body", "law-text")
-                or "predpis" in tag_class
-                or "law-body" in tag_class
+            tag_id in ("predpis", "content-predpis", "law-body", "law-text")
+            or "predpis" in tag_class
+            or "law-body" in tag_class
         )
 
     def handle_starttag(self, tag: str, attrs) -> None:
@@ -124,7 +125,7 @@ def download_law(law_id: str, short_name: str) -> str | None:
         # Find the section from the law start
         m = re.search(r"(ZÁKON\s+ze dne|§\s*1\s*\(1\))", raw)
         if m:
-            text = raw[m.start():]
+            text = raw[m.start() :]
         else:
             text = raw
 

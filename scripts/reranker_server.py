@@ -7,6 +7,7 @@ Deploy on RTX 3070 (or any CUDA machine):
 
 The Mac backend connects to this via RERANKER_SERVER_URL=http://100.98.171.97:8089
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,6 +29,7 @@ def _get_reranker():
     global _reranker
     if _reranker is None:
         from arlc.qwen3_reranker import Qwen3Reranker
+
         _reranker = Qwen3Reranker(
             model_name="Qwen/Qwen3-Reranker-0.6B",
             instruction="Given a legal question, retrieve the most relevant passage that directly answers it.",

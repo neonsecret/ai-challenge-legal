@@ -24,10 +24,10 @@ DATA_DIR = BENCH_DIR / "data"
 
 
 def main():
+    import bm25s
+    import faiss
     from datasets import load_dataset as hf_load
     from sentence_transformers import SentenceTransformer
-    import faiss
-    import bm25s
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -43,11 +43,8 @@ def main():
     # Step 2: Build FAISS index
     print("[build_index] Loading embedding model...")
     import torch
-    device = (
-        'mps' if torch.backends.mps.is_available()
-        else 'cuda' if torch.cuda.is_available()
-        else 'cpu'
-    )
+
+    device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
     model = SentenceTransformer(
         "Snowflake/snowflake-arctic-embed-l-v2.0",
         device=device,

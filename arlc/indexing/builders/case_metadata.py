@@ -50,7 +50,8 @@ LAW_TITLE_RE = re.compile(
 # Date patterns for quick classification
 DATE_RE = re.compile(
     r"\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b",
-    re.IGNORECASE)
+    re.IGNORECASE,
+)
 
 CASE_EXTRACT_PROMPT = """You are a legal metadata extractor for DIFC court documents. Extract structured data from the following court document pages.
 
@@ -176,7 +177,7 @@ def classify_document(doc_path: Path) -> str:
 
 
 def get_doc_pages(
-        doc_path: Path, n_first: int = 3, n_last: int = 3, max_chars_per_page: int = 2000
+    doc_path: Path, n_first: int = 3, n_last: int = 3, max_chars_per_page: int = 2000
 ) -> list[tuple[int, str]]:
     """Extract text from first N and last N pages of a PDF."""
     doc = fitz.open(str(doc_path))
@@ -218,10 +219,10 @@ def quick_extract_case_id(text: str) -> str | None:
 
 
 async def extract_case_metadata(
-        client: anthropic.AsyncAnthropic,
-        doc_id: str,
-        doc_path: Path,
-        semaphore: asyncio.Semaphore,
+    client: anthropic.AsyncAnthropic,
+    doc_id: str,
+    doc_path: Path,
+    semaphore: asyncio.Semaphore,
 ) -> dict | None:
     """Extract metadata from a case document using Haiku."""
     pages = get_doc_pages(doc_path)
@@ -263,10 +264,10 @@ async def extract_case_metadata(
 
 
 async def extract_law_metadata(
-        client: anthropic.AsyncAnthropic,
-        doc_id: str,
-        doc_path: Path,
-        semaphore: asyncio.Semaphore,
+    client: anthropic.AsyncAnthropic,
+    doc_id: str,
+    doc_path: Path,
+    semaphore: asyncio.Semaphore,
 ) -> dict | None:
     """Extract metadata from a law document using Haiku."""
     pages = get_doc_pages(doc_path, n_first=2, n_last=0)
@@ -296,9 +297,7 @@ async def extract_law_metadata(
     return None
 
 
-async def process_all_docs(
-        docs_dir: Path, max_concurrent: int = MAX_CONCURRENT
-) -> tuple[dict, dict]:
+async def process_all_docs(docs_dir: Path, max_concurrent: int = MAX_CONCURRENT) -> tuple[dict, dict]:
     """Process all PDFs and return (case_index, law_index)."""
     client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     semaphore = asyncio.Semaphore(max_concurrent)
@@ -329,17 +328,13 @@ async def process_all_docs(
     case_tasks = {}
     for doc_id in case_docs:
         doc_path = docs_dir / f"{doc_id}.pdf"
-        task = asyncio.create_task(
-            extract_case_metadata(client, doc_id, doc_path, semaphore)
-        )
+        task = asyncio.create_task(extract_case_metadata(client, doc_id, doc_path, semaphore))
         case_tasks[doc_id] = task
 
     law_tasks = {}
     for doc_id in law_docs:
         doc_path = docs_dir / f"{doc_id}.pdf"
-        task = asyncio.create_task(
-            extract_law_metadata(client, doc_id, doc_path, semaphore)
-        )
+        task = asyncio.create_task(extract_law_metadata(client, doc_id, doc_path, semaphore))
         law_tasks[doc_id] = task
 
     # Gather results
@@ -449,10 +444,7 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
                     correct_fields += 1
                     field_stats[field]["correct"] += 1
                 else:
-                    print(
-                        f"    {case_id} [{doc_id[:12]}] {field}: "
-                        f"auto={auto_val} vs manual={manual_val}"
-                    )
+                    print(f"    {case_id} [{doc_id[:12]}] {field}: auto={auto_val} vs manual={manual_val}")
 
             # Compare parties (also check "defendants" as variant key)
             for party_field in ["claimant", "defendant"]:
@@ -471,8 +463,7 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
                         return {n.upper().strip()} if n else set()
                     if isinstance(party, list):
                         return {
-                            p.get("name", "").upper().strip()
-                            for p in party if isinstance(p, dict) and p.get("name")
+                            p.get("name", "").upper().strip() for p in party if isinstance(p, dict) and p.get("name")
                         }
                     return {str(party).upper().strip()} if party else set()
 
@@ -487,13 +478,13 @@ def validate_against_manual(auto_index: dict, manual_path: Path = MANUAL_INDEX_P
                     correct_fields += 1
                     field_stats[party_field]["correct"] += 1
                 else:
-                    print(
-                        f"    {case_id} [{doc_id[:12]}] {party_field}: "
-                        f"auto='{auto_name}' vs manual='{manual_name}'"
-                    )
+                    print(f"    {case_id} [{doc_id[:12]}] {party_field}: auto='{auto_name}' vs manual='{manual_name}'")
 
-    print(f"\n  Overall accuracy: {correct_fields}/{total_fields} "
-          f"({100 * correct_fields / total_fields:.1f}%)" if total_fields else "")
+    print(
+        f"\n  Overall accuracy: {correct_fields}/{total_fields} ({100 * correct_fields / total_fields:.1f}%)"
+        if total_fields
+        else ""
+    )
 
     print("\n  Per-field accuracy:")
     for field, stats in sorted(field_stats.items()):
@@ -538,9 +529,7 @@ async def main_async(args):
     """Main async entry point."""
     start = time.time()
 
-    case_index, law_index = await process_all_docs(
-        Path(args.docs_dir), max_concurrent=args.concurrency
-    )
+    case_index, law_index = await process_all_docs(Path(args.docs_dir), max_concurrent=args.concurrency)
 
     # Save case index
     output = Path(args.output)
@@ -571,9 +560,7 @@ async def main_async(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Auto-extract case metadata from DIFC legal PDFs"
-    )
+    parser = argparse.ArgumentParser(description="Auto-extract case metadata from DIFC legal PDFs")
     parser.add_argument("--docs-dir", default="data/documents", help="PDF directory")
     parser.add_argument(
         "--output",

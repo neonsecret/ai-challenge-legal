@@ -1,4 +1,5 @@
 """Email/password auth routes: register, login, verify-email, forgot/reset password, data export, account deletion."""
+
 import hashlib
 import logging
 import secrets
@@ -50,12 +51,16 @@ _FALLBACK_MAX = 10
 async def _auth_rate_check(request: Request, action: str) -> None:
     """Per-IP rate limiter for auth endpoints (10 attempts / 5 min)."""
     from neolex.db.audit import get_audit_db
+
     ip = getattr(request.client, "host", None) or "unknown"
     bucket = f"auth_{action}:{ip}"
     try:
         async with get_audit_db() as db:
             _, exceeded = await db.check_and_increment_rate(
-                bucket=bucket, window_seconds=300.0, limit=10, now=time.time(),
+                bucket=bucket,
+                window_seconds=300.0,
+                limit=10,
+                now=time.time(),
             )
         if exceeded:
             raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
@@ -66,8 +71,7 @@ async def _auth_rate_check(request: Request, action: str) -> None:
         now = time.monotonic()
         # Evict stale buckets periodically to prevent unbounded growth
         if len(_fallback_rates) > 5_000:
-            stale = [k for k, v in _fallback_rates.items()
-                     if not v or all(now - t >= _FALLBACK_WINDOW for t in v)]
+            stale = [k for k, v in _fallback_rates.items() if not v or all(now - t >= _FALLBACK_WINDOW for t in v)]
             for k in stale:
                 del _fallback_rates[k]
         attempts = _fallback_rates[bucket]
@@ -115,12 +119,14 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
     await db.flush()  # get user.id
 
     raw_token = secrets.token_urlsafe(32)
-    db.add(AuthToken(
-        user_id=user.id,
-        token_hash=_hash(raw_token),
-        token_type="email_verify",
-        expires_at=now + timedelta(hours=24),
-    ))
+    db.add(
+        AuthToken(
+            user_id=user.id,
+            token_hash=_hash(raw_token),
+            token_type="email_verify",
+            expires_at=now + timedelta(hours=24),
+        )
+    )
     await db.commit()
 
     await send_verification_email(body.email, raw_token)
@@ -190,12 +196,14 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
     if user:
         now = datetime.now(timezone.utc)
         raw_token = secrets.token_urlsafe(32)
-        db.add(AuthToken(
-            user_id=user.id,
-            token_hash=_hash(raw_token),
-            token_type="password_reset",
-            expires_at=now + timedelta(hours=1),
-        ))
+        db.add(
+            AuthToken(
+                user_id=user.id,
+                token_hash=_hash(raw_token),
+                token_type="password_reset",
+                expires_at=now + timedelta(hours=1),
+            )
+        )
         await db.commit()
         await send_password_reset_email(body.email, raw_token)
 
@@ -225,16 +233,20 @@ async def reset_password(body: ResetPasswordRequest, request: Request, db: Async
 
     # Invalidate all other unused reset tokens for this user
     from sqlalchemy import update as sql_update
+
     await db.execute(
-        sql_update(AuthToken).where(
+        sql_update(AuthToken)
+        .where(
             AuthToken.user_id == user.id,
             AuthToken.token_type == "password_reset",
             AuthToken.used_at == None,  # noqa: E711
-        ).values(used_at=now)
+        )
+        .values(used_at=now)
     )
 
     # Invalidate all existing sessions
     from neolex.db.models import Session as DBSession
+
     sessions = (await db.execute(select(DBSession).where(DBSession.user_id == user.id))).scalars().all()
     for s in sessions:
         await db.delete(s)
@@ -288,20 +300,17 @@ async def export_my_data(
     conversations: dict[str, list[dict]] = {}
     for m in msgs_result.scalars():
         conv_id = str(m.conversation_id)
-        conversations.setdefault(conv_id, []).append({
-            "role": m.role,
-            "content": m.content,
-            "created_at": m.created_at.isoformat(),
-        })
+        conversations.setdefault(conv_id, []).append(
+            {
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at.isoformat(),
+            }
+        )
 
     # 4. Conversation docs (accumulated source references)
-    docs_result = await db.execute(
-        select(ConversationDocs).where(ConversationDocs.user_id == user.id)
-    )
-    conversation_docs = {
-        str(d.conversation_id): d.docs_json
-        for d in docs_result.scalars()
-    }
+    docs_result = await db.execute(select(ConversationDocs).where(ConversationDocs.user_id == user.id))
+    conversation_docs = {str(d.conversation_id): d.docs_json for d in docs_result.scalars()}
 
     return {
         "exported_at": datetime.now(timezone.utc).isoformat(),
@@ -336,34 +345,22 @@ async def delete_account(
     await _cancel_stripe_subscriptions(user, db)
 
     # 2. Delete conversation messages
-    await db.execute(
-        sql_delete(ConversationMessage).where(ConversationMessage.user_id == user_id)
-    )
+    await db.execute(sql_delete(ConversationMessage).where(ConversationMessage.user_id == user_id))
 
     # 3. Delete conversation docs
-    await db.execute(
-        sql_delete(ConversationDocs).where(ConversationDocs.user_id == user_id)
-    )
+    await db.execute(sql_delete(ConversationDocs).where(ConversationDocs.user_id == user_id))
 
     # 4. Delete subscriptions (DB records)
-    await db.execute(
-        sql_delete(Subscription).where(Subscription.user_id == user_id)
-    )
+    await db.execute(sql_delete(Subscription).where(Subscription.user_id == user_id))
 
     # 5. Delete invoices
-    await db.execute(
-        sql_delete(Invoice).where(Invoice.user_id == user_id)
-    )
+    await db.execute(sql_delete(Invoice).where(Invoice.user_id == user_id))
 
     # 6. Delete sessions
-    await db.execute(
-        sql_delete(Session).where(Session.user_id == user_id)
-    )
+    await db.execute(sql_delete(Session).where(Session.user_id == user_id))
 
     # 7. Delete auth tokens
-    await db.execute(
-        sql_delete(AuthToken).where(AuthToken.user_id == user_id)
-    )
+    await db.execute(sql_delete(AuthToken).where(AuthToken.user_id == user_id))
 
     # 8. Delete uploaded corpus files and audit DB records
     await _delete_client_data(client_slug)
@@ -372,9 +369,7 @@ async def delete_account(
     await _delete_user_audit_logs(client_slug)
 
     # 9. Delete the user record
-    await db.execute(
-        sql_delete(User).where(User.id == user_id)
-    )
+    await db.execute(sql_delete(User).where(User.id == user_id))
 
     await db.commit()
     logger.info("Account deleted: user_id=%s", user_id)
@@ -410,29 +405,23 @@ async def _delete_user_audit_logs(client_slug: str) -> None:
             session = audit_db._session
 
             # 1. Collect all key_hashes for this client
-            result = await session.execute(
-                sa_select(ApiKey.key_hash).where(ApiKey.client_slug == client_slug)
-            )
+            result = await session.execute(sa_select(ApiKey.key_hash).where(ApiKey.client_slug == client_slug))
             key_hashes = [row[0] for row in result.all()]
 
             if key_hashes:
                 # 2. Delete queries referencing these key_hashes
-                del_queries = await session.execute(
-                    sa_delete(Query).where(Query.key_hash.in_(key_hashes))
-                )
+                del_queries = await session.execute(sa_delete(Query).where(Query.key_hash.in_(key_hashes)))
                 # 3. Delete events referencing these key_hashes
-                del_events = await session.execute(
-                    sa_delete(Event).where(Event.key_hash.in_(key_hashes))
-                )
+                del_events = await session.execute(sa_delete(Event).where(Event.key_hash.in_(key_hashes)))
                 logger.info(
                     "Deleted %d queries and %d events for client %s",
-                    del_queries.rowcount, del_events.rowcount, client_slug,
+                    del_queries.rowcount,
+                    del_events.rowcount,
+                    client_slug,
                 )
 
             # 4. Delete the API keys themselves
-            del_keys = await session.execute(
-                sa_delete(ApiKey).where(ApiKey.client_slug == client_slug)
-            )
+            del_keys = await session.execute(sa_delete(ApiKey).where(ApiKey.client_slug == client_slug))
             logger.info("Deleted %d API keys for client %s", del_keys.rowcount, client_slug)
     except Exception:
         logger.exception("Failed to delete audit logs for client %s", client_slug)
@@ -452,6 +441,7 @@ async def _cancel_stripe_subscriptions(user: User, db: AsyncSession) -> None:
     active_subs = result.scalars().all()
 
     import stripe
+
     stripe.api_key = settings.stripe_secret_key
 
     for sub in active_subs:
@@ -459,12 +449,14 @@ async def _cancel_stripe_subscriptions(user: User, db: AsyncSession) -> None:
             stripe.Subscription.cancel(sub.stripe_subscription_id)
             logger.info(
                 "Cancelled Stripe subscription %s for user %s",
-                sub.stripe_subscription_id, user.id,
+                sub.stripe_subscription_id,
+                user.id,
             )
         except Exception:
             logger.exception(
                 "Failed to cancel Stripe subscription %s for user %s",
-                sub.stripe_subscription_id, user.id,
+                sub.stripe_subscription_id,
+                user.id,
             )
 
 
@@ -486,13 +478,15 @@ async def _delete_client_data(client_slug: str) -> None:
     if not str(client_dir).startswith(str(clients_root)):
         logger.error(
             "Path traversal detected: client_dir=%s not under %s",
-            client_dir, clients_root,
+            client_dir,
+            clients_root,
         )
         return
 
     # Delete audit DB records for this client
     try:
         from neolex.db.audit import get_audit_db
+
         async with get_audit_db() as audit_db:
             docs = await audit_db.list_documents(client_slug)
             for doc in docs:

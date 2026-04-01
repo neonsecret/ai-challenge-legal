@@ -23,10 +23,13 @@ session = requests.Session()
 # CSRF middleware requires X-Requested-With on all state-mutating requests
 session.headers.update({"X-Requested-With": "XMLHttpRequest"})
 
-r = session.post(f"{BASE}/auth/login", json={
-    "email": "admin@vitreon.app",
-    "password": "Vt9mK2xPqL7nR$#8!",
-})
+r = session.post(
+    f"{BASE}/auth/login",
+    json={
+        "email": "admin@vitreon.app",
+        "password": "Vt9mK2xPqL7nR$#8!",
+    },
+)
 if r.status_code != 200:
     print(f"Login failed: {r.status_code} {r.text}")
     sys.exit(1)
@@ -36,36 +39,132 @@ print(f"Login OK (status {r.status_code})")
 # ── Test data ────────────────────────────────────────────────────────────────
 
 difc_tests = [
-    {"q": "What is the limitation period under DIFC Law No. 5 of 2005?", "expected_section": "Article 9", "expected_answer_contains": "6 years"},
-    {"q": "Can a contract be formed orally under DIFC law?", "expected_section": "Article 15", "expected_answer_contains": "oral"},
-    {"q": "What constitutes unfair dismissal under DIFC Employment Law?", "expected_section": "Article 59", "expected_answer_contains": "unfair"},
-    {"q": "What is the minimum notice period for termination of employment in DIFC?", "expected_section": "Article 58", "expected_answer_contains": "30 days"},
-    {"q": "How is end of service gratuity calculated in DIFC?", "expected_section": "Article 62", "expected_answer_contains": "gratuity"},
-    {"q": "What are the grounds for winding up a company in DIFC?", "expected_section": "Article 50", "expected_answer_contains": "wind"},
-    {"q": "What is the role of the DIFC Courts?", "expected_section": "Court Law", "expected_answer_contains": "jurisdiction"},
-    {"q": "What are the requirements for a valid trust under DIFC Trust Law?", "expected_section": "Trust", "expected_answer_contains": "trust"},
-    {"q": "What is the definition of a 'person' under DIFC Interpretation Law?", "expected_section": "Interpretation", "expected_answer_contains": "person"},
-    {"q": "What remedies are available for breach of contract under DIFC law?", "expected_section": "Law No. 5", "expected_answer_contains": "damages"},
-    {"q": "What is the maximum working hours per week in DIFC?", "expected_section": "Employment", "expected_answer_contains": "48"},
-    {"q": "Can DIFC Courts enforce foreign judgments?", "expected_section": "Court", "expected_answer_contains": "enforce"},
-    {"q": "What are the anti-money laundering obligations in DIFC?", "expected_section": "AML", "expected_answer_contains": "money laundering"},
-    {"q": "What is the role of the Registrar of Companies in DIFC?", "expected_section": "Companies", "expected_answer_contains": "registrar"},
-    {"q": "What constitutes negligence under DIFC Law of Obligations?", "expected_section": "Article", "expected_answer_contains": "negligen"},
-    {"q": "What is the maternity leave entitlement in DIFC?", "expected_section": "Employment", "expected_answer_contains": "maternity"},
-    {"q": "How are disputes resolved in the DIFC Small Claims Tribunal?", "expected_section": "SCT", "expected_answer_contains": "small claims"},
-    {"q": "What are the data protection requirements in DIFC?", "expected_section": "Data Protection", "expected_answer_contains": "data"},
-    {"q": "What is constructive dismissal under DIFC law?", "expected_section": "Employment", "expected_answer_contains": "constructive"},
-    {"q": "What are the shareholder rights under DIFC Companies Law?", "expected_section": "Companies", "expected_answer_contains": "shareholder"},
+    {
+        "q": "What is the limitation period under DIFC Law No. 5 of 2005?",
+        "expected_section": "Article 9",
+        "expected_answer_contains": "6 years",
+    },
+    {
+        "q": "Can a contract be formed orally under DIFC law?",
+        "expected_section": "Article 15",
+        "expected_answer_contains": "oral",
+    },
+    {
+        "q": "What constitutes unfair dismissal under DIFC Employment Law?",
+        "expected_section": "Article 59",
+        "expected_answer_contains": "unfair",
+    },
+    {
+        "q": "What is the minimum notice period for termination of employment in DIFC?",
+        "expected_section": "Article 58",
+        "expected_answer_contains": "30 days",
+    },
+    {
+        "q": "How is end of service gratuity calculated in DIFC?",
+        "expected_section": "Article 62",
+        "expected_answer_contains": "gratuity",
+    },
+    {
+        "q": "What are the grounds for winding up a company in DIFC?",
+        "expected_section": "Article 50",
+        "expected_answer_contains": "wind",
+    },
+    {
+        "q": "What is the role of the DIFC Courts?",
+        "expected_section": "Court Law",
+        "expected_answer_contains": "jurisdiction",
+    },
+    {
+        "q": "What are the requirements for a valid trust under DIFC Trust Law?",
+        "expected_section": "Trust",
+        "expected_answer_contains": "trust",
+    },
+    {
+        "q": "What is the definition of a 'person' under DIFC Interpretation Law?",
+        "expected_section": "Interpretation",
+        "expected_answer_contains": "person",
+    },
+    {
+        "q": "What remedies are available for breach of contract under DIFC law?",
+        "expected_section": "Law No. 5",
+        "expected_answer_contains": "damages",
+    },
+    {
+        "q": "What is the maximum working hours per week in DIFC?",
+        "expected_section": "Employment",
+        "expected_answer_contains": "48",
+    },
+    {
+        "q": "Can DIFC Courts enforce foreign judgments?",
+        "expected_section": "Court",
+        "expected_answer_contains": "enforce",
+    },
+    {
+        "q": "What are the anti-money laundering obligations in DIFC?",
+        "expected_section": "AML",
+        "expected_answer_contains": "money laundering",
+    },
+    {
+        "q": "What is the role of the Registrar of Companies in DIFC?",
+        "expected_section": "Companies",
+        "expected_answer_contains": "registrar",
+    },
+    {
+        "q": "What constitutes negligence under DIFC Law of Obligations?",
+        "expected_section": "Article",
+        "expected_answer_contains": "negligen",
+    },
+    {
+        "q": "What is the maternity leave entitlement in DIFC?",
+        "expected_section": "Employment",
+        "expected_answer_contains": "maternity",
+    },
+    {
+        "q": "How are disputes resolved in the DIFC Small Claims Tribunal?",
+        "expected_section": "SCT",
+        "expected_answer_contains": "small claims",
+    },
+    {
+        "q": "What are the data protection requirements in DIFC?",
+        "expected_section": "Data Protection",
+        "expected_answer_contains": "data",
+    },
+    {
+        "q": "What is constructive dismissal under DIFC law?",
+        "expected_section": "Employment",
+        "expected_answer_contains": "constructive",
+    },
+    {
+        "q": "What are the shareholder rights under DIFC Companies Law?",
+        "expected_section": "Companies",
+        "expected_answer_contains": "shareholder",
+    },
 ]
 
 czech_tests = [
-    {"q": "Jaká je výpovědní doba podle zákoníku práce?", "expected_section": "§ 51", "expected_answer_contains": "2 měsíc"},
+    {
+        "q": "Jaká je výpovědní doba podle zákoníku práce?",
+        "expected_section": "§ 51",
+        "expected_answer_contains": "2 měsíc",
+    },
     {"q": "Co je bezdůvodné obohacení?", "expected_section": "§ 2991", "expected_answer_contains": "obohac"},
-    {"q": "Jaké jsou podmínky pro výpověď ze strany zaměstnavatele?", "expected_section": "§ 52", "expected_answer_contains": "výpověd"},
+    {
+        "q": "Jaké jsou podmínky pro výpověď ze strany zaměstnavatele?",
+        "expected_section": "§ 52",
+        "expected_answer_contains": "výpověd",
+    },
     {"q": "Kolik je zákonné odstupné?", "expected_section": "§ 67", "expected_answer_contains": "odstupn"},
     {"q": "Jaká je sazba DPH?", "expected_section": "zákon o DPH", "expected_answer_contains": "21"},
-    {"q": "Může zaměstnanec vykonávat jinou výdělečnou činnost?", "expected_section": "§ 304", "expected_answer_contains": "výdělečn"},
-    {"q": "Jak se zakládá společnost s ručením omezeným?", "expected_section": "zákon o obch", "expected_answer_contains": "společnost"},
+    {
+        "q": "Může zaměstnanec vykonávat jinou výdělečnou činnost?",
+        "expected_section": "§ 304",
+        "expected_answer_contains": "výdělečn",
+    },
+    {
+        "q": "Jak se zakládá společnost s ručením omezeným?",
+        "expected_section": "zákon o obch",
+        "expected_answer_contains": "společnost",
+    },
     {"q": "Co je to nájem bytu?", "expected_section": "§ 2235", "expected_answer_contains": "nájem"},
     {"q": "Jaký je nárok na dovolenou?", "expected_section": "§ 211", "expected_answer_contains": "dovolen"},
     {"q": "Co je trestný čin podvodu?", "expected_section": "§ 209", "expected_answer_contains": "podvod"},
@@ -78,6 +177,7 @@ czech_tests = [
 
 
 # ── SSE parser ───────────────────────────────────────────────────────────────
+
 
 def run_question_sse(question: str, corpus: str) -> dict:
     """Send a question via SSE and parse the answer event.
@@ -122,10 +222,10 @@ def run_question_sse(question: str, corpus: str) -> dict:
                 continue
             line = raw_line
             if line.startswith("event:"):
-                current_event = line[len("event:"):].strip()
+                current_event = line[len("event:") :].strip()
                 current_data = ""
             elif line.startswith("data:"):
-                current_data = line[len("data:"):].strip()
+                current_data = line[len("data:") :].strip()
                 if current_event == "token" and current_data:
                     try:
                         tok = json.loads(current_data)
@@ -174,6 +274,7 @@ def run_question_sse(question: str, corpus: str) -> dict:
 
 # ── Scoring ──────────────────────────────────────────────────────────────────
 
+
 def score_result(result: dict, test: dict) -> dict:
     """Score a single result against expected values."""
     if result["timed_out"] or result["error"]:
@@ -210,11 +311,12 @@ def score_result(result: dict, test: dict) -> dict:
 
 # ── Run benchmarks ───────────────────────────────────────────────────────────
 
+
 def run_benchmark(name: str, tests: list, corpus: str):
     """Run a full benchmark suite and print results."""
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"  BENCHMARK: {name} ({len(tests)} questions, corpus={corpus})")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     results = []
     total_citation = 0
@@ -243,8 +345,10 @@ def run_benchmark(name: str, tests: list, corpus: str):
             status = "TIMEOUT"
 
         answer_preview = str(res.get("answer", ""))[:80]
-        print(f"       Citation={scores['citation']} Correct={scores['correctness']} "
-              f"Grounded={scores['grounding']} | {res.get('wall_time_s', 0)}s | {status}")
+        print(
+            f"       Citation={scores['citation']} Correct={scores['correctness']} "
+            f"Grounded={scores['grounding']} | {res.get('wall_time_s', 0)}s | {status}"
+        )
         if scores["citation"] == 0:
             print(f"       MISS citation: expected '{test['expected_section']}' not found")
         if scores["correctness"] == 0:
@@ -254,31 +358,33 @@ def run_benchmark(name: str, tests: list, corpus: str):
         print(f"       Answer: {answer_preview}...")
         print()
 
-        results.append({
-            "question": q,
-            "expected_section": test["expected_section"],
-            "expected_keyword": test["expected_answer_contains"],
-            "citation_score": scores["citation"],
-            "correctness_score": scores["correctness"],
-            "grounding_score": scores["grounding"],
-            "wall_time_s": res.get("wall_time_s", 0),
-            "confidence": res.get("confidence"),
-            "error": res.get("error"),
-            "timed_out": res.get("timed_out", False),
-            "used_web_search": res.get("used_web_search", False),
-            "answer_preview": str(res.get("answer", ""))[:200],
-            "sources_count": len(res.get("sources", [])),
-        })
+        results.append(
+            {
+                "question": q,
+                "expected_section": test["expected_section"],
+                "expected_keyword": test["expected_answer_contains"],
+                "citation_score": scores["citation"],
+                "correctness_score": scores["correctness"],
+                "grounding_score": scores["grounding"],
+                "wall_time_s": res.get("wall_time_s", 0),
+                "confidence": res.get("confidence"),
+                "error": res.get("error"),
+                "timed_out": res.get("timed_out", False),
+                "used_web_search": res.get("used_web_search", False),
+                "answer_preview": str(res.get("answer", ""))[:200],
+                "sources_count": len(res.get("sources", [])),
+            }
+        )
 
     corpus_time = round(time.time() - corpus_start, 1)
     n = len(tests)
 
     # ── Summary table ────────────────────────────────────────────────
-    print(f"\n{'─'*80}")
+    print(f"\n{'─' * 80}")
     print(f"  RESULTS: {name}")
-    print(f"{'─'*80}")
+    print(f"{'─' * 80}")
     print(f"{'#':<4} {'Citation':<10} {'Correct':<10} {'Grounded':<10} {'Time':<8} {'Question':<40}")
-    print(f"{'─'*4} {'─'*9} {'─'*9} {'─'*9} {'─'*7} {'─'*40}")
+    print(f"{'─' * 4} {'─' * 9} {'─' * 9} {'─' * 9} {'─' * 7} {'─' * 40}")
     for i, r in enumerate(results, 1):
         c = "Y" if r["citation_score"] else "N"
         a = "Y" if r["correctness_score"] else "N"
@@ -289,13 +395,13 @@ def run_benchmark(name: str, tests: list, corpus: str):
         web = " [WEB]" if r["used_web_search"] else ""
         print(f"{i:<4} {c:<10} {a:<10} {g:<10} {t:<8} {q}{err}{web}")
 
-    print(f"\n{'─'*80}")
+    print(f"\n{'─' * 80}")
     print(f"  AGGREGATE: {name}")
-    print(f"{'─'*80}")
-    print(f"  Citation accuracy:  {total_citation}/{n} = {total_citation/n*100:.1f}%")
-    print(f"  Answer correctness: {total_correctness}/{n} = {total_correctness/n*100:.1f}%")
-    print(f"  Grounding (DOC-N):  {total_grounding}/{n} = {total_grounding/n*100:.1f}%")
-    print(f"  Total time:         {corpus_time}s ({corpus_time/n:.1f}s avg)")
+    print(f"{'─' * 80}")
+    print(f"  Citation accuracy:  {total_citation}/{n} = {total_citation / n * 100:.1f}%")
+    print(f"  Answer correctness: {total_correctness}/{n} = {total_correctness / n * 100:.1f}%")
+    print(f"  Grounding (DOC-N):  {total_grounding}/{n} = {total_grounding / n * 100:.1f}%")
+    print(f"  Total time:         {corpus_time}s ({corpus_time / n:.1f}s avg)")
     print(f"  Web search used:    {web_search_count}/{n}")
     print(f"  Timeouts:           {sum(1 for r in results if r['timed_out'])}/{n}")
     print(f"  Errors:             {sum(1 for r in results if r['error'] and not r['timed_out'])}/{n}")
@@ -327,20 +433,28 @@ if __name__ == "__main__":
     all_results["czech"] = czech_summary
 
     # ── Final comparison ─────────────────────────────────────────────
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print("  FINAL COMPARISON")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
     print(f"{'Metric':<25} {'DIFC':<15} {'Czech':<15}")
-    print(f"{'─'*25} {'─'*14} {'─'*14}")
+    print(f"{'─' * 25} {'─' * 14} {'─' * 14}")
     print(f"{'Citation accuracy':<25} {difc_summary['citation_pct']:.1f}%{'':<9} {czech_summary['citation_pct']:.1f}%")
-    print(f"{'Answer correctness':<25} {difc_summary['correctness_pct']:.1f}%{'':<9} {czech_summary['correctness_pct']:.1f}%")
-    print(f"{'Grounding (DOC-N)':<25} {difc_summary['grounding_pct']:.1f}%{'':<9} {czech_summary['grounding_pct']:.1f}%")
+    print(
+        f"{'Answer correctness':<25} {difc_summary['correctness_pct']:.1f}%{'':<9} {czech_summary['correctness_pct']:.1f}%"
+    )
+    print(
+        f"{'Grounding (DOC-N)':<25} {difc_summary['grounding_pct']:.1f}%{'':<9} {czech_summary['grounding_pct']:.1f}%"
+    )
     print(f"{'Avg time/question':<25} {difc_summary['avg_time_s']}s{'':<10} {czech_summary['avg_time_s']}s")
     print(f"{'Total time':<25} {difc_summary['total_time_s']}s{'':<10} {czech_summary['total_time_s']}s")
-    print(f"{'Web search used':<25} {difc_summary['web_search_count']}/{difc_summary['n']}{'':<10} {czech_summary['web_search_count']}/{czech_summary['n']}")
+    print(
+        f"{'Web search used':<25} {difc_summary['web_search_count']}/{difc_summary['n']}{'':<10} {czech_summary['web_search_count']}/{czech_summary['n']}"
+    )
     print()
 
     # Save JSON results
-    with open("/Users/viacheslavivannikov/projects/ai-challenge-legal/scripts/benchmark_accuracy_results.json", "w") as f:
+    with open(
+        "/Users/viacheslavivannikov/projects/ai-challenge-legal/scripts/benchmark_accuracy_results.json", "w"
+    ) as f:
         json.dump(all_results, f, indent=2, ensure_ascii=False)
     print("Results saved to scripts/benchmark_accuracy_results.json")

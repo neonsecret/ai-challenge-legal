@@ -39,6 +39,7 @@ class SourceDocument(TypedDict, total=False):
     page: Required[int]
     text: Required[str]
     score: Required[float]
+    chunk_id: str
     verified: bool
     _corpus: str  # which corpus this doc came from (for cross-corpus filtering)
 

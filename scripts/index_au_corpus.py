@@ -13,6 +13,7 @@ Requires:
     - llama-server running on localhost:8088 (or LLAMA_SERVER_URL)
     - PostgreSQL with chunks table (DATABASE_URL in .env)
 """
+
 from __future__ import annotations
 
 import json
@@ -53,6 +54,7 @@ def load_chunks() -> list[dict]:
 def get_embedder():
     """Get the llama-server embedder."""
     from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+
     return LlamaServerEmbedder()
 
 
@@ -63,10 +65,14 @@ RETRY_DELAY = 10  # seconds
 
 def _save_checkpoint(embeddings: list[list[float]], batch_idx: int) -> None:
     """Save embedding progress to disk for resume."""
-    CHECKPOINT_FILE.write_text(json.dumps({
-        "batch_idx": batch_idx,
-        "count": len(embeddings),
-    }))
+    CHECKPOINT_FILE.write_text(
+        json.dumps(
+            {
+                "batch_idx": batch_idx,
+                "count": len(embeddings),
+            }
+        )
+    )
     # Save embeddings as numpy for efficiency
     np.save(str(CHECKPOINT_FILE.with_suffix(".npy")), np.array(embeddings, dtype=np.float32))
 
@@ -76,8 +82,7 @@ def _load_checkpoint() -> tuple[list[list[float]], int]:
     if CHECKPOINT_FILE.exists() and CHECKPOINT_FILE.with_suffix(".npy").exists():
         meta = json.loads(CHECKPOINT_FILE.read_text())
         embeddings = np.load(str(CHECKPOINT_FILE.with_suffix(".npy"))).tolist()
-        logger.info("  Resuming from checkpoint: %d embeddings, batch_idx=%d",
-                     len(embeddings), meta["batch_idx"])
+        logger.info("  Resuming from checkpoint: %d embeddings, batch_idx=%d", len(embeddings), meta["batch_idx"])
         return embeddings, meta["batch_idx"]
     return [], 0
 
@@ -88,11 +93,10 @@ def compute_embeddings(embedder, texts: list[str], batch_size: int = BATCH_SIZE)
     total = len(texts)
 
     if start_idx > 0:
-        logger.info("  Resuming from batch index %d (%d/%d already done)",
-                     start_idx, len(all_embeddings), total)
+        logger.info("  Resuming from batch index %d (%d/%d already done)", start_idx, len(all_embeddings), total)
 
     for i in range(start_idx, total, batch_size):
-        batch = texts[i:i + batch_size]
+        batch = texts[i : i + batch_size]
         batch_end = min(i + batch_size, total)
 
         for attempt in range(MAX_RETRIES):
@@ -105,15 +109,17 @@ def compute_embeddings(embedder, texts: list[str], batch_size: int = BATCH_SIZE)
                     all_embeddings.extend(embeddings)
                 break
             except Exception as e:
-                logger.warning("  Batch %d-%d failed (attempt %d/%d): %s",
-                               i + 1, batch_end, attempt + 1, MAX_RETRIES, e)
+                logger.warning(
+                    "  Batch %d-%d failed (attempt %d/%d): %s", i + 1, batch_end, attempt + 1, MAX_RETRIES, e
+                )
                 if attempt < MAX_RETRIES - 1:
                     wait = RETRY_DELAY * (attempt + 1)
                     logger.info("  Retrying in %ds...", wait)
                     time.sleep(wait)
                 else:
-                    logger.error("  Batch %d-%d failed after %d retries, saving checkpoint",
-                                 i + 1, batch_end, MAX_RETRIES)
+                    logger.error(
+                        "  Batch %d-%d failed after %d retries, saving checkpoint", i + 1, batch_end, MAX_RETRIES
+                    )
                     _save_checkpoint(all_embeddings, i)
                     raise
 
@@ -133,7 +139,8 @@ def compute_embeddings(embedder, texts: list[str], batch_size: int = BATCH_SIZE)
 
 def insert_chunks(chunks: list[dict], embeddings: list[list[float]]) -> int:
     """Insert chunks with embeddings into PostgreSQL."""
-    from sqlalchemy import create_engine, text as sa_text
+    from sqlalchemy import create_engine
+    from sqlalchemy import text as sa_text
 
     db_url = os.environ.get("DATABASE_URL", "")
     if "+asyncpg" in db_url:
@@ -203,7 +210,8 @@ def insert_chunks(chunks: list[dict], embeddings: list[list[float]]) -> int:
 
 def verify_index() -> None:
     """Run verification queries on the AU corpus."""
-    from sqlalchemy import create_engine, text as sa_text
+    from sqlalchemy import create_engine
+    from sqlalchemy import text as sa_text
 
     db_url = os.environ.get("DATABASE_URL", "")
     if "+asyncpg" in db_url:
@@ -212,25 +220,26 @@ def verify_index() -> None:
 
     with engine.connect() as conn:
         # Count
-        result = conn.execute(sa_text(
-            "SELECT count(*) FROM chunks WHERE corpus = 'au'"
-        ))
+        result = conn.execute(sa_text("SELECT count(*) FROM chunks WHERE corpus = 'au'"))
         count = result.scalar()
         logger.info("AU chunks in PostgreSQL: %d", count)
 
         # Count by law
-        result = conn.execute(sa_text("""
+        result = conn.execute(
+            sa_text("""
             SELECT pdf_id, count(*) as cnt
             FROM chunks WHERE corpus = 'au'
             GROUP BY pdf_id ORDER BY cnt DESC
-        """))
+        """)
+        )
         rows = result.fetchall()
         logger.info("Chunks per law:")
         for law, cnt in rows:
             logger.info("  %s: %d", law, cnt)
 
         # Full-text search test
-        result = conn.execute(sa_text("""
+        result = conn.execute(
+            sa_text("""
             SELECT chunk_id,
                    ts_rank(text_search, plainto_tsquery('simple', 'privacy personal information'))
                    AS rank
@@ -239,7 +248,8 @@ def verify_index() -> None:
               AND text_search @@ plainto_tsquery('simple', 'privacy personal information')
             ORDER BY rank DESC
             LIMIT 5
-        """))
+        """)
+        )
         rows = result.fetchall()
         if rows:
             logger.info("FTS test 'privacy personal information':")
@@ -253,11 +263,11 @@ def verify_index() -> None:
 
 def main() -> None:
     import argparse
+
     parser = argparse.ArgumentParser(description="Index AU corpus into PostgreSQL")
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--insert-only", action="store_true",
-                        help="Skip embedding, load from saved .npy file")
+    parser.add_argument("--insert-only", action="store_true", help="Skip embedding, load from saved .npy file")
     args = parser.parse_args()
 
     embeddings_cache = PROJECT_ROOT / "data" / "corpus" / "au" / "embeddings.npy"

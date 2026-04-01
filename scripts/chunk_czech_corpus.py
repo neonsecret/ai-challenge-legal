@@ -21,6 +21,7 @@ Each chunk:
 Usage:
     python3 scripts/chunk_czech_corpus.py
 """
+
 from __future__ import annotations
 
 import json
@@ -63,13 +64,15 @@ def _split_into_sections(text: str) -> list[dict]:
         if current_lines:
             body = "\n".join(current_lines).strip()
             if body:
-                sections.append({
-                    "section": current_section,
-                    "part": current_part,
-                    "head": current_head,
-                    "div": current_div,
-                    "body": body,
-                })
+                sections.append(
+                    {
+                        "section": current_section,
+                        "part": current_part,
+                        "head": current_head,
+                        "div": current_div,
+                        "body": body,
+                    }
+                )
 
     for line in lines:
         stripped = line.strip()
@@ -122,13 +125,13 @@ def _split_text_recursive(
 
     # Safety valve: if we recurse too deeply, force hard split with no overlap
     if _depth > 10:
-        return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
 
     # Try split strategies in order of preference
     split_patterns = [
-        r"(?=\n\(\d+\))",   # odstavec marker (paragraph)
-        r"(?<=\.)\s+",      # sentence boundary
-        r"\n",              # any newline
+        r"(?=\n\(\d+\))",  # odstavec marker (paragraph)
+        r"(?<=\.)\s+",  # sentence boundary
+        r"\n",  # any newline
     ]
 
     parts = None
@@ -140,7 +143,7 @@ def _split_text_recursive(
 
     if parts is None:
         # Last resort: hard character split with NO overlap to guarantee termination
-        return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
 
     # Greedily accumulate parts into chunks that fit within the limit
     chunks: list[str] = []
@@ -201,16 +204,18 @@ def chunk_law_text(text: str, law_name: str) -> list[dict]:
             full_text = prefix + body
 
             if len(full_text) >= MIN_CHUNK_CHARS:
-                chunks.append({
-                    "doc_id": f"{law_name}_{chunk_idx:05d}",
-                    "page": _section_to_num(section["section"]) or (chunk_idx + 1),
-                    "text": full_text,
-                    "metadata": {
-                        "law": law_name,
-                        "section": section["section"],
-                        "part": section["part"],
-                    },
-                })
+                chunks.append(
+                    {
+                        "doc_id": f"{law_name}_{chunk_idx:05d}",
+                        "page": _section_to_num(section["section"]) or (chunk_idx + 1),
+                        "text": full_text,
+                        "metadata": {
+                            "law": law_name,
+                            "section": section["section"],
+                            "part": section["part"],
+                        },
+                    }
+                )
                 chunk_idx += 1
         else:
             # Large section -- split body at paragraph boundaries
@@ -222,21 +227,22 @@ def chunk_law_text(text: str, law_name: str) -> list[dict]:
                     full_text = prefix + sub
 
                 if len(full_text) >= MIN_CHUNK_CHARS:
-                    chunks.append({
-                        "doc_id": f"{law_name}_{chunk_idx:05d}",
-                        "page": _section_to_num(section["section"]) or (chunk_idx + 1),
-                        "text": full_text,
-                        "metadata": {
-                            "law": law_name,
-                            "section": section["section"],
-                            "part": section["part"],
-                        },
-                    })
+                    chunks.append(
+                        {
+                            "doc_id": f"{law_name}_{chunk_idx:05d}",
+                            "page": _section_to_num(section["section"]) or (chunk_idx + 1),
+                            "text": full_text,
+                            "metadata": {
+                                "law": law_name,
+                                "section": section["section"],
+                                "part": section["part"],
+                            },
+                        }
+                    )
                     chunk_idx += 1
 
     assert all(len(c["text"]) <= MAX_SECTION_CHARS for c in chunks), (
-        f"chunk too large: max {max(len(c['text']) for c in chunks)} chars "
-        f"exceeds limit of {MAX_SECTION_CHARS}"
+        f"chunk too large: max {max(len(c['text']) for c in chunks)} chars exceeds limit of {MAX_SECTION_CHARS}"
     )
     return chunks
 
@@ -254,8 +260,9 @@ def main() -> None:
         text = txt_file.read_text(encoding="utf-8")
         logger.info("Chunking %s (%d chars)...", law_name, len(text))
         chunks = chunk_law_text(text, law_name)
-        logger.info("  → %d chunks (avg %d chars)", len(chunks),
-                     sum(len(c["text"]) for c in chunks) // max(len(chunks), 1))
+        logger.info(
+            "  → %d chunks (avg %d chars)", len(chunks), sum(len(c["text"]) for c in chunks) // max(len(chunks), 1)
+        )
         all_chunks.extend(chunks)
 
     OUTPUT_FILE.write_text(json.dumps(all_chunks, ensure_ascii=False, indent=2))
@@ -264,8 +271,7 @@ def main() -> None:
     # Verify § 51 of zákoník práce is complete
     for c in all_chunks:
         if c["metadata"]["law"] == "zakonik_prace" and "§ 51" in c["metadata"].get("section", ""):
-            logger.info("§ 51 chunk: doc_id=%s, %d chars, text[:200]=%r",
-                        c["doc_id"], len(c["text"]), c["text"][:200])
+            logger.info("§ 51 chunk: doc_id=%s, %d chars, text[:200]=%r", c["doc_id"], len(c["text"]), c["text"][:200])
             if "2 měsíce" in c["text"] or "dva měsíce" in c["text"].lower():
                 logger.info("  ✓ Contains the 2-month notice period")
             else:

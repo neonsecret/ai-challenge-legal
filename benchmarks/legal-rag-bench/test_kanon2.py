@@ -16,6 +16,7 @@ To get an API key:
 
 import os
 import sys
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -57,5 +58,5 @@ response = client.embeddings.create(
 embedding = response.embeddings[0]
 print(f"Embedding dimensions: {len(embedding)}")
 print(f"First 5 values: {embedding[:5]}")
-print(f"Model used: kanon-2-embedder")
+print("Model used: kanon-2-embedder")
 print("Kanon 2 embedder: OK")

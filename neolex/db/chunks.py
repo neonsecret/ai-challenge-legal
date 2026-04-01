@@ -1,4 +1,5 @@
 """Chunk storage model — pgvector + tsvector for hybrid search."""
+
 import uuid
 from datetime import datetime, timezone
 
@@ -17,13 +18,9 @@ def _utcnow() -> datetime:
 class Chunk(Base):
     __tablename__ = "chunks"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     corpus: Mapped[str] = mapped_column(String, nullable=False, index=True)
-    tenant_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), index=True
-    )
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
     doc_id: Mapped[str] = mapped_column(String, nullable=False)
     pdf_id: Mapped[str] = mapped_column(String, nullable=False)
     page: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -34,9 +31,7 @@ class Chunk(Base):
     metadata_extra: Mapped[dict | None] = mapped_column(JSONB)
     # Pre-computed tsvector column for full-text search
     text_search = mapped_column(TSVECTOR)
-    created_at: Mapped[datetime] = mapped_column(
-        default=_utcnow, server_default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow, server_default=func.now(), nullable=False)
 
     __table_args__ = (
         # No HNSW/IVFFlat index: pgvector limits HNSW to 2000 dims, our

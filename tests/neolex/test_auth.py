@@ -1,9 +1,11 @@
 """Tests for API key authentication (AUTH-01, AUTH-02, AUTH-03, AUTH-05, API-06)."""
+
 from neolex.auth.keys import generate_key
 
 # ---------------------------------------------------------------------------
 # Exemption: /health needs no key
 # ---------------------------------------------------------------------------
+
 
 async def test_health_exempt(app_client):
     """GET /health must work without any Authorization header (AUTH exempt)."""
@@ -14,6 +16,7 @@ async def test_health_exempt(app_client):
 # ---------------------------------------------------------------------------
 # Missing / malformed key -> 401
 # ---------------------------------------------------------------------------
+
 
 async def test_missing_key_returns_401(authed_client):
     """No Authorization header -> 401."""
@@ -54,6 +57,7 @@ async def test_wrong_key_returns_401(authed_client):
 # Revoked key -> 401
 # ---------------------------------------------------------------------------
 
+
 async def test_revoked_key_returns_401(seeded_db, monkeypatch):
     """Revoked key (active=0) -> 401."""
     import asyncio
@@ -93,6 +97,7 @@ async def test_revoked_key_returns_401(seeded_db, monkeypatch):
 # Valid key -> passes auth
 # ---------------------------------------------------------------------------
 
+
 async def test_valid_key_passes(authed_client):
     """Valid active key -> request succeeds (mocked pipeline returns 200)."""
     client, raw_key = authed_client
@@ -110,6 +115,7 @@ async def test_valid_key_passes(authed_client):
 # Rate limiting (API-06)
 # ---------------------------------------------------------------------------
 
+
 async def test_rate_limit_exceeded(authed_client, monkeypatch):
     """More requests than RATE_LIMIT_RPM in one window -> 429."""
     client, raw_key = authed_client
@@ -117,8 +123,8 @@ async def test_rate_limit_exceeded(authed_client, monkeypatch):
 
     # Reset rate state for this key to avoid pollution from other tests
     from neolex.auth.keys import hash_key
-
     from neolex.auth.middleware import _rate_state
+
     k_hash = hash_key(raw_key)
     _rate_state.pop(k_hash, None)
 

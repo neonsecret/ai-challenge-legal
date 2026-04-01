@@ -16,6 +16,19 @@ interface SourceRef {
     text?: string | null
     url?: string | null
     title?: string | null
+    chunk_id?: string | null
+}
+
+/**
+ * Strip the SAC context prefix that the indexer prepends to stored chunk text.
+ * Format: "[DOCUMENT: summary | context]\n\nraw body" or "[doc_id] breadcrumb\n\nbody"
+ * We want only the raw body for PDF text layer matching.
+ */
+function stripChunkPrefix(text: string | null | undefined): string | undefined {
+    if (!text) return undefined
+    // Match [ANYTHING] optionally followed by text on the same line, then newlines
+    const stripped = text.replace(/^\[[^\]]*\][^\n]*\n+/, "").trim()
+    return stripped || undefined
 }
 
 /** Check if a URL has a safe protocol (http/https only — blocks javascript: etc). */
@@ -337,13 +350,357 @@ function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageCl
             docId={source.doc_id}
             page={page}
             className="h-full"
-            highlightText={(source.text ?? answer).slice(0, 200)}
+            highlightText={stripChunkPrefix(source.text) ?? undefined}
             onError={() => setPdfFailed(true)}
         />
     )
 }
 
-/** Text-only source viewer — cleans, truncates, and formats raw judgment text. */
+// ── Chunk context API types ───────────────────────────────────────────────────
+
+interface ChunkContextItem {
+    chunk_id: string
+    page: number
+    text: string
+    is_target: boolean
+}
+
+interface ChunkContextResult {
+    doc_id: string
+    corpus: string
+    pdf_available: boolean
+    chunks: ChunkContextItem[]
+}
+
+// ── Helper sub-component: renders a single chunk's text body ─────────────────
+
+function ChunkBody({
+    text,
+    isTarget,
+    expanded,
+    onExpandToggle,
+    isDark,
+    onPageClick,
+}: {
+    text: string
+    isTarget: boolean
+    expanded: boolean
+    onExpandToggle: () => void
+    isDark: boolean
+    onPageClick: (page: number) => void
+}) {
+    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
+    const stripped = stripChunkPrefix(text) ?? text
+    const cleanedBody = useMemo(() => cleanJudgmentText(stripped), [stripped])
+    const needsTruncation = isTarget && cleanedBody.length > TEXT_TRUNCATE_LIMIT
+    const displayBody = isTarget && needsTruncation && !expanded
+        ? cleanedBody.slice(0, TEXT_TRUNCATE_LIMIT)
+        : cleanedBody
+
+    const paragraphs = useMemo(
+        () => displayBody.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
+        [displayBody],
+    )
+
+    return (
+        <>
+            <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: SPACE["3"],
+                opacity: isTarget ? 1 : 0.45,
+            }}>
+                {paragraphs.map((para, pi) => (
+                    <p
+                        key={pi}
+                        style={{
+                            fontSize: TYPE_SCALE.sm,
+                            lineHeight: 1.7,
+                            color: textColor,
+                            fontFamily: FONT.sans,
+                            margin: 0,
+                            wordBreak: "break-word",
+                            ...(isTarget ? {
+                                background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.06)",
+                                borderLeft: `3px solid ${isDark ? "rgba(201,168,76,0.55)" : "rgba(196,124,0,0.45)"}`,
+                                paddingLeft: SPACE["2"],
+                                paddingTop: 6,
+                                paddingBottom: 6,
+                                borderRadius: `0 ${RADIUS.xs}px ${RADIUS.xs}px 0`,
+                            } : {}),
+                        }}
+                    >
+                        <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick} />
+                    </p>
+                ))}
+            </div>
+            {needsTruncation && (
+                <button
+                    onClick={onExpandToggle}
+                    style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: SPACE["1"],
+                        marginTop: SPACE["3"],
+                        padding: `${SPACE["1"]}px ${SPACE["3"]}px`,
+                        fontSize: TYPE_SCALE.xs,
+                        fontWeight: 500,
+                        fontFamily: FONT.sans,
+                        color: COLOR.gold.base,
+                        background: COLOR.gold.tint,
+                        border: `0.5px solid ${COLOR.gold.border}`,
+                        borderRadius: RADIUS.sm,
+                        cursor: "pointer",
+                        transition: `all ${TIMING.instant} ${EASE.out}`,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
+                >
+                    {expanded ? (
+                        <><ChevronUp size={SPACE["3"]} />Show less</>
+                    ) : (
+                        <><ChevronDown size={SPACE["3"]} />Show more ({Math.round(cleanedBody.length / 1000)}k chars)</>
+                    )}
+                </button>
+            )}
+        </>
+    )
+}
+
+// ── Context view: needle-in-haystack rendering when chunk_id is available ────
+
+function ContextChunkView({
+    source,
+    context,
+    isDark,
+    isMobile,
+    onPageClick,
+}: {
+    source: SourceRef
+    context: ChunkContextResult
+    isDark: boolean
+    isMobile: boolean
+    onPageClick: (page: number) => void
+}) {
+    const [expanded, setExpanded] = useState(false)
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
+    const targetRef = useRef<HTMLDivElement>(null)
+
+    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
+    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+
+    // Parse header from the target chunk's raw text for the law name/breadcrumb
+    const targetChunk = context.chunks.find((c) => c.is_target)
+    const headerRaw = targetChunk?.text ?? source.text ?? ""
+    const headerMatch = headerRaw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
+    const lawName = headerMatch?.[1] ?? ""
+    const breadcrumb = headerMatch?.[2]?.trim() ?? ""
+
+    const targetIdx = context.chunks.findIndex((c) => c.is_target)
+    const hasPrecedingContext = targetIdx > 0
+
+    // Scroll to the target chunk after mount
+    useEffect(() => {
+        const t = setTimeout(() => {
+            const container = scrollContainerRef.current
+            const el = targetRef.current
+            if (!container || !el) return
+            const relTop = el.getBoundingClientRect().top
+                - container.getBoundingClientRect().top
+                + container.scrollTop
+            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
+        }, 200)
+        return () => clearTimeout(t)
+    }, [source.chunk_id])
+
+    return (
+        <div
+            ref={scrollContainerRef}
+            className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")}
+            style={{
+                background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
+                border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                boxShadow: isDark
+                    ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE["1"]}px ${SPACE["6"]}px rgba(0,0,0,0.30)`
+                    : `${GLASS.light.innerGlow}, 0 ${SPACE["1"]}px ${SPACE["6"]}px rgba(100,50,0,0.08)`,
+            }}
+        >
+            {/* Header: law name + breadcrumb from target chunk */}
+            {(lawName || breadcrumb) && (
+                <div style={{marginBottom: SPACE["3"]}}>
+                    {lawName && (
+                        <p style={{
+                            fontSize: TYPE_SCALE.xs,
+                            fontWeight: 700,
+                            textTransform: "uppercase" as const,
+                            letterSpacing: "0.10em",
+                            color: isDark ? COLOR.gold.solid : COLOR.gold.base,
+                            margin: `0 0 ${SPACE["1"]}px`,
+                            fontFamily: FONT.sans,
+                        }}>{lawName.replace(/_/g, " ")}</p>
+                    )}
+                    {breadcrumb && (
+                        <p style={{
+                            fontSize: TYPE_SCALE.xs,
+                            color: mutedColor,
+                            margin: 0,
+                            fontFamily: FONT.sans,
+                        }}>{breadcrumb}</p>
+                    )}
+                </div>
+            )}
+
+            {/* Jump to cited passage button — only when there is preceding context */}
+            {hasPrecedingContext && (
+                <div style={{marginBottom: SPACE["3"]}}>
+                    <button
+                        onClick={() => {
+                            const container = scrollContainerRef.current
+                            const el = targetRef.current
+                            if (!container || !el) return
+                            const relTop = el.getBoundingClientRect().top
+                                - container.getBoundingClientRect().top
+                                + container.scrollTop
+                            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
+                        }}
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACE["1"],
+                            padding: `3px ${SPACE["2"]}px`,
+                            borderRadius: RADIUS.sm,
+                            background: COLOR.gold.tint,
+                            border: `0.5px solid ${COLOR.gold.border}`,
+                            fontSize: TYPE_SCALE.xs,
+                            fontWeight: 600,
+                            color: COLOR.gold.base,
+                            cursor: "pointer",
+                            fontFamily: FONT.sans,
+                            transition: `background ${TIMING.fast}`,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
+                    >
+                        ↓ Jump to cited passage
+                    </button>
+                </div>
+            )}
+
+            {/* Context label above non-target preceding chunks */}
+            {hasPrecedingContext && (
+                <p style={{
+                    fontSize: TYPE_SCALE.xs,
+                    fontWeight: 600,
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.09em",
+                    color: mutedColor,
+                    margin: `0 0 ${SPACE["2"]}px`,
+                    fontFamily: FONT.sans,
+                }}>Surrounding context</p>
+            )}
+
+            {/* Render all chunks in order, visually separating context from target */}
+            <div style={{display: "flex", flexDirection: "column", gap: SPACE["4"]}}>
+                {context.chunks.map((chunk, ci) => {
+                    const isTarget = chunk.is_target
+                    const showDivider = isTarget && ci > 0
+
+                    return (
+                        <div
+                            key={chunk.chunk_id}
+                            ref={isTarget ? targetRef : undefined}
+                        >
+                            {/* Visual divider between context and target chunk */}
+                            {showDivider && (
+                                <div style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: SPACE["2"],
+                                    marginBottom: SPACE["4"],
+                                }}>
+                                    <div style={{
+                                        flex: 1,
+                                        height: 1,
+                                        background: isDark
+                                            ? "rgba(201,168,76,0.25)"
+                                            : "rgba(196,124,0,0.20)",
+                                    }} />
+                                    <span style={{
+                                        fontSize: TYPE_SCALE.xs,
+                                        fontWeight: 600,
+                                        color: isDark ? COLOR.gold.solid : COLOR.gold.base,
+                                        fontFamily: FONT.sans,
+                                        whiteSpace: "nowrap",
+                                        textTransform: "uppercase" as const,
+                                        letterSpacing: "0.09em",
+                                    }}>Cited passage</span>
+                                    <div style={{
+                                        flex: 1,
+                                        height: 1,
+                                        background: isDark
+                                            ? "rgba(201,168,76,0.25)"
+                                            : "rgba(196,124,0,0.20)",
+                                    }} />
+                                </div>
+                            )}
+
+                            {/* Page indicator for each chunk */}
+                            <p style={{
+                                fontSize: TYPE_SCALE.xs,
+                                color: mutedColor,
+                                fontFamily: FONT.sans,
+                                margin: `0 0 ${SPACE["2"]}px`,
+                                opacity: isTarget ? 1 : 0.45,
+                            }}>
+                                <span
+                                    style={{
+                                        cursor: "pointer",
+                                        textDecoration: "underline",
+                                        textDecorationStyle: "dotted",
+                                        textUnderlineOffset: "2px",
+                                        textDecorationColor: mutedColor,
+                                    }}
+                                    onClick={() => onPageClick(chunk.page)}
+                                >
+                                    p. {chunk.page}
+                                </span>
+                            </p>
+
+                            <ChunkBody
+                                text={chunk.text}
+                                isTarget={isTarget}
+                                expanded={expanded}
+                                onExpandToggle={() => setExpanded((v) => !v)}
+                                isDark={isDark}
+                                onPageClick={onPageClick}
+                            />
+                        </div>
+                    )
+                })}
+            </div>
+
+            {/* Trailing context label after the target chunk when there are following chunks */}
+            {targetIdx !== -1 && targetIdx < context.chunks.length - 1 && (
+                <p style={{
+                    fontSize: TYPE_SCALE.xs,
+                    fontWeight: 600,
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.09em",
+                    color: mutedColor,
+                    margin: `${SPACE["2"]}px 0 0`,
+                    fontFamily: FONT.sans,
+                    opacity: 0.65,
+                }}>Surrounding context (continued)</p>
+            )}
+        </div>
+    )
+}
+
+/** Text-only source viewer — cleans, truncates, and formats raw judgment text.
+ *  When source.chunk_id is available, fetches surrounding context from the backend
+ *  and renders a needle-in-haystack view with dimmed surrounding chunks. */
 function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
     source: SourceRef
     answer: string
@@ -352,6 +709,35 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
     onPageClick: (page: number) => void
 }) {
     const [expanded, setExpanded] = useState(false)
+    const [chunkContext, setChunkContext] = useState<ChunkContextResult | null>(null)
+
+    // Fetch surrounding chunk context when chunk_id is available.
+    // Falls back to current single-chunk display while in-flight or on error.
+    useEffect(() => {
+        if (!source.chunk_id) {
+            setChunkContext(null)
+            return
+        }
+        let cancelled = false
+        setChunkContext(null)
+
+        fetch(
+            `${API_BASE}/api/v1/documents/chunk-context/${encodeURIComponent(source.chunk_id)}?window=1`,
+            {credentials: "include"},
+        )
+            .then(async (res) => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                return res.json() as Promise<ChunkContextResult>
+            })
+            .then((data) => {
+                if (!cancelled) setChunkContext(data)
+            })
+            .catch(() => {
+                // Silently fall back to single-chunk view — don't surface API errors here
+            })
+
+        return () => { cancelled = true }
+    }, [source.chunk_id])
 
     // Use the retrieved chunk text directly. Never fall back to the AI answer —
     // that would show the LLM's own output as if it were the source document.
@@ -377,6 +763,21 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
             </div>
         )
     }
+
+    // Once the context API call resolves, render the needle-in-haystack view
+    if (chunkContext) {
+        return (
+            <ContextChunkView
+                source={source}
+                context={chunkContext}
+                isDark={isDark}
+                isMobile={isMobile}
+                onPageClick={onPageClick}
+            />
+        )
+    }
+
+    // ── Fallback: single-chunk view (used while context is loading or when chunk_id is absent) ──
 
     // When `source.text` is present it IS the retrieved chunk — the entire chunk
     // is relevant. Skip trigram scoring against the AI answer in that case and

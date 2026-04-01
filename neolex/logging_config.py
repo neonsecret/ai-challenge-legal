@@ -15,6 +15,7 @@ Usage:
     from neolex.logging_config import configure_logging
     configure_logging()   # call once at startup, before any loggers are used
 """
+
 from __future__ import annotations
 
 import json
@@ -43,27 +44,24 @@ class ScrubApiKeyFilter(logging.Filter):
         # Scrub string args (uvicorn uses %-style formatting with a tuple).
         if record.args:
             if isinstance(record.args, tuple):
-                record.args = tuple(
-                    _API_KEY_RE.sub(r'\1***', a) if isinstance(a, str) else a
-                    for a in record.args
-                )
+                record.args = tuple(_API_KEY_RE.sub(r"\1***", a) if isinstance(a, str) else a for a in record.args)
             elif isinstance(record.args, dict):
                 record.args = {
-                    k: _API_KEY_RE.sub(r'\1***', v) if isinstance(v, str) else v
-                    for k, v in record.args.items()
+                    k: _API_KEY_RE.sub(r"\1***", v) if isinstance(v, str) else v for k, v in record.args.items()
                 }
         # Scrub the rendered message if it was pre-formatted (e.g. by other handlers).
-        if hasattr(record, 'message'):
-            record.message = _API_KEY_RE.sub(r'\1***', record.message)
+        if hasattr(record, "message"):
+            record.message = _API_KEY_RE.sub(r"\1***", record.message)
         # Scrub the raw msg string too (used when args is falsy).
         if isinstance(record.msg, str):
-            record.msg = _API_KEY_RE.sub(r'\1***', record.msg)
+            record.msg = _API_KEY_RE.sub(r"\1***", record.msg)
         return True
 
 
 # ---------------------------------------------------------------------------
 # JSON formatter
 # ---------------------------------------------------------------------------
+
 
 class JSONFormatter(logging.Formatter):
     """Formats log records as single-line JSON objects.
@@ -75,12 +73,32 @@ class JSONFormatter(logging.Formatter):
 
     # Fields that are always part of logging.LogRecord — we do NOT want them
     # duplicated in the JSON output as extra fields.
-    _SKIP_ATTRS = frozenset({
-        "args", "created", "exc_info", "exc_text", "filename", "funcName",
-        "levelname", "levelno", "lineno", "message", "module", "msecs",
-        "msg", "name", "pathname", "process", "processName", "relativeCreated",
-        "stack_info", "thread", "threadName", "taskName",
-    })
+    _SKIP_ATTRS = frozenset(
+        {
+            "args",
+            "created",
+            "exc_info",
+            "exc_text",
+            "filename",
+            "funcName",
+            "levelname",
+            "levelno",
+            "lineno",
+            "message",
+            "module",
+            "msecs",
+            "msg",
+            "name",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "thread",
+            "threadName",
+            "taskName",
+        }
+    )
 
     def format(self, record: logging.LogRecord) -> str:
         # Build the core payload.
@@ -106,6 +124,7 @@ class JSONFormatter(logging.Formatter):
 # ---------------------------------------------------------------------------
 # Human formatter (dev)
 # ---------------------------------------------------------------------------
+
 
 class HumanFormatter(logging.Formatter):
     """Coloured, human-readable formatter for development."""
@@ -141,6 +160,7 @@ class HumanFormatter(logging.Formatter):
 # Public API
 # ---------------------------------------------------------------------------
 
+
 def _should_use_json() -> bool:
     fmt = os.environ.get("LOG_FORMAT", "").lower()
     if fmt == "json":
@@ -172,15 +192,20 @@ def configure_logging(level: str | None = None) -> None:
     # Configure the root logger.
     root = logging.getLogger()
     # Avoid adding the same handler multiple times (e.g. pytest re-runs).
-    if not any(isinstance(h, logging.StreamHandler) and h.stream is sys.stdout
-               for h in root.handlers):
+    if not any(isinstance(h, logging.StreamHandler) and h.stream is sys.stdout for h in root.handlers):
         root.addHandler(handler)
     root.setLevel(log_level)
 
     # Silence noisy third-party loggers at WARNING level unless LOG_LEVEL=DEBUG.
     _noisy = [
-        "httpx", "httpcore", "urllib3", "sentence_transformers",
-        "faiss", "transformers", "torch", "filelock",
+        "httpx",
+        "httpcore",
+        "urllib3",
+        "sentence_transformers",
+        "faiss",
+        "transformers",
+        "torch",
+        "filelock",
     ]
     if log_level != "DEBUG":
         for name in _noisy:

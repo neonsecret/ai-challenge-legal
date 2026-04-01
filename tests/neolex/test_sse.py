@@ -8,9 +8,9 @@ def parse_sse_events(text: str) -> list[dict]:
     for line in text.splitlines():
         line = line.rstrip()
         if line.startswith("event:"):
-            current["event"] = line[len("event:"):].strip()
+            current["event"] = line[len("event:") :].strip()
         elif line.startswith("data:"):
-            current["data"] = line[len("data:"):].strip()
+            current["data"] = line[len("data:") :].strip()
         elif line == "" and current:
             events.append(current)
             current = {}
@@ -75,6 +75,7 @@ async def test_sse_question_too_short(app_client):
 
 async def test_sse_not_ready(app_client):
     from neolex.main import app
+
     app.state.ready = False
     try:
         response = await app_client.get(

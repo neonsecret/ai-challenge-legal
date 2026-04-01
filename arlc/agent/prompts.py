@@ -38,7 +38,11 @@ logger = logging.getLogger(__name__)
 _case_meta: dict | None = None
 _doc_id_to_case_meta: dict[str, tuple[str, dict]] | None = None
 _CASE_META_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "data", "case_metadata_index.json",
+    os.path.dirname(__file__),
+    "..",
+    "..",
+    "data",
+    "case_metadata_index.json",
 )
 
 
@@ -71,7 +75,8 @@ def _load_case_metadata() -> tuple[dict, dict[str, tuple[str, dict]]]:
                     _doc_id_to_case_meta[doc_id] = (case_id, metadata)
         logger.info(
             "[agent] loaded case metadata: %d cases, %d doc mappings",
-            len(_case_meta), len(_doc_id_to_case_meta),
+            len(_case_meta),
+            len(_doc_id_to_case_meta),
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         logger.warning("[agent] failed to load case metadata: %s", exc)
@@ -79,6 +84,7 @@ def _load_case_metadata() -> tuple[dict, dict[str, tuple[str, dict]]]:
         _doc_id_to_case_meta = {}
 
     return _case_meta, _doc_id_to_case_meta
+
 
 # Corpus language hints used to instruct the LLM on query language.
 _CORPUS_LANGUAGES: dict[str, str] = {
@@ -314,10 +320,7 @@ def _format_document_context(docs: list[SourceDocument]) -> str:
     results during search iterations.  Sorting would break this mapping.
     """
     if not docs:
-        return (
-            "No documents retrieved yet. "
-            "Use the search_legal_corpus tool to find relevant legal sources."
-        )
+        return "No documents retrieved yet. Use the search_legal_corpus tool to find relevant legal sources."
 
     preamble = (
         "Each document below contains the COMPLETE extracted text for that page. "
@@ -328,7 +331,7 @@ def _format_document_context(docs: list[SourceDocument]) -> str:
     for i, doc in enumerate(docs, start=1):
         header = f"[DOC-{i}] {doc['doc_id']} (page {doc['page']})"
         # Escape closing tags to prevent prompt injection via tag boundary escape
-        text = doc['text'].replace("</document_content>", "&lt;/document_content&gt;")
+        text = doc["text"].replace("</document_content>", "&lt;/document_content&gt;")
         parts.append(f"{header}\n<document_content>\n{text}\n</document_content>")
 
     return "\n---\n".join(parts)
@@ -371,10 +374,7 @@ def build_system_prompt(state: AgentState) -> str:
     ]
     if state["selected_laws"]:
         law_ids = ", ".join(state["selected_laws"])
-        semi_static_parts.append(
-            f"- Search scope restricted to: {law_ids}. "
-            f"Focus your research within these laws."
-        )
+        semi_static_parts.append(f"- Search scope restricted to: {law_ids}. Focus your research within these laws.")
 
     # Custom corpus: inform the LLM that the user has uploaded documents
     if corpus not in _CORPUS_LANGUAGES:

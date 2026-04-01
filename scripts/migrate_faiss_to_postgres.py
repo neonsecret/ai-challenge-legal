@@ -5,6 +5,7 @@ batch-inserts into the chunks table.  Run via:
 
     uv run python scripts/migrate_faiss_to_postgres.py
 """
+
 from __future__ import annotations
 
 import json
@@ -72,6 +73,7 @@ if CLIENTS_DIR.exists():
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_row(
     meta: dict,
     embedding: np.ndarray,
@@ -118,7 +120,7 @@ def migrate_corpus(
     tenant_id: str | None,
 ) -> int:
     """Migrate a single corpus, returns number of rows inserted."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Corpus: {corpus}")
     print(f"  FAISS: {faiss_path}")
     print(f"  Meta:  {meta_path}")
@@ -184,9 +186,7 @@ def _insert_batch(cur, batch: list[tuple]) -> None:
         ON CONFLICT (chunk_id) DO NOTHING
         """,
         batch,
-        template=(
-            "(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s::jsonb)"
-        ),
+        template=("(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s::vector, %s::jsonb)"),
         page_size=BATCH_SIZE,
     )
 
@@ -195,13 +195,14 @@ def _insert_batch(cur, batch: list[tuple]) -> None:
 # Verification
 # ---------------------------------------------------------------------------
 
+
 def verify(conn) -> None:
     """Run verification queries after migration."""
     cur = conn.cursor()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("VERIFICATION")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     # Count by corpus
     cur.execute("SELECT corpus, count(*) FROM chunks GROUP BY corpus ORDER BY corpus")
@@ -256,6 +257,7 @@ def verify(conn) -> None:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     print("Connecting to PostgreSQL...")

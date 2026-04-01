@@ -8,6 +8,7 @@ These tests require:
 Skip on CI: pytest tests/neolex/ -m "not integration"
 Run locally: pytest tests/neolex/test_integration.py -v -s
 """
+
 import asyncio
 import json
 import os
@@ -35,9 +36,9 @@ def parse_sse_events(text: str) -> list[dict]:
     for line in text.splitlines():
         line = line.rstrip()
         if line.startswith("event:"):
-            current["event"] = line[len("event:"):].strip()
+            current["event"] = line[len("event:") :].strip()
         elif line.startswith("data:"):
-            current["data"] = line[len("data:"):].strip()
+            current["data"] = line[len("data:") :].strip()
         elif line == "" and current:
             events.append(current)
             current = {}
@@ -61,11 +62,11 @@ async def live_client():
         pytest.skip("DIFC corpus not available (data/*.faiss missing). Run `make prepare`.")
 
     from dotenv import load_dotenv
+
     load_dotenv()
 
     # Seed an integration key before app startup (init_schema runs in lifespan)
     from neolex.auth.keys import generate_key, hash_key, key_prefix
-
     from neolex.db.audit import get_audit_db
 
     _int_raw_key = generate_key()
@@ -93,10 +94,10 @@ async def live_client():
 
     async with LifespanManager(app, startup_timeout=120, shutdown_timeout=30) as manager:
         async with AsyncClient(
-                transport=ASGITransport(app=manager.app, raise_app_exceptions=True),
-                base_url="http://test",
-                timeout=120.0,
-                headers={"Authorization": f"Bearer {_int_raw_key}"},
+            transport=ASGITransport(app=manager.app, raise_app_exceptions=True),
+            base_url="http://test",
+            timeout=120.0,
+            headers={"Authorization": f"Bearer {_int_raw_key}"},
         ) as client:
             yield client
 
@@ -129,9 +130,7 @@ async def test_real_query_returns_grounded_answer(live_client: AsyncClient):
     # Sources must include at least one document with page citations
     assert len(body["sources"]) > 0, "No sources returned"
     # doc_ids are content hashes (e.g. 536bbce854b9...) not human-readable names
-    assert all("doc_id" in s and "page_numbers" in s for s in body["sources"]), (
-        f"Malformed sources: {body['sources']}"
-    )
+    assert all("doc_id" in s and "page_numbers" in s for s in body["sources"]), f"Malformed sources: {body['sources']}"
 
     # Confidence should be high for a known-good question
     assert body["confidence"] in ("high", "degraded")
@@ -162,14 +161,10 @@ async def test_concurrent_queries_no_deadlock(live_client: AsyncClient):
     responses = await asyncio.gather(*[single_query(q) for q in questions])
 
     for i, response in enumerate(responses):
-        assert response.status_code == 200, (
-            f"Query {i} failed: {response.status_code} {response.text[:200]}"
-        )
+        assert response.status_code == 200, f"Query {i} failed: {response.status_code} {response.text[:200]}"
         body = response.json()
         assert body["answer"] is not None, f"Query {i} returned null answer"
-        assert body["latency_ms"] < 30_000, (
-            f"Query {i} took {body['latency_ms']}ms — possible deadlock/timeout"
-        )
+        assert body["latency_ms"] < 30_000, f"Query {i} took {body['latency_ms']}ms — possible deadlock/timeout"
 
 
 @pytest.mark.integration
@@ -215,6 +210,4 @@ async def test_arlc_directory_unchanged():
         cwd=repo_root,
     )
     changed = result.stdout.strip()
-    assert not changed, (
-        f"arlc/ files were modified (violates PIPE-01): {changed}"
-    )
+    assert not changed, f"arlc/ files were modified (violates PIPE-01): {changed}"

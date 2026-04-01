@@ -56,6 +56,7 @@ def _step_header(step_num: int, title: str, skip: bool = False):
 # Step 1: Download documents and questions
 # ---------------------------------------------------------------------------
 
+
 def step_download(force: bool = False):
     """Download documents and questions from platform API."""
     _step_header(1, "Download corpus from platform")
@@ -119,6 +120,7 @@ def step_download(force: bool = False):
 # Step 1.5: Convert PDFs to structured Markdown (Docling)
 # ---------------------------------------------------------------------------
 
+
 def step_docling_convert(force: bool = False):
     """Convert PDFs to structured Markdown using Docling."""
     _step_header("1.5", "Docling PDF → Markdown conversion")
@@ -143,11 +145,13 @@ def step_docling_convert(force: bool = False):
 # Step 2: Index documents into ChromaDB
 # ---------------------------------------------------------------------------
 
+
 def step_index(force: bool = False):
     """Build PostgreSQL vector index (pgvector)."""
     _step_header(2, "Index documents into PostgreSQL")
 
     from arlc.retriever import get_chunk_count
+
     chunk_count = get_chunk_count("difc")
     if chunk_count > 0 and not force:
         print(f"  PostgreSQL chunks already indexed: {chunk_count} chunks")
@@ -155,6 +159,7 @@ def step_index(force: bool = False):
         return
 
     from arlc.indexing.indexer import build_index
+
     print("  Building PostgreSQL index...")
     t0 = time.monotonic()
     build_index()
@@ -165,6 +170,7 @@ def step_index(force: bool = False):
 # ---------------------------------------------------------------------------
 # Step 3: Build case metadata index
 # ---------------------------------------------------------------------------
+
 
 def step_case_metadata(force: bool = False):
     """Extract case metadata using build_case_metadata_auto.py."""
@@ -211,6 +217,7 @@ def step_case_metadata(force: bool = False):
 # Step 4: Build article page index
 # ---------------------------------------------------------------------------
 
+
 def step_article_index(force: bool = False):
     """Build article-to-page index for law documents."""
     _step_header(4, "Build article page index")
@@ -240,6 +247,7 @@ def step_article_index(force: bool = False):
 # Step 5: Build law name index
 # ---------------------------------------------------------------------------
 
+
 def step_law_index(force: bool = False):
     """Build law name and latest edition indexes."""
     _step_header(5, "Build law name index")
@@ -268,6 +276,7 @@ def step_law_index(force: bool = False):
 # ---------------------------------------------------------------------------
 # Step 6: Validate all indexes
 # ---------------------------------------------------------------------------
+
 
 def step_validate():
     """Validate that all required indexes exist and are populated."""
@@ -299,6 +308,7 @@ def step_validate():
 
     # Check PostgreSQL chunks
     from arlc.retriever import get_chunk_count
+
     chunk_count = get_chunk_count("difc")
     if chunk_count > 0:
         print(f"  {'postgresql_chunks':20s}: {chunk_count} chunks")
@@ -317,6 +327,7 @@ def step_validate():
 # ---------------------------------------------------------------------------
 # Step 7: Smoke test
 # ---------------------------------------------------------------------------
+
 
 async def step_smoke_test(n_questions: int = 10):
     """Run a smoke test through the pipeline."""
@@ -372,6 +383,7 @@ async def step_smoke_test(n_questions: int = 10):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main():
     parser = argparse.ArgumentParser(description="Prepare corpus for finals pipeline")

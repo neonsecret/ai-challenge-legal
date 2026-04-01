@@ -31,6 +31,7 @@ _page_text_cache: dict[str, dict[int, str]] = {}
 # PDF text extraction (with caching)
 # ---------------------------------------------------------------------------
 
+
 def _get_page_text(doc_id: str, page_number: int) -> str:
     """Get text for a specific page (1-based). Cached per doc."""
     if doc_id in _page_text_cache and page_number in _page_text_cache[doc_id]:
@@ -113,13 +114,15 @@ def _extract_answer_keywords(answer, answer_type: str) -> list[str]:
         # Also try common date formats
         try:
             dt = datetime.strptime(s, "%Y-%m-%d")
-            keywords.extend([
-                dt.strftime("%d %B %Y"),  # 15 January 2024
-                dt.strftime("%d %b %Y"),  # 15 Jan 2024
-                dt.strftime("%B %d, %Y"),  # January 15, 2024
-                dt.strftime("%-d %B %Y"),  # 5 January 2024 (no leading zero)
-                dt.strftime("%d/%m/%Y"),  # 15/01/2024
-            ])
+            keywords.extend(
+                [
+                    dt.strftime("%d %B %Y"),  # 15 January 2024
+                    dt.strftime("%d %b %Y"),  # 15 Jan 2024
+                    dt.strftime("%B %d, %Y"),  # January 15, 2024
+                    dt.strftime("%-d %B %Y"),  # 5 January 2024 (no leading zero)
+                    dt.strftime("%d/%m/%Y"),  # 15/01/2024
+                ]
+            )
         except ValueError:
             pass
         return keywords
@@ -145,19 +148,111 @@ def _extract_answer_keywords(answer, answer_type: str) -> list[str]:
         # Remove common stop words and short words
         words = re.findall(r"\b[A-Za-z0-9][\w'-]*\b", s)
         stop_words = {
-            "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-            "have", "has", "had", "do", "does", "did", "will", "would", "shall",
-            "should", "may", "might", "can", "could", "must", "and", "or", "but",
-            "in", "on", "at", "to", "for", "of", "with", "by", "from", "as",
-            "into", "through", "during", "before", "after", "above", "below",
-            "between", "under", "about", "not", "no", "nor", "that", "this",
-            "these", "those", "it", "its", "they", "them", "their", "we", "our",
-            "he", "she", "his", "her", "you", "your", "which", "who", "whom",
-            "what", "when", "where", "how", "all", "each", "every", "both",
-            "any", "such", "only", "also", "than", "very", "just", "if", "so",
-            "because", "while", "however", "therefore", "provided", "unless",
-            "according", "based", "per", "within", "regarding", "whether",
-            "document", "documents", "provided", "information", "question",
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "shall",
+            "should",
+            "may",
+            "might",
+            "can",
+            "could",
+            "must",
+            "and",
+            "or",
+            "but",
+            "in",
+            "on",
+            "at",
+            "to",
+            "for",
+            "of",
+            "with",
+            "by",
+            "from",
+            "as",
+            "into",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "between",
+            "under",
+            "about",
+            "not",
+            "no",
+            "nor",
+            "that",
+            "this",
+            "these",
+            "those",
+            "it",
+            "its",
+            "they",
+            "them",
+            "their",
+            "we",
+            "our",
+            "he",
+            "she",
+            "his",
+            "her",
+            "you",
+            "your",
+            "which",
+            "who",
+            "whom",
+            "what",
+            "when",
+            "where",
+            "how",
+            "all",
+            "each",
+            "every",
+            "both",
+            "any",
+            "such",
+            "only",
+            "also",
+            "than",
+            "very",
+            "just",
+            "if",
+            "so",
+            "because",
+            "while",
+            "however",
+            "therefore",
+            "provided",
+            "unless",
+            "according",
+            "based",
+            "per",
+            "within",
+            "regarding",
+            "whether",
+            "document",
+            "documents",
+            "provided",
+            "information",
+            "question",
         }
         # Keep words 3+ chars that aren't stop words
         keywords = [w for w in words if len(w) >= 3 and w.lower() not in stop_words]
@@ -175,10 +270,10 @@ def _extract_answer_keywords(answer, answer_type: str) -> list[str]:
 
 
 def _verify_single_page(
-        page_text: str,
-        answer,
-        answer_type: str,
-        question: str,
+    page_text: str,
+    answer,
+    answer_type: str,
+    question: str,
 ) -> str:
     """Verify whether a single page supports the answer.
 
@@ -194,12 +289,60 @@ def _verify_single_page(
     if answer_type == "boolean":
         # Extract key nouns from the question
         q_words = re.findall(r"\b[a-z][\w'-]*\b", q_norm)
-        stop = {"the", "a", "an", "is", "are", "was", "were", "does", "did",
-                "do", "in", "of", "for", "to", "and", "or", "by", "this", "that",
-                "same", "both", "case", "what", "who", "which", "how", "have",
-                "has", "had", "been", "be", "will", "would", "shall", "should",
-                "can", "could", "may", "might", "must", "not", "no", "with",
-                "from", "at", "on", "as", "if", "but", "so", "than", "then"}
+        stop = {
+            "the",
+            "a",
+            "an",
+            "is",
+            "are",
+            "was",
+            "were",
+            "does",
+            "did",
+            "do",
+            "in",
+            "of",
+            "for",
+            "to",
+            "and",
+            "or",
+            "by",
+            "this",
+            "that",
+            "same",
+            "both",
+            "case",
+            "what",
+            "who",
+            "which",
+            "how",
+            "have",
+            "has",
+            "had",
+            "been",
+            "be",
+            "will",
+            "would",
+            "shall",
+            "should",
+            "can",
+            "could",
+            "may",
+            "might",
+            "must",
+            "not",
+            "no",
+            "with",
+            "from",
+            "at",
+            "on",
+            "as",
+            "if",
+            "but",
+            "so",
+            "than",
+            "then",
+        }
         q_keywords = [w for w in q_words if len(w) >= 3 and w not in stop]
         if not q_keywords:
             return WEAK
@@ -257,13 +400,14 @@ def _verify_single_page(
 # Stage 2: Page re-selection (scan doc pages when verification fails)
 # ---------------------------------------------------------------------------
 
+
 def _find_best_page_in_doc(
-        doc_id: str,
-        answer,
-        answer_type: str,
-        question: str,
-        current_page: int,
-        max_scan: int = 30,
+    doc_id: str,
+    answer,
+    answer_type: str,
+    question: str,
+    current_page: int,
+    max_scan: int = 30,
 ) -> tuple[int | None, str]:
     """Scan pages in a doc to find the best supporting page.
 
@@ -313,12 +457,12 @@ def _find_best_page_in_doc(
 
 
 def _find_best_page_llm(
-        doc_id: str,
-        answer,
-        answer_type: str,
-        question: str,
-        current_page: int,
-        max_scan: int = 20,
+    doc_id: str,
+    answer,
+    answer_type: str,
+    question: str,
+    current_page: int,
+    max_scan: int = 20,
 ) -> int | None:
     """Use LLM to pick the best supporting page (fallback when keyword matching fails).
 
@@ -356,9 +500,7 @@ def _find_best_page_llm(
         return None
 
     # Build prompt
-    page_texts = "\n\n".join(
-        f"[PAGE {p}]\n{text}" for p, text in candidates
-    )
+    page_texts = "\n\n".join(f"[PAGE {p}]\n{text}" for p, text in candidates)
 
     prompt = (
         f"Question: {question}\n"
@@ -389,12 +531,13 @@ def _find_best_page_llm(
 # Main entry point
 # ---------------------------------------------------------------------------
 
+
 def verify_pages(
-        question: str,
-        answer,
-        answer_type: str,
-        pages: list[dict],
-        use_llm_fallback: bool = False,
+    question: str,
+    answer,
+    answer_type: str,
+    pages: list[dict],
+    use_llm_fallback: bool = False,
 ) -> list[dict]:
     """Verify that cited pages support the answer. Replace bad pages.
 
@@ -436,44 +579,30 @@ def verify_pages(
                 logger.debug(f"[page_verifier] {doc_id}:p{page_num} WEAK (keeping)")
             else:
                 # NO_SUPPORT — try to find a better page
-                logger.info(
-                    f"[page_verifier] {doc_id}:p{page_num} NO_SUPPORT — scanning for better page"
-                )
+                logger.info(f"[page_verifier] {doc_id}:p{page_num} NO_SUPPORT — scanning for better page")
 
                 # Stage 2a: Keyword-based scan
-                best_page, best_status = _find_best_page_in_doc(
-                    doc_id, answer, answer_type, question, page_num
-                )
+                best_page, best_status = _find_best_page_in_doc(doc_id, answer, answer_type, question, page_num)
 
                 if best_page is not None and best_status in (CONFIRMED, WEAK):
-                    logger.info(
-                        f"[page_verifier] {doc_id}: replaced p{page_num} -> p{best_page} ({best_status})"
-                    )
+                    logger.info(f"[page_verifier] {doc_id}: replaced p{page_num} -> p{best_page} ({best_status})")
                     new_page_numbers.append(best_page)
                     any_changed = True
                 elif use_llm_fallback and answer_type in ("free_text", "boolean"):
                     # Stage 2b: LLM-based re-selection (expensive, only for hard cases)
-                    llm_page = _find_best_page_llm(
-                        doc_id, answer, answer_type, question, page_num
-                    )
+                    llm_page = _find_best_page_llm(doc_id, answer, answer_type, question, page_num)
                     if llm_page is not None:
-                        logger.info(
-                            f"[page_verifier] {doc_id}: LLM replaced p{page_num} -> p{llm_page}"
-                        )
+                        logger.info(f"[page_verifier] {doc_id}: LLM replaced p{page_num} -> p{llm_page}")
                         new_page_numbers.append(llm_page)
                         any_changed = True
                     else:
                         # Keep original page as fallback
                         new_page_numbers.append(page_num)
-                        logger.info(
-                            f"[page_verifier] {doc_id}:p{page_num} NO_SUPPORT but no better found, keeping"
-                        )
+                        logger.info(f"[page_verifier] {doc_id}:p{page_num} NO_SUPPORT but no better found, keeping")
                 else:
                     # Keep original page as fallback
                     new_page_numbers.append(page_num)
-                    logger.info(
-                        f"[page_verifier] {doc_id}:p{page_num} NO_SUPPORT but no better found, keeping"
-                    )
+                    logger.info(f"[page_verifier] {doc_id}:p{page_num} NO_SUPPORT but no better found, keeping")
 
         # Deduplicate page numbers
         seen = set()

@@ -23,6 +23,7 @@ EMBEDDING_DIM       Output dimension for Matryoshka truncation (default 1024).
 LLAMA_SERVER_URL    URL of the llama-server instance (default: http://localhost:8088).
 LLAMA_MODEL_PATH    Path to .gguf file — used only by start_server() helper.
 """
+
 import os
 
 _raw = os.environ.get("EMBEDDING_MODEL", "llama-server").lower()
@@ -30,9 +31,7 @@ _raw = os.environ.get("EMBEDDING_MODEL", "llama-server").lower()
 VALID_BACKENDS = {"snowflake", "llama-server"}
 
 if _raw not in VALID_BACKENDS:
-    raise ValueError(
-        f"EMBEDDING_MODEL must be one of {VALID_BACKENDS}, got {os.environ.get('EMBEDDING_MODEL')!r}"
-    )
+    raise ValueError(f"EMBEDDING_MODEL must be one of {VALID_BACKENDS}, got {os.environ.get('EMBEDDING_MODEL')!r}")
 
 EMBEDDING_BACKEND: str = _raw
 

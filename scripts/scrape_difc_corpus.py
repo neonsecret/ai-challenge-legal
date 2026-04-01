@@ -17,6 +17,7 @@ Output: data/difc_complete/
     judgments/      - Court judgment HTML saved as text
     manifest.json   - Full manifest with metadata
 """
+
 from __future__ import annotations
 
 import argparse
@@ -115,9 +116,11 @@ logger = logging.getLogger(__name__)
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DocumentMeta:
     """Metadata for a downloaded document."""
+
     title: str
     doc_type: str  # "law", "regulation", "judgment"
     court_division: str = ""
@@ -137,6 +140,7 @@ class DocumentMeta:
 @dataclass
 class ScrapeStats:
     """Aggregate statistics for the scrape."""
+
     laws_found: int = 0
     laws_downloaded: int = 0
     laws_skipped: int = 0
@@ -158,6 +162,7 @@ class ScrapeStats:
 # Rate limiter
 # ---------------------------------------------------------------------------
 
+
 class RateLimiter:
     """Simple async rate limiter."""
 
@@ -178,6 +183,7 @@ class RateLimiter:
 # ---------------------------------------------------------------------------
 # Manifest persistence
 # ---------------------------------------------------------------------------
+
 
 def load_manifest() -> list[dict]:
     """Load existing manifest or return empty list."""
@@ -202,6 +208,7 @@ def get_downloaded_urls(manifest: list[dict]) -> set[str]:
 # ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
+
 
 async def fetch_page(
     client: httpx.AsyncClient,
@@ -271,6 +278,7 @@ async def download_file(
 # Utility
 # ---------------------------------------------------------------------------
 
+
 def slugify(text: str) -> str:
     """Create a filesystem-safe slug from text."""
     text = re.sub(r"[^\w\s-]", "", text.lower())
@@ -335,7 +343,8 @@ def extract_judgment_metadata(html: str, url: str) -> dict:
     # Try to find judge
     judge_match = re.search(
         r"(?:JUSTICE|Judge|JUDGE)\s+([\w\s.]+?)(?:\n|$|ORDER|JUDGMENT)",
-        text, re.I,
+        text,
+        re.I,
     )
     if judge_match:
         meta["judge"] = judge_match.group(1).strip()[:100]
@@ -346,6 +355,7 @@ def extract_judgment_metadata(html: str, url: str) -> dict:
 # ---------------------------------------------------------------------------
 # Laws scraper
 # ---------------------------------------------------------------------------
+
 
 async def scrape_law_page(
     client: httpx.AsyncClient,
@@ -482,9 +492,12 @@ async def scrape_all_laws(
                 slug = href.rstrip("/").split("/")[-1]
                 if slug and slug != "difc-laws":
                     discovered_slugs.add(slug)
-        logger.info("Discovered %d law slugs (known: %d, new: %d)",
-                     len(discovered_slugs), len(KNOWN_LAW_SLUGS),
-                     len(discovered_slugs) - len(KNOWN_LAW_SLUGS))
+        logger.info(
+            "Discovered %d law slugs (known: %d, new: %d)",
+            len(discovered_slugs),
+            len(KNOWN_LAW_SLUGS),
+            len(discovered_slugs) - len(KNOWN_LAW_SLUGS),
+        )
     else:
         logger.warning("Could not fetch laws listing page, using known slugs only")
 
@@ -500,14 +513,20 @@ async def scrape_all_laws(
             if doc.source_url:
                 downloaded_urls.add(doc.source_url)
 
-    logger.info("Laws complete: found=%d, downloaded=%d, skipped=%d, failed=%d",
-                stats.laws_found, stats.laws_downloaded, stats.laws_skipped, stats.laws_failed)
+    logger.info(
+        "Laws complete: found=%d, downloaded=%d, skipped=%d, failed=%d",
+        stats.laws_found,
+        stats.laws_downloaded,
+        stats.laws_skipped,
+        stats.laws_failed,
+    )
     return all_docs
 
 
 # ---------------------------------------------------------------------------
 # Regulations scraper
 # ---------------------------------------------------------------------------
+
 
 async def scrape_regulation_page(
     client: httpx.AsyncClient,
@@ -578,6 +597,7 @@ async def scrape_regulation_page(
 # Court judgments scraper
 # ---------------------------------------------------------------------------
 
+
 async def scrape_judgment_listing_page(
     client: httpx.AsyncClient,
     division_slug: str,
@@ -618,9 +638,7 @@ async def scrape_judgment_listing_page(
         date_text = ""
         if parent:
             siblings_text = parent.get_text()
-            date_match = re.search(
-                r"(\w+ \d{1,2}, \d{4})", siblings_text
-            )
+            date_match = re.search(r"(\w+ \d{1,2}, \d{4})", siblings_text)
             if date_match:
                 date_text = date_match.group(1)
 
@@ -672,8 +690,8 @@ async def scrape_judgment_detail(
     # Write text with metadata header
     header = f"""# {title}
 # Court: {division_name}
-# Case Number: {jmeta.get('case_number', '')}
-# Date: {date or jmeta.get('date', '')}
+# Case Number: {jmeta.get("case_number", "")}
+# Date: {date or jmeta.get("date", "")}
 # Source: {url}
 # ---
 
@@ -752,14 +770,20 @@ async def scrape_court_division(
     async def fetch_one(title, url, date):
         async with semaphore:
             return await scrape_judgment_detail(
-                client, title, url, date, division_name,
-                limiter, downloaded_urls, stats,
+                client,
+                title,
+                url,
+                date,
+                division_name,
+                limiter,
+                downloaded_urls,
+                stats,
             )
 
     # Process in batches to allow periodic saving
     batch_size = 50
     for batch_start in range(0, len(unique_entries), batch_size):
-        batch = unique_entries[batch_start:batch_start + batch_size]
+        batch = unique_entries[batch_start : batch_start + batch_size]
         tasks = [fetch_one(t, u, d) for t, u, d in batch]
         results = await asyncio.gather(*tasks)
         for doc in results:
@@ -768,8 +792,9 @@ async def scrape_court_division(
                 downloaded_urls.add(doc.source_url)
 
         downloaded_in_batch = sum(1 for r in results if r is not None)
-        logger.info("  Batch %d-%d: downloaded %d judgments",
-                     batch_start + 1, batch_start + len(batch), downloaded_in_batch)
+        logger.info(
+            "  Batch %d-%d: downloaded %d judgments", batch_start + 1, batch_start + len(batch), downloaded_in_batch
+        )
 
     return docs
 
@@ -789,8 +814,14 @@ async def scrape_all_judgments(
     all_docs = []
     for division_slug, division_name, max_pages in COURT_DIVISIONS:
         docs = await scrape_court_division(
-            client, division_slug, division_name, max_pages,
-            limiter, downloaded_urls, stats, dry_run,
+            client,
+            division_slug,
+            division_name,
+            max_pages,
+            limiter,
+            downloaded_urls,
+            stats,
+            dry_run,
         )
         all_docs.extend(docs)
 
@@ -801,15 +832,20 @@ async def scrape_all_judgments(
             new_docs = [asdict(d) for d in all_docs if d.source_url not in existing_urls]
             save_manifest(existing + new_docs)
 
-    logger.info("Judgments complete: found=%d, downloaded=%d, skipped=%d, failed=%d",
-                stats.judgments_found, stats.judgments_downloaded,
-                stats.judgments_skipped, stats.judgments_failed)
+    logger.info(
+        "Judgments complete: found=%d, downloaded=%d, skipped=%d, failed=%d",
+        stats.judgments_found,
+        stats.judgments_downloaded,
+        stats.judgments_skipped,
+        stats.judgments_failed,
+    )
     return all_docs
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def run(args):
     """Main entry point."""
@@ -839,8 +875,12 @@ async def run(args):
                 for i, reg_meta in enumerate(reg_docs_to_scrape, 1):
                     logger.info("[%d/%d] Regulation: %s", i, len(reg_docs_to_scrape), reg_meta.title)
                     result = await scrape_regulation_page(
-                        client, reg_meta.source_url, reg_meta.title,
-                        limiter, downloaded_urls, stats,
+                        client,
+                        reg_meta.source_url,
+                        reg_meta.title,
+                        limiter,
+                        downloaded_urls,
+                        stats,
                     )
                     if result:
                         # Replace the placeholder with the real doc
@@ -851,17 +891,18 @@ async def run(args):
         # Phase 2: Court Judgments
         if not args.laws_only:
             judgment_docs = await scrape_all_judgments(
-                client, limiter, downloaded_urls, stats, args.dry_run,
+                client,
+                limiter,
+                downloaded_urls,
+                stats,
+                args.dry_run,
             )
             all_new_docs.extend(judgment_docs)
 
     # Save final manifest (merge with existing)
     if not args.dry_run:
         existing_urls = {d["source_url"] for d in existing_manifest}
-        new_doc_dicts = [
-            asdict(d) for d in all_new_docs
-            if d.source_url not in existing_urls and d.local_path
-        ]
+        new_doc_dicts = [asdict(d) for d in all_new_docs if d.source_url not in existing_urls and d.local_path]
         final_manifest = existing_manifest + new_doc_dicts
         save_manifest(final_manifest)
         logger.info("Saved manifest with %d total documents", len(final_manifest))
@@ -881,9 +922,15 @@ def print_summary(stats: ScrapeStats, new_docs: list[DocumentMeta], existing: li
     print("=" * 60)
     print(f"\n{'Category':<30} {'Found':>8} {'New':>8} {'Skipped':>8} {'Failed':>8}")
     print("-" * 62)
-    print(f"{'Laws':<30} {stats.laws_found:>8} {stats.laws_downloaded:>8} {stats.laws_skipped:>8} {stats.laws_failed:>8}")
-    print(f"{'Regulations':<30} {stats.regulations_found:>8} {stats.regulations_downloaded:>8} {stats.regulations_skipped:>8} {stats.regulations_failed:>8}")
-    print(f"{'Court Judgments':<30} {stats.judgments_found:>8} {stats.judgments_downloaded:>8} {stats.judgments_skipped:>8} {stats.judgments_failed:>8}")
+    print(
+        f"{'Laws':<30} {stats.laws_found:>8} {stats.laws_downloaded:>8} {stats.laws_skipped:>8} {stats.laws_failed:>8}"
+    )
+    print(
+        f"{'Regulations':<30} {stats.regulations_found:>8} {stats.regulations_downloaded:>8} {stats.regulations_skipped:>8} {stats.regulations_failed:>8}"
+    )
+    print(
+        f"{'Court Judgments':<30} {stats.judgments_found:>8} {stats.judgments_downloaded:>8} {stats.judgments_skipped:>8} {stats.judgments_failed:>8}"
+    )
     print("-" * 62)
     total_found = stats.laws_found + stats.regulations_found + stats.judgments_found
     total_new = stats.laws_downloaded + stats.regulations_downloaded + stats.judgments_downloaded

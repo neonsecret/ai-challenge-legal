@@ -64,10 +64,7 @@ _SSL_CTX = ssl.create_default_context()
 
 def _google_ai_key() -> str:
     """Google AI endpoint; set GOOGLE_AI_API_KEY or GOOGLE_AI_BEARER in env."""
-    return (
-            os.environ.get("GOOGLE_AI_API_KEY", "").strip()
-            or os.environ.get("GOOGLE_AI_BEARER", "").strip()
-    )
+    return os.environ.get("GOOGLE_AI_API_KEY", "").strip() or os.environ.get("GOOGLE_AI_BEARER", "").strip()
 
 
 def _llm_headers_base() -> dict:
@@ -148,16 +145,24 @@ _KW_DOC_INDEX: dict = {}  # {keyword: doc_id}
 
 # Court rules doc keywords
 _COURT_RULES_KWS = [
-    "rules of court", "rdc 2014", "acknowledgment of service",
-    "statement of truth", "witness statement", "default judgment",
-    "service of process", "part 1 citation", "overriding objective",
+    "rules of court",
+    "rdc 2014",
+    "acknowledgment of service",
+    "statement of truth",
+    "witness statement",
+    "default judgment",
+    "service of process",
+    "part 1 citation",
+    "overriding objective",
     "rules of the dubai international financial centre courts",
 ]
 
 # Keywords for identifying doc content
 _ROADMAP_KWS = [
-    "roadmap to the proposed changes", "roadmap to proposed",
-    "current law reference", "proposed law reference",
+    "roadmap to the proposed changes",
+    "roadmap to proposed",
+    "current law reference",
+    "proposed law reference",
 ]
 
 # ---------------------------------------------------------------------------
@@ -185,9 +190,7 @@ SCHEDULE_RE = re.compile(r"(?:Schedule)\s+(\d+)", re.IGNORECASE)
 PART_RE = re.compile(r"(?:Part)\s+(\d+)", re.IGNORECASE)
 APPENDIX_RE = re.compile(r"(?:Appendix|Annex)\s+(\d+)", re.IGNORECASE)
 
-CASE_HEADER_RE = re.compile(
-    r"(?:CFI|SCT|CA|ARB|ENF|DEC|TCD|ACT)\s*[\-]?\s*\d+\s*/\s*\d{4}", re.IGNORECASE
-)
+CASE_HEADER_RE = re.compile(r"(?:CFI|SCT|CA|ARB|ENF|DEC|TCD|ACT)\s*[\-]?\s*\d+\s*/\s*\d{4}", re.IGNORECASE)
 
 # Consultation Paper pattern
 CP_RE = re.compile(
@@ -207,11 +210,21 @@ DRA_ORDER_RE = re.compile(
 )
 
 _TRICK_KWS = [
-    "miranda rights", "fifth amendment", "fourth amendment",
-    "jury trial", "grand jury", "criminal conviction",
-    "habeas corpus", "bail bond", "death penalty", "capital punishment",
-    "prison sentence", "jail sentence", "custodial sentence",
-    "extradition", "double jeopardy",
+    "miranda rights",
+    "fifth amendment",
+    "fourth amendment",
+    "jury trial",
+    "grand jury",
+    "criminal conviction",
+    "habeas corpus",
+    "bail bond",
+    "death penalty",
+    "capital punishment",
+    "prison sentence",
+    "jail sentence",
+    "custodial sentence",
+    "extradition",
+    "double jeopardy",
 ]
 _CRIMINAL_RE = re.compile(
     r"\bcriminal\s+(?:law|charge|case|proceeding|jurisdiction)\b"
@@ -276,7 +289,8 @@ _FACTUAL_FIXES = {
 _LAW_NAME_PATTERNS = [
     re.compile(
         r"(?:the\s+)?(?:DIFC\s+)?Law\s+on\s+the\s+Application\s+of\s+Civil\s+and\s+Commercial\s+Laws(?:\s+in\s+the\s+DIFC)?",
-        re.IGNORECASE),
+        re.IGNORECASE,
+    ),
     re.compile(r"(?:the\s+)?(?:DIFC\s+)?Common\s+Reporting\s+Standard\s+Law(?:\s+\d{4})?", re.IGNORECASE),
     re.compile(r"(?:the\s+)?(?:DIFC\s+)?Limited\s+Liability\s+Partnership\s+Law(?:\s+\d{4})?", re.IGNORECASE),
     re.compile(r"(?:the\s+)?(?:DIFC\s+)?General\s+Partnership\s+Law(?:\s+\d{4})?", re.IGNORECASE),
@@ -301,18 +315,41 @@ _DIFC_LAW_NO_MAP = {
 }
 
 _META_INDICATORS = {
-    "date_of_issue": [r"date\s+of\s+issue", r"issue\s+date", r"earlier\s+issue",
-                      r"issued\s+(?:earlier|first|later|date)", r"earlier\s+(?:date\s+of\s+)?issue",
-                      r"which\s+(?:case|document)\s+(?:has|was)\s+(?:an?\s+)?earlier"],
-    "claim_value": [r"claim\s+value", r"monetary\s+claim", r"higher\s+monetary", r"claim\s+(?:value|amount)\s+in\s+AED",
-                    r"(?:larger|higher|bigger|greater)\s+(?:sum|amount|claim)", r"sum\s+claimed\s+by\s+the\s+claimant"],
-    "judge": [r"(?:who\s+is\s+)?(?:the\s+)?judge", r"same\s+judge", r"judge.*both", r"judge\s+(?:who\s+)?presid",
-              r"(?:any\s+)?judge\s+(?:in\s+common|common\s+to|involved\s+in\s+both)"],
-    "parties": [r"(?:claimant|defendant|parties)", r"same.*(?:entities|party|parties)",
-                r"named\s+as\s+a\s+main\s+party", r"(?:judgment\s+)?(?:creditor|debtor)",
-                r"(?:against\s+which|against\s+whom)\s+.*\benforcement\b"],
-    "outcome": [r"(?:result|outcome|ruling|decision)", r"(?:court\s+)?(?:decide|rule|order|grant|dismiss)",
-                r"application.*(?:granted|dismissed)"],
+    "date_of_issue": [
+        r"date\s+of\s+issue",
+        r"issue\s+date",
+        r"earlier\s+issue",
+        r"issued\s+(?:earlier|first|later|date)",
+        r"earlier\s+(?:date\s+of\s+)?issue",
+        r"which\s+(?:case|document)\s+(?:has|was)\s+(?:an?\s+)?earlier",
+    ],
+    "claim_value": [
+        r"claim\s+value",
+        r"monetary\s+claim",
+        r"higher\s+monetary",
+        r"claim\s+(?:value|amount)\s+in\s+AED",
+        r"(?:larger|higher|bigger|greater)\s+(?:sum|amount|claim)",
+        r"sum\s+claimed\s+by\s+the\s+claimant",
+    ],
+    "judge": [
+        r"(?:who\s+is\s+)?(?:the\s+)?judge",
+        r"same\s+judge",
+        r"judge.*both",
+        r"judge\s+(?:who\s+)?presid",
+        r"(?:any\s+)?judge\s+(?:in\s+common|common\s+to|involved\s+in\s+both)",
+    ],
+    "parties": [
+        r"(?:claimant|defendant|parties)",
+        r"same.*(?:entities|party|parties)",
+        r"named\s+as\s+a\s+main\s+party",
+        r"(?:judgment\s+)?(?:creditor|debtor)",
+        r"(?:against\s+which|against\s+whom)\s+.*\benforcement\b",
+    ],
+    "outcome": [
+        r"(?:result|outcome|ruling|decision)",
+        r"(?:court\s+)?(?:decide|rule|order|grant|dismiss)",
+        r"application.*(?:granted|dismissed)",
+    ],
 }
 
 _ORDINAL_RE = re.compile(r"(?:the\s+)?(first|second|third|last|title|cover)\s+page", re.IGNORECASE)
@@ -363,7 +400,7 @@ def _extract_case_ids(question):
         prefix, number, year = m.group(1), m.group(2), m.group(3)
         full_match = m.group(0)
         # Detect dash-format case IDs (e.g. ENF-022-2023): only dashes, no slash
-        is_dash_format = '-' in full_match and '/' not in full_match
+        is_dash_format = "-" in full_match and "/" not in full_match
         if is_dash_format:
             # Dash-format takes priority: try "ENF-022-2023" key before slash variants
             dash_key = f"{prefix.upper()}-{number.zfill(3)}-{year}"
@@ -409,15 +446,15 @@ def _extract_law_names(question):
     q_lower = question.lower()
 
     # Remove quoted strings before matching to avoid law names inside titles
-    q_no_quotes = re.sub(r'"[^"]*"', ' ', question)
-    q_no_quotes = re.sub(r"'[^']*'", ' ', q_no_quotes)
-    q_no_quotes = re.sub(r'[\u201C\u201D][^\u201C\u201D]*[\u201C\u201D]', ' ', q_no_quotes)
-    q_no_quotes = re.sub(r'[\u2018\u2019][^\u2018\u2019]*[\u2018\u2019]', ' ', q_no_quotes)
+    q_no_quotes = re.sub(r'"[^"]*"', " ", question)
+    q_no_quotes = re.sub(r"'[^']*'", " ", q_no_quotes)
+    q_no_quotes = re.sub(r"[\u201C\u201D][^\u201C\u201D]*[\u201C\u201D]", " ", q_no_quotes)
+    q_no_quotes = re.sub(r"[\u2018\u2019][^\u2018\u2019]*[\u2018\u2019]", " ", q_no_quotes)
     q_lower_no_quotes = q_no_quotes.lower()
 
     # "these Regulations" detection — when question is ABOUT the regulations themselves,
     # law names inside it are cross-references not routing targets. Suppress ONLY law routing.
-    _these_regs_q = bool(re.search(r'\bthese\s+Regulations?\b', question, re.IGNORECASE))
+    _these_regs_q = bool(re.search(r"\bthese\s+Regulations?\b", question, re.IGNORECASE))
 
     for pat in _LAW_NAME_PATTERNS:
         for m in pat.finditer(question):
@@ -468,8 +505,9 @@ def _extract_law_names(question):
     # Broad substring fallback against law_name_index keys (up to 2)
     _fallback_added = 0
     for key in sorted(
-            (k for k in LAW_NAME_IDX if k != "_meta"),
-            key=len, reverse=True,
+        (k for k in LAW_NAME_IDX if k != "_meta"),
+        key=len,
+        reverse=True,
     ):
         if key in q_lower_no_quotes and key not in found:
             if any(key in fk for fk in found):
@@ -482,8 +520,9 @@ def _extract_law_names(question):
     # Last resort: retry with quoted strings preserved
     if not found:
         for key in sorted(
-                (k for k in LAW_NAME_IDX if k != "_meta"),
-                key=len, reverse=True,
+            (k for k in LAW_NAME_IDX if k != "_meta"),
+            key=len,
+            reverse=True,
         ):
             if key in q_lower and key not in found:
                 found.append(key)
@@ -703,7 +742,7 @@ def _extract_court_orders(question):
     for m in CO_RE.finditer(question):
         num = int(m.group(1))
         year = int(m.group(2))
-        context = question[max(0, m.start() - 60):m.end()].lower()
+        context = question[max(0, m.start() - 60) : m.end()].lower()
         if "rules of court" in context:
             order_type = "rules_of_court"
         elif "small claims" in context:
@@ -755,7 +794,7 @@ def _route(question, answer_type):
         doc_ids = _get_case_doc_ids(cid)
         target_docs.extend(doc_ids)
         # Also try slash-format if dash-format — only if docs overlap
-        m = re.match(r'^([A-Z]+)-(\d+)-(\d+)$', cid)
+        m = re.match(r"^([A-Z]+)-(\d+)-(\d+)$", cid)
         if m:
             p, n, y = m.groups()
             dash_doc_ids = set(doc_ids)
@@ -777,7 +816,7 @@ def _route(question, answer_type):
 
     # Law-based routing
     # Suppress when question is about "these Regulations" with no other routing signals
-    _these_regs_q = bool(re.search(r'\bthese\s+Regulations?\b', question, re.IGNORECASE))
+    _these_regs_q = bool(re.search(r"\bthese\s+Regulations?\b", question, re.IGNORECASE))
     for law in law_names:
         did = _get_law_doc_id(law)
         # Skip law routing when question is "these Regulations" and no other docs found yet
@@ -798,9 +837,10 @@ def _route(question, answer_type):
                 meta_pages[did] = 1
 
     # Amendment question: need all law docs
-    if (target_docs and
-            (re.search(r"which\b.*\b(?:laws?|legislation)\b.*\bamend", q_lower) or
-             re.search(r"amend(?:ed|ing|ment)\b.*\bwhich\b.*\b(?:laws?|legislation)", q_lower))):
+    if target_docs and (
+        re.search(r"which\b.*\b(?:laws?|legislation)\b.*\bamend", q_lower)
+        or re.search(r"amend(?:ed|ing|ment)\b.*\bwhich\b.*\b(?:laws?|legislation)", q_lower)
+    ):
         for key, doc_id in LAW_NAME_IDX.items():
             if key != "_meta" and isinstance(doc_id, str) and doc_id not in target_docs:
                 target_docs.append(doc_id)
@@ -859,6 +899,7 @@ def _route(question, answer_type):
 # ---------------------------------------------------------------------------
 # Oracle (pure-Python mirrors of answerer_v3._lookup_oracle)
 # ---------------------------------------------------------------------------
+
 
 def _norm_judge(name):
     name = unicodedata.normalize("NFKC", name)
@@ -992,16 +1033,29 @@ def _lookup_oracle(question, answer_type):
     did = _get_primary_doc(cid)
 
     date_kws = (
-        "date of issue", "issued date", "issue date", "date of order",
-        "date of judgment", "when was", "when did", "when the court",
-        "date was", "dated",
+        "date of issue",
+        "issued date",
+        "issue date",
+        "date of order",
+        "date of judgment",
+        "when was",
+        "when did",
+        "when the court",
+        "date was",
+        "dated",
     )
     # Do NOT use oracle for "arbitration award rendered/issued" questions:
     # the metadata has the DIFC enforcement document date, not the award date.
-    _arb_award_kws = ("arbitration award rendered", "arbitral award rendered",
-                      "arbitration award issued", "arbitral award issued",
-                      "original arbitral award", "original arbitration award",
-                      "award was rendered", "award was issued")
+    _arb_award_kws = (
+        "arbitration award rendered",
+        "arbitral award rendered",
+        "arbitration award issued",
+        "arbitral award issued",
+        "original arbitral award",
+        "original arbitration award",
+        "award was rendered",
+        "award was issued",
+    )
     _is_arb_award_q = any(k in q for k in _arb_award_kws)
     if answer_type == "date" and any(k in q for k in date_kws) and not _is_arb_award_q:
         doi = meta.get("date_of_issue", {})
@@ -1010,8 +1064,11 @@ def _lookup_oracle(question, answer_type):
             return doi["value"], [{"doc_id": did, "page_numbers": [p]}] if did else []
 
     appeal_kws = ("original judgment", "original judge", "first instance", "trial judge", "lower court")
-    if answer_type in ("name", "names") and any(k in q for k in ("judge", "presided", "presiding")) and not any(
-            k in q for k in appeal_kws):
+    if (
+        answer_type in ("name", "names")
+        and any(k in q for k in ("judge", "presided", "presiding"))
+        and not any(k in q for k in appeal_kws)
+    ):
         j = meta.get("judge")
         judges = j if isinstance(j, list) else ([j] if isinstance(j, dict) else [])
         judges = [jj for jj in judges if isinstance(jj, dict) and jj.get("name")]
@@ -1022,6 +1079,7 @@ def _lookup_oracle(question, answer_type):
 
     counsel_kws = ("counsel", "lawyer", "attorney", "representative", "solicitor", "barrister", "advocate")
     if answer_type in ("name", "names") and not any(k in q for k in counsel_kws):
+
         def extract_party(party_val):
             if isinstance(party_val, list):
                 names = [it["name"] for it in party_val if isinstance(it, dict) and it.get("name")]
@@ -1049,6 +1107,7 @@ def _lookup_oracle(question, answer_type):
 # ---------------------------------------------------------------------------
 # Page retrieval from cache
 # ---------------------------------------------------------------------------
+
 
 def get_page_text(doc_id, page_num):
     doc_pages = PAGE_CACHE.get(doc_id, {})
@@ -1096,14 +1155,16 @@ _TYPE_INSTRUCTIONS = {
 
 def _call_gemini_stream(messages, max_tokens, t0):
     """SSE streaming call to Gemini via persistent connection."""
-    payload = json.dumps({
-        "model": GEMINI_MODEL,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "stream": True,
-        "stream_options": {"include_usage": True},
-        "temperature": 0.0,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "model": GEMINI_MODEL,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "stream": True,
+            "stream_options": {"include_usage": True},
+            "temperature": 0.0,
+        }
+    ).encode("utf-8")
 
     ttft_ms = None
     content_parts = []
@@ -1160,12 +1221,14 @@ def _call_gemini_stream(messages, max_tokens, t0):
 
 def _call_haiku_fallback(messages, max_tokens, t0):
     """Non-streaming Haiku fallback via persistent connection."""
-    payload = json.dumps({
-        "model": HAIKU_MODEL,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.0,
-    }).encode("utf-8")
+    payload = json.dumps(
+        {
+            "model": HAIKU_MODEL,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": 0.0,
+        }
+    ).encode("utf-8")
 
     try:
         resp = _http_post(_LLM_PATH, payload, _llm_headers_base(), stream=False)
@@ -1199,11 +1262,7 @@ def call_llm(question, answer_type, context):
         },
         {
             "role": "user",
-            "content": (
-                f"CONTEXT:\n{context[:ctx_limit]}\n\n"
-                f"Q: {question}\n\n"
-                f"{instr}"
-            ),
+            "content": (f"CONTEXT:\n{context[:ctx_limit]}\n\nQ: {question}\n\n{instr}"),
         },
     ]
 
@@ -1224,6 +1283,7 @@ def call_llm(question, answer_type, context):
 # ---------------------------------------------------------------------------
 # Answer parsing
 # ---------------------------------------------------------------------------
+
 
 def parse_answer(text, answer_type):
     text = text.strip()
@@ -1264,6 +1324,7 @@ def parse_answer(text, answer_type):
 # Trick question detection
 # ---------------------------------------------------------------------------
 
+
 def _is_trick(question):
     q = question.lower()
     if any(kw in q for kw in _TRICK_KWS):
@@ -1276,6 +1337,7 @@ def _is_trick(question):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _all_case_pages(case_ids, meta_pages=None):
     pages, seen = [], set()
@@ -1312,6 +1374,7 @@ def _make_result(qid, answer, chunk_pages, ttft_ms, total_ms, model_name, in_tok
 # Main question processor
 # ---------------------------------------------------------------------------
 
+
 def process_question(q):
     question = q["question"]
     atype = q["answer_type"]
@@ -1336,15 +1399,18 @@ def process_question(q):
             "There is no information on this question in the provided documents. "
             "The DIFC Courts operate exclusively as a civil and commercial jurisdiction "
             "and do not have criminal jurisdiction."
-            if atype == "free_text" else None
+            if atype == "free_text"
+            else None
         )
         return _make_result(qid, trick_ans, [], 1, elapsed(), "rule-based")
 
     # Fast path A: router metadata answer
     if isinstance(meta_answer, list) and atype == "name" and meta_answer and isinstance(meta_answer[0], str):
         meta_answer = meta_answer[0]
-    if meta_answer is not None and atype != "free_text" and not (
-            isinstance(meta_answer, list) and meta_answer and isinstance(meta_answer[0], dict)
+    if (
+        meta_answer is not None
+        and atype != "free_text"
+        and not (isinstance(meta_answer, list) and meta_answer and isinstance(meta_answer[0], dict))
     ):
         chunk_pages = _all_case_pages(case_ids, boost_pages)
         if not chunk_pages and target_docs:
@@ -1500,7 +1566,8 @@ def process_question(q):
     if not context_parts:
         fallback = (
             "The provided documents do not contain sufficient information to answer this question."
-            if atype == "free_text" else None
+            if atype == "free_text"
+            else None
         )
         # Still return chunk_pages for G even if no context
         return _make_result(qid, fallback, chunk_pages or [], elapsed(), elapsed(), "fallback")
@@ -1514,6 +1581,7 @@ def process_question(q):
 # ---------------------------------------------------------------------------
 # Runtime keyword index builder for unindexed docs
 # ---------------------------------------------------------------------------
+
 
 def _build_kw_doc_index():
     """Scan page_cache for docs not in any static index and build keyword routing."""
@@ -1535,12 +1603,8 @@ def _build_kw_doc_index():
             indexed.add(v)
 
     kw_idx = {}
-    case_pattern = re.compile(
-        r"(CFI|SCT|CA|ARB|ENF|DEC|TCD|ACT)\s*/?\s*(\d+)/(\d{4})", re.IGNORECASE
-    )
-    cp_pattern = re.compile(
-        r"CONSULTATION\s+PAPER\s+NO\.?\s*(\d+).*?(\d{4})", re.IGNORECASE | re.DOTALL
-    )
+    case_pattern = re.compile(r"(CFI|SCT|CA|ARB|ENF|DEC|TCD|ACT)\s*/?\s*(\d+)/(\d{4})", re.IGNORECASE)
+    cp_pattern = re.compile(r"CONSULTATION\s+PAPER\s+NO\.?\s*(\d+).*?(\d{4})", re.IGNORECASE | re.DOTALL)
 
     for doc_id, pages in PAGE_CACHE.items():
         if doc_id in indexed:
@@ -1584,9 +1648,7 @@ def _build_kw_doc_index():
             kw_idx[f"{prefix.lower()} {num}/{year}"] = doc_id
             # Register in CASE_META at runtime
             if canonical not in CASE_META:
-                CASE_META[canonical] = {
-                    "docs": [{"doc_id": doc_id, "metadata": {}}]
-                }
+                CASE_META[canonical] = {"docs": [{"doc_id": doc_id, "metadata": {}}]}
             continue
 
         # DIFC Law (new law not in law_name_index)
@@ -1638,6 +1700,7 @@ def _route_unindexed(question):
 # Concurrent runner
 # ---------------------------------------------------------------------------
 
+
 def run_all(questions, max_workers=4):
     """Run questions concurrently with ThreadPoolExecutor."""
     if max_workers <= 1:
@@ -1654,6 +1717,7 @@ def run_all(questions, max_workers=4):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     global CASE_META, ARTICLE_IDX, LAW_NAME_IDX, CP_IDX, CO_IDX, APPEAL_IDX, Q_DOC_MAP, PAGE_CACHE, _LAW_DOC_IDS
@@ -1761,7 +1825,8 @@ def main():
     max_ttft = max(ttfts) if ttfts else 0
 
     llm_ttfts = [
-        r["telemetry"]["timing"]["ttft_ms"] for r in results
+        r["telemetry"]["timing"]["ttft_ms"]
+        for r in results
         if r["telemetry"]["model_name"] in (GEMINI_MODEL, HAIKU_MODEL)
     ]
     avg_llm_ttft = sum(llm_ttfts) / len(llm_ttfts) if llm_ttfts else 0

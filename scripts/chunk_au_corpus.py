@@ -22,6 +22,7 @@ Each chunk:
 Usage:
     python3 scripts/chunk_au_corpus.py
 """
+
 from __future__ import annotations
 
 import json
@@ -48,22 +49,22 @@ OVERLAP_CHARS = 200
 
 # Matches section headers like "1 Short title", "6AA Meaning of responsible person",
 # "12A Act does not apply...", "267B Notice to..."
-SECTION_RE = re.compile(r'^(\d+[A-Z]{0,3})\s+([A-Z].*)')
+SECTION_RE = re.compile(r"^(\d+[A-Z]{0,3})\s+([A-Z].*)")
 
 # Structural headers — Part, Division, Chapter, Schedule, Subdivision
-PART_RE = re.compile(r'^(Part\s+\d+[A-Z]?(?:\.\d+)?)\s*[\u2014\u2013\-—–]\s*(.*)', re.IGNORECASE)
-CHAPTER_RE = re.compile(r'^(Chapter\s+\d+[A-Z]?)\s*[\u2014\u2013\-—–]\s*(.*)', re.IGNORECASE)
-DIVISION_RE = re.compile(r'^(Division\s+\d+[A-Z]?(?:\.\d+)?)\s*[\u2014\u2013\-—–]\s*(.*)', re.IGNORECASE)
-SUBDIVISION_RE = re.compile(r'^(Subdivision\s+[A-Z0-9]+(?:\.\d+)?)\s*[\u2014\u2013\-—–]\s*(.*)', re.IGNORECASE)
-SCHEDULE_RE = re.compile(r'^(Schedule\s+\d+[A-Z]?)\s*[\u2014\u2013\-—–]\s*(.*)', re.IGNORECASE)
+PART_RE = re.compile(r"^(Part\s+\d+[A-Z]?(?:\.\d+)?)\s*[\u2014\u2013\-—–]\s*(.*)", re.IGNORECASE)
+CHAPTER_RE = re.compile(r"^(Chapter\s+\d+[A-Z]?)\s*[\u2014\u2013\-—–]\s*(.*)", re.IGNORECASE)
+DIVISION_RE = re.compile(r"^(Division\s+\d+[A-Z]?(?:\.\d+)?)\s*[\u2014\u2013\-—–]\s*(.*)", re.IGNORECASE)
+SUBDIVISION_RE = re.compile(r"^(Subdivision\s+[A-Z0-9]+(?:\.\d+)?)\s*[\u2014\u2013\-—–]\s*(.*)", re.IGNORECASE)
+SCHEDULE_RE = re.compile(r"^(Schedule\s+\d+[A-Z]?)\s*[\u2014\u2013\-—–]\s*(.*)", re.IGNORECASE)
 
 # TOC detection — lines that are just section numbers and titles without content
-TOC_SECTION_RE = re.compile(r'^\d+[A-Z]{0,3}\s+[A-Z].*$')
+TOC_SECTION_RE = re.compile(r"^\d+[A-Z]{0,3}\s+[A-Z].*$")
 
 
 def _section_to_num(sec: str) -> int:
     """Extract numeric part from section string like '6AA' → 6."""
-    m = re.match(r'(\d+)', sec)
+    m = re.match(r"(\d+)", sec)
     return int(m.group(1)) if m else 0
 
 
@@ -88,7 +89,7 @@ def _detect_body_start(lines: list[str]) -> int:
             # Check if the next few lines contain actual section content (subsections)
             for j in range(i + 1, min(i + 20, len(lines))):
                 next_line = lines[j].strip()
-                if re.match(r'^\(\d+\)', next_line):  # subsection marker
+                if re.match(r"^\(\d+\)", next_line):  # subsection marker
                     return i
     return 0
 
@@ -117,16 +118,18 @@ def _split_into_sections(text: str, law_name: str) -> list[dict]:
         if current_lines:
             body = "\n".join(current_lines).strip()
             if body and len(body) >= MIN_CHUNK_CHARS:
-                sections.append({
-                    "section_num": current_section_num,
-                    "section_title": current_section_title,
-                    "chapter": current_chapter,
-                    "part": current_part,
-                    "division": current_division,
-                    "subdivision": current_subdivision,
-                    "schedule": current_schedule,
-                    "body": body,
-                })
+                sections.append(
+                    {
+                        "section_num": current_section_num,
+                        "section_title": current_section_title,
+                        "chapter": current_chapter,
+                        "part": current_part,
+                        "division": current_division,
+                        "subdivision": current_subdivision,
+                        "schedule": current_schedule,
+                        "body": body,
+                    }
+                )
 
     for line in lines:
         stripped = line.strip()
@@ -214,13 +217,13 @@ def _split_text_recursive(
         return [text]
 
     if _depth > 10:
-        return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
 
     split_patterns = [
-        r"(?=\n\(\d+\))",          # subsection marker: (1), (2)
-        r"(?=\n\([a-z]+\))",       # paragraph marker: (a), (b)
-        r"(?<=\.)\s+",             # sentence boundary
-        r"\n",                     # any newline
+        r"(?=\n\(\d+\))",  # subsection marker: (1), (2)
+        r"(?=\n\([a-z]+\))",  # paragraph marker: (a), (b)
+        r"(?<=\.)\s+",  # sentence boundary
+        r"\n",  # any newline
     ]
 
     parts = None
@@ -231,7 +234,7 @@ def _split_text_recursive(
             break
 
     if parts is None:
-        return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
 
     # Greedily accumulate parts into chunks within limit
     chunks: list[str] = []
@@ -301,29 +304,8 @@ def chunk_law_text(text: str, law_name: str, law_title: str) -> list[dict]:
         if len(body) <= body_budget:
             full_text = header + body
             if len(full_text) >= MIN_CHUNK_CHARS:
-                chunks.append({
-                    "doc_id": f"{law_name}_{chunk_idx:05d}",
-                    "page": _section_to_num(section["section_num"]) or (chunk_idx + 1),
-                    "text": full_text,
-                    "metadata": {
-                        "law": law_name,
-                        "title": law_title,
-                        "section": section["section_num"],
-                        "section_title": section["section_title"],
-                        "part": section["part"],
-                        "chapter": section["chapter"],
-                    },
-                })
-                chunk_idx += 1
-        else:
-            sub_chunks = _split_text_recursive(body, body_budget, OVERLAP_CHARS)
-            for i, sub in enumerate(sub_chunks):
-                if i > 0:
-                    full_text = header + continuation + sub
-                else:
-                    full_text = header + sub
-                if len(full_text) >= MIN_CHUNK_CHARS:
-                    chunks.append({
+                chunks.append(
+                    {
                         "doc_id": f"{law_name}_{chunk_idx:05d}",
                         "page": _section_to_num(section["section_num"]) or (chunk_idx + 1),
                         "text": full_text,
@@ -335,15 +317,43 @@ def chunk_law_text(text: str, law_name: str, law_title: str) -> list[dict]:
                             "part": section["part"],
                             "chapter": section["chapter"],
                         },
-                    })
+                    }
+                )
+                chunk_idx += 1
+        else:
+            sub_chunks = _split_text_recursive(body, body_budget, OVERLAP_CHARS)
+            for i, sub in enumerate(sub_chunks):
+                if i > 0:
+                    full_text = header + continuation + sub
+                else:
+                    full_text = header + sub
+                if len(full_text) >= MIN_CHUNK_CHARS:
+                    chunks.append(
+                        {
+                            "doc_id": f"{law_name}_{chunk_idx:05d}",
+                            "page": _section_to_num(section["section_num"]) or (chunk_idx + 1),
+                            "text": full_text,
+                            "metadata": {
+                                "law": law_name,
+                                "title": law_title,
+                                "section": section["section_num"],
+                                "section_title": section["section_title"],
+                                "part": section["part"],
+                                "chapter": section["chapter"],
+                            },
+                        }
+                    )
                     chunk_idx += 1
 
     # Verify no chunk exceeds the limit
     oversized = [c for c in chunks if len(c["text"]) > MAX_SECTION_CHARS]
     if oversized:
-        logger.warning("  %d chunks exceed %d chars (max: %d)",
-                       len(oversized), MAX_SECTION_CHARS,
-                       max(len(c["text"]) for c in oversized))
+        logger.warning(
+            "  %d chunks exceed %d chars (max: %d)",
+            len(oversized),
+            MAX_SECTION_CHARS,
+            max(len(c["text"]) for c in oversized),
+        )
 
     return chunks
 

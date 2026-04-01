@@ -43,6 +43,7 @@ class QueryRequest(BaseModel):
             if not pattern.match(doc_id):
                 raise ValueError(f"Invalid doc ID: {doc_id!r}")
         return v
+
     # Opaque session pointer — server loads history from DB using user_id+conversation_id.
     # Client never sends history content; only this UUID-like key.
     conversation_id: str | None = Field(
@@ -65,6 +66,7 @@ class SourceCitation(BaseModel):
     text: str | None = None  # source text for non-PDF corpora (Czech)
     url: str | None = None  # web source URL
     title: str | None = None  # web source title
+    chunk_id: str | None = None
 
 
 class QueryResponse(BaseModel):
@@ -96,6 +98,7 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
             text=cp.get("text"),
             url=cp.get("url"),
             title=cp.get("title"),
+            chunk_id=cp.get("chunk_id") or None,
         )
         for cp in result.get("chunk_pages", [])
     ]

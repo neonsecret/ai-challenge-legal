@@ -66,13 +66,11 @@ async def app_client(mock_pipeline_result):
     # reference that was imported at router module load time.
     # Using the service module path would not intercept the router's local binding.
     with patch(
-            "neolex.routers.query.run_single_question",
-            new_callable=AsyncMock,
-            return_value=mock_pipeline_result,
+        "neolex.routers.query.run_single_question",
+        new_callable=AsyncMock,
+        return_value=mock_pipeline_result,
     ):
-        async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
 
     # Clean up dependency override after test
@@ -89,6 +87,7 @@ def tmp_db_path(tmp_path) -> str:
 def override_db_path(tmp_db_path, monkeypatch):
     """Override settings.db_path so all DB operations in this test use tmp DB."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
     return tmp_db_path
 
@@ -100,10 +99,10 @@ async def seeded_db(tmp_db_path, monkeypatch):
     Returns: (db_path, raw_key, key_row_dict)
     """
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 
     from neolex.auth.keys import generate_key, hash_key, key_prefix
-
     from neolex.db.audit import get_audit_db
 
     raw_key = generate_key()
@@ -120,8 +119,11 @@ async def seeded_db(tmp_db_path, monkeypatch):
             scope="query",
         )
 
-    return tmp_db_path, raw_key, {"key_hash": k_hash, "key_prefix": k_prefix, "client_slug": "test-co",
-                                  "scope": "query"}
+    return (
+        tmp_db_path,
+        raw_key,
+        {"key_hash": k_hash, "key_prefix": k_prefix, "client_slug": "test-co", "scope": "query"},
+    )
 
 
 @pytest.fixture
@@ -157,11 +159,9 @@ async def authed_client(seeded_db):
     }
 
     with patch(
-            "neolex.routers.query.run_single_question",
-            new_callable=AsyncMock,
-            return_value=mock_result,
+        "neolex.routers.query.run_single_question",
+        new_callable=AsyncMock,
+        return_value=mock_result,
     ):
-        async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client, raw_key

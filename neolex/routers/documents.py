@@ -9,6 +9,7 @@ Routes:
     GET    /api/v1/documents/reindex/{job_id} — poll reindex status (DOC-05)
     GET    /api/v1/documents/{doc_id}/pdf — serve raw PDF for source viewer
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -19,8 +20,9 @@ import os
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,6 +58,7 @@ def _log_task_exception(task: asyncio.Task) -> None:
     if not task.cancelled() and task.exception():
         logger.error("Background task failed: %s", task.exception())
 
+
 # ---------------------------------------------------------------------------
 # Plan-based upload limits
 # ---------------------------------------------------------------------------
@@ -86,7 +89,10 @@ _PLAN_MAX_SIZE_MB: dict[str, int] = {
 
 
 async def _enforce_upload_limits(
-    user: User, content_size: int, db_audit, collection: str,
+    user: User,
+    content_size: int,
+    db_audit,
+    collection: str,
 ) -> None:
     """Check subscription plan limits for document uploads.
 
@@ -119,7 +125,7 @@ async def _enforce_upload_limits(
         raise HTTPException(
             status_code=429,
             detail=f"Document limit reached ({max_docs} documents on {status.title()} plan). "
-                   f"Upgrade your plan for more capacity.",
+            f"Upgrade your plan for more capacity.",
         )
 
     # Enforce per-corpus total size limit
@@ -130,7 +136,7 @@ async def _enforce_upload_limits(
         raise HTTPException(
             status_code=429,
             detail=f"Corpus size limit reached ({max_mb} MB on {status.title()} plan). "
-                   f"Delete existing documents or upgrade your plan.",
+            f"Delete existing documents or upgrade your plan.",
         )
 
     # Enforce corpora (collections) count limit
@@ -166,11 +172,11 @@ async def _enforce_upload_limits(
 
 @router.post("", response_model=DocumentUploadResponse, status_code=201)
 async def upload_document(
-        request: Request,
-        file: UploadFile = File(...),
-        collection: str = Form("My Documents"),
-        key_row: dict = Depends(get_api_key),
-        db: AsyncSession = Depends(get_db),
+    request: Request,
+    file: UploadFile = File(...),
+    collection: str = Form("My Documents"),
+    key_row: dict = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
     """Upload a PDF document into the client's private corpus.
 
@@ -338,11 +344,13 @@ async def upload_document(
 # POST /api/v1/documents/upload-zip
 # ---------------------------------------------------------------------------
 
-_VALID_ZIP_CONTENT_TYPES = frozenset({
-    "application/zip",
-    "application/x-zip-compressed",
-    "application/x-zip",
-})
+_VALID_ZIP_CONTENT_TYPES = frozenset(
+    {
+        "application/zip",
+        "application/x-zip-compressed",
+        "application/x-zip",
+    }
+)
 
 
 @router.post("/upload-zip", response_model=ZipUploadResponse, status_code=201)
@@ -374,9 +382,7 @@ async def upload_zip(
     # --- Validate content type ---
     ct = (file.content_type or "").lower()
     fname = (file.filename or "").lower()
-    if ct not in _VALID_ZIP_CONTENT_TYPES and not (
-        ct == "application/octet-stream" and fname.endswith(".zip")
-    ):
+    if ct not in _VALID_ZIP_CONTENT_TYPES and not (ct == "application/octet-stream" and fname.endswith(".zip")):
         raise HTTPException(
             status_code=415,
             detail=f"Unsupported file type '{ct}'. Expected a ZIP archive.",
@@ -397,14 +403,14 @@ async def upload_zip(
     if len(zip_bytes) > MAX_ZIP_BYTES:
         raise HTTPException(
             status_code=413,
-            detail=f"ZIP file too large ({len(zip_bytes)} bytes). "
-                   f"Maximum is {MAX_ZIP_BYTES // (1024 * 1024)} MB.",
+            detail=f"ZIP file too large ({len(zip_bytes)} bytes). Maximum is {MAX_ZIP_BYTES // (1024 * 1024)} MB.",
         )
 
     # --- Extract safely (runs sync I/O in thread) ---
     try:
         valid_pdfs, skipped_files = await asyncio.to_thread(
-            extract_zip_safely, zip_bytes,
+            extract_zip_safely,
+            zip_bytes,
         )
     except ValueError as exc:
         async with get_audit_db() as audit_db:
@@ -451,7 +457,7 @@ async def upload_zip(
         raise HTTPException(
             status_code=429,
             detail=f"Would exceed document limit ({max_docs} on {status.title()} plan). "
-                   f"You have {existing_count} documents and are trying to add {new_count}.",
+            f"You have {existing_count} documents and are trying to add {new_count}.",
         )
 
     max_size_bytes = _PLAN_MAX_SIZE_MB[status] * 1024 * 1024
@@ -460,7 +466,7 @@ async def upload_zip(
         raise HTTPException(
             status_code=429,
             detail=f"Would exceed corpus size limit ({max_mb} MB on {status.title()} plan). "
-                   f"Delete existing documents or upgrade your plan.",
+            f"Delete existing documents or upgrade your plan.",
         )
 
     # Enforce corpora (collections) count limit
@@ -495,15 +501,21 @@ async def upload_zip(
     for pdf_name, pdf_bytes in valid_pdfs:
         try:
             meta = await asyncio.to_thread(
-                save_upload, client_slug, pdf_name, pdf_bytes, collection,
+                save_upload,
+                client_slug,
+                pdf_name,
+                pdf_bytes,
+                collection,
             )
         except ValueError as exc:
-            file_results.append(ZipUploadResult(
-                filename=pdf_name,
-                status="error",
-                size_bytes=len(pdf_bytes),
-                error=str(exc),
-            ))
+            file_results.append(
+                ZipUploadResult(
+                    filename=pdf_name,
+                    status="error",
+                    size_bytes=len(pdf_bytes),
+                    error=str(exc),
+                )
+            )
             continue
 
         # Register in document DB
@@ -521,19 +533,23 @@ async def upload_zip(
 
         uploaded_doc_ids.append(meta["doc_id"])
         total_uploaded_bytes += meta["size_bytes"]
-        file_results.append(ZipUploadResult(
-            filename=meta["filename"],
-            doc_id=meta["doc_id"],
-            status="uploaded",
-            size_bytes=meta["size_bytes"],
-        ))
+        file_results.append(
+            ZipUploadResult(
+                filename=meta["filename"],
+                doc_id=meta["doc_id"],
+                status="uploaded",
+                size_bytes=meta["size_bytes"],
+            )
+        )
 
     # --- Append skipped files to results ---
     for skipped_name, reason in skipped_files:
-        file_results.append(ZipUploadResult(
-            filename=skipped_name,
-            status=reason,
-        ))
+        file_results.append(
+            ZipUploadResult(
+                filename=skipped_name,
+                status=reason,
+            )
+        )
 
     # --- Trigger ONE reindex job (only if we uploaded at least 1 file) ---
     job_id: str | None = None
@@ -591,7 +607,7 @@ async def upload_zip(
 
 @router.get("")
 async def list_documents(
-        key_row: dict = Depends(get_api_key),
+    key_row: dict = Depends(get_api_key),
 ):
     """List all documents uploaded by this client, with collection info from .meta files."""
     client_slug = key_row["client_slug"]
@@ -606,20 +622,22 @@ async def list_documents(
         try:
             meta = json.loads(meta_path.read_text())
             meta_collections[meta.get("doc_id", "")] = meta.get("collection", "My Documents")
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     docs = []
     for row in rows:
         doc_id = row["doc_id"]
-        docs.append({
-            "doc_id": doc_id,
-            "filename": row["filename"],
-            "size_bytes": row["size_bytes"],
-            "upload_ts": row["upload_ts"],
-            "indexed": bool(row["indexed"]),
-            "collection": meta_collections.get(doc_id, "My Documents"),
-        })
+        docs.append(
+            {
+                "doc_id": doc_id,
+                "filename": row["filename"],
+                "size_bytes": row["size_bytes"],
+                "upload_ts": row["upload_ts"],
+                "indexed": bool(row["indexed"]),
+                "collection": meta_collections.get(doc_id, "My Documents"),
+            }
+        )
 
     return {
         "client_slug": client_slug,
@@ -635,9 +653,9 @@ async def list_documents(
 
 @router.delete("/{doc_id}", response_model=DocumentDeleteResponse)
 async def delete_doc(
-        doc_id: str,
-        request: Request,
-        key_row: dict = Depends(get_api_key),
+    doc_id: str,
+    request: Request,
+    key_row: dict = Depends(get_api_key),
 ) -> DocumentDeleteResponse:
     """Delete a document from the client's corpus and trigger reindex."""
     # Validate doc_id format (same pattern as PDF endpoint)
@@ -709,8 +727,8 @@ async def delete_doc(
 
 @router.post("/reindex", response_model=ReindexJobResponse, status_code=202)
 async def trigger_reindex(
-        request: Request,
-        key_row: dict = Depends(get_api_key),
+    request: Request,
+    key_row: dict = Depends(get_api_key),
 ) -> ReindexJobResponse:
     """Manually trigger a reindex job for the client's corpus.
 
@@ -754,8 +772,8 @@ async def trigger_reindex(
 
 @router.get("/reindex/{job_id}", response_model=ReindexJobResponse)
 async def get_reindex_status(
-        job_id: str,
-        key_row: dict = Depends(get_api_key),
+    job_id: str,
+    key_row: dict = Depends(get_api_key),
 ) -> ReindexJobResponse:
     """Poll reindex job status. Returns 404 if job_id not found."""
     client_slug = key_row["client_slug"]
@@ -790,8 +808,8 @@ async def get_reindex_status(
 
 @router.patch("/collections/rename")
 async def rename_collection(
-        request: Request,
-        key_row: dict = Depends(get_api_key),
+    request: Request,
+    key_row: dict = Depends(get_api_key),
 ):
     """Rename a collection by updating the 'collection' field in all matching .meta files."""
     body = await request.json()
@@ -815,7 +833,7 @@ async def rename_collection(
             if current == old_name:
                 meta["collection"] = new_name
                 updates.append((meta_path, meta))
-        except Exception:
+        except Exception:  # nosec B110
             pass
 
     if not updates:
@@ -838,9 +856,9 @@ async def rename_collection(
 
 @router.patch("/{doc_id}/collection")
 async def move_document_collection(
-        doc_id: str,
-        request: Request,
-        key_row: dict = Depends(get_api_key),
+    doc_id: str,
+    request: Request,
+    key_row: dict = Depends(get_api_key),
 ):
     """Move a document to a different collection."""
     if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
@@ -872,6 +890,128 @@ async def move_document_collection(
 
 
 # ---------------------------------------------------------------------------
+# GET /api/v1/documents/chunk-context/{chunk_id}  — surrounding chunk context
+# ---------------------------------------------------------------------------
+
+_BUILTIN_CORPORA = frozenset({"difc", "czech", "uk", "au"})
+
+
+class ChunkContextItem(BaseModel):
+    chunk_id: str
+    page: int
+    text: str
+    is_target: bool
+
+
+class ChunkContextResponse(BaseModel):
+    doc_id: str
+    corpus: str
+    pdf_available: bool
+    chunks: list[ChunkContextItem]
+
+
+@router.get("/chunk-context/{chunk_id}")
+async def get_chunk_context(
+    chunk_id: str,
+    window: int = Query(default=1, ge=1, le=5),
+    key_row: dict = Depends(get_api_key),
+) -> ChunkContextResponse:
+    """Return surrounding chunks for a given chunk_id.
+
+    Finds the target chunk by its unique chunk_id, then returns `window`
+    chunks before and after it within the same document, ordered by page.
+    Works for all corpora (builtin and custom uploads).
+    """
+    from sqlalchemy import text as sa_text
+
+    from neolex.db.postgres import AsyncSessionLocal
+
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", chunk_id):
+        raise HTTPException(status_code=400, detail="Invalid chunk_id format")
+
+    client_slug = key_row["client_slug"]
+
+    async with AsyncSessionLocal() as session:
+        # 1. Find target chunk
+        result = await session.execute(
+            sa_text("""
+            SELECT chunk_id, doc_id, corpus, page, text
+            FROM chunks
+            WHERE chunk_id = :chunk_id
+        """),
+            {"chunk_id": chunk_id},
+        )
+        row = result.fetchone()
+
+        if row is None:
+            raise HTTPException(status_code=404, detail="Chunk not found")
+
+        target_doc_id = row.doc_id
+        target_corpus = row.corpus
+
+        # 2. Access control: builtin corpora accessible to all; custom must match client_slug
+        #    Return 404 (not 403) to avoid leaking chunk existence to other tenants.
+        if target_corpus not in _BUILTIN_CORPORA and target_corpus != client_slug:
+            raise HTTPException(status_code=404, detail="Chunk not found")
+
+        # 3. Fetch only the window of chunks around the target using SQL
+        #    Uses ROW_NUMBER() with numeric sort on chunk suffix to avoid
+        #    lexicographic mis-ordering (e.g. _10 before _2).
+        context_rows = await session.execute(
+            sa_text("""
+            WITH ranked AS (
+                SELECT chunk_id, page, text,
+                       ROW_NUMBER() OVER (
+                           ORDER BY page ASC,
+                                    CAST(regexp_replace(chunk_id, '^.*_', '') AS INTEGER) ASC
+                       ) AS rn
+                FROM chunks
+                WHERE doc_id = :doc_id AND corpus = :corpus
+            ),
+            target AS (
+                SELECT rn FROM ranked WHERE chunk_id = :chunk_id
+            )
+            SELECT r.chunk_id, r.page, r.text,
+                   (r.chunk_id = :chunk_id) AS is_target
+            FROM ranked r
+            CROSS JOIN target t
+            WHERE r.rn BETWEEN t.rn - :window AND t.rn + :window
+            ORDER BY r.rn ASC
+        """),
+            {
+                "doc_id": target_doc_id,
+                "corpus": target_corpus,
+                "chunk_id": chunk_id,
+                "window": window,
+            },
+        )
+        window_chunks = context_rows.fetchall()
+
+    # 4. Check PDF availability
+    corpus_pdf = Path(settings.data_dir) / "documents" / f"{target_doc_id}.pdf"
+    client_dir = client_docs_dir(client_slug)
+    pdf_available = corpus_pdf.exists() or any(client_dir.glob(f"{target_doc_id}_*.pdf"))
+
+    # Never expose tenant UUID — replace custom corpus with neutral label
+    public_corpus = target_corpus if target_corpus in _BUILTIN_CORPORA else "custom"
+
+    return ChunkContextResponse(
+        doc_id=target_doc_id,
+        corpus=public_corpus,
+        pdf_available=pdf_available,
+        chunks=[
+            ChunkContextItem(
+                chunk_id=s.chunk_id,
+                page=s.page,
+                text=s.text,
+                is_target=bool(s.is_target),
+            )
+            for s in window_chunks
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
 # GET /api/v1/documents/{doc_id}/pdf  — serve corpus PDF for source viewer
 # ---------------------------------------------------------------------------
 
@@ -884,8 +1024,8 @@ _PDF_CACHE_HEADERS = {
 
 @router.get("/{doc_id}/pdf")
 async def get_document_pdf(
-        doc_id: str,
-        key_row: dict = Depends(get_api_key),
+    doc_id: str,
+    key_row: dict = Depends(get_api_key),
 ) -> FileResponse:
     """Serve the raw PDF for a given doc_id.
 

@@ -3,6 +3,7 @@
 This is the ONLY neolex/ file that imports from arlc/.
 Do NOT import from arlc/ anywhere else in neolex/.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -11,18 +12,18 @@ from typing import Any
 
 
 async def run_single_question(
-        question: str,
-        answer_type: str,
-        semaphore: asyncio.Semaphore,
-        route_fn: Any,
-        retrieve_fn: Any,
-        answer_fn: Any,
-        on_status: Any = None,
-        on_token: Any = None,
-        corpus: str = "difc",
-        user_id: str | None = None,
-        conversation_id: str | None = None,
-        laws: list[str] | None = None,
+    question: str,
+    answer_type: str,
+    semaphore: asyncio.Semaphore,
+    route_fn: Any,
+    retrieve_fn: Any,
+    answer_fn: Any,
+    on_status: Any = None,
+    on_token: Any = None,
+    corpus: str = "difc",
+    user_id: str | None = None,
+    conversation_id: str | None = None,
+    laws: list[str] | None = None,
 ) -> dict:
     """Route one HTTP question through the arlc pipeline.
 
@@ -43,6 +44,7 @@ async def run_single_question(
 
     if user_id and conversation_id:
         from neolex.services.conversation import load_history
+
         history = await load_history(user_id, conversation_id)
         if history:
             # Enrich query for routing + retrieval: append condensed previous answers
@@ -59,12 +61,22 @@ async def run_single_question(
             _orig_answer_fn = answer_fn
 
             async def _answer_with_context(
-                enriched_q, at, pages, qid="",
-                metadata_answer=None, on_token=None, web_mode=False,
+                enriched_q,
+                at,
+                pages,
+                qid="",
+                metadata_answer=None,
+                on_token=None,
+                web_mode=False,
             ):
                 return await _orig_answer_fn(
-                    _orig_question, at, pages, qid,
-                    metadata_answer=metadata_answer, on_token=on_token, web_mode=web_mode,
+                    _orig_question,
+                    at,
+                    pages,
+                    qid,
+                    metadata_answer=metadata_answer,
+                    on_token=on_token,
+                    web_mode=web_mode,
                     conversation_history=_history,
                 )
 
@@ -78,7 +90,11 @@ async def run_single_question(
     if laws:
         question_data["laws"] = laws
     return await _process_question(
-        question_data, route_fn, retrieve_fn, answer_fn_to_use, semaphore,
+        question_data,
+        route_fn,
+        retrieve_fn,
+        answer_fn_to_use,
+        semaphore,
         on_status=on_status,
         on_token=on_token,
         corpus=corpus,

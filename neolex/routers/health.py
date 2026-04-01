@@ -4,6 +4,7 @@ GET /health        — full status including metrics (uptime, request count, avg
 GET /health/live   — liveness probe: always returns 200 (for load balancers)
 GET /health/ready  — readiness probe: checks pipeline + DB are ready (for k8s/ECS)
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,6 +40,7 @@ async def health_check(request: Request):
 
     # Pull metrics from main module (single-process counters).
     import neolex.main as _main
+
     if _main._latency_count > 0:
         round(_main._latency_sum_ms / _main._latency_count, 1)
 
@@ -91,6 +93,7 @@ async def readiness(request: Request):
     # Check DB connectivity with a minimal query.
     try:
         from neolex.db.audit import get_audit_db
+
         async with get_audit_db() as db:
             await db.ping()
     except Exception as exc:

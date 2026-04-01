@@ -38,8 +38,8 @@ CHECKPOINT_EVERY = 200
 
 
 def main():
-    from datasets import load_dataset as hf_load
     import faiss
+    from datasets import load_dataset as hf_load
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -65,24 +65,26 @@ def main():
         ckpt = np.load(str(ckpt_path), allow_pickle=True).item()
         start_from = ckpt["next_start"]
         all_embeddings = [ckpt["embeddings"]]
-        print(f"[build_bench_index] Resuming from passage {start_from}/{len(texts)} "
-              f"({start_from / len(texts) * 100:.1f}% done)")
+        print(
+            f"[build_bench_index] Resuming from passage {start_from}/{len(texts)} "
+            f"({start_from / len(texts) * 100:.1f}% done)"
+        )
     else:
         print("[build_bench_index] No checkpoint found, starting from scratch")
 
     if start_from < len(texts):
         # Step 3: Load embedder
         from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+
         embedder = LlamaServerEmbedder(batch_size=BATCH_SIZE)
-        print(f"[build_bench_index] Using llama-server at {embedder.url} "
-              f"(batch_size={BATCH_SIZE})")
+        print(f"[build_bench_index] Using llama-server at {embedder.url} (batch_size={BATCH_SIZE})")
 
         # Step 4: Embed remaining passages
         t0 = time.monotonic()
         print(f"[build_bench_index] Embedding {len(texts) - start_from} passages...")
 
         for start in range(start_from, len(texts), BATCH_SIZE):
-            batch = texts[start: start + BATCH_SIZE]
+            batch = texts[start : start + BATCH_SIZE]
             embs = embedder.embed_texts(batch)
             all_embeddings.append(embs)
             done = start + len(batch)
@@ -93,8 +95,10 @@ def main():
                 rate = newly_done / elapsed if elapsed > 0 else 0
                 eta_min = (len(texts) - done) / rate / 60 if rate > 0 else 0
                 pct = done / len(texts) * 100
-                print(f"[build_bench_index]   {done}/{len(texts)} ({pct:.1f}%) — "
-                      f"{elapsed:.0f}s, {rate:.2f} p/s, ETA {eta_min:.0f}min")
+                print(
+                    f"[build_bench_index]   {done}/{len(texts)} ({pct:.1f}%) — "
+                    f"{elapsed:.0f}s, {rate:.2f} p/s, ETA {eta_min:.0f}min"
+                )
 
             if done % CHECKPOINT_EVERY == 0 or done == len(texts):
                 combined = np.concatenate(all_embeddings, axis=0).astype(np.float32)
@@ -113,8 +117,7 @@ def main():
     faiss.write_index(index, str(faiss_path))
     print(f"[build_bench_index] FAISS index saved: {index.ntotal} vectors -> {faiss_path}")
 
-    metadata = [{"id": pid, "text": text, "title": title}
-                for pid, text, title in zip(ids, texts, titles)]
+    metadata = [{"id": pid, "text": text, "title": title} for pid, text, title in zip(ids, texts, titles)]
     with open(meta_path, "w") as f:
         json.dump(metadata, f)
     print(f"[build_bench_index] Metadata saved -> {meta_path}")

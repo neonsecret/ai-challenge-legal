@@ -21,10 +21,7 @@ def load_warmup():
 def test_law_article_question():
     """Law article questions should return non-null answer with at most 2 pages."""
     qs = load_warmup()
-    law_q = next(
-        q for q in qs
-        if "Article" in q.get("question", "") and "Employment" in q.get("question", "")
-    )
+    law_q = next(q for q in qs if "Article" in q.get("question", "") and "Employment" in q.get("question", ""))
     result = answer_question(law_q)
     assert result["answer"] is not None
     assert len(result["chunk_pages"]) >= 1

@@ -72,7 +72,15 @@ async def migrate() -> None:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
                 ON CONFLICT DO NOTHING
                 """,
-                id_, name, key_hash, key_prefix, client_slug, scope, bool(active), created_at, last_used,
+                id_,
+                name,
+                key_hash,
+                key_prefix,
+                client_slug,
+                scope,
+                bool(active),
+                created_at,
+                last_used,
             )
             count += 1
         totals["api_keys"] = count
@@ -90,7 +98,16 @@ async def migrate() -> None:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                 ON CONFLICT DO NOTHING
                 """,
-                id_, ts, key_hash, question, answer_text, sources_json, latency_ms, model_name, ip, user_agent,
+                id_,
+                ts,
+                key_hash,
+                question,
+                answer_text,
+                sources_json,
+                latency_ms,
+                model_name,
+                ip,
+                user_agent,
             )
             count += 1
         totals["queries"] = count
@@ -108,7 +125,13 @@ async def migrate() -> None:
                 VALUES ($1, $2, $3, $4, $5, $6, $7)
                 ON CONFLICT DO NOTHING
                 """,
-                id_, ts, key_hash, event_type, detail_json, ip, user_agent,
+                id_,
+                ts,
+                key_hash,
+                event_type,
+                detail_json,
+                ip,
+                user_agent,
             )
             count += 1
         totals["events"] = count
@@ -126,7 +149,9 @@ async def migrate() -> None:
                 VALUES ($1, $2, $3)
                 ON CONFLICT DO NOTHING
                 """,
-                bucket, window_start, request_count,
+                bucket,
+                window_start,
+                request_count,
             )
             count += 1
         totals["rate_limits"] = count
@@ -142,7 +167,12 @@ async def migrate() -> None:
                 VALUES ($1, $2, $3, $4, $5, $6)
                 ON CONFLICT DO NOTHING
                 """,
-                doc_id, client_slug, filename, size_bytes, upload_ts, bool(indexed),
+                doc_id,
+                client_slug,
+                filename,
+                size_bytes,
+                upload_ts,
+                bool(indexed),
             )
             count += 1
         totals["documents"] = count
@@ -158,7 +188,14 @@ async def migrate() -> None:
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                 ON CONFLICT DO NOTHING
                 """,
-                job_id, client_slug, status, progress, started_at, completed_at, error, doc_count,
+                job_id,
+                client_slug,
+                status,
+                progress,
+                started_at,
+                completed_at,
+                error,
+                doc_count,
             )
             count += 1
         totals["reindex_jobs"] = count

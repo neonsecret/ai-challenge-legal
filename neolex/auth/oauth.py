@@ -2,6 +2,7 @@
 
 Requires SessionMiddleware to be registered in main.py (for OAuth state CSRF).
 """
+
 from datetime import datetime, timezone
 
 from authlib.integrations.starlette_client import OAuth
@@ -77,12 +78,14 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
         # unverified accounts) AND Google confirms the email is verified.
         if not user.email_verified:
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Please verify your email before linking Google."},
             )
         if not userinfo.get("email_verified", False):
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=403,
                 content={"detail": "Google email is not verified."},
@@ -94,6 +97,7 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     else:
         # google_id mismatch — different Google account for same email
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             status_code=409,
             content={"detail": "This email is already linked to a different Google account."},
@@ -116,9 +120,7 @@ async def logout(request: Request, db: AsyncSession = Depends(get_db)):
 
     token = request.cookies.get(settings.session_cookie_name)
     if token:
-        result = await db.execute(
-            select(DBSession).where(DBSession.token_hash == hash_token(token))
-        )
+        result = await db.execute(select(DBSession).where(DBSession.token_hash == hash_token(token)))
         session = result.scalar_one_or_none()
         if session:
             await db.delete(session)
@@ -140,13 +142,15 @@ async def get_me(user: User = Depends(get_current_user)):
     """Return current user profile (used by frontend to check auth state)."""
     # Normalize legacy 'trial' to 'free' for the frontend
     effective_plan = "free" if user.subscription_status in ("free", "trial") else user.subscription_status
-    return JSONResponse({
-        "id": str(user.id),
-        "email": user.email,
-        "name": user.name,
-        "avatar_url": user.avatar_url,
-        "subscription_status": effective_plan,
-        "plan": effective_plan,
-        "monthly_queries_used": user.monthly_queries_used,
-        "max_corpora": user.max_corpora,
-    })
+    return JSONResponse(
+        {
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "avatar_url": user.avatar_url,
+            "subscription_status": effective_plan,
+            "plan": effective_plan,
+            "monthly_queries_used": user.monthly_queries_used,
+            "max_corpora": user.max_corpora,
+        }
+    )

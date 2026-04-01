@@ -6,6 +6,7 @@ so the frontend needs zero changes.
 
 This is the ONLY neolex/ file (besides pipeline.py) that imports from arlc/.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -60,8 +61,12 @@ async def run_agent_question(
         if accumulated_docs:
             same_corpus = [d for d in accumulated_docs if d.get("_corpus", corpus) == corpus]
             if len(same_corpus) < len(accumulated_docs):
-                logger.info("Dropped %d docs from different corpus (kept %d for %s)",
-                           len(accumulated_docs) - len(same_corpus), len(same_corpus), corpus)
+                logger.info(
+                    "Dropped %d docs from different corpus (kept %d for %s)",
+                    len(accumulated_docs) - len(same_corpus),
+                    len(same_corpus),
+                    corpus,
+                )
             accumulated_docs = same_corpus
 
     # Run the agent

@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import json
-import os
 import sys
 import threading
 import zipfile
@@ -57,6 +56,7 @@ DROPBOX_URL = "https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-
 # Data download
 # ---------------------------------------------------------------------------
 
+
 def download_dataset():
     """Download the LegalBench-RAG corpus and benchmarks from Dropbox."""
     if CORPUS_DIR.exists() and BENCHMARKS_DIR.exists():
@@ -66,9 +66,9 @@ def download_dataset():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     zip_path = DATA_DIR / "legalbenchrag_data.zip"
 
-    print(f"[legalbench-rag] Downloading dataset from Dropbox...")
-    print(f"  NOTE: If this fails, manually download from:")
-    print(f"  https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4")
+    print("[legalbench-rag] Downloading dataset from Dropbox...")
+    print("  NOTE: If this fails, manually download from:")
+    print("  https://www.dropbox.com/scl/fo/r7xfa5i3hdsbxex1w6amw/AID389Olvtm-ZLTKAPrw6k4")
     print(f"  and extract into {DATA_DIR}/")
 
     try:
@@ -77,7 +77,7 @@ def download_dataset():
         with open(zip_path, "wb") as f:
             for chunk in resp.iter_content(chunk_size=8192):
                 f.write(chunk)
-        print(f"[legalbench-rag] Extracting...")
+        print("[legalbench-rag] Extracting...")
         with zipfile.ZipFile(zip_path, "r") as z:
             z.extractall(DATA_DIR)
         zip_path.unlink()
@@ -116,11 +116,13 @@ def load_benchmarks() -> list[dict]:
 # Index loading
 # ---------------------------------------------------------------------------
 
+
 def _load_faiss():
     """Load FAISS index and metadata (cached)."""
     global _faiss_index, _faiss_metadata
     if _faiss_index is None:
         import faiss
+
         _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
         with open(FAISS_METADATA_PATH) as f:
             _faiss_metadata = json.load(f)
@@ -133,6 +135,7 @@ def _load_bm25():
     global _bm25_index, _bm25_ids
     if _bm25_index is None:
         import bm25s
+
         _bm25_index = bm25s.BM25.load(str(BM25_CACHE_DIR))
         with open(BM25_IDS_PATH) as f:
             _bm25_ids = json.load(f)
@@ -144,13 +147,10 @@ def _get_embedding_model():
     """Get embedding model (cached)."""
     global _embedding_model
     if _embedding_model is None:
-        from sentence_transformers import SentenceTransformer
         import torch
-        device = (
-            'mps' if torch.backends.mps.is_available()
-            else 'cuda' if torch.cuda.is_available()
-            else 'cpu'
-        )
+        from sentence_transformers import SentenceTransformer
+
+        device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
         _embedding_model = SentenceTransformer(
             "Snowflake/snowflake-arctic-embed-l-v2.0",
             device=device,
@@ -162,6 +162,7 @@ def _get_embedding_model():
 # ---------------------------------------------------------------------------
 # Retrieval adapter: map our pipeline output to character spans
 # ---------------------------------------------------------------------------
+
 
 def _extract_document_filter(query: str, metadata: list[dict]) -> set[int] | None:
     """Extract a document-level filter from the query.
@@ -177,11 +178,9 @@ def _extract_document_filter(query: str, metadata: list[dict]) -> set[int] | Non
     Returns a set of allowed chunk indices, or None to search all chunks.
     """
     import re
+
     # Pattern: "Consider X's ..." or "Consider the ... between X and Y; ..."
-    m = re.match(
-        r"Consider (?:the .+ between (.+?) and (.+?)|(.+?)'s .+?);",
-        query, re.IGNORECASE
-    )
+    m = re.match(r"Consider (?:the .+ between (.+?) and (.+?)|(.+?)'s .+?);", query, re.IGNORECASE)
     if not m:
         return None
 
@@ -218,8 +217,7 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
 
     if not has_faiss and not has_bm25:
         raise RuntimeError(
-            "No indexes found. Run build_index.py first:\n"
-            "  python benchmarks/legalbench-rag/build_index.py"
+            "No indexes found. Run build_index.py first:\n  python benchmarks/legalbench-rag/build_index.py"
         )
 
     _, metadata = _load_faiss()
@@ -237,9 +235,10 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
         # Use only the question part after the semicolon for semantic search
         # (party names add noise; the legal concept is what matters for ranking)
         semantic_query = query.split(";", 1)[-1].strip() if ";" in query else query
-        query_emb = model.encode(semantic_query, prompt_name='query', normalize_embeddings=True)
-        query_np = np.array([query_emb], dtype='float32')
+        query_emb = model.encode(semantic_query, prompt_name="query", normalize_embeddings=True)
+        query_np = np.array([query_emb], dtype="float32")
         import faiss
+
         faiss.normalize_L2(query_np)
         k_vec = min(200, index.ntotal)
         D, I = index.search(query_np, k_vec)
@@ -276,12 +275,14 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
         if chunk_idx >= len(metadata):
             continue
         entry = metadata[chunk_idx]
-        spans.append({
-            "file": entry["file"],
-            "start": entry["start"],
-            "end": entry["end"],
-            "text": entry["text"],
-        })
+        spans.append(
+            {
+                "file": entry["file"],
+                "start": entry["start"],
+                "end": entry["end"],
+                "text": entry["text"],
+            }
+        )
 
     return spans
 
@@ -289,6 +290,7 @@ def retrieve_for_query(query: str, corpus_dir: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------
+
 
 def compute_char_overlap(predicted_spans: list[dict], gold_spans: list[dict]) -> dict:
     """Compute character-level precision, recall, F1 for a single query.
@@ -325,6 +327,7 @@ def compute_char_overlap(predicted_spans: list[dict], gold_spans: list[dict]) ->
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="LegalBench-RAG evaluation")
     parser.add_argument("--dry-run", action="store_true", help="Download data only, skip LLM calls")
@@ -343,7 +346,7 @@ def main():
         return
 
     if args.limit > 0:
-        benchmarks = benchmarks[:args.limit]
+        benchmarks = benchmarks[: args.limit]
         print(f"[legalbench-rag] Limited to {args.limit} queries")
 
     # Step 3: Run retrieval and compute metrics
@@ -367,22 +370,26 @@ def main():
                 if isinstance(span, list) and len(span) == 2:
                     gold_spans.append({"file": file_path, "start": span[0], "end": span[1]})
                 else:
-                    gold_spans.append({
-                        "file": file_path,
-                        "start": snippet.get("start", snippet.get("char_start", 0)),
-                        "end": snippet.get("end", snippet.get("char_end", 0)),
-                    })
+                    gold_spans.append(
+                        {
+                            "file": file_path,
+                            "start": snippet.get("start", snippet.get("char_start", 0)),
+                            "end": snippet.get("end", snippet.get("char_end", 0)),
+                        }
+                    )
 
         print(f"  [{i + 1}/{len(benchmarks)}] {query[:80]}...")
         predicted_spans = retrieve_for_query(query, CORPUS_DIR)
         metrics = compute_char_overlap(predicted_spans, gold_spans)
 
-        results.append({
-            "query": query,
-            "num_predicted": len(predicted_spans),
-            "num_gold": len(gold_spans),
-            **metrics,
-        })
+        results.append(
+            {
+                "query": query,
+                "num_predicted": len(predicted_spans),
+                "num_gold": len(gold_spans),
+                **metrics,
+            }
+        )
         total_p += metrics["precision"]
         total_r += metrics["recall"]
         total_f1 += metrics["f1"]

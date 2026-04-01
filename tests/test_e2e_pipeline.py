@@ -105,7 +105,8 @@ def test_single_question(q, verbose=True):
     t0 = time.perf_counter()
     try:
         pages = retrieve_pages(
-            question, target_docs,
+            question,
+            target_docs,
             max_per_doc=2 if answer_type in ("free_text", "boolean", "name") else 1,
             max_total=3,
             answer_type=answer_type,
@@ -114,9 +115,11 @@ def test_single_question(q, verbose=True):
             "pages": len(pages),
             "time_ms": (time.perf_counter() - t0) * 1000,
             "page_details": [
-                {"doc": (p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", ""))[:12],
-                 "page": p.page_number if hasattr(p, "page_number") else p.get("page_number", 0),
-                 "score": round(p.score if hasattr(p, "score") else p.get("score", 0), 3)}
+                {
+                    "doc": (p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", ""))[:12],
+                    "page": p.page_number if hasattr(p, "page_number") else p.get("page_number", 0),
+                    "score": round(p.score if hasattr(p, "score") else p.get("score", 0), 3),
+                }
                 for p in pages[:5]
             ],
         }
@@ -141,11 +144,13 @@ def test_single_question(q, verbose=True):
         try:
             source_pages = []
             for p in pages:
-                source_pages.append({
-                    "doc_id": p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", ""),
-                    "page_number": p.page_number if hasattr(p, "page_number") else p.get("page_number", 0),
-                    "text": p.text if hasattr(p, "text") else p.get("text", ""),
-                })
+                source_pages.append(
+                    {
+                        "doc_id": p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", ""),
+                        "page_number": p.page_number if hasattr(p, "page_number") else p.get("page_number", 0),
+                        "text": p.text if hasattr(p, "text") else p.get("text", ""),
+                    }
+                )
             ar = asyncio.run(generate_answer(question, answer_type, source_pages))
             answer_value = ar.answer
             result["steps"]["answer"] = {

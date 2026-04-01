@@ -33,28 +33,30 @@ MIN_TEXT_RATIO = 0.80
 # Pattern to detect legal structure headings for hierarchy extraction
 _HEADING_PATTERNS = [
     # Level 0: Major divisions
-    (0, re.compile(r'^(PART|DIVISION)\s+[\dIVXivx]+', re.IGNORECASE | re.MULTILINE)),
+    (0, re.compile(r"^(PART|DIVISION)\s+[\dIVXivx]+", re.IGNORECASE | re.MULTILINE)),
     # Level 1: Chapters, Schedules, Appendices
-    (1, re.compile(r'^(Chapter|Schedule|Appendix)\s+[\dIVXivx]+', re.IGNORECASE | re.MULTILINE)),
+    (1, re.compile(r"^(Chapter|Schedule|Appendix)\s+[\dIVXivx]+", re.IGNORECASE | re.MULTILINE)),
     # Level 1: Articles (top-level)
-    (1, re.compile(r'^Article\s+\d+[\.\s]', re.IGNORECASE | re.MULTILINE)),
+    (1, re.compile(r"^Article\s+\d+[\.\s]", re.IGNORECASE | re.MULTILINE)),
     # Level 2: Sub-articles like Article 5(1)
-    (2, re.compile(r'^Article\s+\d+\(\d+\)', re.IGNORECASE | re.MULTILINE)),
+    (2, re.compile(r"^Article\s+\d+\(\d+\)", re.IGNORECASE | re.MULTILINE)),
     # Level 1: Sections
-    (1, re.compile(r'^Section\s+\d+', re.IGNORECASE | re.MULTILINE)),
+    (1, re.compile(r"^Section\s+\d+", re.IGNORECASE | re.MULTILINE)),
     # Level 1: Regulation/Rule
-    (1, re.compile(r'^(Regulation|Rule)\s+\d+', re.IGNORECASE | re.MULTILINE)),
+    (1, re.compile(r"^(Regulation|Rule)\s+\d+", re.IGNORECASE | re.MULTILINE)),
 ]
 
 # Strikethrough markers that Docling may produce
-_STRIKETHROUGH_RE = re.compile(r'~~.*?~~', re.DOTALL)
+_STRIKETHROUGH_RE = re.compile(r"~~.*?~~", re.DOTALL)
 
 
 def _detect_doc_type(text: str, filename: str) -> str:
     """Detect document type from text content and filename."""
     text_lower = text[:3000].lower()
-    if any(kw in text_lower for kw in
-           ["court of first instance", "court of appeal", "judgment", "claimant", "defendant", "respondent"]):
+    if any(
+        kw in text_lower
+        for kw in ["court of first instance", "court of appeal", "judgment", "claimant", "defendant", "respondent"]
+    ):
         return "case"
     if any(kw in text_lower for kw in ["consultation paper", "policy paper"]):
         return "consultation_paper"
@@ -67,10 +69,10 @@ def _detect_doc_type(text: str, filename: str) -> str:
 
 def _extract_title(text: str) -> str:
     """Extract document title from first few lines."""
-    lines = [ln.strip() for ln in text[:2000].split('\n') if ln.strip()]
+    lines = [ln.strip() for ln in text[:2000].split("\n") if ln.strip()]
     # Take the first non-empty line that looks like a title (not a page number, not too short)
     for line in lines[:10]:
-        if len(line) > 10 and not line.isdigit() and not line.startswith('#'):
+        if len(line) > 10 and not line.isdigit() and not line.startswith("#"):
             return line[:200]
     return lines[0][:200] if lines else "Untitled"
 
@@ -106,11 +108,13 @@ def _extract_structure(text: str, page_map: dict[int, int] | None = None) -> lis
                     else:
                         break
 
-            sections.append({
-                "heading": heading,
-                "page": page,
-                "level": level,
-            })
+            sections.append(
+                {
+                    "heading": heading,
+                    "page": page,
+                    "level": level,
+                }
+            )
 
     # Sort by position in document
     sections.sort(key=lambda s: (s["page"], s["level"]))
@@ -141,7 +145,7 @@ def _pymupdf_extract(pdf_path: Path) -> tuple[str, dict[int, int]]:
 
 def _remove_strikethrough(text: str) -> str:
     """Remove strikethrough text (legal amendment artifacts)."""
-    return _STRIKETHROUGH_RE.sub('', text)
+    return _STRIKETHROUGH_RE.sub("", text)
 
 
 def convert_pdf(pdf_path: Path, force: bool = False) -> tuple[Path, Path] | None:
@@ -182,12 +186,12 @@ def convert_pdf(pdf_path: Path, force: bool = False) -> tuple[Path, Path] | None
         # Build a simple page map from Docling output
         # Docling inserts page break markers or we can estimate from PyMuPDF page lengths
         docling_page_map = {}
-        if hasattr(result.document, 'pages') and result.document.pages:
+        if hasattr(result.document, "pages") and result.document.pages:
             offset = 0
             for i, page in enumerate(result.document.pages):
                 docling_page_map[offset] = i + 1
                 # Estimate offset from page content length
-                page_content = page.export_to_markdown() if hasattr(page, 'export_to_markdown') else ""
+                page_content = page.export_to_markdown() if hasattr(page, "export_to_markdown") else ""
                 offset += len(page_content) + 1
         else:
             # Fall back to PyMuPDF page map as estimate
@@ -196,7 +200,8 @@ def convert_pdf(pdf_path: Path, force: bool = False) -> tuple[Path, Path] | None
         # Check text coverage — if Docling output is >20% shorter, supplement
         if len(docling_text.strip()) < len(pymupdf_text.strip()) * MIN_TEXT_RATIO:
             print(
-                f"  WARNING: {doc_id[:16]}... Docling output {len(docling_text)} chars vs PyMuPDF {len(pymupdf_text)} chars — supplementing")
+                f"  WARNING: {doc_id[:16]}... Docling output {len(docling_text)} chars vs PyMuPDF {len(pymupdf_text)} chars — supplementing"
+            )
             # Append PyMuPDF sections that are missing
             docling_text = docling_text + "\n\n---\n<!-- PyMuPDF supplement for missing text -->\n" + pymupdf_text
             docling_page_map = pymupdf_page_map

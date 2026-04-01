@@ -9,6 +9,7 @@ Architecture:
 For v1 single-tenant, client_slug is always "default".
 For multi-tenant readiness, all operations are scoped by client_slug.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -63,13 +64,13 @@ async def get_job(job_id: str) -> dict | None:
 
 
 async def update_job(
-        job_id: str,
-        *,
-        status: str,
-        progress: float = 0.0,
-        completed_at: str | None = None,
-        error: str | None = None,
-        doc_count: int = 0,
+    job_id: str,
+    *,
+    status: str,
+    progress: float = 0.0,
+    completed_at: str | None = None,
+    error: str | None = None,
+    doc_count: int = 0,
 ) -> None:
     """Update job status in PostgreSQL."""
     from neolex.db.audit import get_audit_db
@@ -90,9 +91,7 @@ async def update_job(
 # ---------------------------------------------------------------------------
 
 
-def _run_indexing_sync(
-    client_slug: str, docs_dir: Path, index_dir: Path
-) -> tuple[int, int]:
+def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> tuple[int, int]:
     """Synchronous indexing implementation.
 
     Tries to use arlc/indexing/indexer.py if available.
@@ -125,19 +124,21 @@ def _run_indexing_sync(
         is_http_error = False
         try:
             import requests
+
             if isinstance(exc, requests.exceptions.HTTPError):
                 is_http_error = True
                 status_code = getattr(exc.response, "status_code", 0)
                 if status_code == 400:
                     logger.error(
-                        "llama-server returned 400 during indexing — "
-                        "chunk likely exceeds context window: %s", exc,
+                        "llama-server returned 400 during indexing — chunk likely exceeds context window: %s",
+                        exc,
                     )
                     chunks_skipped += 1
                 else:
                     logger.error(
                         "llama-server HTTP %d during indexing: %s",
-                        status_code, exc,
+                        status_code,
+                        exc,
                     )
         except ImportError:
             pass
@@ -164,10 +165,10 @@ _reindex_lock = threading.Lock()
 
 
 def _run_arlc_indexing(
-        client_slug: str,
-        docs_dir: Path,
-        index_dir: Path,
-        doc_ids: list[str],
+    client_slug: str,
+    docs_dir: Path,
+    index_dir: Path,
+    doc_ids: list[str],
 ) -> None:
     """Call arlc/indexing/indexer.py for real vector indexing into PostgreSQL.
 
@@ -198,9 +199,9 @@ def _run_arlc_indexing(
 
 
 async def run_reindex_job(
-        job_id: str,
-        client_slug: str,
-        app: "FastAPI | None" = None,
+    job_id: str,
+    client_slug: str,
+    app: "FastAPI | None" = None,
 ) -> None:
     """Async background task: runs indexing and updates job status.
 
@@ -217,9 +218,7 @@ async def run_reindex_job(
 
     try:
         # Run the CPU/IO-heavy indexing in a thread to avoid blocking the event loop
-        doc_count, chunks_skipped = await asyncio.to_thread(
-            _run_indexing_sync, client_slug, docs_dir, index_dir
-        )
+        doc_count, chunks_skipped = await asyncio.to_thread(_run_indexing_sync, client_slug, docs_dir, index_dir)
 
         status = "complete" if chunks_skipped == 0 else "complete_with_warnings"
         await update_job(
@@ -228,10 +227,7 @@ async def run_reindex_job(
             progress=1.0,
             completed_at=datetime.datetime.utcnow().isoformat(),
             doc_count=doc_count,
-            error=(
-                f"{chunks_skipped} chunk(s) skipped during embedding"
-                if chunks_skipped > 0 else None
-            ),
+            error=(f"{chunks_skipped} chunk(s) skipped during embedding" if chunks_skipped > 0 else None),
         )
 
         # Mark all documents as indexed in sidecar meta files + audit DB
@@ -282,6 +278,7 @@ def _hot_swap_index(app: "FastAPI", client_slug: str, index_dir: Path) -> None:
     """Evict in-memory chunk caches so the retriever sees newly indexed documents."""
     try:
         import arlc.retriever as _ret
+
         # Evict corpus-specific caches (get_chunks_by_doc, build_doc_index)
         if hasattr(_ret, "_corpus_chunk_cache") and client_slug in _ret._corpus_chunk_cache:
             del _ret._corpus_chunk_cache[client_slug]

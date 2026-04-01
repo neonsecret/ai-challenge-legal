@@ -74,6 +74,7 @@ logger = logging.getLogger(__name__)
 # Tool schema — what the LLM sees
 # ---------------------------------------------------------------------------
 
+
 @tool
 def search_legal_corpus(query: str) -> str:
     """Search the legal corpus for relevant legislation and case law.
@@ -93,6 +94,7 @@ def search_web(query: str) -> str:
 # ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
+
 
 def _build_llm_pair():
     """Build fast (Haiku) and full (Sonnet) LLMs for two-round strategy.
@@ -163,12 +165,15 @@ def build_agent_graph():
         model_name = LLM_MODEL if has_prior_ai else LLM_MODEL_FAST
         if hasattr(response, "tool_calls") and response.tool_calls:
             queries = [tc["args"].get("query", "") for tc in response.tool_calls]
-            logger.info("[agent] reason -> search [%s] (%d queries: %s)",
-                       model_name.split("-")[1], len(queries), [q[:60] for q in queries])
+            logger.info(
+                "[agent] reason -> search [%s] (%d queries: %s)",
+                model_name.split("-")[1],
+                len(queries),
+                [q[:60] for q in queries],
+            )
         else:
             content = response.content if isinstance(response.content, str) else str(response.content)[:100]
-            logger.info("[agent] reason -> answer [%s] (%d chars)",
-                       model_name.split("-")[1], len(content))
+            logger.info("[agent] reason -> answer [%s] (%d chars)", model_name.split("-")[1], len(content))
 
         return {"messages": [response]}
 
@@ -187,28 +192,31 @@ def build_agent_graph():
         for tc in last_msg.tool_calls:
             query = tc["args"].get("query", "")
             if not query:
-                results_msgs.append(ToolMessage(
-                    content="Error: empty query.",
-                    tool_call_id=tc["id"],
-                ))
+                results_msgs.append(
+                    ToolMessage(
+                        content="Error: empty query.",
+                        tool_call_id=tc["id"],
+                    )
+                )
                 continue
 
             # --- Web search tool ---
             if tc["name"] == "search_web":
                 # Check per-request internet toggle (defaults to True when absent)
                 if not state.get("use_internet", True):
-                    logger.info("[agent] web search skipped (use_internet=False): query=\"%s\"", query[:60])
-                    results_msgs.append(ToolMessage(
-                        content="Web search is disabled for this conversation. Use search_legal_corpus instead.",
-                        tool_call_id=tc["id"],
-                    ))
+                    logger.info('[agent] web search skipped (use_internet=False): query="%s"', query[:60])
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Web search is disabled for this conversation. Use search_legal_corpus instead.",
+                            tool_call_id=tc["id"],
+                        )
+                    )
                     continue
                 if on_status:
                     on_status("retrieving:searching the web")
                 web_results = execute_web_search(query)
                 content = format_web_results(web_results)
-                logger.info("[agent] web search: query=\"%s\" -> %d results",
-                           query[:60], len(web_results))
+                logger.info('[agent] web search: query="%s" -> %d results', query[:60], len(web_results))
                 results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
                 # Web results don't go into accumulated_docs (they're not corpus docs)
                 # but we track them separately for source citations
@@ -235,16 +243,19 @@ def build_agent_graph():
                 )
             except Exception:
                 logger.exception("[agent] search failed: query=%s", query[:80])
-                results_msgs.append(ToolMessage(
-                    content="Search failed. Try a different query.",
-                    tool_call_id=tc["id"],
-                ))
+                results_msgs.append(
+                    ToolMessage(
+                        content="Search failed. Try a different query.",
+                        tool_call_id=tc["id"],
+                    )
+                )
                 continue
 
             elapsed = time.monotonic() - t0
             doc_ids = [d["doc_id"] for d in new_docs]
-            logger.info("[agent] search: query=\"%s\" -> %d docs in %.1fs (%s)",
-                       query[:60], len(new_docs), elapsed, doc_ids)
+            logger.info(
+                '[agent] search: query="%s" -> %d docs in %.1fs (%s)', query[:60], len(new_docs), elapsed, doc_ids
+            )
 
             if on_status and new_docs:
                 on_status(f"retrieving:found {len(new_docs)} new sources")
@@ -263,9 +274,13 @@ def build_agent_graph():
             updated_docs = state["accumulated_docs"][overflow:] + new_docs_all
         else:
             updated_docs = combined
-        logger.info("[agent] accumulated: %d docs total (cap=%d, new=%d, evicted=%d)",
-                   len(updated_docs), MAX_ACCUMULATED_DOCS, len(new_docs_all),
-                   max(0, len(state["accumulated_docs"]) + len(new_docs_all) - MAX_ACCUMULATED_DOCS))
+        logger.info(
+            "[agent] accumulated: %d docs total (cap=%d, new=%d, evicted=%d)",
+            len(updated_docs),
+            MAX_ACCUMULATED_DOCS,
+            len(new_docs_all),
+            max(0, len(state["accumulated_docs"]) + len(new_docs_all) - MAX_ACCUMULATED_DOCS),
+        )
 
         # Merge web sources from this search with any from prior iterations, capped
         updated_web_sources = (state.get("web_sources", []) + new_web_sources)[:MAX_WEB_SOURCES]
@@ -300,10 +315,12 @@ def build_agent_graph():
         last_msg = state["messages"][-1]
         results = []
         for tc in last_msg.tool_calls:
-            results.append(ToolMessage(
-                content="Search limit reached. You MUST answer now using the documents already retrieved. Do NOT call any more tools.",
-                tool_call_id=tc["id"],
-            ))
+            results.append(
+                ToolMessage(
+                    content="Search limit reached. You MUST answer now using the documents already retrieved. Do NOT call any more tools.",
+                    tool_call_id=tc["id"],
+                )
+            )
         return {
             "messages": results,
             "search_count": state["search_count"] + len(last_msg.tool_calls),
@@ -313,9 +330,15 @@ def build_agent_graph():
     graph.add_node("search", search_node)
     graph.add_node("cap_reached", cap_reached_node)
     graph.set_entry_point("reason")
-    graph.add_conditional_edges("reason", should_continue, {
-        "search": "search", "cap_reached": "cap_reached", "end": END,
-    })
+    graph.add_conditional_edges(
+        "reason",
+        should_continue,
+        {
+            "search": "search",
+            "cap_reached": "cap_reached",
+            "end": END,
+        },
+    )
     graph.add_edge("search", "reason")
     graph.add_edge("cap_reached", "reason")
 
@@ -325,6 +348,7 @@ def build_agent_graph():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _convert_history(history: list[dict] | None) -> list[BaseMessage]:
     """Convert plain dicts to LangChain messages, capped at MAX_HISTORY_MESSAGES."""
@@ -365,6 +389,7 @@ def _extract_text(content) -> str:
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 async def run_agent_turn(
     question: str,
     corpus: str = "difc",
@@ -392,8 +417,13 @@ async def run_agent_turn(
     preamble — harmless to stream.  The frontend uses the ``answering:``
     status event to know when the real answer begins.
     """
-    logger.info("[agent] turn start: question=\"%s\", corpus=%s, laws=%s, prior_docs=%d",
-               question[:80], corpus, selected_laws, len(accumulated_docs or []))
+    logger.info(
+        '[agent] turn start: question="%s", corpus=%s, laws=%s, prior_docs=%d',
+        question[:80],
+        corpus,
+        selected_laws,
+        len(accumulated_docs or []),
+    )
 
     if on_status:
         on_status("agent:thinking")
@@ -452,12 +482,14 @@ async def run_agent_turn(
                 final_answer_parts.extend(current_reason_tokens)
                 logger.info(
                     "[agent] reason node #%d finished (final answer, %d tokens streamed)",
-                    reason_count, len(current_reason_tokens),
+                    reason_count,
+                    len(current_reason_tokens),
                 )
             else:
                 logger.info(
                     "[agent] reason node #%d finished (tool call, %d text tokens discarded)",
-                    reason_count, len(current_reason_tokens),
+                    reason_count,
+                    len(current_reason_tokens),
                 )
 
         # -- Stream text tokens from the LLM --
@@ -525,7 +557,12 @@ async def run_agent_turn(
 
     # Build sources
     sources = [
-        {"doc_id": d["doc_id"], "page_numbers": [d["page"]], "text": d.get("text", "")}
+        {
+            "doc_id": d["doc_id"],
+            "page_numbers": [d["page"]],
+            "text": d.get("text", ""),
+            "chunk_id": d.get("chunk_id", ""),
+        }
         for d in final_docs
     ]
 
@@ -536,13 +573,15 @@ async def run_agent_turn(
         if not url or url in seen_urls:
             continue
         seen_urls.add(url)
-        sources.append({
-            "doc_id": f"web:{url[:80]}",
-            "page_numbers": [],
-            "text": ws.get("snippet", ""),
-            "url": url,
-            "title": ws.get("title", ""),
-        })
+        sources.append(
+            {
+                "doc_id": f"web:{url[:80]}",
+                "page_numbers": [],
+                "text": ws.get("snippet", ""),
+                "url": url,
+                "title": ws.get("title", ""),
+            }
+        )
 
     # Post-processing: page verification (DIFC only).
     # Checks that cited pages actually support the answer.  If a page has
@@ -552,8 +591,12 @@ async def run_agent_turn(
     if final_answer and sources and corpus == "difc":
         sources = verify_agent_pages(question, final_answer, sources)
 
-    logger.info("[agent] turn complete: %d docs, %d searches, answer=%d chars",
-               len(final_docs), final_search_count, len(final_answer))
+    logger.info(
+        "[agent] turn complete: %d docs, %d searches, answer=%d chars",
+        len(final_docs),
+        final_search_count,
+        len(final_answer),
+    )
 
     if on_status:
         on_status("agent:done")

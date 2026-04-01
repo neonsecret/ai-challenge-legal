@@ -57,8 +57,9 @@ def download_corpus():
     print(f"[build_index] Corpus extracted to {DATA_DIR}")
 
 
-def chunk_text_rcts(text: str, file_path: str, chunk_size: int = CHUNK_SIZE,
-                    overlap: int = CHUNK_OVERLAP) -> list[dict]:
+def chunk_text_rcts(
+    text: str, file_path: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP
+) -> list[dict]:
     """Recursive Character Text Splitter — chunk text into overlapping segments.
 
     Returns list of {"file": str, "start": int, "end": int, "text": str}.
@@ -71,31 +72,33 @@ def chunk_text_rcts(text: str, file_path: str, chunk_size: int = CHUNK_SIZE,
         # Try to break at paragraph, then sentence, then word boundary
         if end < len(text):
             # Look for paragraph break
-            para_break = text.rfind('\n\n', start, end)
+            para_break = text.rfind("\n\n", start, end)
             if para_break > start + chunk_size // 2:
                 end = para_break + 2
             else:
                 # Look for sentence break
                 sent_break = max(
-                    text.rfind('. ', start, end),
-                    text.rfind('.\n', start, end),
+                    text.rfind(". ", start, end),
+                    text.rfind(".\n", start, end),
                 )
                 if sent_break > start + chunk_size // 2:
                     end = sent_break + 2
                 else:
                     # Look for word break
-                    word_break = text.rfind(' ', start, end)
+                    word_break = text.rfind(" ", start, end)
                     if word_break > start + chunk_size // 2:
                         end = word_break + 1
 
         chunk_text = text[start:end].strip()
         if chunk_text:
-            chunks.append({
-                "file": file_path,
-                "start": start,
-                "end": end,
-                "text": chunk_text,
-            })
+            chunks.append(
+                {
+                    "file": file_path,
+                    "start": start,
+                    "end": end,
+                    "text": chunk_text,
+                }
+            )
 
         start = end - overlap if end < len(text) else len(text)
 
@@ -125,9 +128,9 @@ def load_and_chunk_corpus() -> list[dict]:
 
 
 def main():
-    from sentence_transformers import SentenceTransformer
-    import faiss
     import bm25s
+    import faiss
+    from sentence_transformers import SentenceTransformer
 
     # Step 1: Download corpus
     download_corpus()
@@ -145,11 +148,8 @@ def main():
 
     print("[build_index] Loading embedding model...")
     import torch
-    device = (
-        'mps' if torch.backends.mps.is_available()
-        else 'cuda' if torch.cuda.is_available()
-        else 'cpu'
-    )
+
+    device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
     model = SentenceTransformer(
         "Snowflake/snowflake-arctic-embed-l-v2.0",
         device=device,
@@ -172,13 +172,15 @@ def main():
     # Save metadata (file, start, end, text for each chunk)
     metadata = []
     for i, chunk in enumerate(chunks):
-        metadata.append({
-            "chunk_id": i,
-            "file": chunk["file"],
-            "start": chunk["start"],
-            "end": chunk["end"],
-            "text": chunk["text"],
-        })
+        metadata.append(
+            {
+                "chunk_id": i,
+                "file": chunk["file"],
+                "start": chunk["start"],
+                "end": chunk["end"],
+                "text": chunk["text"],
+            }
+        )
     with open(INDEX_DIR / "faiss_metadata.json", "w") as f:
         json.dump(metadata, f)
     print(f"[build_index] FAISS index saved: {index.ntotal} vectors")

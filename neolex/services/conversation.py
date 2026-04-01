@@ -4,6 +4,7 @@ History is keyed by (user_id, conversation_id). The user_id comes from the
 authenticated HttpOnly cookie session — never from the client request body.
 Cross-user access is structurally impossible: every query filters by user_id.
 """
+
 from __future__ import annotations
 
 import json as _json
@@ -78,6 +79,7 @@ async def load_accumulated_docs(user_id: str, conversation_id: str) -> list[dict
             from sqlalchemy import select as _select
 
             from neolex.db.models import ConversationDocs
+
             result = await session.execute(
                 _select(ConversationDocs.docs_json).where(
                     ConversationDocs.conversation_id == cid,
@@ -110,6 +112,7 @@ async def save_accumulated_docs(
             from sqlalchemy import select as _select
 
             from neolex.db.models import ConversationDocs
+
             result = await session.execute(
                 _select(ConversationDocs).where(
                     ConversationDocs.conversation_id == cid,
@@ -120,11 +123,13 @@ async def save_accumulated_docs(
             if existing:
                 existing.docs_json = docs_str
             else:
-                session.add(ConversationDocs(
-                    conversation_id=cid,
-                    user_id=uid,
-                    docs_json=docs_str,
-                ))
+                session.add(
+                    ConversationDocs(
+                        conversation_id=cid,
+                        user_id=uid,
+                        docs_json=docs_str,
+                    )
+                )
             await session.commit()
     except Exception:
         logger.exception("Failed to save accumulated docs for conv=%s", conversation_id)
@@ -167,12 +172,14 @@ async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
                 title = row.first_user_content or "New chat"
                 if len(title) > 80:
                     title = title[:80] + "..."
-                conversations.append({
-                    "id": str(row.conversation_id),
-                    "title": title,
-                    "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None,
-                    "message_count": row.message_count,
-                })
+                conversations.append(
+                    {
+                        "id": str(row.conversation_id),
+                        "title": title,
+                        "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None,
+                        "message_count": row.message_count,
+                    }
+                )
             return conversations
     except Exception:
         logger.exception("Failed to list conversations for user=%s", user_id)
@@ -271,18 +278,22 @@ async def save_turn(
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
-            session.add(ConversationMessage(
-                conversation_id=cid,
-                user_id=uid,
-                role="user",
-                content=question[:2000],
-            ))
-            session.add(ConversationMessage(
-                conversation_id=cid,
-                user_id=uid,
-                role="assistant",
-                content=answer[:8000],
-            ))
+            session.add(
+                ConversationMessage(
+                    conversation_id=cid,
+                    user_id=uid,
+                    role="user",
+                    content=question[:2000],
+                )
+            )
+            session.add(
+                ConversationMessage(
+                    conversation_id=cid,
+                    user_id=uid,
+                    role="assistant",
+                    content=answer[:8000],
+                )
+            )
             await session.commit()
     except Exception:
         logger.exception("Failed to save conversation turn for conv=%s", conversation_id)
@@ -303,14 +314,16 @@ async def create_pipeline_job(
         uid = uuid.UUID(str(user_id))
         job_id = uuid.uuid4()
         async with AsyncSessionLocal() as session:
-            session.add(PipelineJob(
-                id=job_id,
-                user_id=uid,
-                conversation_id=conversation_id,
-                question=question[:2000],
-                status="processing",
-                status_detail="Processing...",
-            ))
+            session.add(
+                PipelineJob(
+                    id=job_id,
+                    user_id=uid,
+                    conversation_id=conversation_id,
+                    question=question[:2000],
+                    status="processing",
+                    status_detail="Processing...",
+                )
+            )
             await session.commit()
         return job_id
     except Exception:
@@ -332,11 +345,7 @@ async def update_pipeline_job_status(
         if status_detail is not None:
             values["status_detail"] = status_detail
         async with AsyncSessionLocal() as session:
-            await session.execute(
-                sql_update(PipelineJob)
-                .where(PipelineJob.id == job_id)
-                .values(**values)
-            )
+            await session.execute(sql_update(PipelineJob).where(PipelineJob.id == job_id).values(**values))
             await session.commit()
     except Exception:
         logger.exception("Failed to update pipeline job %s", job_id)

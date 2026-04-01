@@ -3,6 +3,7 @@
 Tables: api_keys, queries, events, rate_limits, documents, reindex_jobs.
 These are simple data tables — no relationships.
 """
+
 from sqlalchemy import Boolean, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 

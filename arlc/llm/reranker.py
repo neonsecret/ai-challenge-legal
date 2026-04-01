@@ -48,19 +48,23 @@ MAX_RETRIES = 2
 # LLM client — uses llm_router for backend selection
 # ---------------------------------------------------------------------------
 
+
 def _get_llm_fn():
     """Get the best available LLM call function."""
     try:
         from arlc.llm import router as llm_router
+
         return llm_router.call_llm
     except ImportError:
         from arlc.llm import anthropic_backend as llm_anthropic
+
         return llm_anthropic.call_llm
 
 
 # ---------------------------------------------------------------------------
 # Score normalization
 # ---------------------------------------------------------------------------
+
 
 def _sigmoid(x: float) -> float:
     """Map a cross-encoder logit to (0, 1) via sigmoid.
@@ -76,12 +80,13 @@ def _sigmoid(x: float) -> float:
 # Core reranking function
 # ---------------------------------------------------------------------------
 
+
 def llm_rerank_pages(
-        question: str,
-        pages: list,  # list[PageResult] — avoid circular import, duck-typed
-        llm_weight: float = LLM_WEIGHT,
-        model: str = LLM_RERANK_MODEL,
-        max_retries: int = MAX_RETRIES,
+    question: str,
+    pages: list,  # list[PageResult] — avoid circular import, duck-typed
+    llm_weight: float = LLM_WEIGHT,
+    model: str = LLM_RERANK_MODEL,
+    max_retries: int = MAX_RETRIES,
 ) -> list:
     """Rerank page results using LLM relevance scoring (Enterprise RAG winner approach).
 
@@ -133,9 +138,7 @@ def llm_rerank_pages(
         if len(page.text) > MAX_PAGE_TEXT_CHARS:
             text_preview += "…"
         candidate_blocks.append(
-            f"[CANDIDATE {i + 1}]\n"
-            f"Document: {page.doc_id} | Page {page.page_number}\n\n"
-            f"{text_preview}"
+            f"[CANDIDATE {i + 1}]\nDocument: {page.doc_id} | Page {page.page_number}\n\n{text_preview}"
         )
 
     candidates_block = "\n\n---\n\n".join(candidate_blocks)
@@ -162,7 +165,7 @@ def llm_rerank_pages(
         f"{candidates_block}\n\n"
         f"Output ONLY a valid JSON object mapping candidate number strings to float scores.\n"
         f"Example for {len(pages)} candidates: "
-        f"{{{', '.join(f'\"{i + 1}\": 0.5' for i in range(len(pages)))}}}\n\n"
+        f"{{{', '.join(f'"{i + 1}": 0.5' for i in range(len(pages)))}}}\n\n"
         f"JSON scores:"
     )
 
@@ -171,7 +174,10 @@ def llm_rerank_pages(
             time.monotonic()
             llm_fn = _get_llm_fn()
             content, _, elapsed_ms, _, _, _ = llm_fn(
-                "", prompt, max_tokens=128, model=model,
+                "",
+                prompt,
+                max_tokens=128,
+                model=model,
             )
             content = content.strip()
 
@@ -192,6 +198,7 @@ def llm_rerank_pages(
             # Rebuild PageResult list with updated combined scores
             # We import PageResult here to avoid circular imports at module level
             from arlc.retriever import PageResult
+
             result = [
                 PageResult(
                     doc_id=page.doc_id,
@@ -204,13 +211,14 @@ def llm_rerank_pages(
 
             # Detailed log for debugging
             ranking_summary = " | ".join(
-                f"{page.doc_id[:12]}:p{page.page_number} "
-                f"(ce={ce:.2f} llm={llm:.2f} comb={comb:.2f})"
+                f"{page.doc_id[:12]}:p{page.page_number} (ce={ce:.2f} llm={llm:.2f} comb={comb:.2f})"
                 for page, comb, ce, llm in scored
             )
             logger.info(
                 "[llm_rerank] %.0fms | %d candidates | %s",
-                elapsed_ms, len(pages), ranking_summary,
+                elapsed_ms,
+                len(pages),
+                ranking_summary,
             )
             print(
                 f"[llm_rerank] {elapsed_ms:.0f}ms | "
@@ -223,16 +231,20 @@ def llm_rerank_pages(
         except json.JSONDecodeError as e:
             logger.warning(
                 "[llm_rerank] JSON parse error (attempt %d/%d): %s",
-                attempt + 1, max_retries + 1, e,
+                attempt + 1,
+                max_retries + 1,
+                e,
             )
             if attempt < max_retries:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
         except anthropic.RateLimitError:
-            wait = 2 ** attempt * 3
+            wait = 2**attempt * 3
             logger.warning(
                 "[llm_rerank] Rate limit (attempt %d/%d), waiting %ds",
-                attempt + 1, max_retries + 1, wait,
+                attempt + 1,
+                max_retries + 1,
+                wait,
             )
             if attempt < max_retries:
                 time.sleep(wait)
@@ -240,10 +252,12 @@ def llm_rerank_pages(
         except anthropic.APIStatusError as e:
             logger.warning(
                 "[llm_rerank] API status error (attempt %d/%d): %s",
-                attempt + 1, max_retries + 1, e,
+                attempt + 1,
+                max_retries + 1,
+                e,
             )
             if attempt < max_retries:
-                time.sleep(2 ** attempt)
+                time.sleep(2**attempt)
 
         except Exception as e:
             logger.warning("[llm_rerank] Unexpected error: %s", e, exc_info=True)
@@ -259,6 +273,7 @@ def llm_rerank_pages(
 # JSON parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_scores(content: str, n_candidates: int) -> dict[int, float]:
     """Parse LLM score output into {1-indexed candidate: float} dict.
 
@@ -269,14 +284,14 @@ def _parse_scores(content: str, n_candidates: int) -> dict[int, float]:
       - Missing candidates (filled with 0.5 default)
     """
     # Extract JSON object from possibly verbose response
-    json_match = re.search(r'\{[^{}]+\}', content, re.DOTALL)
+    json_match = re.search(r"\{[^{}]+\}", content, re.DOTALL)
     if not json_match:
         raise json.JSONDecodeError("No JSON object found", content, 0)
 
     raw_json = json_match.group()
 
     # Fix trailing commas (common LLM mistake: {"1": 0.9, "2": 0.3,})
-    raw_json = re.sub(r',\s*([}\]])', r'\1', raw_json)
+    raw_json = re.sub(r",\s*([}\]])", r"\1", raw_json)
 
     parsed = json.loads(raw_json)
 

@@ -12,6 +12,7 @@ Checks performed:
 Design rationale: fail on startup rather than on the first request so that
 misconfigurations are caught immediately in CI/CD and not in production traffic.
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,10 +63,7 @@ def validate_startup(data_dir: str) -> None:
 
     # --- Check data/ directory ---
     if not os.path.isdir(data_dir):
-        errors.append(
-            f"data directory not found: '{data_dir}'. "
-            f"Set NEOLEX_DATA_DIR or run from the project root."
-        )
+        errors.append(f"data directory not found: '{data_dir}'. Set NEOLEX_DATA_DIR or run from the project root.")
     else:
         for fname in _REQUIRED_DATA_FILES:
             fpath = os.path.join(data_dir, fname)
@@ -75,6 +73,7 @@ def validate_startup(data_dir: str) -> None:
         # Check PostgreSQL chunks table has data
         try:
             from arlc.retriever import get_chunk_count
+
             difc_count = get_chunk_count("difc")
             if difc_count == 0:
                 errors.append(
@@ -91,6 +90,7 @@ def validate_startup(data_dir: str) -> None:
         llama_url = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")
         try:
             import urllib.request
+
             with urllib.request.urlopen(f"{llama_url}/health", timeout=3) as resp:
                 if resp.status != 200:
                     errors.append(f"llama-server at {llama_url} returned status {resp.status}.")
@@ -103,6 +103,7 @@ def validate_startup(data_dir: str) -> None:
 
     # --- Auth / billing secret validation ---
     from neolex.config import settings as _s
+
     if _s.auth_enabled:
         if not _s.jwt_secret_key:
             errors.append("JWT_SECRET_KEY must be set when AUTH_ENABLED=true")
@@ -126,17 +127,14 @@ def validate_startup(data_dir: str) -> None:
 
     # --- Emit warnings ---
     if warnings:
-        logger.warning(
-            "Optional env vars not set (non-fatal):\n%s", "\n".join(warnings)
-        )
+        logger.warning("Optional env vars not set (non-fatal):\n%s", "\n".join(warnings))
 
     # --- Fatal errors ---
     if errors:
         for err in errors:
             logger.critical("STARTUP VALIDATION FAILED: %s", err)
         sys.exit(
-            "Vitreon Legal startup failed. Fix the above errors and restart.\n"
-            + "\n".join(f"  - {e}" for e in errors)
+            "Vitreon Legal startup failed. Fix the above errors and restart.\n" + "\n".join(f"  - {e}" for e in errors)
         )
 
     logger.info(

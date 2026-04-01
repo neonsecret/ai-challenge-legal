@@ -75,9 +75,9 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
         # Reset if needed
         if user.monthly_queries_reset_at is None or user.monthly_queries_reset_at < month_start:
             await db.execute(
-                sql_update(User).where(User.id == user.id).values(
-                    monthly_queries_used=0, monthly_queries_reset_at=month_start
-                )
+                sql_update(User)
+                .where(User.id == user.id)
+                .values(monthly_queries_used=0, monthly_queries_reset_at=month_start)
             )
             await db.commit()
             await db.refresh(user)
@@ -105,9 +105,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if user.daily_queries_reset_at is None or user.daily_queries_reset_at < today_start:
         await db.execute(
-            sql_update(User).where(User.id == user.id).values(
-                daily_queries_used=0, daily_queries_reset_at=today_start
-            )
+            sql_update(User).where(User.id == user.id).values(daily_queries_used=0, daily_queries_reset_at=today_start)
         )
         await db.commit()
         await db.refresh(user)
@@ -115,8 +113,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     if daily_limit == UNLIMITED_DAILY_QUERIES:
         # Unlimited plan (enterprise) — atomic increment for tracking, no cap enforced
         await db.execute(
-            sql_update(User).where(User.id == user.id)
-            .values(daily_queries_used=User.daily_queries_used + 1)
+            sql_update(User).where(User.id == user.id).values(daily_queries_used=User.daily_queries_used + 1)
         )
         await db.commit()
     elif daily_limit > 0:
@@ -137,11 +134,11 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
 
 @router.post("/query", response_model=QueryResponse)
 async def query(
-        request: Request,
-        body: QueryRequest,
-        corpus: Annotated[str, Query(pattern=r"^[a-zA-Z0-9_-]{1,64}$")] = "difc",
-        key_row: dict = Depends(get_api_key),
-        db: AsyncSession = Depends(get_db),
+    request: Request,
+    body: QueryRequest,
+    corpus: Annotated[str, Query(pattern=r"^[a-zA-Z0-9_-]{1,64}$")] = "difc",
+    key_row: dict = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
 ) -> QueryResponse:
     """Submit a legal question and receive a grounded JSON answer with source citations.
 
@@ -155,6 +152,7 @@ async def query(
     if not user_id:
         raise HTTPException(status_code=401, detail="Authentication required")
     from sqlalchemy import select
+
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -216,10 +214,10 @@ async def query(
 
 @router.post("/query/stream")
 async def query_stream(
-        request: Request,
-        body: QueryRequest,
-        key_row: dict = Depends(get_api_key),
-        db: AsyncSession = Depends(get_db),
+    request: Request,
+    body: QueryRequest,
+    key_row: dict = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
 ):
     """Stream a legal query response as Server-Sent Events.
 
@@ -240,6 +238,7 @@ async def query_stream(
     if not user_id_str:
         raise HTTPException(status_code=401, detail="Authentication required")
     from sqlalchemy import select as sa_select
+
     result = await db.execute(sa_select(User).where(User.id == user_id_str))
     user = result.scalar_one_or_none()
     if not user:
@@ -269,6 +268,7 @@ async def query_stream(
         fail_pipeline_job,
         update_pipeline_job_status,
     )
+
     pipeline_job_id = await create_pipeline_job(user_id, conversation_id or "", body.question)
 
     async def event_generator():
@@ -308,7 +308,8 @@ async def query_stream(
                 future = asyncio.run_coroutine_threadsafe(coro, loop)
                 future.add_done_callback(
                     lambda f: logger.error("Background task failed: %s", f.exception())
-                    if not f.cancelled() and f.exception() else None
+                    if not f.cancelled() and f.exception()
+                    else None
                 )
 
         def _update_job_status_detail(stage: str):
@@ -321,9 +322,13 @@ async def query_stream(
                 coarse = "searching"
             elif "answer" in lower or "writing" in lower:
                 coarse = "answering"
-            _schedule_coroutine(update_pipeline_job_status(
-                pipeline_job_id, status=coarse, status_detail=stage,
-            ))
+            _schedule_coroutine(
+                update_pipeline_job_status(
+                    pipeline_job_id,
+                    status=coarse,
+                    status_detail=stage,
+                )
+            )
 
         def on_status(stage: str):
             # Extract structured progress (current/total) from status strings
@@ -428,30 +433,41 @@ async def query_stream(
         if isinstance(pipeline_error, (asyncio.TimeoutError, TimeoutError)):
             # Persist timeout status for frontend polling recovery
             if pipeline_job_id:
-                t = asyncio.create_task(fail_pipeline_job(
-                    pipeline_job_id, status="timeout",
-                    detail="Query timed out — the pipeline took too long to process this request.",
-                ))
+                t = asyncio.create_task(
+                    fail_pipeline_job(
+                        pipeline_job_id,
+                        status="timeout",
+                        detail="Query timed out — the pipeline took too long to process this request.",
+                    )
+                )
                 t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"error": "Pipeline timeout", "detail": "Query timed out. This may be due to heavy load or a complex search. Please try again."}),
+                    {
+                        "error": "Pipeline timeout",
+                        "detail": "Query timed out. This may be due to heavy load or a complex search. Please try again.",
+                    }
+                ),
             }
             return
         if pipeline_error is not None:
             logger.exception("SSE pipeline error: %s", pipeline_error)
             # Persist failure status for frontend polling recovery
             if pipeline_job_id:
-                t = asyncio.create_task(fail_pipeline_job(
-                    pipeline_job_id, status="failed",
-                    detail="An internal error occurred. Please try again.",
-                ))
+                t = asyncio.create_task(
+                    fail_pipeline_job(
+                        pipeline_job_id,
+                        status="failed",
+                        detail="An internal error occurred. Please try again.",
+                    )
+                )
                 t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"error": "Pipeline failed", "detail": "An internal error occurred. Please try again."}),
+                    {"error": "Pipeline failed", "detail": "An internal error occurred. Please try again."}
+                ),
             }
             return
 
@@ -474,37 +490,46 @@ async def query_stream(
             # Persist Q&A to conversation history (non-blocking, errors are swallowed)
             if user_id and conversation_id and response.answer is not None:
                 from neolex.services.conversation import save_turn
-                task = asyncio.create_task(save_turn(
-                    user_id=user_id,
-                    conversation_id=conversation_id,
-                    question=body.question,
-                    answer=str(response.answer),
-                ))
+
+                task = asyncio.create_task(
+                    save_turn(
+                        user_id=user_id,
+                        conversation_id=conversation_id,
+                        question=body.question,
+                        answer=str(response.answer),
+                    )
+                )
                 task.add_done_callback(_log_task_exception)
 
             # Persist completion to pipeline_jobs for frontend polling recovery
             if pipeline_job_id:
-                t = asyncio.create_task(complete_pipeline_job(
-                    pipeline_job_id,
-                    answer=str(response.answer) if response.answer is not None else "",
-                    sources_json=sources_json,
-                    confidence=response.confidence,
-                ))
+                t = asyncio.create_task(
+                    complete_pipeline_job(
+                        pipeline_job_id,
+                        answer=str(response.answer) if response.answer is not None else "",
+                        sources_json=sources_json,
+                        confidence=response.confidence,
+                    )
+                )
                 t.add_done_callback(_log_task_exception)
 
             yield {"event": "answer", "data": response.model_dump_json()}
         except Exception as exc:
             logger.exception("SSE post-processing error: %s", exc)
             if pipeline_job_id:
-                t = asyncio.create_task(fail_pipeline_job(
-                    pipeline_job_id, status="failed",
-                    detail="An internal error occurred. Please try again.",
-                ))
+                t = asyncio.create_task(
+                    fail_pipeline_job(
+                        pipeline_job_id,
+                        status="failed",
+                        detail="An internal error occurred. Please try again.",
+                    )
+                )
                 t.add_done_callback(_log_task_exception)
             yield {
                 "event": "error",
                 "data": json.dumps(
-                    {"error": "Failed to format response", "detail": "An internal error occurred. Please try again."}),
+                    {"error": "Failed to format response", "detail": "An internal error occurred. Please try again."}
+                ),
             }
             return
 
@@ -548,21 +573,25 @@ async def list_corpora(
                     pass
 
             for name, doc_ids in collections.items():
-                corpora.append({
-                    "name": name,
-                    "corpus_id": client_slug,
-                    "doc_ids": doc_ids,
-                    "doc_count": len(doc_ids),
-                    "indexed": True,
-                })
+                corpora.append(
+                    {
+                        "name": name,
+                        "corpus_id": client_slug,
+                        "doc_ids": doc_ids,
+                        "doc_count": len(doc_ids),
+                        "indexed": True,
+                    }
+                )
 
         # Fallback: no .meta files but chunks exist — show single entry
         if not corpora:
-            corpora.append({
-                "name": "My Documents",
-                "corpus_id": client_slug,
-                "indexed": True,
-            })
+            corpora.append(
+                {
+                    "name": "My Documents",
+                    "corpus_id": client_slug,
+                    "indexed": True,
+                }
+            )
 
     return {"corpora": corpora}
 
@@ -583,12 +612,20 @@ _LAWS_BY_CORPUS: dict[str, list[dict[str, str]]] = {
     ],
     "uk": [
         {"id": "companies_act_2006", "name": "Companies Act 2006", "name_en": "Companies Act 2006"},
-        {"id": "employment_rights_act_1996", "name": "Employment Rights Act 1996", "name_en": "Employment Rights Act 1996"},
+        {
+            "id": "employment_rights_act_1996",
+            "name": "Employment Rights Act 1996",
+            "name_en": "Employment Rights Act 1996",
+        },
         {"id": "consumer_rights_act_2015", "name": "Consumer Rights Act 2015", "name_en": "Consumer Rights Act 2015"},
         {"id": "equality_act_2010", "name": "Equality Act 2010", "name_en": "Equality Act 2010"},
         {"id": "data_protection_act_2018", "name": "Data Protection Act 2018", "name_en": "Data Protection Act 2018"},
         {"id": "insolvency_act_1986", "name": "Insolvency Act 1986", "name_en": "Insolvency Act 1986"},
-        {"id": "financial_services_markets_act_2000", "name": "FSMA 2000", "name_en": "Financial Services and Markets Act 2000"},
+        {
+            "id": "financial_services_markets_act_2000",
+            "name": "FSMA 2000",
+            "name_en": "Financial Services and Markets Act 2000",
+        },
         {"id": "limitation_act_1980", "name": "Limitation Act 1980", "name_en": "Limitation Act 1980"},
         {"id": "arbitration_act_1996", "name": "Arbitration Act 1996", "name_en": "Arbitration Act 1996"},
         {"id": "human_rights_act_1998", "name": "Human Rights Act 1998", "name_en": "Human Rights Act 1998"},
@@ -600,20 +637,56 @@ _LAWS_BY_CORPUS: dict[str, list[dict[str, str]]] = {
     ],
     "au": [
         {"id": "corporations_act_2001", "name": "Corporations Act 2001", "name_en": "Corporations Act 2001"},
-        {"id": "competition_consumer_act_2010", "name": "Competition and Consumer Act 2010", "name_en": "Competition and Consumer Act 2010"},
+        {
+            "id": "competition_consumer_act_2010",
+            "name": "Competition and Consumer Act 2010",
+            "name_en": "Competition and Consumer Act 2010",
+        },
         {"id": "fair_work_act_2009", "name": "Fair Work Act 2009", "name_en": "Fair Work Act 2009"},
         {"id": "privacy_act_1988", "name": "Privacy Act 1988", "name_en": "Privacy Act 1988"},
         {"id": "bankruptcy_act_1966", "name": "Bankruptcy Act 1966", "name_en": "Bankruptcy Act 1966"},
-        {"id": "insurance_contracts_act_1984", "name": "Insurance Contracts Act 1984", "name_en": "Insurance Contracts Act 1984"},
-        {"id": "asic_act_2001", "name": "ASIC Act 2001", "name_en": "Australian Securities and Investments Commission Act 2001"},
-        {"id": "superannuation_supervision_act_1993", "name": "Superannuation (SIS) Act 1993", "name_en": "Superannuation Industry (Supervision) Act 1993"},
-        {"id": "telecommunications_act_1997", "name": "Telecommunications Act 1997", "name_en": "Telecommunications Act 1997"},
-        {"id": "epbc_act_1999", "name": "EPBC Act 1999", "name_en": "Environment Protection and Biodiversity Conservation Act 1999"},
+        {
+            "id": "insurance_contracts_act_1984",
+            "name": "Insurance Contracts Act 1984",
+            "name_en": "Insurance Contracts Act 1984",
+        },
+        {
+            "id": "asic_act_2001",
+            "name": "ASIC Act 2001",
+            "name_en": "Australian Securities and Investments Commission Act 2001",
+        },
+        {
+            "id": "superannuation_supervision_act_1993",
+            "name": "Superannuation (SIS) Act 1993",
+            "name_en": "Superannuation Industry (Supervision) Act 1993",
+        },
+        {
+            "id": "telecommunications_act_1997",
+            "name": "Telecommunications Act 1997",
+            "name_en": "Telecommunications Act 1997",
+        },
+        {
+            "id": "epbc_act_1999",
+            "name": "EPBC Act 1999",
+            "name_en": "Environment Protection and Biodiversity Conservation Act 1999",
+        },
         {"id": "migration_act_1958", "name": "Migration Act 1958", "name_en": "Migration Act 1958"},
-        {"id": "income_tax_assessment_act_1997", "name": "Income Tax Assessment Act 1997", "name_en": "Income Tax Assessment Act 1997"},
-        {"id": "aml_ctf_act_2006", "name": "AML/CTF Act 2006", "name_en": "Anti-Money Laundering and Counter-Terrorism Financing Act 2006"},
+        {
+            "id": "income_tax_assessment_act_1997",
+            "name": "Income Tax Assessment Act 1997",
+            "name_en": "Income Tax Assessment Act 1997",
+        },
+        {
+            "id": "aml_ctf_act_2006",
+            "name": "AML/CTF Act 2006",
+            "name_en": "Anti-Money Laundering and Counter-Terrorism Financing Act 2006",
+        },
         {"id": "whs_act_2011", "name": "Work Health and Safety Act 2011", "name_en": "Work Health and Safety Act 2011"},
-        {"id": "consumer_credit_act_2009", "name": "Consumer Credit Act 2009", "name_en": "National Consumer Credit Protection Act 2009"},
+        {
+            "id": "consumer_credit_act_2009",
+            "name": "Consumer Credit Act 2009",
+            "name_en": "National Consumer Credit Protection Act 2009",
+        },
     ],
 }
 

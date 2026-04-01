@@ -64,6 +64,7 @@ def load_model(model_name: str, quantize: bool = False):
     if quantize and device == "cuda":
         try:
             from transformers import BitsAndBytesConfig
+
             bnb = BitsAndBytesConfig(load_in_4bit=True)
             kwargs["model_kwargs"] = {"quantization_config": bnb, "device_map": "auto"}
             print("[embedder] Using 4-bit quantization")
@@ -73,13 +74,15 @@ def load_model(model_name: str, quantize: bool = False):
         # Try flash attention for speed (optional, falls back gracefully)
         try:
             import flash_attn  # noqa: F401
+
             kwargs["model_kwargs"] = {"attn_implementation": "flash_attention_2", "device_map": "auto"}
             print("[embedder] Using flash_attention_2")
         except ImportError:
             pass
 
-    model = SentenceTransformer(model_name,
-                                device=device if "device_map" not in kwargs.get("model_kwargs", {}) else None, **kwargs)
+    model = SentenceTransformer(
+        model_name, device=device if "device_map" not in kwargs.get("model_kwargs", {}) else None, **kwargs
+    )
     params = sum(p.numel() for p in model.parameters())
     print(f"[embedder] Loaded in {time.time() - t0:.1f}s — {params / 1e6:.0f}M params")
     return model
@@ -127,11 +130,11 @@ def embed_queries(model, questions: list[str], model_name: str, batch_size: int 
 
 
 def compute_accuracy_at_k(
-        query_embs: np.ndarray,
-        passage_embs: np.ndarray,
-        gold_ids: list[str],
-        passage_ids: list[str],
-        ks: list[int] = (1, 3, 5, 10),
+    query_embs: np.ndarray,
+    passage_embs: np.ndarray,
+    gold_ids: list[str],
+    passage_ids: list[str],
+    ks: list[int] = (1, 3, 5, 10),
 ) -> dict[int, float]:
     """Compute Acc@k via brute-force cosine similarity."""
     print(f"[embedder] Computing similarities ({len(query_embs)} queries × {len(passage_embs)} passages)...")
@@ -139,7 +142,7 @@ def compute_accuracy_at_k(
 
     # Cosine similarity matrix [Q x P] — embeddings are already normalized
     scores = query_embs @ passage_embs.T  # [Q, P]
-    top10_indices = np.argsort(-scores, axis=1)[:, :max(ks)]
+    top10_indices = np.argsort(-scores, axis=1)[:, : max(ks)]
 
     elapsed = time.time() - t0
     print(f"[embedder] Similarity computed in {elapsed:.2f}s")
@@ -162,14 +165,16 @@ def compute_accuracy_at_k(
                 top1_id = passage_ids[top_indices[0]]
                 top1_score = float(scores[q_idx, top_indices[0]])
                 gold_score = float(scores[q_idx, gold_idx])
-                misses.append({
-                    "q_idx": q_idx,
-                    "gold_id": gold_id,
-                    "top1_id": top1_id,
-                    "top1_score": top1_score,
-                    "gold_score": gold_score,
-                    "rank": int(np.where(top_indices == gold_idx)[0][0]) + 1 if gold_idx in top_indices else -1,
-                })
+                misses.append(
+                    {
+                        "q_idx": q_idx,
+                        "gold_id": gold_id,
+                        "top1_id": top1_id,
+                        "top1_score": top1_score,
+                        "gold_score": gold_score,
+                        "rank": int(np.where(top_indices == gold_idx)[0][0]) + 1 if gold_idx in top_indices else -1,
+                    }
+                )
 
     n = len(gold_ids)
     return {k: results[k] / n for k in ks}, misses
@@ -202,7 +207,7 @@ def main():
     qa_ds = hf_load("isaacus/legal-rag-bench", "qa", split="test")
     qa_items = list(qa_ds)
     if args.limit:
-        qa_items = qa_items[:args.limit]
+        qa_items = qa_items[: args.limit]
     questions = [item["question"] for item in qa_items]
     gold_ids = [item["relevant_passage_id"] for item in qa_items]
     print(f"[embedder] Questions: {len(questions)}")

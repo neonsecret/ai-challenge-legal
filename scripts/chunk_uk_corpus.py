@@ -22,6 +22,7 @@ Each chunk:
 Usage:
     python3 scripts/chunk_uk_corpus.py
 """
+
 from __future__ import annotations
 
 import json
@@ -65,21 +66,21 @@ ACT_DISPLAY_NAMES: dict[str, str] = {
 
 # Primary section pattern: "Section N" or "N Title text"
 _SECTION_RE = re.compile(
-    r'^(?:'
-    r'(?:Section|SECTION)\s+(\d+[A-Z]?)'  # "Section 123" or "Section 123A"
-    r'|'
-    r'(\d+[A-Z]?)\s+[A-Z]'  # "123 General duty" (numbered section with title)
-    r')',
+    r"^(?:"
+    r"(?:Section|SECTION)\s+(\d+[A-Z]?)"  # "Section 123" or "Section 123A"
+    r"|"
+    r"(\d+[A-Z]?)\s+[A-Z]"  # "123 General duty" (numbered section with title)
+    r")",
     re.MULTILINE,
 )
 
 # Part/Chapter/Schedule structural markers
-_PART_RE = re.compile(r'^(?:Part|PART)\s+(\d+|[IVXLCDM]+)', re.MULTILINE | re.IGNORECASE)
-_CHAPTER_RE = re.compile(r'^(?:Chapter|CHAPTER)\s+(\d+|[IVXLCDM]+)', re.MULTILINE | re.IGNORECASE)
-_SCHEDULE_RE = re.compile(r'^(?:Schedule|SCHEDULE)\s+(\d+)', re.MULTILINE | re.IGNORECASE)
+_PART_RE = re.compile(r"^(?:Part|PART)\s+(\d+|[IVXLCDM]+)", re.MULTILINE | re.IGNORECASE)
+_CHAPTER_RE = re.compile(r"^(?:Chapter|CHAPTER)\s+(\d+|[IVXLCDM]+)", re.MULTILINE | re.IGNORECASE)
+_SCHEDULE_RE = re.compile(r"^(?:Schedule|SCHEDULE)\s+(\d+)", re.MULTILINE | re.IGNORECASE)
 
 # Subsection pattern for splitting large sections
-_SUBSECTION_RE = re.compile(r'(?=\n\(\d+\))')
+_SUBSECTION_RE = re.compile(r"(?=\n\(\d+\))")
 
 
 def _section_to_num(sec: str) -> int:
@@ -101,24 +102,26 @@ def _split_into_sections(text: str) -> list[dict]:
 
     # Pattern to detect section starts
     section_start_re = re.compile(
-        r'^(?:'
-        r'(?:Section|SECTION)\s+\d+[A-Z]?'
-        r'|'
-        r'\d+[A-Z]?\s+[A-Z][a-z]'  # "123 General duty..."
-        r')',
+        r"^(?:"
+        r"(?:Section|SECTION)\s+\d+[A-Z]?"
+        r"|"
+        r"\d+[A-Z]?\s+[A-Z][a-z]"  # "123 General duty..."
+        r")",
     )
 
     def flush():
         if current_lines:
             body = "\n".join(current_lines).strip()
             if body and len(body) >= MIN_CHUNK_CHARS:
-                sections.append({
-                    "section": current_section or "Preamble",
-                    "part": current_part,
-                    "chapter": current_chapter,
-                    "schedule": current_schedule,
-                    "body": body,
-                })
+                sections.append(
+                    {
+                        "section": current_section or "Preamble",
+                        "part": current_part,
+                        "chapter": current_chapter,
+                        "schedule": current_schedule,
+                        "body": body,
+                    }
+                )
 
     for line in lines:
         stripped = line.strip()
@@ -177,14 +180,14 @@ def _split_text_recursive(
 
     # Safety valve
     if _depth > 10:
-        return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
 
     # Try split strategies in order of preference
     split_patterns = [
-        r"(?=\n\(\d+\))",       # subsection marker (1), (2), (3)
-        r"\n\n",                 # paragraph boundary
-        r"(?<=\.)\s+",          # sentence boundary
-        r"\n",                   # any newline
+        r"(?=\n\(\d+\))",  # subsection marker (1), (2), (3)
+        r"\n\n",  # paragraph boundary
+        r"(?<=\.)\s+",  # sentence boundary
+        r"\n",  # any newline
     ]
 
     parts = None
@@ -195,7 +198,7 @@ def _split_text_recursive(
             break
 
     if parts is None:
-        return [text[i:i + max_chars] for i in range(0, len(text), max_chars)]
+        return [text[i : i + max_chars] for i in range(0, len(text), max_chars)]
 
     # Greedily accumulate parts into chunks
     chunks: list[str] = []
@@ -261,31 +264,8 @@ def chunk_law_text(text: str, law_name: str) -> list[dict]:
             full_text = prefix + body
 
             if len(full_text) >= MIN_CHUNK_CHARS:
-                chunks.append({
-                    "doc_id": f"{law_name}_{chunk_idx:05d}",
-                    "page": _section_to_num(section["section"]) or (chunk_idx + 1),
-                    "text": full_text,
-                    "metadata": {
-                        "law": law_name,
-                        "display_name": display_name,
-                        "section": section["section"],
-                        "part": section["part"],
-                        "chapter": section["chapter"],
-                        "schedule": section["schedule"],
-                    },
-                })
-                chunk_idx += 1
-        else:
-            # Large section — split at subsection boundaries
-            sub_chunks = _split_text_recursive(body, body_budget, OVERLAP_CHARS)
-            for i, sub in enumerate(sub_chunks):
-                if i > 0:
-                    full_text = prefix + continuation + sub
-                else:
-                    full_text = prefix + sub
-
-                if len(full_text) >= MIN_CHUNK_CHARS:
-                    chunks.append({
+                chunks.append(
+                    {
                         "doc_id": f"{law_name}_{chunk_idx:05d}",
                         "page": _section_to_num(section["section"]) or (chunk_idx + 1),
                         "text": full_text,
@@ -297,7 +277,34 @@ def chunk_law_text(text: str, law_name: str) -> list[dict]:
                             "chapter": section["chapter"],
                             "schedule": section["schedule"],
                         },
-                    })
+                    }
+                )
+                chunk_idx += 1
+        else:
+            # Large section — split at subsection boundaries
+            sub_chunks = _split_text_recursive(body, body_budget, OVERLAP_CHARS)
+            for i, sub in enumerate(sub_chunks):
+                if i > 0:
+                    full_text = prefix + continuation + sub
+                else:
+                    full_text = prefix + sub
+
+                if len(full_text) >= MIN_CHUNK_CHARS:
+                    chunks.append(
+                        {
+                            "doc_id": f"{law_name}_{chunk_idx:05d}",
+                            "page": _section_to_num(section["section"]) or (chunk_idx + 1),
+                            "text": full_text,
+                            "metadata": {
+                                "law": law_name,
+                                "display_name": display_name,
+                                "section": section["section"],
+                                "part": section["part"],
+                                "chapter": section["chapter"],
+                                "schedule": section["schedule"],
+                            },
+                        }
+                    )
                     chunk_idx += 1
 
     # Verify no chunk exceeds the limit
@@ -305,7 +312,9 @@ def chunk_law_text(text: str, law_name: str) -> list[dict]:
     if oversized:
         logger.warning(
             "%s: %d chunks exceed %d chars (max: %d). Truncating.",
-            law_name, len(oversized), MAX_SECTION_CHARS,
+            law_name,
+            len(oversized),
+            MAX_SECTION_CHARS,
             max(len(c["text"]) for c in oversized),
         )
         for c in oversized:

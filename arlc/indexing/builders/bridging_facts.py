@@ -76,7 +76,7 @@ def _find_entity_pages(entity: str, doc_id: str, graph: dict) -> list[int]:
 def _extract_entity_sentences(text: str, entity: str) -> list[str]:
     """Extract sentences from text that mention the entity."""
     # Split into sentences (rough but good enough for legal text)
-    sentences = re.split(r'(?<=[.;])\s+', text)
+    sentences = re.split(r"(?<=[.;])\s+", text)
     matches = []
     entity_lower = entity.lower()
     for sent in sentences:
@@ -131,9 +131,7 @@ def _build_snippet_from_pages(entity: str, doc_id: str, entity_pages: list[int],
     return snippet, sorted(pages_used)
 
 
-def generate_bridging_facts_deterministic(
-        bridge_entities: dict, graph: dict, aku_index: dict | None
-) -> list[dict]:
+def generate_bridging_facts_deterministic(bridge_entities: dict, graph: dict, aku_index: dict | None) -> list[dict]:
     """Generate bridging facts without LLM — concatenate relevant snippets."""
     facts = []
     for entity, doc_ids in bridge_entities.items():
@@ -166,19 +164,19 @@ def generate_bridging_facts_deterministic(
 
         if len(doc_snippets) >= 2:
             combined = f"{entity} — " + " || ".join(doc_snippets)
-            facts.append({
-                "fact": combined,
-                "source_docs": doc_ids,
-                "source_pages": source_pages,
-                "bridge_entity": entity,
-            })
+            facts.append(
+                {
+                    "fact": combined,
+                    "source_docs": doc_ids,
+                    "source_pages": source_pages,
+                    "bridge_entity": entity,
+                }
+            )
 
     return facts
 
 
-def generate_bridging_facts_llm(
-        bridge_entities: dict, graph: dict, aku_index: dict | None
-) -> list[dict]:
+def generate_bridging_facts_llm(bridge_entities: dict, graph: dict, aku_index: dict | None) -> list[dict]:
     """Generate bridging facts using Haiku for natural language synthesis."""
     import anthropic
 
@@ -215,9 +213,7 @@ def generate_bridging_facts_llm(
             continue
 
         # Build prompt for Haiku
-        snippets_text = "\n".join(
-            f"Document {s['doc_id'][:16]}:\n{s['snippet']}" for s in doc_snippets
-        )
+        snippets_text = "\n".join(f"Document {s['doc_id'][:16]}:\n{s['snippet']}" for s in doc_snippets)
         prompt = (
             f"Given the following text snippets about '{entity}' from different legal documents, "
             f"write ONE concise bridging fact (1-2 sentences) that connects the information across documents. "
@@ -234,16 +230,16 @@ def generate_bridging_facts_llm(
         except Exception as e:
             print(f"  LLM error for entity '{entity}': {e}", file=sys.stderr)
             # Fallback to deterministic
-            fact_text = f"{entity} — " + " || ".join(
-                f"[{s['doc_id'][:16]}]: {s['snippet']}" for s in doc_snippets
-            )
+            fact_text = f"{entity} — " + " || ".join(f"[{s['doc_id'][:16]}]: {s['snippet']}" for s in doc_snippets)
 
-        facts.append({
-            "fact": fact_text,
-            "source_docs": doc_ids,
-            "source_pages": source_pages,
-            "bridge_entity": entity,
-        })
+        facts.append(
+            {
+                "fact": fact_text,
+                "source_docs": doc_ids,
+                "source_pages": source_pages,
+                "bridge_entity": entity,
+            }
+        )
 
     return facts
 
@@ -270,7 +266,7 @@ def main():
         print("  AKU index not found — using raw page text fallback")
 
     if args.max_entities > 0:
-        limited = dict(list(bridge_entities.items())[:args.max_entities])
+        limited = dict(list(bridge_entities.items())[: args.max_entities])
         bridge_entities = limited
         print(f"  Limited to {len(bridge_entities)} entities")
 

@@ -62,6 +62,7 @@ _reranker_lock = threading.Lock()
 # Dataset loading
 # ---------------------------------------------------------------------------
 
+
 def load_dataset():
     """Load the Legal RAG Bench dataset from HuggingFace."""
     from datasets import load_dataset as hf_load
@@ -88,11 +89,13 @@ def build_corpus_index(corpus_ds) -> dict:
 # Index loading
 # ---------------------------------------------------------------------------
 
+
 def _load_faiss():
     """Load FAISS index and metadata (cached)."""
     global _faiss_index, _faiss_metadata, _faiss_metadata_dict
     if _faiss_index is None:
         import faiss
+
         _faiss_index = faiss.read_index(str(FAISS_INDEX_PATH))
         with open(FAISS_METADATA_PATH) as f:
             _faiss_metadata = json.load(f)
@@ -106,6 +109,7 @@ def _load_bm25():
     global _bm25_index, _bm25_ids
     if _bm25_index is None:
         import bm25s
+
         _bm25_index = bm25s.BM25.load(str(BM25_CACHE_DIR))
         with open(BM25_IDS_PATH) as f:
             _bm25_ids = json.load(f)
@@ -119,15 +123,13 @@ def _get_embedding_model():
     if _embedding_model is None:
         if _EMBEDDING_BACKEND == "llama-server":
             from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+
             _embedding_model = LlamaServerEmbedder()
         else:
-            from sentence_transformers import SentenceTransformer
             import torch
-            device = (
-                'mps' if torch.backends.mps.is_available()
-                else 'cuda' if torch.cuda.is_available()
-                else 'cpu'
-            )
+            from sentence_transformers import SentenceTransformer
+
+            device = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
             _embedding_model = SentenceTransformer(
                 "Snowflake/snowflake-arctic-embed-l-v2.0",
                 device=device,
@@ -149,8 +151,7 @@ def _is_qwen_reranker() -> bool:
 
 def _format_reranker_pairs(question: str, candidates: list[dict]) -> list[tuple[str, str]]:
     """Build (query, doc) pairs with Qwen3 instruction prefix when applicable."""
-    query = (f"Instruct: {_RERANKER_INSTRUCTION}\nQuery: {question}"
-             if _is_qwen_reranker() else question)
+    query = f"Instruct: {_RERANKER_INSTRUCTION}\nQuery: {question}" if _is_qwen_reranker() else question
     return [(query, (c["title"] + "\n" + c["text"])[:2000]) for c in candidates]
 
 
@@ -164,22 +165,25 @@ def _get_reranker():
     if _reranker is None:
         if _is_qwen_reranker():
             from arlc.qwen3_reranker import Qwen3Reranker
+
             _reranker = Qwen3Reranker(
                 model_name=_RERANKER_MODEL,
                 instruction=_RERANKER_INSTRUCTION,
             )
         else:
-            from sentence_transformers import CrossEncoder
             import torch
+            from sentence_transformers import CrossEncoder
+
             _reranker = CrossEncoder(_RERANKER_MODEL, max_length=2048)
             if torch.backends.mps.is_available():
-                _reranker.model.to('mps')
+                _reranker.model.to("mps")
     return _reranker
 
 
 # ---------------------------------------------------------------------------
 # Hybrid retrieval
 # ---------------------------------------------------------------------------
+
 
 def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     """Hybrid BM25 + vector + cross-encoder retrieval over the benchmark corpus.
@@ -193,8 +197,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
 
     if not has_faiss and not has_bm25:
         raise RuntimeError(
-            "No indexes found. Run build_index.py first:\n"
-            "  python benchmarks/legal-rag-bench/build_index.py"
+            "No indexes found. Run build_index.py first:\n  python benchmarks/legal-rag-bench/build_index.py"
         )
 
     # Collect signals for score fusion
@@ -207,9 +210,10 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     if has_faiss:
         index, metadata = _load_faiss()
         model = _get_embedding_model()
-        query_emb = model.encode(question, prompt_name='query', normalize_embeddings=True)
-        query_np = np.array([query_emb], dtype='float32')
+        query_emb = model.encode(question, prompt_name="query", normalize_embeddings=True)
+        query_np = np.array([query_emb], dtype="float32")
         import faiss
+
         faiss.normalize_L2(query_np)
         k_vec = min(500, index.ntotal)
         D, I = index.search(query_np, k_vec)
@@ -257,13 +261,15 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     hyde_rank = {}
     try:
         from arlc.retriever import generate_hyde_passage
+
         hyde_passage = generate_hyde_passage(question)
         if hyde_passage and has_faiss:
             index, metadata = _load_faiss()
             model = _get_embedding_model()
             # Embed as a document (no instruction prefix — prompt_name omitted)
-            hyde_emb = np.array(model.encode(hyde_passage, normalize_embeddings=True), dtype='float32').reshape(1, -1)
+            hyde_emb = np.array(model.encode(hyde_passage, normalize_embeddings=True), dtype="float32").reshape(1, -1)
             import faiss as _faiss
+
             _faiss.normalize_L2(hyde_emb)
             k_hyde = min(200, index.ntotal)
             _, I_h = index.search(hyde_emb, k_hyde)
@@ -306,7 +312,8 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     # --- Cross-encoder reranking on top 100 by RRF ---
     candidate_list = [
         {"id": pid, "score": rrf_scores[pid], **passage_info.get(pid, {"text": "", "title": ""})}
-        for pid in all_pids if pid in passage_info
+        for pid in all_pids
+        if pid in passage_info
     ]
     candidate_list.sort(key=lambda x: x["score"], reverse=True)
     candidate_list = candidate_list[:100]
@@ -341,6 +348,7 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
 # Pipeline adapter
 # ---------------------------------------------------------------------------
 
+
 async def run_pipeline(question: str, corpus_index: dict) -> dict:
     """Run our hybrid pipeline on a question against the Legal RAG Bench corpus.
 
@@ -355,11 +363,13 @@ async def run_pipeline(question: str, corpus_index: dict) -> dict:
     contexts = []
     for r in retrieved:
         contexts.append(r["text"])
-        source_pages.append({
-            "doc_id": r["id"],
-            "page_number": 1,
-            "text": r["text"],
-        })
+        source_pages.append(
+            {
+                "doc_id": r["id"],
+                "page_number": 1,
+                "text": r["text"],
+            }
+        )
 
     answer_result = await generate_answer(
         question=question,
@@ -377,6 +387,7 @@ async def run_pipeline(question: str, corpus_index: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------
+
 
 def rouge_l(prediction: str, reference: str) -> float:
     """Compute ROUGE-L F1 score between prediction and reference."""
@@ -407,7 +418,7 @@ def groundedness_score(answer: str, contexts: list[str]) -> float:
     if not answer or not contexts:
         return 0.0
     context_text = " ".join(contexts).lower()
-    sentences = [s.strip() for s in re.split(r'[.!?]+', answer) if s.strip()]
+    sentences = [s.strip() for s in re.split(r"[.!?]+", answer) if s.strip()]
     if not sentences:
         return 0.0
 
@@ -428,6 +439,7 @@ def groundedness_score(answer: str, contexts: list[str]) -> float:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Legal RAG Bench evaluation")
     parser.add_argument("--dry-run", action="store_true", help="Download data only")
@@ -446,7 +458,7 @@ def main():
 
     qa_items = list(qa_ds)
     if args.limit > 0:
-        qa_items = qa_items[:args.limit]
+        qa_items = qa_items[: args.limit]
         print(f"[legal-rag-bench] Limited to {args.limit} queries")
 
     # Step 2: Run pipeline on each question
@@ -468,15 +480,17 @@ def main():
         rouge = rouge_l(pipeline_output["answer"], gold_answer)
         grounded = groundedness_score(pipeline_output["answer"], pipeline_output["contexts"])
 
-        results.append({
-            "question": question,
-            "gold_passage_id": gold_passage_id,
-            "retrieved_ids": pipeline_output["retrieved_passage_ids"],
-            "retrieval_hit": ret_acc,
-            "rouge_l": rouge,
-            "groundedness": grounded,
-            "answer_preview": pipeline_output["answer"][:200],
-        })
+        results.append(
+            {
+                "question": question,
+                "gold_passage_id": gold_passage_id,
+                "retrieved_ids": pipeline_output["retrieved_passage_ids"],
+                "retrieval_hit": ret_acc,
+                "rouge_l": rouge,
+                "groundedness": grounded,
+                "answer_preview": pipeline_output["answer"][:200],
+            }
+        )
         total_retrieval_acc += ret_acc
         total_rouge += rouge
         total_groundedness += grounded

@@ -59,7 +59,8 @@ def get_pdf_page_texts(doc_id: str) -> list[tuple[int, str]]:
         # Split by page markers — docling_converter uses <!-- PAGE N --> markers
         pages = []
         import re
-        parts = re.split(r'<!--\s*PAGE\s+(\d+)\s*-->', content)
+
+        parts = re.split(r"<!--\s*PAGE\s+(\d+)\s*-->", content)
         if len(parts) > 1:
             # parts: [before_first_marker, page_num, text, page_num, text, ...]
             for i in range(1, len(parts), 2):
@@ -88,9 +89,7 @@ def get_pdf_page_texts(doc_id: str) -> list[tuple[int, str]]:
     return pages
 
 
-def extract_akus_from_page(
-        doc_id: str, page_num: int, text: str, model: str
-) -> list[dict]:
+def extract_akus_from_page(doc_id: str, page_num: int, text: str, model: str) -> list[dict]:
     """Extract AKU pairs from a single page using LLM."""
     user_message = f"Document: {doc_id}, Page: {page_num}\n\n{text[:4000]}"
 
@@ -154,9 +153,7 @@ def load_existing_index() -> tuple[list[dict], set[str]]:
 
 def get_all_doc_ids() -> list[str]:
     """Get all document IDs from the documents directory."""
-    return sorted(
-        f.stem for f in DOCUMENTS_DIR.glob("*.pdf")
-    )
+    return sorted(f.stem for f in DOCUMENTS_DIR.glob("*.pdf"))
 
 
 def main():
@@ -180,7 +177,7 @@ def main():
         doc_ids = [d for d in doc_ids if d not in processed_ids]
 
     if args.max_docs:
-        doc_ids = doc_ids[:args.max_docs]
+        doc_ids = doc_ids[: args.max_docs]
 
     if args.dry_run:
         print(f"Would process {len(doc_ids)} documents with model={args.model}")
@@ -230,8 +227,9 @@ def main():
         encoding="utf-8",
     )
 
-    print(f"\nDone. {len(all_new_entries)} new AKUs from {total_pages} pages across {len(doc_ids)} docs.",
-          file=sys.stderr)
+    print(
+        f"\nDone. {len(all_new_entries)} new AKUs from {total_pages} pages across {len(doc_ids)} docs.", file=sys.stderr
+    )
     print(f"Total AKUs in index: {len(combined)}", file=sys.stderr)
     print(f"Index saved to: {AKU_INDEX_PATH}", file=sys.stderr)
 

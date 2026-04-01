@@ -55,14 +55,17 @@ def init():
                 _endpoints.append(ep)
         # Pre-create OpenAI clients (one per endpoint, reused across calls)
         from openai import OpenAI
+
         for ep in _endpoints:
             extra_headers = ep.get("extra_headers", {})
-            _clients.append(OpenAI(
-                api_key=ep["api_key"],
-                base_url=ep["base_url"],
-                default_headers=extra_headers if extra_headers else None,
-                timeout=120.0,
-            ))
+            _clients.append(
+                OpenAI(
+                    api_key=ep["api_key"],
+                    base_url=ep["base_url"],
+                    default_headers=extra_headers if extra_headers else None,
+                    timeout=120.0,
+                )
+            )
         _initialized = True
         if _endpoints:
             logger.info(f"[litellm] {len(_endpoints)} proxy endpoints configured")
@@ -77,12 +80,12 @@ def is_configured() -> bool:
 
 
 def call_llm(
-        system_prompt: str,
-        user_message: str,
-        max_tokens: int = 512,
-        model: str = "claude-sonnet-4-6",
-        system_blocks: list[dict] | None = None,
-        on_token=None,
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int = 512,
+    model: str = "claude-sonnet-4-6",
+    system_blocks: list[dict] | None = None,
+    on_token=None,
 ) -> tuple[str, float, float, float, int, int]:
     """Call LLM via the next available proxy endpoint (round-robin).
 
@@ -146,7 +149,10 @@ def call_llm(
             _call_count += 1  # advance round-robin only on success
             logger.debug(
                 "[litellm] model=%s endpoint=%d ttft=%.0fms total=%.0fms",
-                litellm_model, idx, ttft_ms, total_ms,
+                litellm_model,
+                idx,
+                ttft_ms,
+                total_ms,
             )
             return result_text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
 
@@ -161,6 +167,7 @@ def call_llm(
 
     # Last resort: fall back to Vertex AI directly if configured
     from arlc.llm import vertex_backend
+
     if vertex_backend.is_configured():
         logger.warning("[litellm] All proxy endpoints failed — falling back to Vertex AI directly")
         return vertex_backend.call_llm(

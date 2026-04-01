@@ -15,6 +15,7 @@ Usage:
     python3 scripts/scrape_uk_corpus.py
     python3 scripts/scrape_uk_corpus.py --force   # Re-download all
 """
+
 from __future__ import annotations
 
 import argparse
@@ -64,36 +65,21 @@ MIN_TEXT_LENGTH = 5000  # minimum chars for a valid act download
 # ---------------------------------------------------------------------------
 
 UK_ACTS: list[tuple[str, int, int, str, str]] = [
-    ("ukpga", 2006, 46, "companies_act_2006",
-     "Companies Act 2006"),
-    ("ukpga", 1996, 18, "employment_rights_act_1996",
-     "Employment Rights Act 1996"),
-    ("ukpga", 2015, 15, "consumer_rights_act_2015",
-     "Consumer Rights Act 2015"),
-    ("ukpga", 2010, 15, "equality_act_2010",
-     "Equality Act 2010"),
-    ("ukpga", 2018, 12, "data_protection_act_2018",
-     "Data Protection Act 2018"),
-    ("ukpga", 1986, 45, "insolvency_act_1986",
-     "Insolvency Act 1986"),
-    ("ukpga", 1890, 39, "partnership_act_1890",
-     "Partnership Act 1890"),
-    ("ukpga", 1979, 54, "sale_of_goods_act_1979",
-     "Sale of Goods Act 1979"),
-    ("ukpga", 1980, 58, "limitation_act_1980",
-     "Limitation Act 1980"),
-    ("ukpga", 1998, 42, "human_rights_act_1998",
-     "Human Rights Act 1998"),
-    ("ukpga", 1996, 23, "arbitration_act_1996",
-     "Arbitration Act 1996"),
-    ("ukpga", 2000, 8, "financial_services_markets_act_2000",
-     "Financial Services and Markets Act 2000"),
-    ("ukpga", 2010, 23, "bribery_act_2010",
-     "Bribery Act 2010"),
-    ("ukpga", 2015, 30, "modern_slavery_act_2015",
-     "Modern Slavery Act 2015"),
-    ("ukpga", 1998, 41, "competition_act_1998",
-     "Competition Act 1998"),
+    ("ukpga", 2006, 46, "companies_act_2006", "Companies Act 2006"),
+    ("ukpga", 1996, 18, "employment_rights_act_1996", "Employment Rights Act 1996"),
+    ("ukpga", 2015, 15, "consumer_rights_act_2015", "Consumer Rights Act 2015"),
+    ("ukpga", 2010, 15, "equality_act_2010", "Equality Act 2010"),
+    ("ukpga", 2018, 12, "data_protection_act_2018", "Data Protection Act 2018"),
+    ("ukpga", 1986, 45, "insolvency_act_1986", "Insolvency Act 1986"),
+    ("ukpga", 1890, 39, "partnership_act_1890", "Partnership Act 1890"),
+    ("ukpga", 1979, 54, "sale_of_goods_act_1979", "Sale of Goods Act 1979"),
+    ("ukpga", 1980, 58, "limitation_act_1980", "Limitation Act 1980"),
+    ("ukpga", 1998, 42, "human_rights_act_1998", "Human Rights Act 1998"),
+    ("ukpga", 1996, 23, "arbitration_act_1996", "Arbitration Act 1996"),
+    ("ukpga", 2000, 8, "financial_services_markets_act_2000", "Financial Services and Markets Act 2000"),
+    ("ukpga", 2010, 23, "bribery_act_2010", "Bribery Act 2010"),
+    ("ukpga", 2015, 30, "modern_slavery_act_2015", "Modern Slavery Act 2015"),
+    ("ukpga", 1998, 41, "competition_act_1998", "Competition Act 1998"),
 ]
 
 
@@ -101,9 +87,11 @@ UK_ACTS: list[tuple[str, int, int, str, str]] = [
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ActMetadata:
     """Metadata for a downloaded act."""
+
     short_name: str
     full_title: str
     act_type: str
@@ -123,6 +111,7 @@ class ActMetadata:
 # HTML text extractor
 # ---------------------------------------------------------------------------
 
+
 class LegislationTextExtractor(HTMLParser):
     """Extract clean legislative text from legislation.gov.uk HTML.
 
@@ -134,17 +123,44 @@ class LegislationTextExtractor(HTMLParser):
       - LegText, LegP2Text — text paragraphs
     """
 
-    SKIP_TAGS = frozenset({
-        "script", "style", "nav", "header", "footer",
-        "iframe", "noscript", "meta", "link",
-    })
+    SKIP_TAGS = frozenset(
+        {
+            "script",
+            "style",
+            "nav",
+            "header",
+            "footer",
+            "iframe",
+            "noscript",
+            "meta",
+            "link",
+        }
+    )
 
     # Tags that should emit newlines
-    BLOCK_TAGS = frozenset({
-        "div", "p", "h1", "h2", "h3", "h4", "h5", "h6",
-        "li", "tr", "br", "section", "article", "blockquote",
-        "table", "thead", "tbody", "td", "th",
-    })
+    BLOCK_TAGS = frozenset(
+        {
+            "div",
+            "p",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "li",
+            "tr",
+            "br",
+            "section",
+            "article",
+            "blockquote",
+            "table",
+            "thead",
+            "tbody",
+            "td",
+            "th",
+        }
+    )
 
     def __init__(self) -> None:
         super().__init__()
@@ -202,9 +218,9 @@ class LegislationTextExtractor(HTMLParser):
     def get_text(self) -> str:
         raw = " ".join(self.fragments)
         # Fix spacing around newlines
-        raw = re.sub(r' *\n *', '\n', raw)
+        raw = re.sub(r" *\n *", "\n", raw)
         # Collapse multiple blank lines
-        raw = re.sub(r'\n{3,}', '\n\n', raw)
+        raw = re.sub(r"\n{3,}", "\n\n", raw)
         return raw.strip()
 
 
@@ -217,11 +233,11 @@ def extract_text_from_html(html: str) -> str:
     """
     try:
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(html, "html.parser")
 
         # Remove unwanted elements
-        for tag in soup.find_all(["script", "style", "nav", "header", "footer",
-                                   "noscript", "iframe"]):
+        for tag in soup.find_all(["script", "style", "nav", "header", "footer", "noscript", "iframe"]):
             tag.decompose()
 
         # Try to find the main legislation content
@@ -268,6 +284,7 @@ def extract_text_from_html(html: str) -> str:
 # Download logic
 # ---------------------------------------------------------------------------
 
+
 def _fetch_with_retry(
     session: requests.Session,
     url: str,
@@ -292,15 +309,15 @@ def _fetch_with_retry(
                 retries_202 += 1
                 if retries_202 <= max_202_retries:
                     wait = 10 * retries_202  # 10, 20, 30, 40, 50, 60s
-                    logger.info("  HTTP 202 (generating), waiting %ds (poll %d/%d)...",
-                               wait, retries_202, max_202_retries)
+                    logger.info(
+                        "  HTTP 202 (generating), waiting %ds (poll %d/%d)...", wait, retries_202, max_202_retries
+                    )
                     time.sleep(wait)
                     # Don't count 202 as a regular retry
                     attempt = max(0, attempt - 1)
                     continue
                 else:
-                    logger.warning("  HTTP 202 after %d polls, giving up on %s",
-                                  retries_202, url)
+                    logger.warning("  HTTP 202 after %d polls, giving up on %s", retries_202, url)
                     return None
             elif resp.status_code == 429:
                 wait = RETRY_DELAY * (attempt + 2)
@@ -315,8 +332,7 @@ def _fetch_with_retry(
                 if attempt < max_retries - 1:
                     time.sleep(RETRY_DELAY)
         except requests.RequestException as e:
-            logger.error("Network error for %s: %s (attempt %d/%d)",
-                        url, e, attempt + 1, max_retries)
+            logger.error("Network error for %s: %s (attempt %d/%d)", url, e, attempt + 1, max_retries)
             if attempt < max_retries - 1:
                 time.sleep(RETRY_DELAY)
 
@@ -332,7 +348,7 @@ def _count_sections(text: str) -> int:
     """Count the number of sections in the extracted text."""
     # UK legislation uses "Section N" or just numbered sections
     section_pattern = re.compile(
-        r'^\s*(?:Section\s+\d+|\d+\s+[A-Z])',
+        r"^\s*(?:Section\s+\d+|\d+\s+[A-Z])",
         re.MULTILINE,
     )
     return len(section_pattern.findall(text))
@@ -397,12 +413,10 @@ def download_act(
             meta.char_count = len(full_text)
             meta.section_count = _count_sections(text)
             meta.status = "ok"
-            logger.info("  OK via %s: %d chars, ~%d sections",
-                       label, len(full_text), meta.section_count)
+            logger.info("  OK via %s: %d chars, ~%d sections", label, len(full_text), meta.section_count)
             return full_text, meta
 
-        logger.warning("  %s yielded only %d chars (min: %d), trying next...",
-                      label, len(text), MIN_TEXT_LENGTH)
+        logger.warning("  %s yielded only %d chars (min: %d), trying next...", label, len(text), MIN_TEXT_LENGTH)
 
     # All attempts failed
     meta.status = "failed"
@@ -448,6 +462,7 @@ def download_act_by_parts(
     # Parse TOC to find part URLs
     try:
         from bs4 import BeautifulSoup
+
         soup = BeautifulSoup(contents_html, "html.parser")
     except ImportError:
         meta.status = "failed"
@@ -459,7 +474,7 @@ def download_act_by_parts(
     for a in soup.find_all("a", href=True):
         href = a["href"]
         # Match part links like /ukpga/2006/46/part/1
-        if re.search(rf'/{act_type}/{year}/{chapter}/part/\d+', href):
+        if re.search(rf"/{act_type}/{year}/{chapter}/part/\d+", href):
             part_url = href if href.startswith("http") else BASE_URL + href
             part_title = a.get_text(strip=True)
             if (part_url, part_title) not in part_links:
@@ -468,7 +483,7 @@ def download_act_by_parts(
     # Also look for schedule links
     for a in soup.find_all("a", href=True):
         href = a["href"]
-        if re.search(rf'/{act_type}/{year}/{chapter}/schedule/\d+', href):
+        if re.search(rf"/{act_type}/{year}/{chapter}/schedule/\d+", href):
             sched_url = href if href.startswith("http") else BASE_URL + href
             sched_title = a.get_text(strip=True)
             if (sched_url, sched_title) not in part_links:
@@ -516,14 +531,14 @@ def download_act_by_parts(
     meta.char_count = len(full_text)
     meta.section_count = _count_sections(full_text)
     meta.status = "ok"
-    logger.info("  Assembled %d parts: %d chars, ~%d sections",
-               len(all_parts), len(full_text), meta.section_count)
+    logger.info("  Assembled %d parts: %d chars, ~%d sections", len(all_parts), len(full_text), meta.section_count)
     return full_text, meta
 
 
 # ---------------------------------------------------------------------------
 # Manifest persistence
 # ---------------------------------------------------------------------------
+
 
 def load_manifest() -> list[dict]:
     """Load existing manifest or return empty list."""
@@ -544,10 +559,10 @@ def save_manifest(manifest: list[dict]) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download UK legislation corpus")
-    parser.add_argument("--force", action="store_true",
-                       help="Re-download all acts even if already present")
+    parser.add_argument("--force", action="store_true", help="Re-download all acts even if already present")
     args = parser.parse_args()
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -555,8 +570,7 @@ def main() -> None:
     # Load existing manifest for resume capability
     manifest = load_manifest()
     existing_names = {
-        m["short_name"] for m in manifest
-        if m.get("status") == "ok" and m.get("char_count", 0) > MIN_TEXT_LENGTH
+        m["short_name"] for m in manifest if m.get("status") == "ok" and m.get("char_count", 0) > MIN_TEXT_LENGTH
     }
 
     session = requests.Session()
@@ -575,27 +589,30 @@ def main() -> None:
                 stats["skipped"] += 1
                 continue
 
-        logger.info("[%d/%d] Downloading: %s (%s %d c.%d)",
-                   stats["downloaded"] + stats["skipped"] + stats["failed"] + 1,
-                   len(UK_ACTS), full_title, act_type, year, chapter)
+        logger.info(
+            "[%d/%d] Downloading: %s (%s %d c.%d)",
+            stats["downloaded"] + stats["skipped"] + stats["failed"] + 1,
+            len(UK_ACTS),
+            full_title,
+            act_type,
+            year,
+            chapter,
+        )
 
         # Try full-act download first
-        text, meta = download_act(session, act_type, year, chapter,
-                                  short_name, full_title)
+        text, meta = download_act(session, act_type, year, chapter, short_name, full_title)
 
         # For very large acts or failed downloads, try part-by-part
         if text is None:
             logger.info("  Trying part-by-part download...")
-            text, meta = download_act_by_parts(session, act_type, year, chapter,
-                                               short_name, full_title)
+            text, meta = download_act_by_parts(session, act_type, year, chapter, short_name, full_title)
             if text:
                 stats["by_parts"] += 1
 
         if text:
             out_path.write_text(text, encoding="utf-8")
             meta.file_size = out_path.stat().st_size
-            logger.info("[OK] %s → %s (%d chars)",
-                       full_title, out_path, meta.char_count)
+            logger.info("[OK] %s → %s (%d chars)", full_title, out_path, meta.char_count)
             stats["downloaded"] += 1
         else:
             logger.error("[FAIL] %s: %s", full_title, meta.error)

@@ -4,6 +4,7 @@ CLI functions are tested by calling cmd_* handlers directly (not via subprocess)
 to avoid process-level setup and keep tests fast. The integration test exercises
 the full cycle: CLI creates key -> server validates it -> audit log captures query.
 """
+
 import argparse
 import asyncio
 
@@ -15,6 +16,7 @@ from neolex.admin import cmd_keys_create, cmd_keys_list, cmd_keys_revoke, cmd_sh
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def make_ns(**kwargs) -> argparse.Namespace:
     """Create a minimal argparse.Namespace for testing."""
     return argparse.Namespace(**kwargs)
@@ -24,9 +26,11 @@ def make_ns(**kwargs) -> argparse.Namespace:
 # keys-create
 # ---------------------------------------------------------------------------
 
+
 async def test_create_key_roundtrip(tmp_db_path, monkeypatch, capsys):
     """keys-create inserts a row into api_keys with correct fields."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
     from neolex.db.audit import get_audit_db
 
@@ -49,6 +53,7 @@ async def test_create_key_roundtrip(tmp_db_path, monkeypatch, capsys):
 async def test_create_key_prints_plaintext(tmp_db_path, monkeypatch, capsys):
     """keys-create prints the raw plaintext key to stdout exactly once."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 
     args = make_ns(name="Print Test", client_slug="print-test", scope="query")
@@ -70,6 +75,7 @@ async def test_create_key_prints_plaintext(tmp_db_path, monkeypatch, capsys):
 async def test_create_admin_key(tmp_db_path, monkeypatch, capsys):
     """keys-create --scope admin creates an admin-scoped key."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
     from neolex.db.audit import get_audit_db
 
@@ -86,9 +92,11 @@ async def test_create_admin_key(tmp_db_path, monkeypatch, capsys):
 # keys-list
 # ---------------------------------------------------------------------------
 
+
 async def test_list_keys(tmp_db_path, monkeypatch, capsys):
     """keys-list after creating a key prints key name."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 
     # Create a key first
@@ -104,9 +112,11 @@ async def test_list_keys(tmp_db_path, monkeypatch, capsys):
 # keys-revoke
 # ---------------------------------------------------------------------------
 
+
 async def test_revoke_key(tmp_db_path, monkeypatch, capsys):
     """keys-revoke marks key inactive; second revoke reports 0 affected."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
     from neolex.db.audit import get_audit_db
 
@@ -138,9 +148,11 @@ async def test_revoke_key(tmp_db_path, monkeypatch, capsys):
 # show-log
 # ---------------------------------------------------------------------------
 
+
 async def test_show_log_empty(tmp_db_path, monkeypatch, capsys):
     """show-log on empty DB prints 'No entries' message."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 
     await cmd_show_log(make_ns(table="queries", limit=20))
@@ -151,6 +163,7 @@ async def test_show_log_empty(tmp_db_path, monkeypatch, capsys):
 async def test_show_log_after_query(tmp_db_path, monkeypatch, capsys):
     """show-log shows entry after log_query is called."""
     from neolex.config import settings
+
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
     from neolex.db.audit import get_audit_db
 
@@ -177,6 +190,7 @@ async def test_show_log_after_query(tmp_db_path, monkeypatch, capsys):
 # Phase 2 integration smoke test
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.integration
 async def test_full_phase2_cycle(tmp_db_path, monkeypatch):
     """Full Phase 2 cycle: create key -> authenticate -> query -> audit log entry.
@@ -197,6 +211,7 @@ async def test_full_phase2_cycle(tmp_db_path, monkeypatch):
     # Step 1: Create a query-scoped key via CLI
     import io as _io
     from contextlib import redirect_stdout
+
     buf = _io.StringIO()
     with redirect_stdout(buf):
         await cmd_keys_create(make_ns(name="Integration Key", client_slug="integ-co", scope="query"))
@@ -234,13 +249,11 @@ async def test_full_phase2_cycle(tmp_db_path, monkeypatch):
     app.state.answer_fn = MagicMock()
 
     with patch(
-            "neolex.routers.query.run_single_question",
-            new_callable=AsyncMock,
-            return_value=mock_result,
+        "neolex.routers.query.run_single_question",
+        new_callable=AsyncMock,
+        return_value=mock_result,
     ):
-        async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             # Step 3: Authenticate and query
             response = await client.post(
                 "/api/v1/query",
@@ -264,6 +277,7 @@ async def test_full_phase2_cycle(tmp_db_path, monkeypatch):
 
     # Step 5: Verify key last_used was updated
     from neolex.auth.keys import hash_key
+
     k_hash = hash_key(raw_key)
     async with get_audit_db() as db:
         key_row = await db.get_key_by_hash(k_hash)

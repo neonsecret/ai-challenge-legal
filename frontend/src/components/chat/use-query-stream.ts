@@ -115,9 +115,10 @@ function clearSessionAndRedirect(router: ReturnType<typeof useRouter>) {
 export interface Source {
     doc_id: string
     page_numbers: number[]
-    text?: string | null  // source text for non-PDF corpora (Czech)
-    url?: string | null   // web source URL
-    title?: string | null // web source title
+    text?: string | null     // source text for non-PDF corpora (Czech)
+    url?: string | null      // web source URL
+    title?: string | null    // web source title
+    chunk_id?: string | null // database chunk identifier for context window fetch
 }
 
 export interface Progress {

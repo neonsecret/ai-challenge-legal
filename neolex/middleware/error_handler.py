@@ -11,6 +11,7 @@ Why not @app.exception_handler(Exception)?
   caught by ServerErrorMiddleware (not the app's exception_handler registry)
   and returned as HTML. This middleware replaces that behavior with JSON.
 """
+
 from __future__ import annotations
 
 import logging
@@ -34,9 +35,11 @@ class JSONErrorMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         except Exception:
             import datetime
+
             # Update last_error_ts in main module if available.
             try:
                 import neolex.main as _main
+
                 _main._last_error_ts = datetime.datetime.now(datetime.UTC).isoformat()
             except Exception:
                 pass

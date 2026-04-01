@@ -2,6 +2,7 @@
 
 Phase 7 — Task 2.
 """
+
 import datetime
 
 import pytest
@@ -79,9 +80,7 @@ async def retention_db(tmp_path, monkeypatch):
     async with get_audit_db(db_path) as db:
         await db.init_schema()
         # Insert 3 old entries (2 years ago) — should be purged
-        old_ts = (
-                datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=730)
-        ).isoformat()
+        old_ts = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=730)).isoformat()
         for i in range(3):
             await db._conn.execute(
                 "INSERT INTO queries (ts, key_hash, question, answer_text, sources_json, latency_ms, model_name) "
@@ -89,8 +88,7 @@ async def retention_db(tmp_path, monkeypatch):
                 (old_ts,),
             )
             await db._conn.execute(
-                "INSERT INTO events (ts, key_hash, event_type, detail_json) "
-                "VALUES (?, 'hash', 'test_event', '{}')",
+                "INSERT INTO events (ts, key_hash, event_type, detail_json) VALUES (?, 'hash', 'test_event', '{}')",
                 (old_ts,),
             )
         # Insert 2 recent entries (today) — must NOT be purged

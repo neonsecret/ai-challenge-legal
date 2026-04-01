@@ -3,6 +3,7 @@
 The cookie stores an opaque random token. The DB stores its SHA-256 hash.
 This means even if someone reads the DB, they cannot forge sessions.
 """
+
 import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -29,11 +30,11 @@ MAX_SESSIONS_PER_USER = 10
 
 
 async def create_session(
-        user: User,
-        db: AsyncSession,
-        *,
-        ip: str | None = None,
-        user_agent: str | None = None,
+    user: User,
+    db: AsyncSession,
+    *,
+    ip: str | None = None,
+    user_agent: str | None = None,
 ) -> str:
     """Insert a session row and return the raw token (goes into the cookie).
 
@@ -43,13 +44,11 @@ async def create_session(
     # Evict oldest sessions if at or above the per-user cap.
     # FOR UPDATE serializes concurrent login requests for the same user.
     result = await db.execute(
-        select(DBSession).where(DBSession.user_id == user.id)
-        .order_by(DBSession.created_at.asc())
-        .with_for_update()
+        select(DBSession).where(DBSession.user_id == user.id).order_by(DBSession.created_at.asc()).with_for_update()
     )
     existing = result.scalars().all()
     if len(existing) >= MAX_SESSIONS_PER_USER:
-        for s in existing[:len(existing) - MAX_SESSIONS_PER_USER + 1]:
+        for s in existing[: len(existing) - MAX_SESSIONS_PER_USER + 1]:
             await db.delete(s)
         await db.flush()
 
@@ -81,8 +80,8 @@ def _set_session_cookie(response, token: str) -> None:
 
 
 async def get_current_user(
-        request: Request,
-        db: AsyncSession = Depends(get_db),
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     """FastAPI dependency — returns the authenticated User or raises 401."""
     token = request.cookies.get(settings.session_cookie_name)
@@ -109,7 +108,7 @@ async def get_current_user(
 
 
 async def require_active_subscription(
-        user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ) -> User:
     """FastAPI dependency — raises 402 if user has no usable subscription.
 

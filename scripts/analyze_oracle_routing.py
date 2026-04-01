@@ -53,7 +53,8 @@ print("Routing coverage by answer type:")
 for at, counts in sorted(route_stats.items(), key=lambda x: x[1]["routed"] / max(x[1]["total"], 1)):
     pct = counts["routed"] / counts["total"] * 100
     print(
-        f"  {at:20s}: routed {counts['routed']:3d}/{counts['total']:3d} ({pct:5.1f}%), multi-doc: {counts['multi_doc']}, articles: {counts['has_article']}, meta_pages: {counts['has_meta_pages']}")
+        f"  {at:20s}: routed {counts['routed']:3d}/{counts['total']:3d} ({pct:5.1f}%), multi-doc: {counts['multi_doc']}, articles: {counts['has_article']}, meta_pages: {counts['has_meta_pages']}"
+    )
 
 print()
 print(f"Unrouted questions: {len(unrouted)}")

@@ -12,7 +12,6 @@ import argparse
 import asyncio
 import json
 import os
-import re
 import sys
 import time
 import zipfile
@@ -53,14 +52,17 @@ def get_client():
     global _client, _use_litellm
     if _client is None and not _use_litellm:
         import anthropic
+
         backend = os.environ.get("LLM_BACKEND", "litellm").lower()
         if backend == "litellm":
             from arlc.llm import litellm_backend
+
             if litellm_backend.is_configured():
                 _use_litellm = True
                 return None
         if backend == "vertex" or (backend == "auto" and os.environ.get("VERTEX_PROJECT_ID")):
             from anthropic import AnthropicVertex
+
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
@@ -76,6 +78,7 @@ def get_client():
 # ---------------------------------------------------------------------------
 # Data download
 # ---------------------------------------------------------------------------
+
 
 def download_dataset():
     """Download ContractNLI dataset."""
@@ -194,11 +197,7 @@ After your reasoning, output your final answer on the LAST line as exactly one w
 
 def build_user_prompt(nda_text: str, hypothesis: str) -> str:
     """Build the user prompt for NLI classification."""
-    return (
-        f"NDA Text:\n{nda_text}\n\n"
-        f"Hypothesis: {hypothesis}\n\n"
-        f"Classification:"
-    )
+    return f"NDA Text:\n{nda_text}\n\nHypothesis: {hypothesis}\n\nClassification:"
 
 
 # ---------------------------------------------------------------------------
@@ -220,9 +219,10 @@ async def classify_nli(nda_text: str, hypothesis: str, sem: asyncio.Semaphore) -
         try:
             if _use_litellm:
                 import asyncio
+
                 from arlc.llm import litellm_backend
-                answer, *_ = await asyncio.to_thread(
-                    litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 300, MODEL)
+
+                answer, *_ = await asyncio.to_thread(litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 300, MODEL)
                 answer = answer.strip()
             else:
                 client = get_client()
@@ -263,6 +263,7 @@ async def classify_nli(nda_text: str, hypothesis: str, sem: asyncio.Semaphore) -
 # Metrics
 # ---------------------------------------------------------------------------
 
+
 def compute_metrics(predictions: list[str], golds: list[str]) -> dict:
     """Compute accuracy, per-class precision/recall/F1, and macro F1."""
     labels = ["entailment", "contradiction", "not_mentioned"]
@@ -301,6 +302,7 @@ def compute_metrics(predictions: list[str], golds: list[str]) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="ContractNLI evaluation")
     parser.add_argument("--dry-run", action="store_true", help="Download data only")
@@ -334,7 +336,7 @@ def main():
         return
 
     if args.limit > 0:
-        documents = documents[:args.limit]
+        documents = documents[: args.limit]
         print(f"[contractnli] Limited to {args.limit} NDAs")
 
     # Step 3: Build all (NDA, hypothesis) pairs
@@ -349,13 +351,15 @@ def main():
             hypothesis = hyp_info.get("hypothesis", hyp_info.get("short_description", ""))
             gold_ann = annotations.get(hyp_key, {})
             gold_label = LABEL_MAP.get(gold_ann.get("choice", "NotMentioned"), "not_mentioned")
-            pairs.append({
-                "doc_id": doc.get("id", "?"),
-                "nda_text": nda_text,
-                "hyp_key": hyp_key,
-                "hypothesis": hypothesis,
-                "gold": gold_label,
-            })
+            pairs.append(
+                {
+                    "doc_id": doc.get("id", "?"),
+                    "nda_text": nda_text,
+                    "hyp_key": hyp_key,
+                    "hypothesis": hypothesis,
+                    "gold": gold_label,
+                }
+            )
 
     print(f"[contractnli] Total pairs: {len(pairs)}")
 
@@ -415,11 +419,11 @@ def main():
     print(f"  Macro F1: {overall['macro_f1']:.4f}")
     for label, metrics in overall["per_class"].items():
         print(f"    {label}: P={metrics['precision']:.3f} R={metrics['recall']:.3f} F1={metrics['f1']:.3f}")
-    print(f"\n  Per-hypothesis accuracy:")
+    print("\n  Per-hypothesis accuracy:")
     for hyp_key in sorted(per_hyp_metrics.keys()):
         m = per_hyp_metrics[hyp_key]
         print(f"    {hyp_key}: {m['accuracy']:.3f} ({m['num_samples']} samples)")
-    print(f"\n  Confusion matrix:")
+    print("\n  Confusion matrix:")
     for gold_label, preds in overall["confusion_matrix"].items():
         print(f"    {gold_label}: {dict(preds)}")
     print(f"\n  Results saved to {RESULTS_PATH}")

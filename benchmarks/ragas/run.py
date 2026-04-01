@@ -32,6 +32,7 @@ RESULTS_PATH = BENCH_DIR / "results.json"
 # Input loading
 # ---------------------------------------------------------------------------
 
+
 def load_submission(input_path: str) -> list[dict]:
     """Load ARLC submission or evaluation data.
 
@@ -65,12 +66,14 @@ def load_submission(input_path: str) -> list[dict]:
         ground_truth = item.get("ground_truth", item.get("expected_answer", ""))
 
         if question and answer:
-            samples.append({
-                "question": question,
-                "answer": answer,
-                "contexts": contexts if contexts else [""],
-                "ground_truth": ground_truth if ground_truth else answer,
-            })
+            samples.append(
+                {
+                    "question": question,
+                    "answer": answer,
+                    "contexts": contexts if contexts else [""],
+                    "ground_truth": ground_truth if ground_truth else answer,
+                }
+            )
 
     return samples
 
@@ -79,6 +82,7 @@ def load_submission(input_path: str) -> list[dict]:
 # RAGAS evaluation
 # ---------------------------------------------------------------------------
 
+
 def run_ragas_evaluation(samples: list[dict]) -> dict:
     """Run RAGAS metrics on the samples.
 
@@ -86,25 +90,26 @@ def run_ragas_evaluation(samples: list[dict]) -> dict:
     """
     try:
         from ragas import evaluate
-        from ragas.dataset_schema import SingleTurnSample, EvaluationDataset
+        from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
         from ragas.metrics import (
             Faithfulness,
-            ResponseRelevancy,
             LLMContextPrecisionWithoutReference,
             LLMContextRecall,
+            ResponseRelevancy,
         )
     except ImportError as e:
         print(f"[ragas] Import error: {e}")
         print("[ragas] Trying alternative imports...")
         try:
             from ragas import evaluate
-            from ragas.dataset_schema import SingleTurnSample, EvaluationDataset
+            from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
             from ragas.metrics import (
-                faithfulness,
                 answer_relevancy,
                 context_precision,
                 context_recall,
+                faithfulness,
             )
+
             # Use lowercase metric instances directly
             metrics = [faithfulness, answer_relevancy, context_precision, context_recall]
             return _run_with_legacy_api(samples, evaluate, metrics)
@@ -167,8 +172,16 @@ def _process_ragas_result(result) -> dict:
     if hasattr(result, "to_pandas"):
         df = result.to_pandas()
         for col in df.columns:
-            if col not in ("question", "answer", "contexts", "ground_truth",
-                           "user_input", "response", "retrieved_contexts", "reference"):
+            if col not in (
+                "question",
+                "answer",
+                "contexts",
+                "ground_truth",
+                "user_input",
+                "response",
+                "retrieved_contexts",
+                "reference",
+            ):
                 values = df[col].dropna().tolist()
                 if values:
                     output["aggregate"][col] = sum(values) / len(values)
@@ -195,6 +208,7 @@ def _process_ragas_result(result) -> dict:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(description="RAGAS evaluation")
@@ -226,7 +240,7 @@ def main():
         return
 
     if args.limit > 0:
-        samples = samples[:args.limit]
+        samples = samples[: args.limit]
         print(f"[ragas] Limited to {args.limit} samples")
 
     # Step 2: Check for required API key
@@ -242,7 +256,7 @@ def main():
         json.dump(output, f, indent=2)
 
     print(f"\n[ragas] Results saved to {RESULTS_PATH}")
-    print(f"  Scores:")
+    print("  Scores:")
     for metric, score in output.get("aggregate", {}).items():
         print(f"    {metric}: {score:.4f}")
 

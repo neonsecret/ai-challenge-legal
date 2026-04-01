@@ -63,11 +63,11 @@ Output ONLY the questions, one per line, no numbering, no preamble."""
 
 
 def generate_synthetic_pairs(
-        corpus_path: str | None,
-        output_dir: Path,
-        n_questions_per_passage: int = 3,
-        max_passages: int = 2000,
-        generator_model: str = "claude-sonnet-4-6",
+    corpus_path: str | None,
+    output_dir: Path,
+    n_questions_per_passage: int = 3,
+    max_passages: int = 2000,
+    generator_model: str = "claude-sonnet-4-6",
 ) -> Path:
     """Generate (query, passage) positive pairs from corpus using an LLM.
 
@@ -88,8 +88,10 @@ def generate_synthetic_pairs(
     corpus_ds = hf_load("isaacus/legal-rag-bench", "corpus", split="test")
     passages = [{"id": row["id"], "text": row["text"]} for row in corpus_ds]
     passages = passages[:max_passages]
-    print(f"[generate] Processing {len(passages)} passages, {n_questions_per_passage} Q each "
-          f"= ~{len(passages) * n_questions_per_passage} pairs target")
+    print(
+        f"[generate] Processing {len(passages)} passages, {n_questions_per_passage} Q each "
+        f"= ~{len(passages) * n_questions_per_passage} pairs target"
+    )
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     use_llm = api_key is not None
@@ -103,9 +105,7 @@ def generate_synthetic_pairs(
             pid = passage["id"]
 
             if use_llm:
-                questions = _generate_with_anthropic(
-                    text, n_questions_per_passage, generator_model, api_key
-                )
+                questions = _generate_with_anthropic(text, n_questions_per_passage, generator_model, api_key)
             else:
                 questions = _generate_template_questions(text, n_questions_per_passage)
 
@@ -124,9 +124,7 @@ def generate_synthetic_pairs(
     return pairs_path
 
 
-def _generate_with_anthropic(
-        text: str, n: int, model: str, api_key: str
-) -> list[str]:
+def _generate_with_anthropic(text: str, n: int, model: str, api_key: str) -> list[str]:
     """Generate questions using the Anthropic API."""
     import anthropic
 
@@ -164,12 +162,13 @@ def _generate_template_questions(text: str, n: int) -> list[str]:
 # STEP 2: Hard negative mining
 # ---------------------------------------------------------------------------
 
+
 def mine_hard_negatives_for_dataset(
-        pairs_path: Path,
-        output_dir: Path,
-        base_model: str,
-        n_negatives: int = 1,
-        cross_encoder_model: str | None = "BAAI/bge-reranker-v2-m3",
+    pairs_path: Path,
+    output_dir: Path,
+    base_model: str,
+    n_negatives: int = 1,
+    cross_encoder_model: str | None = "BAAI/bge-reranker-v2-m3",
 ) -> Path:
     """Add hard negatives to training pairs using sentence-transformers v3.1+."""
     from datasets import Dataset
@@ -184,10 +183,12 @@ def mine_hard_negatives_for_dataset(
 
     print(f"[mine] Loading pairs from {pairs_path}...")
     pairs = [json.loads(line) for line in open(pairs_path)]
-    dataset = Dataset.from_dict({
-        "anchor": [p["query"] for p in pairs],
-        "positive": [p["positive"] for p in pairs],
-    })
+    dataset = Dataset.from_dict(
+        {
+            "anchor": [p["query"] for p in pairs],
+            "positive": [p["positive"] for p in pairs],
+        }
+    )
 
     print(f"[mine] Loading base model {base_model} for negative mining...")
     model = SentenceTransformer(base_model, trust_remote_code=True)
@@ -212,11 +213,16 @@ def mine_hard_negatives_for_dataset(
 
     with open(triplets_path, "w") as f:
         for row in mined:
-            f.write(json.dumps({
-                "anchor": row["anchor"],
-                "positive": row["positive"],
-                "negative": row["negative"],
-            }) + "\n")
+            f.write(
+                json.dumps(
+                    {
+                        "anchor": row["anchor"],
+                        "positive": row["positive"],
+                        "negative": row["negative"],
+                    }
+                )
+                + "\n"
+            )
 
     print(f"[mine] Triplets saved to {triplets_path}")
     return triplets_path
@@ -226,24 +232,25 @@ def mine_hard_negatives_for_dataset(
 # STEP 3: LoRA fine-tuning
 # ---------------------------------------------------------------------------
 
+
 def train(
-        base_model: str,
-        triplets_path: Path,
-        output_dir: Path,
-        # LoRA config
-        lora_r: int = 32,
-        lora_alpha: int = 64,
-        lora_dropout: float = 0.05,
-        # Training config
-        epochs: int = 3,
-        batch_size: int = 32,  # effective batch; CachedMNRL handles memory
-        mini_batch_size: int = 16,  # actual GPU batch for gradient caching
-        learning_rate: float = 2e-4,
-        warmup_ratio: float = 0.1,
-        # Matryoshka dims (set to None to disable MRL)
-        matryoshka_dims: list[int] | None = None,  # e.g. [1024, 512, 256, 128, 64]
-        use_fp16: bool = True,
-        eval_steps: int = 100,
+    base_model: str,
+    triplets_path: Path,
+    output_dir: Path,
+    # LoRA config
+    lora_r: int = 32,
+    lora_alpha: int = 64,
+    lora_dropout: float = 0.05,
+    # Training config
+    epochs: int = 3,
+    batch_size: int = 32,  # effective batch; CachedMNRL handles memory
+    mini_batch_size: int = 16,  # actual GPU batch for gradient caching
+    learning_rate: float = 2e-4,
+    warmup_ratio: float = 0.1,
+    # Matryoshka dims (set to None to disable MRL)
+    matryoshka_dims: list[int] | None = None,  # e.g. [1024, 512, 256, 128, 64]
+    use_fp16: bool = True,
+    eval_steps: int = 100,
 ):
     """Full LoRA fine-tuning pipeline with CachedMultipleNegativesRankingLoss + MRL."""
     import torch
@@ -286,8 +293,10 @@ def train(
     model.add_adapter(peft_config)
     adapter_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"[train] Trainable params: {adapter_params / 1e6:.2f}M / {total_params / 1e6:.0f}M total "
-          f"({100 * adapter_params / total_params:.1f}%)")
+    print(
+        f"[train] Trainable params: {adapter_params / 1e6:.2f}M / {total_params / 1e6:.0f}M total "
+        f"({100 * adapter_params / total_params:.1f}%)"
+    )
 
     # ---- Load dataset ----
     print(f"[train] Loading triplets from {triplets_path}...")
@@ -306,16 +315,20 @@ def train(
     def maybe_prefix(query: str) -> str:
         return QWEN3_QUERY_PREFIX + query if is_qwen3 else query
 
-    train_dataset = Dataset.from_dict({
-        "anchor": [maybe_prefix(t["anchor"]) for t in train_data],
-        "positive": [t["positive"] for t in train_data],
-        "negative": [t["negative"] for t in train_data],
-    })
-    eval_dataset = Dataset.from_dict({
-        "anchor": [maybe_prefix(t["anchor"]) for t in eval_data],
-        "positive": [t["positive"] for t in eval_data],
-        "negative": [t["negative"] for t in eval_data],
-    })
+    train_dataset = Dataset.from_dict(
+        {
+            "anchor": [maybe_prefix(t["anchor"]) for t in train_data],
+            "positive": [t["positive"] for t in train_data],
+            "negative": [t["negative"] for t in train_data],
+        }
+    )
+    eval_dataset = Dataset.from_dict(
+        {
+            "anchor": [maybe_prefix(t["anchor"]) for t in eval_data],
+            "positive": [t["positive"] for t in eval_data],
+            "negative": [t["negative"] for t in eval_data],
+        }
+    )
     print(f"[train] Train: {len(train_dataset)} | Eval: {len(eval_dataset)}")
 
     # ---- Loss function ----
@@ -378,6 +391,7 @@ def train(
     evaluator = None
     try:
         from datasets import load_dataset as hf_load
+
         qa_ds = hf_load("isaacus/legal-rag-bench", "qa", split="test")
         corpus_ds = hf_load("isaacus/legal-rag-bench", "corpus", split="test")
         # Build IR evaluator from first 50 questions
@@ -436,12 +450,13 @@ def train(
 # STEP 4: Evaluate fine-tuned model on Legal RAG Bench
 # ---------------------------------------------------------------------------
 
+
 def evaluate(
-        base_model: str,
-        adapter_path: str | None = None,
-        merged_path: str | None = None,
-        limit: int = 100,
-        output_dir: Path | None = None,
+    base_model: str,
+    adapter_path: str | None = None,
+    merged_path: str | None = None,
+    limit: int = 100,
+    output_dir: Path | None = None,
 ):
     """Quick eval: retrieval accuracy @1, @3, @5, @10 on Legal RAG Bench."""
     import numpy as np
@@ -468,13 +483,10 @@ def evaluate(
     t0 = time.time()
     try:
         corpus_embs = model.encode(
-            texts, prompt_name="passage",
-            normalize_embeddings=True, batch_size=64, show_progress_bar=True
+            texts, prompt_name="passage", normalize_embeddings=True, batch_size=64, show_progress_bar=True
         )
     except Exception:
-        corpus_embs = model.encode(
-            texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True
-        )
+        corpus_embs = model.encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=True)
     print(f"[eval] Corpus embedded in {time.time() - t0:.1f}s")
 
     print("[eval] Loading QA dataset...")
@@ -532,28 +544,28 @@ def evaluate(
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="Fine-tune legal embedding model with LoRA")
-    parser.add_argument("--mode", choices=["generate", "mine", "train", "eval", "full"],
-                        default="full", help="Which step to run")
-    parser.add_argument("--base-model", default="Qwen/Qwen3-Embedding-0.6B",
-                        help="HuggingFace base embedding model")
-    parser.add_argument("--output-dir", default="outputs/legal_embedder_lora",
-                        help="Output directory for data and models")
-    parser.add_argument("--data-dir", default=None,
-                        help="Data directory (default: same as output-dir)")
-    parser.add_argument("--adapter-path", default=None,
-                        help="Path to fine-tuned adapter (for eval mode)")
-    parser.add_argument("--merged-path", default=None,
-                        help="Path to merged model (for eval mode)")
+    parser.add_argument(
+        "--mode", choices=["generate", "mine", "train", "eval", "full"], default="full", help="Which step to run"
+    )
+    parser.add_argument("--base-model", default="Qwen/Qwen3-Embedding-0.6B", help="HuggingFace base embedding model")
+    parser.add_argument(
+        "--output-dir", default="outputs/legal_embedder_lora", help="Output directory for data and models"
+    )
+    parser.add_argument("--data-dir", default=None, help="Data directory (default: same as output-dir)")
+    parser.add_argument("--adapter-path", default=None, help="Path to fine-tuned adapter (for eval mode)")
+    parser.add_argument("--merged-path", default=None, help="Path to merged model (for eval mode)")
 
     # Data generation
-    parser.add_argument("--n-questions", type=int, default=3,
-                        help="Questions per passage for synthetic data generation")
-    parser.add_argument("--max-passages", type=int, default=2000,
-                        help="Max corpus passages to use for training data")
-    parser.add_argument("--generator-model", default="claude-sonnet-4-6",
-                        help="Anthropic model for synthetic data generation")
+    parser.add_argument(
+        "--n-questions", type=int, default=3, help="Questions per passage for synthetic data generation"
+    )
+    parser.add_argument("--max-passages", type=int, default=2000, help="Max corpus passages to use for training data")
+    parser.add_argument(
+        "--generator-model", default="claude-sonnet-4-6", help="Anthropic model for synthetic data generation"
+    )
 
     # LoRA
     parser.add_argument("--lora-r", type=int, default=32, help="LoRA rank")
@@ -562,13 +574,10 @@ def main():
 
     # Training
     parser.add_argument("--epochs", type=int, default=3)
-    parser.add_argument("--batch-size", type=int, default=32,
-                        help="Logical batch size (CachedMNRL handles GPU memory)")
-    parser.add_argument("--mini-batch-size", type=int, default=16,
-                        help="Actual GPU mini-batch for gradient caching")
+    parser.add_argument("--batch-size", type=int, default=32, help="Logical batch size (CachedMNRL handles GPU memory)")
+    parser.add_argument("--mini-batch-size", type=int, default=16, help="Actual GPU mini-batch for gradient caching")
     parser.add_argument("--lr", type=float, default=2e-4)
-    parser.add_argument("--no-matryoshka", action="store_true",
-                        help="Disable Matryoshka loss (train full dim only)")
+    parser.add_argument("--no-matryoshka", action="store_true", help="Disable Matryoshka loss (train full dim only)")
 
     # Eval
     parser.add_argument("--eval-limit", type=int, default=100)

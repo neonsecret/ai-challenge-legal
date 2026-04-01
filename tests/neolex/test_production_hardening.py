@@ -9,6 +9,7 @@ Tests:
 - Startup validation catches missing data directory
 - CORS hardening: origins from config
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,6 +22,7 @@ from httpx import ASGITransport, AsyncClient
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 async def base_app_client():
@@ -61,6 +63,7 @@ async def base_app_client():
 # Request ID header
 # ---------------------------------------------------------------------------
 
+
 class TestRequestIDHeader:
     async def test_health_has_request_id_header(self, base_app_client):
         """Every response must include X-Request-ID."""
@@ -83,6 +86,7 @@ class TestRequestIDHeader:
 # ---------------------------------------------------------------------------
 # Global exception handler — JSON, not HTML
 # ---------------------------------------------------------------------------
+
 
 class TestGlobalExceptionHandler:
     """Tests for global exception handler using a minimal standalone FastAPI app.
@@ -110,8 +114,9 @@ class TestGlobalExceptionHandler:
         async def _crash():
             raise RuntimeError("deliberate test crash")
 
-        mini.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
-                            allow_methods=["GET"], allow_headers=["*"])
+        mini.add_middleware(
+            CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["GET"], allow_headers=["*"]
+        )
         mini.add_middleware(TimeoutMiddleware, timeout_seconds=30)
         mini.add_middleware(RequestIDMiddleware)
         mini.add_middleware(JSONErrorMiddleware)
@@ -153,6 +158,7 @@ class TestGlobalExceptionHandler:
 # Timeout middleware
 # ---------------------------------------------------------------------------
 
+
 class TestTimeoutMiddleware:
     async def test_timeout_returns_504_json(self):
         """A slow request should return 504 JSON when timeout is very short."""
@@ -171,8 +177,9 @@ class TestTimeoutMiddleware:
             await asyncio.sleep(10)  # will be cancelled by timeout
             return {"ok": True}
 
-        mini_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
-                                allow_methods=["GET"], allow_headers=["*"])
+        mini_app.add_middleware(
+            CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["GET"], allow_headers=["*"]
+        )
         mini_app.add_middleware(TimeoutMiddleware, timeout_seconds=0.05)
         mini_app.add_middleware(RequestIDMiddleware)
 
@@ -202,8 +209,9 @@ class TestTimeoutMiddleware:
         async def live():
             return {"status": "alive"}
 
-        mini_app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=False,
-                                allow_methods=["GET"], allow_headers=["*"])
+        mini_app.add_middleware(
+            CORSMiddleware, allow_origins=["*"], allow_credentials=False, allow_methods=["GET"], allow_headers=["*"]
+        )
         mini_app.add_middleware(TimeoutMiddleware, timeout_seconds=0.05)
         mini_app.add_middleware(RequestIDMiddleware)
 
@@ -216,6 +224,7 @@ class TestTimeoutMiddleware:
 # ---------------------------------------------------------------------------
 # Enhanced health endpoints
 # ---------------------------------------------------------------------------
+
 
 class TestEnhancedHealth:
     async def test_health_live_always_200(self, base_app_client):
@@ -275,6 +284,7 @@ class TestEnhancedHealth:
 # ---------------------------------------------------------------------------
 # Structured logging configuration
 # ---------------------------------------------------------------------------
+
 
 class TestLoggingConfig:
     def test_configure_logging_json_format(self):
@@ -343,6 +353,7 @@ class TestLoggingConfig:
 # Startup validation
 # ---------------------------------------------------------------------------
 
+
 class TestStartupValidation:
     def test_missing_data_dir_exits(self, tmp_path):
         """validate_startup must call sys.exit when data/ does not exist."""
@@ -387,10 +398,12 @@ class TestStartupValidation:
 # CORS configuration
 # ---------------------------------------------------------------------------
 
+
 class TestCORSConfig:
     def test_cors_origins_from_settings(self):
         """settings.cors_origins must always be a non-empty list of strings."""
         from neolex.config import settings
+
         assert isinstance(settings.cors_origins, list)
         assert len(settings.cors_origins) >= 1
         for origin in settings.cors_origins:

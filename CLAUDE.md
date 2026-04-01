@@ -3,7 +3,7 @@
 ## Rules
 
 1. **NEVER commit .env, API keys, proxy URLs, company names, or sensitive data**
-2. **NEVER push the `product` branch to GitHub**
+2. **NEVER push sensitive data (.env, API keys, company names) to any GitHub repo (public or private). The private repo is neonsecret/vitreon-legal.**
 3. Use `uv` for Python, `npm` for Node.js
 4. Agent is the production path (`use_agent=True`); deterministic pipeline for benchmarks only
 5. All status messages must be user-friendly — no internal details (model names, fallback info, algorithm names)

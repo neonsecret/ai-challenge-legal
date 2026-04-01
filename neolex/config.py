@@ -42,6 +42,7 @@ Environment variables:
     BACKEND_URL                 Backend base URL for email links (default: http://localhost:8000)
     DEV_MODE                    Disable secure cookies for local dev (default: false)
 """
+
 import os
 
 
@@ -52,17 +53,13 @@ class Settings:
     # CORS — dev default allows Next.js dev server; locked in production via env var.
     cors_origins: list[str] = [
         origin.strip()
-        for origin in os.environ.get(
-            "ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000"
-        ).split(",")
+        for origin in os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
         if origin.strip()
     ]
     # Data directory for documents and client indexes
     data_dir: str = os.environ.get("NEOLEX_DATA_DIR", "data")
     # Per-request timeout (seconds). 0 disables the timeout.
-    request_timeout_seconds: float = float(
-        os.environ.get("REQUEST_TIMEOUT_SECONDS", "30")
-    )
+    request_timeout_seconds: float = float(os.environ.get("REQUEST_TIMEOUT_SECONDS", "30"))
 
     # --- PostgreSQL (auth + billing tables) ---
     database_url: str = os.environ.get("DATABASE_URL", "")
@@ -121,6 +118,7 @@ class Settings:
         if self.stripe_mode == "live":
             return os.environ.get("STRIPE_LIVE_WEBHOOK_SECRET", "")
         return os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
     stripe_enabled: bool = os.environ.get("STRIPE_ENABLED", "").lower() in ("1", "true", "yes")
 
     # --- Stripe Price IDs (per plan + interval) ---

@@ -20,7 +20,6 @@ import os
 import re
 import sys
 import time
-from collections import defaultdict
 from pathlib import Path
 
 import requests
@@ -58,14 +57,17 @@ def get_client():
     global _client, _use_litellm
     if _client is None and not _use_litellm:
         import anthropic
+
         backend = os.environ.get("LLM_BACKEND", "litellm").lower()
         if backend == "litellm":
             from arlc.llm import litellm_backend
+
             if litellm_backend.is_configured():
                 _use_litellm = True
                 return None
         if backend == "vertex" or (backend == "auto" and os.environ.get("VERTEX_PROJECT_ID")):
             from anthropic import AnthropicVertex
+
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
@@ -81,6 +83,7 @@ def get_client():
 # ---------------------------------------------------------------------------
 # Data download
 # ---------------------------------------------------------------------------
+
 
 def download_dataset():
     """Download GaRAGe JSONL from GitHub."""
@@ -98,20 +101,22 @@ def download_dataset():
         print(f"[garage] Downloaded {len(resp.content)} bytes")
     except Exception as e:
         print(f"[garage] Direct download failed: {e}")
-        print(f"  Trying git clone...")
+        print("  Trying git clone...")
         clone_dir = DATA_DIR / "GaRAGe"
         os.system(f"git clone --depth 1 {REPO_URL} {clone_dir}")
         src = clone_dir / "GaRAGe_benchmark.jsonl"
         if src.exists():
             import shutil
+
             shutil.copy2(src, DATASET_PATH)
         else:
             for f in clone_dir.rglob("*.jsonl"):
                 import shutil
+
                 shutil.copy2(f, DATASET_PATH)
                 break
             else:
-                print(f"[garage] ERROR: Could not find dataset.")
+                print("[garage] ERROR: Could not find dataset.")
                 raise SystemExit(1)
 
 
@@ -176,6 +181,7 @@ def build_user_prompt(question: str, passages: list) -> str:
 # LLM call
 # ---------------------------------------------------------------------------
 
+
 async def call_llm(question: str, passages: list) -> str:
     """Call Claude to answer a question given passages."""
     user_prompt = build_user_prompt(question, passages)
@@ -183,9 +189,10 @@ async def call_llm(question: str, passages: list) -> str:
     try:
         if _use_litellm:
             import asyncio
+
             from arlc.llm import litellm_backend
-            text, *_ = await asyncio.to_thread(
-                litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 512, MODEL)
+
+            text, *_ = await asyncio.to_thread(litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 512, MODEL)
             return text
         client = get_client()
         response = client.messages.create(
@@ -205,11 +212,12 @@ async def call_llm(question: str, passages: list) -> str:
 # Response parsing
 # ---------------------------------------------------------------------------
 
+
 def parse_citations(response: str, num_passages: int) -> set[int]:
     """Extract cited passage indices from the response (0-indexed)."""
     # Match [P1], [P2], etc.
     cited = set()
-    for m in re.finditer(r'\[P(\d+)\]', response):
+    for m in re.finditer(r"\[P(\d+)\]", response):
         idx = int(m.group(1)) - 1  # convert to 0-indexed
         if 0 <= idx < num_passages:
             cited.add(idx)
@@ -237,9 +245,10 @@ def is_deflection(response: str) -> bool:
 # Metrics
 # ---------------------------------------------------------------------------
 
+
 def compute_attribution_metrics(
-        cited_passages: set[int],
-        gold_relevant: list[bool],
+    cited_passages: set[int],
+    gold_relevant: list[bool],
 ) -> dict:
     """Compute attribution precision, recall, F1."""
     gold_set = {i for i, r in enumerate(gold_relevant) if r}
@@ -259,10 +268,10 @@ def compute_attribution_metrics(
 
 
 def compute_raf_score(
-        response: str,
-        cited_passages: set[int],
-        gold_relevant: list[bool],
-        deflected: bool,
+    response: str,
+    cited_passages: set[int],
+    gold_relevant: list[bool],
+    deflected: bool,
 ) -> float:
     """Compute Relevance-Aware Factuality score for a single item.
 
@@ -302,6 +311,7 @@ def compute_raf_score(
 # ---------------------------------------------------------------------------
 # Evaluate single item
 # ---------------------------------------------------------------------------
+
 
 async def evaluate_item(item: dict, sem: asyncio.Semaphore) -> dict:
     """Evaluate our pipeline on a single GaRAGe item."""
@@ -356,6 +366,7 @@ async def evaluate_item(item: dict, sem: asyncio.Semaphore) -> dict:
 # Main
 # ---------------------------------------------------------------------------
 
+
 def main():
     parser = argparse.ArgumentParser(description="GaRAGe evaluation")
     parser.add_argument("--dry-run", action="store_true", help="Download data only")
@@ -390,7 +401,7 @@ def main():
         return
 
     if args.limit > 0:
-        items = items[:args.limit]
+        items = items[: args.limit]
         print(f"[garage] Limited to {args.limit} items")
 
     # Step 3: Evaluate with concurrency
@@ -426,8 +437,11 @@ def main():
     defl_fpr = (sum(1 for r in has_relevant if r["deflected"]) / len(has_relevant)) if has_relevant else 0
 
     # Eligibility: model cited at least one relevant passage
-    eligible = sum(1 for r in has_relevant if r["num_cited"] > 0 and not r["deflected"]) / len(
-        has_relevant) if has_relevant else 0
+    eligible = (
+        sum(1 for r in has_relevant if r["num_cited"] > 0 and not r["deflected"]) / len(has_relevant)
+        if has_relevant
+        else 0
+    )
 
     aggregate = {
         "num_evaluated": evaluated,

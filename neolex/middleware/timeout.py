@@ -10,6 +10,7 @@ The timeout applies to the entire request including pipeline execution.
 Query endpoints typically take 3-15s; 30s is a generous upper bound that
 still protects against stuck requests consuming server resources.
 """
+
 from __future__ import annotations
 
 import asyncio

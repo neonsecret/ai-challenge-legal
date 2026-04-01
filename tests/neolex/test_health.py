@@ -1,5 +1,3 @@
-
-
 async def test_health_ready(app_client):
     response = await app_client.get("/health")
     assert response.status_code == 200
@@ -13,6 +11,7 @@ async def test_health_ready(app_client):
 async def test_health_not_ready(app_client):
     # Temporarily mark not ready
     from neolex.main import app
+
     app.state.ready = False
     try:
         response = await app_client.get("/health")

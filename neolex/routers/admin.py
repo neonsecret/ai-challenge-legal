@@ -2,6 +2,7 @@
 
 GET  /api/v1/admin/audit  — paginated audit log.
 """
+
 import os
 from typing import Annotated, Literal
 
@@ -15,9 +16,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 # Admin emails — configurable via ADMIN_EMAILS env var (comma-separated).
 _ADMIN_EMAILS: set[str] = {
-    e.strip()
-    for e in os.environ.get("ADMIN_EMAILS", "admin@vitreon.app").split(",")
-    if e.strip()
+    e.strip() for e in os.environ.get("ADMIN_EMAILS", "admin@vitreon.app").split(",") if e.strip()
 }
 
 
@@ -30,10 +29,10 @@ async def get_admin(user: User = Depends(get_current_user)) -> User:
 
 @router.get("/audit")
 async def get_audit_log(
-        admin: Annotated[User, Depends(get_admin)],
-        table: Annotated[Literal["queries", "events"], Query()] = "queries",
-        limit: Annotated[int, Query(ge=1, le=200)] = 50,
-        offset: Annotated[int, Query(ge=0)] = 0,
+    admin: Annotated[User, Depends(get_admin)],
+    table: Annotated[Literal["queries", "events"], Query()] = "queries",
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     """Return paginated audit log entries."""
     async with get_audit_db() as db:

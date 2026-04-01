@@ -27,11 +27,11 @@ def is_configured() -> bool:
 
 
 def call_llm(
-        system_prompt: str,
-        user_message: str,
-        max_tokens: int = 512,
-        model: str = "claude-sonnet-4-6",
-        system_blocks: list[dict] | None = None,
+    system_prompt: str,
+    user_message: str,
+    max_tokens: int = 512,
+    model: str = "claude-sonnet-4-6",
+    system_blocks: list[dict] | None = None,
 ) -> tuple[str, float, float, float, int, int]:
     """Call Claude via Vertex AI with streaming.
     Returns (text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens).
@@ -45,17 +45,16 @@ def call_llm(
     if system_blocks is not None:
         system_param = system_blocks
     elif system_prompt:
-        system_param = [{"type": "text", "text": system_prompt,
-                         "cache_control": {"type": "ephemeral"}}]
+        system_param = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
     else:
         system_param = []  # Vertex rejects cache_control on empty text blocks
 
     with client.messages.stream(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=0.0,
-            system=system_param,
-            messages=[{"role": "user", "content": user_message}],
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.0,
+        system=system_param,
+        messages=[{"role": "user", "content": user_message}],
     ) as stream:
         for text in stream.text_stream:
             if ttft_ms is None:

@@ -293,7 +293,7 @@ class Router:
             prefix, number, year = match.group(1), match.group(2), match.group(3)
             full_match = match.group(0)
             # Detect dash-format case IDs (e.g. ENF-022-2023): only dashes, no slash
-            is_dash_format = '-' in full_match and '/' not in full_match
+            is_dash_format = "-" in full_match and "/" not in full_match
             if is_dash_format:
                 # Dash-format takes priority: try "ENF-022-2023" key before slash variants
                 dash_key = f"{prefix.upper()}-{number.zfill(3)}-{year}"
@@ -307,8 +307,7 @@ class Router:
                 case_ids.append(case_id)
             else:
                 # Try zero-padded variants
-                for padded in [f"{prefix.upper()} {number.zfill(3)}/{year}",
-                               f"{prefix.upper()} {number}/{year}"]:
+                for padded in [f"{prefix.upper()} {number.zfill(3)}/{year}", f"{prefix.upper()} {number}/{year}"]:
                     if padded in self._case_index:
                         case_ids.append(padded)
                         break
@@ -342,11 +341,11 @@ class Router:
         # Build a version with quoted strings removed.
         # Prevents law names inside document titles (e.g. "PROPOSED NEW X LAW") from
         # being used for routing when the question is ABOUT that document, not the law.
-        q_no_quotes = re.sub(r'"[^"]*"', ' ', question)
-        q_no_quotes = re.sub(r"'[^']*'", ' ', q_no_quotes)
+        q_no_quotes = re.sub(r'"[^"]*"', " ", question)
+        q_no_quotes = re.sub(r"'[^']*'", " ", q_no_quotes)
         # Also handle Unicode curly quotes
-        q_no_quotes = re.sub(r'[\u201C\u201D][^\u201C\u201D]*[\u201C\u201D]', ' ', q_no_quotes)
-        q_no_quotes = re.sub(r'[\u2018\u2019][^\u2018\u2019]*[\u2018\u2019]', ' ', q_no_quotes)
+        q_no_quotes = re.sub(r"[\u201C\u201D][^\u201C\u201D]*[\u201C\u201D]", " ", q_no_quotes)
+        q_no_quotes = re.sub(r"[\u2018\u2019][^\u2018\u2019]*[\u2018\u2019]", " ", q_no_quotes)
         q_lower_no_quotes = q_no_quotes.lower()
 
         for pattern in LAW_NAME_PATTERNS:
@@ -478,8 +477,9 @@ class Router:
         # Uses q_lower_no_quotes to avoid matching law names inside document title quotes.
         _fallback_added = 0
         for key in sorted(
-                (k for k in self._law_name_index if k != "_meta"),
-                key=len, reverse=True,
+            (k for k in self._law_name_index if k != "_meta"),
+            key=len,
+            reverse=True,
         ):
             if key in q_lower_no_quotes and key not in found:
                 # Skip if this key is a substring of an already-found key (less specific).
@@ -499,8 +499,9 @@ class Router:
         # Safe because it only fires when found is completely empty (normal extraction failed).
         if not found:
             for key in sorted(
-                    (k for k in self._law_name_index if k != "_meta"),
-                    key=len, reverse=True,
+                (k for k in self._law_name_index if k != "_meta"),
+                key=len,
+                reverse=True,
             ):
                 if key in q_lower and key not in found:
                     found.append(key)
@@ -557,6 +558,7 @@ class Router:
     def _build_cp_topic_map(self):
         """Build reverse mapping: topic -> [cp_keys] for disambiguation."""
         import fitz as _fitz
+
         docs_dir = self.data_dir / "documents"
         for key, doc_id in self._cp_index.items():
             pdf_path = docs_dir / f"{doc_id}.pdf"
@@ -626,9 +628,7 @@ class Router:
         # to identify the right CP via the topic map.
         # E.g.: 'the consultation paper "PROPOSED NEW INTELLECTUAL PROPERTY LAW"'
         # E.g.: 'the DIFC document "EMPLOYMENT LAW AMENDMENT LAW & NEW EMPLOYMENT REGULATIONS"'
-        if not doc_ids and re.search(
-                r'\b(?:consultation\s+paper|difc\s+document)\b', question, re.IGNORECASE
-        ):
+        if not doc_ids and re.search(r"\b(?:consultation\s+paper|difc\s+document)\b", question, re.IGNORECASE):
             matched_topics = []
             for topic, patterns in CP_TOPIC_KEYWORDS.items():
                 for pat in patterns:
@@ -660,7 +660,7 @@ class Router:
             num = int(match.group(1))
             year = int(match.group(2))
             # Determine order type from context before match
-            context = question[max(0, match.start() - 60):match.end()].lower()
+            context = question[max(0, match.start() - 60) : match.end()].lower()
             if "rules of court" in context:
                 order_type = "rules_of_court"
             elif "small claims" in context:
@@ -716,9 +716,7 @@ class Router:
             return self._law_name_index[law_name]
         return None
 
-    def _get_metadata_pages(
-            self, case_ids: list[str], metadata_type: str | None
-    ) -> dict[str, int] | None:
+    def _get_metadata_pages(self, case_ids: list[str], metadata_type: str | None) -> dict[str, int] | None:
         """Get metadata page numbers for shortcuts."""
         if not metadata_type or not case_ids:
             return None
@@ -761,8 +759,11 @@ class Router:
         return pages if pages else None
 
     def _get_metadata_answer(
-            self, case_ids: list[str], metadata_type: str | None, question: str,
-            answer_type: str = "",
+        self,
+        case_ids: list[str],
+        metadata_type: str | None,
+        question: str,
+        answer_type: str = "",
     ) -> Any:
         """Try to extract a pre-computed answer from metadata."""
         if not metadata_type or not case_ids:
@@ -871,9 +872,7 @@ class Router:
 
         return None
 
-    def _get_article_pages(
-            self, doc_id: str, article_keys: list[str]
-    ) -> dict[str, int] | None:
+    def _get_article_pages(self, doc_id: str, article_keys: list[str]) -> dict[str, int] | None:
         """Get page numbers for specific articles in a document."""
         if doc_id not in self._article_index:
             return None
@@ -911,7 +910,7 @@ class Router:
             # ENF 022/2023 ALWAYS refer to the same case — just indexed under different format keys.
             # Both entries may have different doc sets (e.g., different orders from same enforcement),
             # and all docs should be included for complete retrieval.
-            m = re.match(r'^([A-Z]+)-(\d+)-(\d+)$', case_id)
+            m = re.match(r"^([A-Z]+)-(\d+)-(\d+)$", case_id)
             if m:
                 p, n, y = m.groups()
                 for alt in [f"{p} {int(n)}/{y}", f"{p} {n.zfill(3)}/{y}"]:
@@ -933,7 +932,7 @@ class Router:
         # "referenced in these Regulations" are context-dependent — the answer is in
         # the currently-discussed regulation doc, NOT in the referenced law.
         # Suppress law-based routing for these questions (let global search find the doc).
-        _these_regs_q = bool(re.search(r'\bthese\s+Regulations?\b', question, re.IGNORECASE))
+        _these_regs_q = bool(re.search(r"\bthese\s+Regulations?\b", question, re.IGNORECASE))
 
         # Collect doc IDs from law references
         for law_name in law_names:
@@ -958,9 +957,10 @@ class Router:
         # empty, we haven't found the amendment law, so dumping ALL laws is noise — fall
         # back to global search instead, which has a better chance of finding the right doc.
         q_lower = question.lower()
-        if (target_doc_ids and
-                (re.search(r"which\b.*\b(?:laws?|legislation)\b.*\bamend", q_lower) or
-                 re.search(r"amend(?:ed|ing|ment)\b.*\bwhich\b.*\b(?:laws?|legislation)", q_lower))):
+        if target_doc_ids and (
+            re.search(r"which\b.*\b(?:laws?|legislation)\b.*\bamend", q_lower)
+            or re.search(r"amend(?:ed|ing|ment)\b.*\bwhich\b.*\b(?:laws?|legislation)", q_lower)
+        ):
             # Add all law doc IDs from the law_name_index
             for key, doc_id in self._law_name_index.items():
                 if key != "_meta" and isinstance(doc_id, str) and doc_id not in target_doc_ids:
@@ -971,10 +971,12 @@ class Router:
         # Appeal cross-reference: for SCT cases with appeal questions,
         # add the CFI appeal document if it exists in our corpus
         if self._appeal_index and case_ids:
-            is_appeal_q = bool(re.search(
-                r"appeal(?:ed|ing)?|permission\s+to\s+appeal|PTA\b",
-                q_lower,
-            ))
+            is_appeal_q = bool(
+                re.search(
+                    r"appeal(?:ed|ing)?|permission\s+to\s+appeal|PTA\b",
+                    q_lower,
+                )
+            )
             if is_appeal_q:
                 for case_id in case_ids:
                     appeal_info = self._appeal_index.get(case_id)
@@ -1172,6 +1174,7 @@ def extract_au_citations(question: str) -> list[str]:
 
 
 # ── Testing ──────────────────────────────────────────────────────────────
+
 
 def test_routing_coverage():
     """Test router against all 100 public dataset questions."""

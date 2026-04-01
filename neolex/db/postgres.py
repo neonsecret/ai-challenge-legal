@@ -4,6 +4,7 @@ All tables live here: auth/billing (users, sessions, auth_tokens,
 subscriptions, invoices) and operational (api_keys, queries, events,
 rate_limits, documents, reindex_jobs).
 """
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -46,6 +47,7 @@ async def init_db() -> None:
         models,  # noqa: F401 — registers auth/billing models
         operational_models,  # noqa: F401 — registers operational models
     )
+
     async with engine.begin() as conn:
         # Enable pgvector extension (must precede table creation)
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
@@ -53,19 +55,23 @@ async def init_db() -> None:
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE OR REPLACE FUNCTION chunks_text_search_trigger() RETURNS trigger AS $$
             BEGIN
                 NEW.text_search := to_tsvector('simple', NEW.text);
                 RETURN NEW;
             END
             $$ LANGUAGE plpgsql;
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             DO $$ BEGIN
                 CREATE TRIGGER chunks_text_search_update
                     BEFORE INSERT OR UPDATE OF text ON chunks
                     FOR EACH ROW EXECUTE FUNCTION chunks_text_search_trigger();
             EXCEPTION WHEN duplicate_object THEN NULL;
             END $$;
-        """))
+        """)
+        )

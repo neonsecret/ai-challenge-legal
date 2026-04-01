@@ -1,4 +1,5 @@
 """Tests for new tools in agent_tools.py — Task 3 of agentic RAG v2 plan."""
+
 import json
 
 from agent_tools import (

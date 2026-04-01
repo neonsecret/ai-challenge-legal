@@ -6,6 +6,7 @@ Per-client isolation: each client's files live under:
 This module is synchronous (uses pathlib/os) and is called from async
 route handlers via asyncio.to_thread() where I/O matters.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -57,10 +58,10 @@ def client_index_dir(client_slug: str) -> Path:
 
 
 def save_upload(
-        client_slug: str,
-        filename: str,
-        content: bytes,
-        collection: str = "My Documents",
+    client_slug: str,
+    filename: str,
+    content: bytes,
+    collection: str = "My Documents",
 ) -> dict:
     """Save uploaded PDF bytes to the client's docs directory.
 
@@ -218,10 +219,7 @@ def extract_zip_safely(
 
         # --- Max file count ---
         if len(entries) > max_files:
-            raise ValueError(
-                f"ZIP contains {len(entries)} entries (max {max_files}). "
-                f"Split into smaller archives."
-            )
+            raise ValueError(f"ZIP contains {len(entries)} entries (max {max_files}). Split into smaller archives.")
 
         total_extracted = 0
 
@@ -235,8 +233,7 @@ def extract_zip_safely(
             # --- Path traversal ---
             if ".." in name or name.startswith("/"):
                 raise ValueError(
-                    f"Unsafe path detected in ZIP entry: '{name}'. "
-                    f"Archive may contain a path traversal attack."
+                    f"Unsafe path detected in ZIP entry: '{name}'. Archive may contain a path traversal attack."
                 )
 
             # --- Symlinks (Unix external_attr: upper 16 bits contain mode) ---
@@ -256,8 +253,7 @@ def extract_zip_safely(
                 ratio = info.file_size / info.compress_size
                 if ratio > MAX_COMPRESSION_RATIO:
                     raise ValueError(
-                        f"Suspicious compression ratio ({ratio:.0f}:1) for "
-                        f"'{basename}'. Possible zip bomb."
+                        f"Suspicious compression ratio ({ratio:.0f}:1) for '{basename}'. Possible zip bomb."
                     )
 
             # --- Total extracted size guard (pre-extraction estimate) ---
@@ -274,8 +270,7 @@ def extract_zip_safely(
                 # Encrypted / password-protected entry
                 if "password" in str(exc).lower() or "encrypted" in str(exc).lower():
                     raise ValueError(
-                        "ZIP archive contains encrypted entries. "
-                        "Password-protected archives are not supported."
+                        "ZIP archive contains encrypted entries. Password-protected archives are not supported."
                     ) from exc
                 raise
 

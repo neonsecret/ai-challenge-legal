@@ -28,6 +28,7 @@ Usage (Python):
 IMPORTANT: Never run purge during an active SOC 2 observation window.
 Set SOC2_OBSERVATION_PERIOD=true in your environment during audits.
 """
+
 from __future__ import annotations
 
 import datetime
@@ -69,12 +70,12 @@ class RetentionPolicy:
     """
 
     def __init__(self) -> None:
-        self.retention_days: int = int(
-            os.environ.get("AUDIT_LOG_RETENTION_DAYS", str(DEFAULT_RETENTION_DAYS))
+        self.retention_days: int = int(os.environ.get("AUDIT_LOG_RETENTION_DAYS", str(DEFAULT_RETENTION_DAYS)))
+        self.observation_period_active: bool = os.environ.get("SOC2_OBSERVATION_PERIOD", "").lower() in (
+            "1",
+            "true",
+            "yes",
         )
-        self.observation_period_active: bool = os.environ.get(
-            "SOC2_OBSERVATION_PERIOD", ""
-        ).lower() in ("1", "true", "yes")
 
     @property
     def purge_allowed(self) -> bool:
@@ -88,9 +89,7 @@ class RetentionPolicy:
     @property
     def cutoff_date(self) -> datetime.datetime:
         """ISO 8601 cutoff: entries before this timestamp are eligible for purging."""
-        return datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-            days=self.retention_days
-        )
+        return datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=self.retention_days)
 
     def describe(self) -> dict:
         """Return a human-readable description of the current policy."""
@@ -112,9 +111,7 @@ class RetentionPolicy:
             counts[table] = await db.count_purgeable(table, cutoff_iso)
         return counts
 
-    async def purge_old_entries(
-            self, db: "AuditDB", *, dry_run: bool = False
-    ) -> dict[str, int]:
+    async def purge_old_entries(self, db: "AuditDB", *, dry_run: bool = False) -> dict[str, int]:
         """Delete audit log entries older than the retention cutoff.
 
         Args:
@@ -166,11 +163,11 @@ class RetentionPolicy:
 
 
 async def record_retention_run(
-        db: "AuditDB",
-        *,
-        dry_run: bool,
-        deleted: dict[str, int],
-        policy: RetentionPolicy,
+    db: "AuditDB",
+    *,
+    dry_run: bool,
+    deleted: dict[str, int],
+    policy: RetentionPolicy,
 ) -> None:
     """Append a retention_run event to the events table for audit trail.
 
@@ -206,9 +203,7 @@ async def _cli_main(dry_run: bool) -> None:
         if policy.observation_period_active:
             print("BLOCKED: SOC 2 observation period is active. Purge disabled.")
         else:
-            print(
-                "BLOCKED: AUDIT_LOG_RETENTION_DAYS=0 — automated purging is disabled."
-            )
+            print("BLOCKED: AUDIT_LOG_RETENTION_DAYS=0 — automated purging is disabled.")
         return
 
     async with get_audit_db() as db:
@@ -227,9 +222,7 @@ if __name__ == "__main__":
     import argparse
     import asyncio
 
-    parser = argparse.ArgumentParser(
-        description="Vitreon Legal audit log retention purge tool"
-    )
+    parser = argparse.ArgumentParser(description="Vitreon Legal audit log retention purge tool")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--dry-run",

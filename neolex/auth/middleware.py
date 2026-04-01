@@ -5,6 +5,7 @@ All endpoints requiring authentication use:
   - get_auth()          → returns dict with client_slug/scope (for routers that expect key_row shape)
   - get_admin()         → requires active subscription
 """
+
 from fastapi import Depends
 
 from neolex.auth.session import get_current_user
