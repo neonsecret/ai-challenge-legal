@@ -795,7 +795,7 @@ export default function ChatPage() {
                             const config = JURISDICTIONS[key]
                             const isActive = jurisdiction === key
                             const isEnabled = key === "difc" || key === "cz" || key === "uk" || key === "au" || key === "custom"
-                            const hasLawPane = (key === "cz" || key === "uk" || key === "au") && availableLaws.length > 0 && jurisdiction === key
+                            const hasLawPane = (key === "uk" || key === "au") && availableLaws.length > 0 && jurisdiction === key
                             // Wrap "custom" pill in a relative container so the dropdown anchors to it
                             const pillButton = (
                                 <button
@@ -1172,8 +1172,8 @@ export default function ChatPage() {
                     )}
                 </AnimatePresence>
 
-                {/* Czech law selector pills — toggle via country pill click */}
-                {(jurisdiction === "cz" || jurisdiction === "uk" || jurisdiction === "au") && lawPaneOpen && availableLaws.length > 0 && (
+                {/* Law selector pills (UK/AU) — toggle via country pill click */}
+                {(jurisdiction === "uk" || jurisdiction === "au") && lawPaneOpen && availableLaws.length > 0 && (
                     <div style={{
                         padding: isMobile ? `${SPACE['1']}px ${SPACE['3']}px` : `${SPACE['1']}px ${SPACE['6']}px`,
                         borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.bgSubtle}`,
