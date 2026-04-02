@@ -1144,7 +1144,13 @@ function resolveSource(
 
 const crossfade = {duration: parseFloat(TIMING.fast)}
 
-export function GroundingView({answer, sources, isDark = false, isMobile = false, focusDocId, focusPage, focusSeq = 0}: GroundingViewProps) {
+export function GroundingView({answer, sources: rawSources, isDark = false, isMobile = false, focusDocId, focusPage, focusSeq = 0}: GroundingViewProps) {
+    // Normalize sources — filter out malformed entries that could crash rendering
+    const sources = useMemo(() =>
+        (Array.isArray(rawSources) ? rawSources : []).filter(
+            (s): s is SourceRef => !!s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers)
+        ),
+    [rawSources])
     const initialSource = resolveSource(sources, focusDocId, focusPage)
     const initialPage = focusPage ?? (initialSource?.page_numbers[0] ?? 1)
 
