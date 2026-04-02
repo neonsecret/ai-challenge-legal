@@ -90,8 +90,10 @@ const TEXT_TRUNCATE_LIMIT = 2000
  *  with navigation menus, breadcrumbs, and no paragraph breaks. */
 function cleanJudgmentText(raw: string): string {
     let text = raw
-    // Strip everything before the first case-like heading (e.g. "Claim No:", "IN THE COURT", party names)
-    const caseStart = text.search(/(?:Claim No|IN THE\s*COURT|BETWEEN|BEFORE|Hearing:|Judgment:)/i)
+    // Strip everything before the first case-like heading (e.g. "Claim No:", "IN THE COURT").
+    // Patterns require start-of-line + specific structure to avoid matching normal words
+    // like "before" in statute text (e.g. "before the commencement of this section").
+    const caseStart = text.search(/(?:^Claim No[.:]|^IN THE\s+(?:COURT|MATTER)|^BETWEEN\s*\n|^BEFORE\s*[:;]|^Hearing\s*:|^Judgment\s*:)/im)
     if (caseStart > 100) text = text.slice(caseStart)
 
     // Insert paragraph breaks before numbered paragraphs (1. 2. 3. etc.)
