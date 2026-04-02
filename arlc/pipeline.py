@@ -42,7 +42,6 @@ load_dotenv()
 #              "model_name": str}
 
 from arlc.format_guardian import FormatGuardian
-from arlc.indexing.indexer import build_index
 
 # Case metadata for cross-case oracle citation expansion
 _CASE_META_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "case_metadata_index.json")
@@ -871,7 +870,8 @@ async def _process_question_inner(
     # Skip retrieval entirely to save time and avoid wrong citations.
     # Handles ALL answer types: free_text returns "There is no information...",
     # deterministic types (boolean/number/name/names/date) return None.
-    if _is_trick_question(question):
+    # Only for DIFC corpus — other jurisdictions (Czech, UK, AU) have criminal law.
+    if corpus == "difc" and _is_trick_question(question):
         t_total = time.monotonic() - t_start
         if answer_type == "free_text":
             trick_answer = "There is no information on this question in the provided documents. The DIFC Courts operate exclusively as a civil and commercial jurisdiction and do not have criminal jurisdiction."
@@ -951,7 +951,8 @@ async def _process_question_inner(
 
     # Level 3 trick detection: concept in question but absent from retrieved source text.
     # This catches trick questions that use novel phrasing not in _TRICK_KEYWORDS.
-    if source_pages:
+    # Only for DIFC corpus — other jurisdictions (Czech, UK, AU) have criminal law.
+    if corpus == "difc" and source_pages:
         combined_src = " ".join(p.get("text", "") for p in source_pages)
         if _is_trick_question(question, source_text=combined_src):
             t_total = time.monotonic() - t_start
@@ -1691,6 +1692,8 @@ async def run_pipeline(
 
         if get_chunk_count("difc") == 0:
             print("=== Step 1: Indexing documents ===")
+            from arlc.indexing.indexer import build_index
+
             build_index()
         else:
             print("=== Step 1: Skipping indexing (chunks already in PostgreSQL) ===")
