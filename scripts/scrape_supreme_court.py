@@ -28,7 +28,6 @@ import re
 import sys
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlencode, urlparse, urlunparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -458,13 +457,11 @@ async def _build_search_url(
     )
     # Domino redirects POST to a GET URL containing the encoded Domino query
     final_url = str(resp.url)
-    # Strip Start and Count — we'll add them for each page
-    parsed = urlparse(final_url)
-    params = dict(pair.split("=", 1) for pair in parsed.query.split("&") if "=" in pair)
-    params.pop("Start", None)
-    params.pop("Count", None)
-    params.pop("SearchMax", None)
-    base_url = urlunparse(parsed._replace(query=urlencode(params)))
+    # The redirect URL already has URL-encoded query params.
+    # Do NOT re-parse and re-encode — that causes double-encoding (%5B → %255B).
+    # Instead, strip Start= / Count= / SearchMax= with simple string surgery
+    # and keep all other parameters intact at their original encoding level.
+    base_url = re.sub(r"&?(Start|Count|SearchMax)=[^&]*", "", final_url).rstrip("?&")
     return base_url
 
 
