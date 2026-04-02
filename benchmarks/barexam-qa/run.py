@@ -253,7 +253,7 @@ def _load_indexes():
 
 
 def retrieve(query: str, top_k: int = 10) -> list[dict]:
-    """Hybrid BM25 + vector retrieval."""
+    """Hybrid BM25 + vector + HyDE retrieval (mirrors main pipeline's _hybrid_retrieve)."""
     import faiss
 
     from arlc.indexing.legal_tokenizer import legal_tokenize_queries
@@ -286,9 +286,30 @@ def retrieve(query: str, top_k: int = 10) -> list[dict]:
         if pid not in bm25_rank:
             bm25_rank[pid] = j + 1
 
-    # RRF fusion
+    # HyDE: generate a hypothetical caselaw passage, then embed it as an additional signal.
+    # This bridges the vocabulary gap between bar exam questions (lay language) and
+    # the caselaw corpus (formal legal terminology) — same technique used in main pipeline.
+    hyde_rank = {}
+    try:
+        from arlc.retriever import generate_hyde_passage
+
+        hyde_passage = generate_hyde_passage(query, corpus="au")  # US caselaw closest to AU common law
+        if hyde_passage:
+            hyde_emb = np.array(_embedder.embed_texts([hyde_passage])[0], dtype=np.float32).reshape(1, -1)
+            faiss.normalize_L2(hyde_emb)
+            _, I_h = _faiss_index.search(hyde_emb, min(200, _faiss_index.ntotal))
+            for rank, idx in enumerate(I_h[0]):
+                if idx < 0:
+                    continue
+                pid = _faiss_metadata[int(idx)]["idx"]
+                if pid not in hyde_rank:
+                    hyde_rank[pid] = rank + 1
+    except Exception:
+        pass  # HyDE is best-effort
+
+    # RRF fusion: raw vec similarity + BM25 rank + HyDE rank (2x weight, doc-to-doc space)
     RRF_K = 60
-    all_pids = set(vec_scores) | set(bm25_rank)
+    all_pids = set(vec_scores) | set(bm25_rank) | set(hyde_rank)
     fused = {}
     for pid in all_pids:
         score = 0.0
@@ -296,6 +317,8 @@ def retrieve(query: str, top_k: int = 10) -> list[dict]:
             score += vec_scores[pid]
         if pid in bm25_rank:
             score += 1.0 / (RRF_K + bm25_rank[pid])
+        if pid in hyde_rank:
+            score += 2.0 / (RRF_K + hyde_rank[pid])
         fused[pid] = score
 
     ranked = sorted(fused.items(), key=lambda x: x[1], reverse=True)[:top_k]

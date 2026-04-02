@@ -71,11 +71,12 @@ def get_client():
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+                timeout=90.0,
             )
         elif backend != "litellm":
             _client = anthropic.Anthropic(
                 api_key=os.environ.get("ANTHROPIC_API_KEY"),
-                timeout=120.0,
+                timeout=90.0,
             )
     return _client
 
@@ -335,7 +336,11 @@ async def evaluate_item(item: dict, sem: asyncio.Semaphore) -> dict:
         gold_relevant.append(False)
 
     async with sem:
-        response = await call_llm(question, passages)
+        try:
+            response = await asyncio.wait_for(call_llm(question, passages), timeout=90.0)
+        except asyncio.TimeoutError:
+            print(f"  [TIMEOUT] item skipped after 90s")
+            response = ""
 
     # Parse response
     deflected = is_deflection(response)

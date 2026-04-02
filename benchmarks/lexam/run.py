@@ -11,13 +11,15 @@ Benchmarks Claude's performance against published scores:
 
 Usage:
     python benchmarks/lexam/run.py [--type mcq|open|all] [--lang en|de|all]
-                                   [--limit N] [--workers N]
+                                   [--limit N] [--workers N] [--no-shuffle]
 """
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -57,9 +59,10 @@ def get_client():
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+                timeout=90.0,
             )
         elif backend != "litellm":
-            _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"), timeout=120.0)
+            _client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"), timeout=90.0)
     return _client
 
 
@@ -94,24 +97,36 @@ def load_open(lang_filter: str = "all") -> list[dict]:
 # Prompts
 # ---------------------------------------------------------------------------
 
-MCQ_SYSTEM = """You are a legal expert taking a law school exam. Answer multiple-choice questions precisely.
+MCQ_SYSTEM = """You are a legal expert taking a law school exam.
 
-After brief reasoning, output your answer on the LAST LINE as exactly one letter: A, B, C, or D.
+Read the question carefully. Think through each option step by step, briefly explaining why each option is correct or incorrect.
 
-Example final line: "A" """
+Then state your final answer in this exact format:
+Final answer: X
+
+Where X is exactly one letter: A, B, C, or D.
+
+Important: The correct answer is equally likely to be A, B, C, or D. Evaluate each option on its own merits — do not default to any particular letter."""
 
 OPEN_SYSTEM = """You are a legal expert taking a law school exam. Answer the question in a structured, concise manner as expected in a law school exam setting.
 
 Provide a clear, well-reasoned answer. Use legal terminology correctly. Be concise but complete."""
 
 
-def build_mcq_prompt(item: dict) -> str:
+def parse_choices(item: dict) -> list:
+    """Parse choices from item into a list of strings."""
     choices = item.get("choices", "[]")
     if isinstance(choices, str):
         try:
             choices = json.loads(choices)
         except Exception:
             choices = [s.strip() for s in choices.strip("[]").split(",")]
+    return choices
+
+
+def build_mcq_prompt(item: dict, choices: list | None = None) -> str:
+    if choices is None:
+        choices = parse_choices(item)
 
     prompt = f"Question: {item['question']}\n\n"
     labels = ["A", "B", "C", "D"]
@@ -119,6 +134,27 @@ def build_mcq_prompt(item: dict) -> str:
         prompt += f"{label}. {choice}\n"
     prompt += "\nSelect the single best answer (A, B, C, or D)."
     return prompt
+
+
+def shuffle_choices(choices: list, gold_letter: str, question_id: str) -> tuple[list, str]:
+    """Shuffle answer choices deterministically per question to eliminate position bias.
+
+    Returns new choices list and updated gold letter reflecting the new positions.
+    """
+    labels = ["A", "B", "C", "D"]
+    original_gold_idx = labels.index(gold_letter)
+
+    seed = int(hashlib.md5(str(question_id).encode()).hexdigest()[:8], 16)
+    rng = random.Random(seed)
+
+    perm = list(range(len(choices)))
+    rng.shuffle(perm)
+
+    new_choices = [choices[i] for i in perm]
+    new_gold_idx = perm.index(original_gold_idx)
+    new_gold_letter = labels[new_gold_idx]
+
+    return new_choices, new_gold_letter
 
 
 def build_open_prompt(item: dict) -> str:
@@ -155,7 +191,9 @@ async def call_llm(system: str, user: str, max_tokens: int, sem: asyncio.Semapho
                 text, *_ = await asyncio.to_thread(litellm_backend.call_llm, system, user, max_tokens, MODEL)
                 return text
             client = get_client()
-            response = client.messages.create(
+            # Run synchronous AnthropicVertex client in thread pool to avoid blocking the event loop
+            response = await asyncio.to_thread(
+                client.messages.create,
                 model=MODEL,
                 max_tokens=max_tokens,
                 temperature=0.0,
@@ -174,17 +212,38 @@ async def call_llm(system: str, user: str, max_tokens: int, sem: asyncio.Semapho
 
 
 def parse_mcq_answer(response: str) -> str:
-    """Extract A/B/C/D from response. Returns the last standalone letter found."""
-    # Try last line first
-    lines = response.strip().split("\n")
-    for line in reversed(lines):
-        line = line.strip().strip('"').strip("'").strip("*").strip()
-        if line in ("A", "B", "C", "D"):
-            return line
-    # Search entire response for standalone letter
-    for char in reversed(response):
-        if char in "ABCD":
-            return char
+    """Extract A/B/C/D from CoT response.
+
+    Priority:
+    1. Explicit "Final answer: X" / "My answer: X" (CoT canonical form)
+    2. "The answer is X" / "answer: X"
+    3. Last standalone letter on its own line
+    4. Last word-boundary match of A/B/C/D in the full response
+    """
+    if not response:
+        return "?"
+
+    # 1. Canonical CoT final-answer marker
+    m = re.search(r"(?i)(?:final answer|my answer)\s*[:\-]\s*\**([A-D])\b", response)
+    if m:
+        return m.group(1).upper()
+
+    # 2. "the answer is X" / "answer is X" / "answer: X"
+    m = re.search(r"(?i)(?:the answer is|answer is|answer:)\s*\**([A-D])\b", response)
+    if m:
+        return m.group(1).upper()
+
+    # 3. Last line that is a bare letter
+    for line in reversed(response.strip().split("\n")):
+        stripped = line.strip().strip('"').strip("'").strip("*").strip(".").strip()
+        if stripped in ("A", "B", "C", "D"):
+            return stripped
+
+    # 4. Last word-boundary occurrence of A/B/C/D
+    matches = re.findall(r"\b([A-D])\b", response)
+    if matches:
+        return matches[-1]
+
     return "?"
 
 
@@ -201,18 +260,18 @@ def gold_to_letter(gold: str, choices: list) -> str:
         return "?"
 
 
-async def eval_mcq_item(item: dict, sem: asyncio.Semaphore) -> dict:
-    choices = item.get("choices", "[]")
-    if isinstance(choices, str):
-        try:
-            choices = json.loads(choices)
-        except Exception:
-            choices = [s.strip() for s in choices.strip("[]").split(",")]
-
-    prompt = build_mcq_prompt(item)
-    response = await call_llm(MCQ_SYSTEM, prompt, 256, sem)
-    predicted = parse_mcq_answer(response)
+async def eval_mcq_item(item: dict, sem: asyncio.Semaphore, do_shuffle: bool = True) -> dict:
+    choices = parse_choices(item)
     gold_letter = gold_to_letter(item.get("gold", "?"), choices)
+
+    # Shuffle choices to eliminate position bias using deterministic per-question seed
+    if do_shuffle and gold_letter in ("A", "B", "C", "D") and len(choices) == 4:
+        qid = str(item.get("id", item["question"][:30]))
+        choices, gold_letter = shuffle_choices(choices, gold_letter, qid)
+
+    prompt = build_mcq_prompt(item, choices)
+    response = await call_llm(MCQ_SYSTEM, prompt, 600, sem)
+    predicted = parse_mcq_answer(response)
     correct = predicted == gold_letter
 
     return {
@@ -290,7 +349,9 @@ def main():
     parser.add_argument("--lang", default="en", help="Language filter: en, de, all")
     parser.add_argument("--limit", type=int, default=0, help="Limit questions (0=all)")
     parser.add_argument("--workers", type=int, default=5, help="Concurrent workers")
+    parser.add_argument("--no-shuffle", action="store_true", help="Disable answer choice shuffling (re-enables position bias)")
     args = parser.parse_args()
+    do_shuffle = not args.no_shuffle
 
     get_client()
 
@@ -307,7 +368,7 @@ def main():
 
             async def run_mcq():
                 sem = asyncio.Semaphore(n_workers)
-                return await asyncio.gather(*[eval_mcq_item(item, sem) for item in items])
+                return await asyncio.gather(*[eval_mcq_item(item, sem, do_shuffle) for item in items])
 
             results = asyncio.run(run_mcq())
 
@@ -317,11 +378,13 @@ def main():
             # Per-jurisdiction breakdown
             by_juris = defaultdict(lambda: {"correct": 0, "total": 0})
             by_area = defaultdict(lambda: {"correct": 0, "total": 0})
+            pred_dist: dict[str, int] = defaultdict(int)
             for r in results:
                 j = r.get("jurisdiction", "unknown")
                 a = r.get("area", "unknown")
                 by_juris[j]["total"] += 1
                 by_area[a]["total"] += 1
+                pred_dist[r["predicted"]] += 1
                 if r["correct"]:
                     by_juris[j]["correct"] += 1
                     by_area[a]["correct"] += 1
@@ -330,6 +393,8 @@ def main():
                 "num_questions": len(results),
                 "correct": correct,
                 "accuracy": accuracy,
+                "predicted_distribution": dict(sorted(pred_dist.items())),
+                "shuffle_enabled": do_shuffle,
                 "by_jurisdiction": {j: v for j, v in sorted(by_juris.items())},
                 "by_area": {a: v for a, v in sorted(by_area.items())},
             }
@@ -337,6 +402,11 @@ def main():
 
             print(f"\n[lexam] MCQ Results:")
             print(f"  Accuracy: {accuracy:.4f} ({correct}/{len(results)})")
+            print(f"  Predicted distribution: {dict(sorted(pred_dist.items()))}")
+            n = len(results)
+            for lbl in ("A", "B", "C", "D"):
+                pct = pred_dist.get(lbl, 0) / n * 100
+                print(f"    {lbl}: {pct:.1f}%")
             for j, v in sorted(by_juris.items()):
                 if v["total"] >= 5:
                     acc = v["correct"] / v["total"]

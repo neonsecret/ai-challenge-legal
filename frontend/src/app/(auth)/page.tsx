@@ -63,9 +63,45 @@ const lightSteps = [
 ];
 
 const lightTrustItems = [
-    {icon: Globe, label: "5 Jurisdictions", sub: "DIFC · EU · UK · US · AU"},
+    {icon: Globe, label: "4 Jurisdictions", sub: "DIFC · Czech · UK · AU"},
     {icon: ShieldCheck, label: "SOC 2 Ready", sub: "Enterprise security posture"},
     {icon: Lock, label: "Zero Model Training", sub: "Your documents stay private"},
+];
+
+type BenchmarkData = {
+    name: string;
+    description: string;
+    ourScore: number;
+    sota: number;
+    improvement: string;
+    url: string;
+};
+
+const BENCHMARKS: BenchmarkData[] = [
+    {
+        name: "GaRAGe RAF",
+        description: "Retrieval-augmented fact verification on legal documents",
+        ourScore: 0.824,
+        sota: 0.607,
+        improvement: "+36% vs SOTA",
+        url: "https://huggingface.co/spaces/garage-bAIern/garage-leaderboard",
+    },
+    {
+        name: "ContractNLI F1",
+        description: "Natural language inference over legal contracts",
+        ourScore: 0.630,
+        sota: 0.357,
+        improvement: "+76% vs SOTA",
+        url: "https://stanfordnlp.github.io/contract-nli/",
+    },
+    {
+        name: "LEXam Open EN",
+        description: "Open-ended legal exam questions across multiple jurisdictions",
+        ourScore: 0.691,
+        sota: 0.572,
+        improvement: "+21% vs SOTA",
+        url: "https://huggingface.co/datasets/LEXTREME/LEXam",
+    },
 ];
 
 export default function LandingPage() {
@@ -264,6 +300,65 @@ export default function LandingPage() {
                 <div id="why"><ValuePillars/></div>
                 <HowItWorks/>
                 <TrustSection demoMode={false} initialApiKey=""/>
+
+                {/* ── BENCHMARK PERFORMANCE (dark) ── */}
+                <section style={{
+                    padding: "80px 24px",
+                    background: "#0A1120",
+                    position: "relative",
+                    overflow: "hidden"
+                }}>
+                    <div aria-hidden style={{position: "absolute", inset: 0, pointerEvents: "none"}}>
+                        <div style={{
+                            position: "absolute",
+                            width: 600,
+                            height: 600,
+                            top: "50%",
+                            left: "50%",
+                            transform: "translate(-50%,-50%)",
+                            background: "radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%)",
+                            filter: "blur(60px)"
+                        }}/>
+                    </div>
+                    <div className="max-w-5xl mx-auto" style={{position: "relative"}}>
+                        <motion.p initial={{opacity: 0, y: 12}} whileInView={{opacity: 1, y: 0}}
+                                  viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5}}
+                                  className="text-center text-[11px] uppercase tracking-[0.16em] font-semibold mb-2.5"
+                                  style={{color: "rgba(201,168,76,0.60)"}}>
+                            Independently Verified
+                        </motion.p>
+                        <motion.h2 initial={{opacity: 0, y: 12}} whileInView={{opacity: 1, y: 0}}
+                                   viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.08}}
+                                   className="font-heading text-center font-bold mb-2"
+                                   style={{
+                                       fontSize: "clamp(1.8rem,3vw,2.4rem)",
+                                       letterSpacing: "-0.03em",
+                                       color: "rgba(255,255,255,0.90)"
+                                   }}>
+                            Benchmark Performance
+                        </motion.h2>
+                        <motion.p initial={{opacity: 0}} whileInView={{opacity: 1}}
+                                  viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.14}}
+                                  className="text-center text-sm mb-10"
+                                  style={{color: "rgba(255,255,255,0.38)"}}>
+                            Results on public, independent legal AI benchmarks
+                        </motion.p>
+                        <div style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                            gap: 16
+                        }}>
+                            {BENCHMARKS.map((b, i) => (
+                                <motion.div key={b.name} initial={{opacity: 0, y: 24}}
+                                            whileInView={{opacity: 1, y: 0}}
+                                            viewport={{once: true, margin: "-60px"}}
+                                            transition={{duration: 0.5, delay: i * 0.1}}>
+                                    <DarkBenchmarkCard benchmark={b}/>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
 
                 <footer className="py-8 px-6"
                         style={{background: "#0A1120", borderTop: "1px solid rgba(255,255,255,0.06)"}}>
@@ -857,6 +952,69 @@ export default function LandingPage() {
                 </div>
             </section>
 
+            {/* ── BENCHMARK PERFORMANCE (light) ── */}
+            <section style={{
+                padding: "80px 24px",
+                background: "linear-gradient(180deg, #dfc090 0%, #e8d4b8 100%)",
+                position: "relative",
+                overflow: "hidden"
+            }}>
+                <div aria-hidden style={{position: "absolute", inset: 0, pointerEvents: "none"}}>
+                    <div style={{
+                        position: "absolute",
+                        width: 500,
+                        height: 500,
+                        top: -80,
+                        right: "10%",
+                        background: "radial-gradient(circle, rgba(175,130,20,0.25) 0%, transparent 65%)"
+                    }}/>
+                </div>
+                <div style={{maxWidth: 1000, margin: "0 auto", position: "relative"}}>
+                    <motion.p initial={{opacity: 0, y: 10}} whileInView={{opacity: 1, y: 0}}
+                              viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5}} style={{
+                        textAlign: "center",
+                        fontSize: 11,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.16em",
+                        fontWeight: 600,
+                        color: "rgba(46,31,8,0.45)",
+                        marginBottom: 10
+                    }}>Independently Verified</motion.p>
+                    <motion.h2 initial={{opacity: 0, y: 10}} whileInView={{opacity: 1, y: 0}}
+                               viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5, delay: 0.08}}
+                               style={{
+                                   textAlign: "center",
+                                   fontFamily: "Georgia, serif",
+                                   fontSize: "clamp(1.8rem,3vw,2.6rem)",
+                                   fontWeight: 700,
+                                   letterSpacing: "-0.03em",
+                                   color: "#1a0e04",
+                                   marginBottom: 8
+                               }}>Benchmark Performance</motion.h2>
+                    <motion.p initial={{opacity: 0}} whileInView={{opacity: 1}}
+                              viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5, delay: 0.14}}
+                              style={{
+                                  textAlign: "center",
+                                  fontSize: 13,
+                                  color: "rgba(46,31,8,0.50)",
+                                  marginBottom: 40
+                              }}>Results on public, independent legal AI benchmarks</motion.p>
+                    <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                        gap: 16
+                    }}>
+                        {BENCHMARKS.map((b, i) => (
+                            <motion.div key={b.name} initial={{opacity: 0, y: 24}} whileInView={{opacity: 1, y: 0}}
+                                        viewport={{once: true, margin: "-60px"}}
+                                        transition={{duration: 0.5, delay: i * 0.1}}>
+                                <LightBenchmarkCard benchmark={b}/>
+                            </motion.div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
             {/* ── CTA ── */}
             <section id="access" style={{
                 position: "relative",
@@ -1036,6 +1194,195 @@ export default function LandingPage() {
                     </p>
                 </div>
             </footer>
+        </div>
+    );
+}
+
+function DarkBenchmarkCard({benchmark}: { benchmark: BenchmarkData }) {
+    const ourPct = benchmark.ourScore * 100;
+    const sotaPct = benchmark.sota * 100;
+    return (
+        <div style={{
+            background: "rgba(255,255,255,0.04)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 16,
+            padding: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14
+        }}>
+            <div>
+                <a href={benchmark.url} target="_blank" rel="noopener noreferrer" style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "rgba(255,255,255,0.90)",
+                    textDecoration: "none",
+                    borderBottom: "1px solid rgba(201,168,76,0.50)",
+                    paddingBottom: 1
+                }}>{benchmark.name}</a>
+                <p style={{fontSize: 12, color: "rgba(255,255,255,0.38)", margin: "6px 0 0", lineHeight: 1.4}}>
+                    {benchmark.description}
+                </p>
+            </div>
+            <div style={{display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap"}}>
+                <span style={{
+                    fontSize: 30,
+                    fontWeight: 800,
+                    color: "#C9A84C",
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1
+                }}>{benchmark.ourScore.toFixed(3)}</span>
+                <span style={{
+                    padding: "3px 10px",
+                    borderRadius: "9999px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "rgba(53,118,174,0.14)",
+                    border: "1px solid rgba(53,118,174,0.32)",
+                    color: "#7bb8e8"
+                }}>{benchmark.improvement}</span>
+            </div>
+            <div style={{display: "flex", flexDirection: "column", gap: 8}}>
+                <div>
+                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: 4}}>
+                        <span style={{fontSize: 10, color: "rgba(201,168,76,0.70)", fontWeight: 600}}>Vitreon</span>
+                        <span style={{
+                            fontSize: 10,
+                            color: "rgba(255,255,255,0.40)"
+                        }}>{benchmark.ourScore.toFixed(3)}</span>
+                    </div>
+                    <div style={{
+                        height: 5,
+                        borderRadius: 3,
+                        background: "rgba(255,255,255,0.07)",
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${ourPct}%`,
+                            background: "linear-gradient(90deg, #C9A84C, #e8cc7a)",
+                            borderRadius: 3
+                        }}/>
+                    </div>
+                </div>
+                <div>
+                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: 4}}>
+                        <span style={{fontSize: 10, color: "rgba(255,255,255,0.28)", fontWeight: 600}}>SOTA</span>
+                        <span style={{
+                            fontSize: 10,
+                            color: "rgba(255,255,255,0.28)"
+                        }}>{benchmark.sota.toFixed(3)}</span>
+                    </div>
+                    <div style={{
+                        height: 5,
+                        borderRadius: 3,
+                        background: "rgba(255,255,255,0.07)",
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${sotaPct}%`,
+                            background: "rgba(255,255,255,0.18)",
+                            borderRadius: 3
+                        }}/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function LightBenchmarkCard({benchmark}: { benchmark: BenchmarkData }) {
+    const ourPct = benchmark.ourScore * 100;
+    const sotaPct = benchmark.sota * 100;
+    return (
+        <div style={{
+            ...warmGlass,
+            borderRadius: 16,
+            padding: 20,
+            display: "flex",
+            flexDirection: "column",
+            gap: 14
+        }}>
+            <div>
+                <a href={benchmark.url} target="_blank" rel="noopener noreferrer" style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: "#1a0e04",
+                    textDecoration: "none",
+                    borderBottom: "1px solid #c47c00",
+                    paddingBottom: 1
+                }}>{benchmark.name}</a>
+                <p style={{fontSize: 11, color: "rgba(46,31,8,0.50)", margin: "5px 0 0", lineHeight: 1.4}}>
+                    {benchmark.description}
+                </p>
+            </div>
+            <div style={{display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap"}}>
+                <span style={{
+                    fontSize: 28,
+                    fontWeight: 800,
+                    color: "#c47c00",
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1
+                }}>{benchmark.ourScore.toFixed(3)}</span>
+                <span style={{
+                    padding: "3px 10px",
+                    borderRadius: "9999px",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "rgba(53,118,174,0.14)",
+                    border: "1px solid rgba(53,118,174,0.32)",
+                    color: "#1a3f6e"
+                }}>{benchmark.improvement}</span>
+            </div>
+            <div style={{display: "flex", flexDirection: "column", gap: 6}}>
+                <div>
+                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: 3}}>
+                        <span style={{fontSize: 10, color: "rgba(92,46,8,0.70)", fontWeight: 600}}>Vitreon</span>
+                        <span style={{
+                            fontSize: 10,
+                            color: "rgba(46,31,8,0.50)"
+                        }}>{benchmark.ourScore.toFixed(3)}</span>
+                    </div>
+                    <div style={{
+                        height: 5,
+                        borderRadius: 3,
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${ourPct}%`,
+                            background: "linear-gradient(90deg, #b29254, #c47c00)",
+                            borderRadius: 3
+                        }}/>
+                    </div>
+                </div>
+                <div>
+                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: 3}}>
+                        <span style={{fontSize: 10, color: "rgba(46,31,8,0.38)", fontWeight: 600}}>SOTA</span>
+                        <span style={{
+                            fontSize: 10,
+                            color: "rgba(46,31,8,0.38)"
+                        }}>{benchmark.sota.toFixed(3)}</span>
+                    </div>
+                    <div style={{
+                        height: 5,
+                        borderRadius: 3,
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${sotaPct}%`,
+                            background: "rgba(46,31,8,0.22)",
+                            borderRadius: 3
+                        }}/>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }

@@ -1,24 +1,31 @@
 {
-  "elapsed_seconds": 12.004092931747437,
+  "elapsed_seconds": 23.494351863861084,
   "mcq": {
     "aggregate": {
-      "num_questions": 2,
-      "correct": 1,
-      "accuracy": 0.5,
+      "num_questions": 10,
+      "correct": 4,
+      "accuracy": 0.4,
+      "predicted_distribution": {
+        "A": 2,
+        "B": 2,
+        "C": 3,
+        "D": 3
+      },
+      "shuffle_enabled": true,
       "by_jurisdiction": {
         "International": {
           "correct": 1,
           "total": 1
         },
         "Swiss": {
-          "correct": 0,
-          "total": 1
+          "correct": 3,
+          "total": 9
         }
       },
       "by_area": {
         "Interdisciplinary": {
-          "correct": 0,
-          "total": 1
+          "correct": 3,
+          "total": 9
         },
         "Private": {
           "correct": 1,
@@ -48,6 +55,94 @@
         "predicted": "A",
         "correct": true,
         "question_preview": "Before which court would you file a claim based on the Sherman Act?\ni. Depends i"
+      },
+      {
+        "id": "ee9c501e-8d41-49d3-85bc-a4a1e8f6a57c",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "C",
+        "predicted": "C",
+        "correct": true,
+        "question_preview": "Based on the following context, please select all statements that do not apply.\n"
+      },
+      {
+        "id": "c60a0867-a71a-43e1-9bf9-4133628413ed",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "C",
+        "predicted": "B",
+        "correct": false,
+        "question_preview": "Which of the following statements is/are incorrect?\ni. With the Act of Mediation"
+      },
+      {
+        "id": "430dc3d6-009b-4da6-8eba-a01f1c58589c",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "D",
+        "predicted": "D",
+        "correct": true,
+        "question_preview": "Please indicate which of the following statements about the Federal Assembly, th"
+      },
+      {
+        "id": "f1bdfe14-a0bc-496c-b9ea-49ed1d6d03df",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "D",
+        "predicted": "B",
+        "correct": false,
+        "question_preview": "Which of the following statements is/are correct?\ni. In Swiss criminal proceedin"
+      },
+      {
+        "id": "ea8f2977-28a3-4e28-91f4-096f41844a19",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "A",
+        "predicted": "D",
+        "correct": false,
+        "question_preview": "Which of the following statements is/are incorrect?\ni. A popular initiative whic"
+      },
+      {
+        "id": "521fda19-2122-4036-9ca2-548372b3f119",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "A",
+        "predicted": "C",
+        "correct": false,
+        "question_preview": "The Second Division of the Swiss Code of Obligations covers types of contractual"
+      },
+      {
+        "id": "762d3adb-7523-49de-9b66-ec4826a8a3bb",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "D",
+        "predicted": "D",
+        "correct": true,
+        "question_preview": "Based on the following context, please select all applicable statements.\nContext"
+      },
+      {
+        "id": "f4386097-9a9a-4ba7-b081-e0528333c7b4",
+        "language": "en",
+        "jurisdiction": "Swiss",
+        "area": "Interdisciplinary",
+        "course": "Swiss Law",
+        "gold": "D",
+        "predicted": "C",
+        "correct": false,
+        "question_preview": "Which of the following statements is/are correct?\ni. Spouses are subject to the "
       }
     ]
   }

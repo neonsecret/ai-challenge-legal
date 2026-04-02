@@ -14,9 +14,14 @@ _client: AnthropicVertex | None = None
 def get_client() -> AnthropicVertex:
     global _client
     if _client is None:
+        # 120s timeout prevents single hung API calls from blocking asyncio.gather
+        # indefinitely. Normal calls complete in 5-30s; 120s is generous headroom.
+        # Overridable via ANTHROPIC_TIMEOUT env var.
+        timeout = float(os.environ.get("ANTHROPIC_TIMEOUT", "120"))
         _client = AnthropicVertex(
             project_id=os.environ["VERTEX_PROJECT_ID"],
             region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+            timeout=timeout,
         )
     return _client
 

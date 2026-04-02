@@ -66,11 +66,12 @@ def get_client():
             _client = AnthropicVertex(
                 project_id=os.environ["VERTEX_PROJECT_ID"],
                 region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+                timeout=90.0,
             )
         elif backend != "litellm":
             _client = anthropic.Anthropic(
                 api_key=os.environ.get("ANTHROPIC_API_KEY"),
-                timeout=120.0,
+                timeout=90.0,
             )
     return _client
 
@@ -222,7 +223,10 @@ async def classify_nli(nda_text: str, hypothesis: str, sem: asyncio.Semaphore) -
 
                 from arlc.llm import litellm_backend
 
-                answer, *_ = await asyncio.to_thread(litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 300, MODEL)
+                answer, *_ = await asyncio.wait_for(
+                    asyncio.to_thread(litellm_backend.call_llm, SYSTEM_PROMPT, user_prompt, 300, MODEL),
+                    timeout=120.0,
+                )
                 answer = answer.strip()
             else:
                 client = get_client()
@@ -234,6 +238,9 @@ async def classify_nli(nda_text: str, hypothesis: str, sem: asyncio.Semaphore) -
                     messages=[{"role": "user", "content": user_prompt}],
                 )
                 answer = response.content[0].text.strip()
+        except asyncio.TimeoutError:
+            print(f"  [TIMEOUT] pair skipped after 120s")
+            return "not_mentioned"
         except Exception as e:
             print(f"  [ERROR] LLM call failed: {e}")
             return "not_mentioned"

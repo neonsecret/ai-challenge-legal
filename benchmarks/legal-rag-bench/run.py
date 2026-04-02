@@ -156,27 +156,24 @@ def _format_reranker_pairs(question: str, candidates: list[dict]) -> list[tuple[
 
 
 def _get_reranker():
-    """Get reranker (cached). Model set via RERANKER_MODEL env var.
+    """Get reranker (cached).
 
-    Returns Qwen3Reranker (causal LM, yes/no prob) for Qwen models,
-    or CrossEncoder for standard classification rerankers.
+    Uses the llama-server HTTP reranker to avoid loading a heavy Qwen model
+    in-process (causes segfaults on Apple Silicon). Tries localhost:8089 first,
+    then the remote reranker URL. Returns None if neither is reachable.
     """
     global _reranker
     if _reranker is None:
-        if _is_qwen_reranker():
-            from arlc.qwen3_reranker import Qwen3Reranker
+        from arlc.qwen3_reranker import LlamaServerReranker
 
-            _reranker = Qwen3Reranker(
-                model_name=_RERANKER_MODEL,
-                instruction=_RERANKER_INSTRUCTION,
-            )
-        else:
-            import torch
-            from sentence_transformers import CrossEncoder
-
-            _reranker = CrossEncoder(_RERANKER_MODEL, max_length=2048)
-            if torch.backends.mps.is_available():
-                _reranker.model.to("mps")
+        for candidate_url in ["http://localhost:8089", os.environ.get("RERANKER_SERVER_URL", "")]:
+            if not candidate_url:
+                continue
+            try:
+                _reranker = LlamaServerReranker(url=candidate_url)
+                break
+            except Exception:
+                continue
     return _reranker
 
 
@@ -318,27 +315,18 @@ def _hybrid_retrieve(question: str, top_k: int = 10) -> list[dict]:
     candidate_list.sort(key=lambda x: x["score"], reverse=True)
     candidate_list = candidate_list[:100]
 
-    if len(candidate_list) > top_k:
-        reranker = _get_reranker()
+    reranker = _get_reranker()
+    if reranker is not None and len(candidate_list) > top_k:
         pairs = _format_reranker_pairs(question, candidate_list)
         with _reranker_lock:
             rerank_scores = reranker.predict(pairs)
 
-        # Blend reranker scores with RRF — but do NOT min-max normalise the reranker.
-        # Qwen3-Reranker outputs yes/no log-prob scores clustered in a narrow band for
-        # legal passages. Min-max stretches that gap to 0–1, letting reranker noise
-        # dominate. Raw scores stay nearly constant across candidates, so RRF correctly
-        # controls ordering.
-        rr_arr = np.array(rerank_scores, dtype=float)  # raw, already in [0,1]
+        rr_arr = np.array(rerank_scores, dtype=float)
         rrf_arr = np.array([c["score"] for c in candidate_list], dtype=float)
         rrf_lo, rrf_hi = rrf_arr.min(), rrf_arr.max()
         rrf_norm = (rrf_arr - rrf_lo) / (rrf_hi - rrf_lo + 1e-8)
-
-        # 20% reranker (raw) + 80% RRF (normalised).
-        # Raw reranker ~constant → RRF dominates; reranker only breaks near-RRF-ties.
         for i in range(len(candidate_list)):
             candidate_list[i]["score"] = 0.2 * float(rr_arr[i]) + 0.8 * float(rrf_norm[i])
-
         candidate_list.sort(key=lambda x: x["score"], reverse=True)
 
     return candidate_list[:top_k]
@@ -474,7 +462,20 @@ def main():
 
         print(f"  [{i + 1}/{len(qa_items)}] {question[:80]}...")
 
-        pipeline_output = asyncio.run(run_pipeline(question, corpus_index))
+        try:
+            pipeline_output = asyncio.run(run_pipeline(question, corpus_index))
+        except Exception as exc:
+            print(f"    [SKIP] pipeline error: {exc}")
+            results.append({
+                "question": question,
+                "gold_passage_id": gold_passage_id,
+                "retrieved_ids": [],
+                "retrieval_hit": 0.0,
+                "rouge_l": 0.0,
+                "groundedness": 0.0,
+                "answer_preview": f"[ERROR: {exc}]",
+            })
+            continue
 
         ret_acc = retrieval_accuracy(pipeline_output["retrieved_passage_ids"], gold_passage_id)
         rouge = rouge_l(pipeline_output["answer"], gold_answer)
