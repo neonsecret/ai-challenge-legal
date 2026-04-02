@@ -43,15 +43,15 @@ function isWebSource(source: SourceRef): boolean {
 }
 
 /** Check if a non-web source has a PDF available on the backend.
- *  Matches hex hashes (DIFC corpus), UUIDs (custom uploads), and any
- *  alphanumeric doc_id that the /api/v1/documents/{doc_id}/pdf endpoint accepts.
- *  Returns false only for web sources (handled separately) and sources whose
- *  doc_id clearly doesn't correspond to a stored PDF. */
+ *  Only hex hashes (DIFC/UK/AU corpus) and UUIDs (custom uploads) have PDFs.
+ *  Named doc_ids (e.g. czech corpus "obcansky_zakonik_03017") are text-only. */
 function isPdfSource(source: SourceRef): boolean {
     if (isWebSource(source)) return false
-    // Backend accepts doc_ids matching [A-Za-z0-9_\-]+
-    // This covers hex hashes (DIFC), UUIDs (custom corpus), and named docs.
-    return /^[A-Za-z0-9_-]+$/.test(source.doc_id)
+    // Hex hashes: DIFC/UK/AU corpus PDFs (32-64 hex chars)
+    if (/^[0-9a-f]{32,64}$/i.test(source.doc_id)) return true
+    // UUIDs: custom tenant uploads
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(source.doc_id)) return true
+    return false
 }
 
 /** Extract the domain from a URL string. */
