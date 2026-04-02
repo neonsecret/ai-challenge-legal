@@ -441,8 +441,10 @@ def build_agent_graph():
         # Merge web sources from this search with any from prior iterations, capped
         updated_web_sources = (state.get("web_sources", []) + new_web_sources)[:MAX_WEB_SOURCES]
 
-        # Count actual tool calls dispatched (not just node invocations)
-        tool_call_count = len(last_msg.tool_calls)
+        # Count actual tool calls dispatched, excluding case law tools (they have a
+        # separate DB and should not compete with statute search budget).
+        _CASELAW_TOOLS = {"search_court_decisions", "fetch_court_decision"}
+        tool_call_count = sum(1 for tc in last_msg.tool_calls if tc["name"] not in _CASELAW_TOOLS)
 
         return {
             "messages": results_msgs,
@@ -451,9 +453,16 @@ def build_agent_graph():
             "search_count": state["search_count"] + tool_call_count,
         }
 
+    _CASELAW_TOOLS_SET = {"search_court_decisions", "fetch_court_decision"}
+
     def should_continue(state: AgentState) -> str:
         last = state["messages"][-1]
         if hasattr(last, "tool_calls") and last.tool_calls:
+            # Case law tools don't count against the search cap — they search a
+            # different database and should always be allowed to run.
+            has_only_caselaw = all(tc["name"] in _CASELAW_TOOLS_SET for tc in last.tool_calls)
+            if has_only_caselaw:
+                return "search"
             if state["search_count"] >= MAX_SEARCHES_PER_TURN:
                 logger.warning("[agent] hit search cap (%d), forcing answer", MAX_SEARCHES_PER_TURN)
                 return "cap_reached"

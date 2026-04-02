@@ -386,14 +386,18 @@ def build_system_prompt(state: AgentState) -> str:
     # Czech case law: inform the LLM about both statutory and case law tools
     if corpus == "czech":
         semi_static_parts.append(
-            "- You have access to both Czech statutory law (search_legal_corpus) and Czech Supreme "
-            "Court case law (search_court_decisions + fetch_court_decision). "
-            "When a question involves legal interpretation, court practice, or how courts have "
-            "applied a provision, search case law after finding the relevant statute provision. "
-            "Always search statutes first (search_legal_corpus) to identify the relevant provision, "
-            "then search case law (search_court_decisions) with the statute reference filter to find "
-            "how courts have interpreted it. "
-            "Use fetch_court_decision to read full reasoning of the most relevant decisions."
+            "- Two separate databases are available for Czech law:\n"
+            "  (A) search_legal_corpus → zákonná ustanovení (statutes only, NO court decisions)\n"
+            "  (B) search_court_decisions → rozhodnutí NS ČR (Supreme Court decisions only)\n"
+            "- search_legal_corpus does NOT contain court decisions. If you search it for NS decisions "
+            "you will find nothing — you MUST use search_court_decisions for that.\n"
+            "- For ANY question mentioning 'judikatura', 'soudy', 'rozhodnutí', 'soudní praxe', "
+            "'jak soudy interpretují', or 'jak NS rozhodl': call search_court_decisions.\n"
+            "- Recommended call pattern for case law questions — include BOTH in one round:\n"
+            "  search_legal_corpus(query='...')\n"
+            "  search_court_decisions(query='...', statute_reference='262/2006')\n"
+            "- After receiving case law summaries: call fetch_court_decision with the best ECLI.\n"
+            "- NEVER use search_web for court decisions (search_court_decisions is authoritative)."
         )
 
     # Custom corpus: inform the LLM that the user has uploaded documents
