@@ -17,6 +17,13 @@ interface SourceRef {
     url?: string | null
     title?: string | null
     chunk_id?: string | null
+    source_type?: "statute" | "court_decision" | null
+    case_number?: string | null
+    decision_date?: string | null
+    court?: string | null
+    category?: string | null
+    ecli?: string | null
+    legal_thesis?: string | null
 }
 
 /**
@@ -76,6 +83,18 @@ function getDomain(url: string): string {
     } catch {
         return url.slice(0, 40)
     }
+}
+
+function isCourtDecision(source: SourceRef): boolean {
+    return source.source_type === "court_decision"
+}
+
+/** Format ISO date string "2023-06-15" → "15. 6. 2023" (Czech convention). */
+function formatCzechDate(iso: string | null | undefined): string | null {
+    if (!iso) return null
+    const parts = iso.split("-")
+    if (parts.length !== 3) return iso
+    return `${parseInt(parts[2])}. ${parseInt(parts[1])}. ${parts[0]}`
 }
 
 /** Navigation/boilerplate lines to strip from raw judgment text.
@@ -786,6 +805,19 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
     // that would show the LLM's own output as if it were the source document.
     const raw = source.text ?? ""
 
+    // Court decisions are always text-only (no PDF, no chunk context).
+    // Render with the dedicated component that shows case metadata header.
+    if (isCourtDecision(source) && raw.trim()) {
+        return (
+            <CourtDecisionTextViewer
+                source={source}
+                isDark={isDark}
+                isMobile={isMobile}
+                onPageClick={onPageClick}
+            />
+        )
+    }
+
     // When there is no source text (e.g. PDF-only corpus without chunk text),
     // show a graceful fallback rather than rendering nothing or the AI answer.
     if (!raw.trim()) {
@@ -1074,6 +1106,131 @@ function SingleChunkView({source, raw, answer, isDark, isMobile, onPageClick}: {
     )
 }
 
+/** Text viewer for Czech Supreme Court decisions.
+ *  Shows case metadata header (case number, court, date, category badge) followed
+ *  by the decision text with interactive highlights, same as statute sources. */
+function CourtDecisionTextViewer({source, isDark, isMobile, onPageClick}: {
+    source: SourceRef
+    isDark: boolean
+    isMobile: boolean
+    onPageClick: (page: number) => void
+}) {
+    const [expanded, setExpanded] = useState(false)
+
+    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
+    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+    const isLandmark = source.category === "A"
+    const caseLabel = toSafeStringOrNull(source.case_number) ?? source.doc_id
+    const formattedDate = formatCzechDate(source.decision_date)
+    const subtitle = [toSafeStringOrNull(source.court), formattedDate].filter(Boolean).join(" | ")
+
+    const raw = source.text ?? ""
+    const body = raw.trim()
+    const needsTruncation = body.length > TEXT_TRUNCATE_LIMIT
+    const displayBody = expanded || !needsTruncation ? body : body.slice(0, TEXT_TRUNCATE_LIMIT)
+    const paragraphs = useMemo(
+        () => displayBody.split(/\n{2,}/).map(p => p.trim()).filter(Boolean),
+        [displayBody],
+    )
+
+    return (
+        <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
+            background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
+            border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            boxShadow: isDark
+                ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`
+                : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
+        }}>
+            {/* Case metadata header */}
+            <div style={{marginBottom: SPACE['4']}}>
+                <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: SPACE['2'], marginBottom: SPACE['1']}}>
+                    <p style={{
+                        fontSize: TYPE_SCALE.sm,
+                        fontWeight: 700,
+                        fontFamily: FONT.sans,
+                        color: textColor,
+                        margin: 0,
+                        wordBreak: "break-word",
+                    }}>{caseLabel}</p>
+                    {source.category && (
+                        <span style={{
+                            fontSize: TYPE_SCALE.xs,
+                            fontWeight: 700,
+                            fontFamily: FONT.sans,
+                            padding: `1px ${SPACE['2']}px`,
+                            borderRadius: RADIUS.xs,
+                            background: isLandmark ? COLOR.gold.tint : isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                            border: `0.5px solid ${isLandmark ? COLOR.gold.border : isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+                            color: isLandmark ? COLOR.gold.base : mutedColor,
+                            flexShrink: 0,
+                        }}>{source.category}</span>
+                    )}
+                </div>
+                {subtitle && (
+                    <p style={{
+                        fontSize: TYPE_SCALE.xs,
+                        fontFamily: FONT.sans,
+                        color: mutedColor,
+                        margin: 0,
+                    }}>{subtitle}</p>
+                )}
+            </div>
+
+            <div style={{
+                height: "0.5px",
+                background: isDark ? GLASS.dark.borderSubtle : GLASS.light.borderSubtle,
+                marginBottom: SPACE['4'],
+            }} />
+
+            {/* Decision text — all paragraphs highlighted (entire text is the cited source) */}
+            <div style={{display: "flex", flexDirection: "column", gap: SPACE['3']}}>
+                {paragraphs.map((para, pi) => (
+                    <p key={pi} style={{
+                        fontSize: TYPE_SCALE.sm,
+                        lineHeight: 1.7,
+                        color: textColor,
+                        fontFamily: FONT.sans,
+                        margin: 0,
+                        wordBreak: "break-word",
+                        background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.06)",
+                        borderLeft: `3px solid ${isDark ? "rgba(201,168,76,0.55)" : "rgba(196,124,0,0.45)"}`,
+                        paddingLeft: SPACE['2'],
+                        paddingTop: 6,
+                        paddingBottom: 6,
+                        borderRadius: `0 ${RADIUS.xs}px ${RADIUS.xs}px 0`,
+                    }}>
+                        <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick} />
+                    </p>
+                ))}
+            </div>
+
+            {needsTruncation && (
+                <button
+                    onClick={() => setExpanded(v => !v)}
+                    style={{
+                        display: "inline-flex", alignItems: "center", gap: SPACE['1'],
+                        marginTop: SPACE['3'], padding: `${SPACE['1']}px ${SPACE['3']}px`,
+                        fontSize: TYPE_SCALE.xs, fontWeight: 500, fontFamily: FONT.sans,
+                        color: COLOR.gold.base, background: COLOR.gold.tint,
+                        border: `0.5px solid ${COLOR.gold.border}`, borderRadius: RADIUS.sm,
+                        cursor: "pointer", transition: `all ${TIMING.instant} ${EASE.out}`,
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
+                >
+                    {expanded ? (
+                        <><ChevronUp size={SPACE['3']} />Show less</>
+                    ) : (
+                        <><ChevronDown size={SPACE['3']} />Show more ({Math.round(body.length / 1000)}k chars)</>
+                    )}
+                </button>
+            )}
+        </div>
+    )
+}
+
 interface GroundingViewProps {
     answer: string
     sources: SourceRef[]
@@ -1235,6 +1392,13 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
                 url: toSafeStringOrNull(s.url),
                 chunk_id: toSafeStringOrNull(s.chunk_id),
                 page_numbers: s.page_numbers.map(p => toSafeNumber(p)),
+                source_type: s.source_type === "court_decision" ? "court_decision" as const : s.source_type === "statute" ? "statute" as const : null,
+                case_number: toSafeStringOrNull(s.case_number),
+                decision_date: toSafeStringOrNull(s.decision_date),
+                court: toSafeStringOrNull(s.court),
+                category: toSafeStringOrNull(s.category),
+                ecli: toSafeStringOrNull(s.ecli),
+                legal_thesis: toSafeStringOrNull(s.legal_thesis),
             }))
     }, [rawSources])
     const initialSource = resolveSource(sources, focusDocId, focusPage)
@@ -1402,7 +1566,9 @@ function SourceCitationCard({
 
     const handleCopySource = (e: React.MouseEvent) => {
         e.stopPropagation()
-        const text = isWeb
+        const text = isCourtDecision(source)
+            ? `${source.case_number ?? source.doc_id}${source.ecli ? ` (${source.ecli})` : ""}`
+            : isWeb
             ? (source.url || source.doc_id.replace(/^web:/, ""))
             : `${source.doc_id} (p. ${source.page_numbers.join(", ")})`
         navigator.clipboard.writeText(text).then(() => {
@@ -1458,6 +1624,37 @@ function SourceCitationCard({
                             color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
                             margin: 0,
                         }}>{webDomain}</p>
+                    </>
+                ) : isCourtDecision(source) ? (
+                    <>
+                        <p className="truncate" title={source.case_number ?? source.doc_id} style={{
+                            fontSize: TYPE_SCALE.xs,
+                            fontWeight: 600,
+                            fontFamily: FONT.sans,
+                            color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                            margin: `0 0 ${SPACE['1']}px`,
+                        }}>
+                            {(source.case_number ?? source.doc_id).length > 18
+                                ? (source.case_number ?? source.doc_id).slice(0, 17) + "\u2026"
+                                : (source.case_number ?? source.doc_id)}
+                        </p>
+                        <div style={{display: "flex", alignItems: "center", gap: SPACE['1']}}>
+                            {source.decision_date && (
+                                <span style={{
+                                    fontSize: TYPE_SCALE.xs, fontFamily: FONT.sans,
+                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                }}>{source.decision_date.slice(0, 4)}</span>
+                            )}
+                            {source.category && (
+                                <span style={{
+                                    fontSize: TYPE_SCALE.xs, fontWeight: 700, fontFamily: FONT.sans,
+                                    padding: `0 ${SPACE['1']}px`, borderRadius: RADIUS.xs,
+                                    background: source.category === "A" ? COLOR.gold.tint : isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                    border: `0.5px solid ${source.category === "A" ? COLOR.gold.border : isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+                                    color: source.category === "A" ? COLOR.gold.base : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                }}>{source.category}</span>
+                            )}
+                        </div>
                     </>
                 ) : (
                     <>
@@ -1522,7 +1719,26 @@ function SourceCitationCard({
             }}
         >
             <div className="flex items-center justify-between mb-2">
-                {isWeb ? (
+                {isCourtDecision(source) ? (
+                    <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0, flex: 1, gap: SPACE['2']}}>
+                        <p className="text-xs truncate" title={source.case_number ?? source.doc_id} style={{
+                            color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                            fontWeight: 700,
+                            fontFamily: FONT.sans,
+                        }}>
+                            {source.case_number ?? displayId}
+                        </p>
+                        {source.category && (
+                            <span style={{
+                                fontSize: TYPE_SCALE.xs, fontWeight: 700, fontFamily: FONT.sans,
+                                padding: `1px ${SPACE['2']}px`, borderRadius: RADIUS.xs, flexShrink: 0,
+                                background: source.category === "A" ? COLOR.gold.tint : isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                                border: `0.5px solid ${source.category === "A" ? COLOR.gold.border : isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+                                color: source.category === "A" ? COLOR.gold.base : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            }}>{source.category}</span>
+                        )}
+                    </div>
+                ) : isWeb ? (
                     <div style={{display: "flex", alignItems: "center", gap: SPACE['2'], minWidth: 0, flex: 1}}>
                         <Globe size={TYPE_SCALE.sm} style={{
                             color: COLOR.gold.base,
@@ -1557,12 +1773,39 @@ function SourceCitationCard({
                         color: copied ? COLOR.blue.base : isDark ? TEXT_DARK.tertiary : COLOR.gold.base,
                         transition: `all ${TIMING.instant} ${EASE.out}`,
                     }}
-                    aria-label={isWeb ? "Copy URL" : "Copy source reference"}
+                    aria-label={isCourtDecision(source) ? "Copy case reference" : isWeb ? "Copy URL" : "Copy source reference"}
                 >
                     {copied ? <Check className="size-2.5"/> : <Copy className="size-2.5"/>}
                 </button>
             </div>
-            {isWeb ? (
+            {isCourtDecision(source) ? (
+                <div>
+                    {(source.court || source.decision_date) && (
+                        <p style={{
+                            fontSize: TYPE_SCALE.xs, fontFamily: FONT.sans,
+                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                            margin: `0 0 ${SPACE['1']}px`,
+                        }}>
+                            {[source.court, formatCzechDate(source.decision_date)].filter(Boolean).join(" | ")}
+                        </p>
+                    )}
+                    {source.legal_thesis && (
+                        <p style={{
+                            fontSize: TYPE_SCALE.xs, fontFamily: FONT.sans, fontStyle: "italic",
+                            color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            margin: 0,
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                        }}>
+                            {source.legal_thesis.length > 120
+                                ? source.legal_thesis.slice(0, 120) + "\u2026"
+                                : source.legal_thesis}
+                        </p>
+                    )}
+                </div>
+            ) : isWeb ? (
                 <p className="truncate" style={{
                     fontSize: TYPE_SCALE.xs,
                     fontFamily: FONT.sans,
