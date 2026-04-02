@@ -642,7 +642,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             {id: userId, role: "user", content: question},
             {id: assistantId, role: "assistant", content: null, sources: [], confidence: null},
         ])
-        const laws = jurisdiction === "cz" && selectedLaws.length > 0 ? selectedLaws : undefined
+        const laws = (jurisdiction === "uk" || jurisdiction === "au") && selectedLaws.length > 0 ? selectedLaws : undefined
         // Custom corpus: read selected doc_ids from localStorage to filter by collection
         let docIds: string[] | undefined
         if (jurisdiction === "custom" && typeof window !== "undefined") {

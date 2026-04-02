@@ -364,7 +364,7 @@ export default function ChatPage() {
     // Law selector: fetch available laws from backend based on jurisdiction
     const [availableLaws, setAvailableLaws] = useState<{id: string; name: string; name_en: string}[]>([])
     useEffect(() => {
-        const corpus = jurisdiction === "cz" ? "czech" : jurisdiction === "uk" ? "uk" : jurisdiction === "au" ? "au" : ""
+        const corpus = jurisdiction === "uk" ? "uk" : jurisdiction === "au" ? "au" : ""
         if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return }
         const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? ""
         fetch(`${sseBase}/api/v1/laws?corpus=${corpus}`)
@@ -1076,7 +1076,7 @@ export default function ChatPage() {
                             <button
                                 onClick={() => {
                                     const j = corpusWarning.jurisdiction
-                                    const hasLawPane = j === "cz" && availableLaws.length > 0
+                                    const hasLawPane = (j === "uk" || j === "au") && availableLaws.length > 0
                                     setJurisdiction(j)
                                     if (hasLawPane) setLawPaneOpen(true)
                                     else setLawPaneOpen(false)
