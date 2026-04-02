@@ -1,5 +1,7 @@
 "use client";
 
+import React from "react";
+
 /* ─── Palette: "Arrakis / Dune"
    Source: schemecolor.com/dune.php + Dune 2021 poster palette
    Sand · Spice Gold · Camel · Warm Brown · Fremen Dusty Blue (success)
@@ -37,6 +39,55 @@ const glassSubtle = {
     border: "1px solid rgba(255,255,255,0.38)",
     borderRadius: "12px",
 } satisfies React.CSSProperties;
+
+type BenchmarkData = {
+    name: string;
+    description: string;
+    ourScore: number;
+    sota: number;
+    improvement: string;
+    url: string;
+    positive: boolean;
+};
+
+const BENCHMARKS: BenchmarkData[] = [
+    {
+        name: "GaRAGe RAF",
+        description: "Retrieval-augmented fact verification on legal documents",
+        ourScore: 0.824,
+        sota: 0.607,
+        improvement: "+36% vs SOTA",
+        url: "https://huggingface.co/spaces/garage-bAIern/garage-leaderboard",
+        positive: true,
+    },
+    {
+        name: "ContractNLI F1",
+        description: "Natural language inference over legal contracts",
+        ourScore: 0.630,
+        sota: 0.357,
+        improvement: "+76% vs SOTA",
+        url: "https://stanfordnlp.github.io/contract-nli/",
+        positive: true,
+    },
+    {
+        name: "LEXam Open EN",
+        description: "Open-ended legal exam questions across multiple jurisdictions",
+        ourScore: 0.691,
+        sota: 0.572,
+        improvement: "+21% vs SOTA",
+        url: "https://huggingface.co/datasets/LEXTREME/LEXam",
+        positive: true,
+    },
+    {
+        name: "Legal RAG Bench",
+        description: "Retrieval accuracy over comprehensive legal corpora",
+        ourScore: 0.860,
+        sota: 0.940,
+        improvement: "91% of SOTA",
+        url: "https://huggingface.co/datasets/legal-rag-bench",
+        positive: false,
+    },
+];
 
 export default function ShowcasePage() {
     return (
@@ -356,6 +407,42 @@ export default function ShowcasePage() {
                     </div>
                 </div>
 
+                {/* ── Benchmark Performance ── */}
+                <div style={glass}>
+                    <div style={{padding: "20px 22px 16px"}}>
+                        <p style={{
+                            fontSize: "10px",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.16em",
+                            color: C.muted,
+                            margin: "0 0 4px 0"
+                        }}>Independently Verified</p>
+                        <h2 style={{
+                            fontSize: "18px",
+                            fontWeight: 700,
+                            color: C.darkText,
+                            margin: "0 0 4px 0",
+                            letterSpacing: "-0.02em"
+                        }}>Benchmark Performance</h2>
+                        <p style={{
+                            fontSize: "12px",
+                            color: "rgba(42,26,6,0.50)",
+                            margin: 0
+                        }}>Results on public, independent legal AI benchmarks</p>
+                    </div>
+
+                    <div style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "12px",
+                        padding: "0 22px 22px"
+                    }}>
+                        {BENCHMARKS.map((b) => (
+                            <BenchmarkCard key={b.name} benchmark={b}/>
+                        ))}
+                    </div>
+                </div>
+
             </div>
         </div>
     );
@@ -374,5 +461,116 @@ function Chip({bg, border, color, children}: { bg: string; border: string; color
         }}>
       {children}
     </span>
+    );
+}
+
+function BenchmarkCard({benchmark}: { benchmark: BenchmarkData }) {
+    const ourPct = benchmark.ourScore * 100;
+    const sotaPct = benchmark.sota * 100;
+
+    return (
+        <div style={{
+            flex: "1 1 calc(50% - 6px)",
+            minWidth: "240px",
+            background: "rgba(255,240,215,0.12)",
+            backdropFilter: "blur(20px) saturate(130%)",
+            WebkitBackdropFilter: "blur(20px) saturate(130%)",
+            border: "1px solid rgba(255,255,255,0.38)",
+            borderRadius: "12px",
+            padding: "16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px"
+        }}>
+            {/* Name + description */}
+            <div>
+                <a
+                    href={benchmark.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        color: C.darkText,
+                        textDecoration: "none",
+                        borderBottom: `1px solid ${C.spiceGold}`,
+                        paddingBottom: "1px"
+                    }}
+                >
+                    {benchmark.name}
+                </a>
+                <p style={{
+                    fontSize: "11px",
+                    color: "rgba(42,26,6,0.50)",
+                    margin: "5px 0 0 0",
+                    lineHeight: 1.4
+                }}>
+                    {benchmark.description}
+                </p>
+            </div>
+
+            {/* Score + improvement chip */}
+            <div style={{display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap"}}>
+                <span style={{
+                    fontSize: "28px",
+                    fontWeight: 800,
+                    color: C.spiceGold,
+                    letterSpacing: "-0.02em",
+                    lineHeight: 1
+                }}>
+                    {benchmark.ourScore.toFixed(3)}
+                </span>
+                <Chip
+                    bg={benchmark.positive ? success.bg : warn.bg}
+                    border={benchmark.positive ? success.border : warn.border}
+                    color={benchmark.positive ? success.text : warn.text}
+                >
+                    {benchmark.improvement}
+                </Chip>
+            </div>
+
+            {/* Bar chart: our score vs SOTA */}
+            <div style={{display: "flex", flexDirection: "column", gap: "6px"}}>
+                <div>
+                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: "3px"}}>
+                        <span style={{fontSize: "10px", color: C.muted, fontWeight: 600}}>Vitreon</span>
+                        <span style={{fontSize: "10px", color: C.muted}}>{benchmark.ourScore.toFixed(3)}</span>
+                    </div>
+                    <div style={{
+                        height: "6px",
+                        borderRadius: "3px",
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${ourPct}%`,
+                            background: `linear-gradient(90deg, ${C.camel}, ${C.spiceGold})`,
+                            borderRadius: "3px"
+                        }}/>
+                    </div>
+                </div>
+
+                <div>
+                    <div style={{display: "flex", justifyContent: "space-between", marginBottom: "3px"}}>
+                        <span style={{fontSize: "10px", color: "rgba(42,26,6,0.40)", fontWeight: 600}}>SOTA</span>
+                        <span style={{fontSize: "10px", color: "rgba(42,26,6,0.40)"}}>{benchmark.sota.toFixed(3)}</span>
+                    </div>
+                    <div style={{
+                        height: "6px",
+                        borderRadius: "3px",
+                        background: "rgba(0,0,0,0.08)",
+                        overflow: "hidden"
+                    }}>
+                        <div style={{
+                            height: "100%",
+                            width: `${sotaPct}%`,
+                            background: "rgba(42,26,6,0.22)",
+                            borderRadius: "3px"
+                        }}/>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 }
