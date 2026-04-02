@@ -105,30 +105,3 @@ async def get_current_user(
         raise HTTPException(status_code=401, detail="User not found")
 
     return user
-
-
-async def require_active_subscription(
-    user: User = Depends(get_current_user),
-) -> User:
-    """FastAPI dependency — raises 402 if user has no usable subscription.
-
-    Plan logic:
-    - free / trial (legacy): allow if lifetime queries remaining
-    - starter / pro / enterprise: always allow (daily limits enforced at query time)
-    - canceled / anything else: reject with 402
-    """
-
-    status = user.subscription_status
-
-    # Free/trial users: daily limit checked in _enforce_query_limit (query.py)
-    if status in ("free", "trial"):
-        return user
-
-    if status in ("starter", "pro", "enterprise"):
-        return user
-
-    # canceled, past_due, or unknown
-    raise HTTPException(
-        status_code=402,
-        detail="Active subscription required.",
-    )

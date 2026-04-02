@@ -426,13 +426,13 @@ async def billing_status(
 
     # Build usage info
     usage: dict = {}
-    if effective_plan == "free":
-        monthly_limit = limits["monthly_limit"] or 0
+    if effective_plan in ("free", "trial"):
+        daily_limit = limits.get("daily_limit") or 3
         usage = {
-            "monthly_queries_used": _monthly_used,
-            "monthly_limit": monthly_limit,
-            "remaining": max(0, monthly_limit - _monthly_used),
-            "resets_at": (user.monthly_queries_reset_at.isoformat() if user.monthly_queries_reset_at else None),
+            "daily_queries_used": _daily_used,
+            "daily_limit": daily_limit,
+            "remaining": max(0, daily_limit - _daily_used),
+            "resets_at": (user.daily_queries_reset_at.isoformat() if user.daily_queries_reset_at else None),
         }
     elif effective_plan in ("starter", "pro"):
         daily_limit = limits["daily_limit"] or 0
