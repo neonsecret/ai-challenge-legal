@@ -27,7 +27,7 @@ def _uptime_seconds(app) -> float:
 
 
 @router.get("/health")
-async def health_check(request: Request) -> JSONResponse | dict:
+async def health_check(request: Request):
     """Full health status including uptime, throughput, and latency metrics.
 
     Returns 503 if the pipeline is not ready (still warming up or failed to start).
@@ -72,7 +72,7 @@ async def liveness() -> dict[str, str]:
 
 
 @router.get("/health/ready")
-async def readiness(request: Request) -> JSONResponse | dict[str, str]:
+async def readiness(request: Request):
     """Readiness probe — returns 200 only when the server can handle traffic.
 
     Checks:

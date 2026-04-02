@@ -190,7 +190,7 @@ async def query_stream(
     body: QueryRequest,
     key_row: dict = Depends(get_api_key),
     db: AsyncSession = Depends(get_db),
-) -> EventSourceResponse:
+):
     """Stream a legal query response as Server-Sent Events.
 
     Accepts a JSON body with question, answer_type, corpus, and optional
