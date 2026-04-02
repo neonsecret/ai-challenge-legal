@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>app.vitreon.caselaw-sync</string>
+    <key>WorkingDirectory</key>
+    <string>/Users/viacheslavivannikov/projects/ai-challenge-legal</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/uv</string>
+        <string>run</string>
+        <string>python</string>
+        <string>scripts/scrape_supreme_court.py</string>
+        <string>--mode</string>
+        <string>sync</string>
+        <string>--days</string>
+        <string>7</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/viacheslavivannikov/projects/ai-challenge-legal/.venv/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/vitreon-caselaw-sync.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/vitreon-caselaw-sync.log</string>
+</dict>
+</plist>
