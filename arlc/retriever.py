@@ -265,12 +265,21 @@ def rerank_chunks(
         if on_status:
             on_status(f"retrieving:reranking passages ({done}/{total})")
 
+    def _apply_scores(chunk_list: list[dict], score_list) -> list[dict]:
+        """Annotate chunks with ``rerank_score`` and return sorted top-k."""
+        indexed = sorted(enumerate(score_list), key=lambda x: x[1], reverse=True)
+        result = []
+        for i, score in indexed[:top_k]:
+            c = dict(chunk_list[i])  # shallow copy to avoid mutating the original
+            c["rerank_score"] = float(score)
+            result.append(c)
+        return result
+
     # Try primary reranker (remote if configured, else local)
     ranker = get_reranker()
     try:
         scores = ranker.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
-        indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
-        return [chunks[i] for i, _ in indexed[:top_k]]
+        return _apply_scores(chunks, scores)
     except Exception as e:
         # If primary was remote, try local as fallback + circuit-break for remaining calls
         local = get_local_reranker()
@@ -281,8 +290,7 @@ def rerank_chunks(
                 on_status("retrieving:reranking passages")
             try:
                 scores = local.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
-                indexed = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)
-                return [chunks[i] for i, _ in indexed[:top_k]]
+                return _apply_scores(chunks, scores)
             except Exception as e2:
                 logger.warning("Local reranker also failed (%s), using vector-distance ordering", e2)
 
@@ -552,6 +560,166 @@ def _search_chunks_text_for_doc(query: str, pdf_id: str, corpus: str = "difc", t
             LIMIT :top_k
         """),
             {"query": query, "corpus": corpus, "pdf_id": pdf_id, "top_k": top_k},
+        ).fetchall()
+    return [row.chunk_id for row in rows]
+
+
+# Common English stop words to strip from queries before OR-mode text search.
+_TEXT_SEARCH_STOP_WORDS = frozenset(
+    {
+        "what",
+        "are",
+        "the",
+        "for",
+        "under",
+        "which",
+        "how",
+        "does",
+        "do",
+        "is",
+        "of",
+        "in",
+        "a",
+        "an",
+        "that",
+        "this",
+        "these",
+        "those",
+        "was",
+        "were",
+        "has",
+        "have",
+        "had",
+        "will",
+        "would",
+        "could",
+        "should",
+        "may",
+        "might",
+        "shall",
+        "can",
+        "be",
+        "by",
+        "at",
+        "as",
+        "it",
+        "its",
+        "with",
+        "from",
+        "to",
+        "on",
+        "or",
+        "and",
+        "not",
+        "but",
+        "if",
+        "then",
+        "when",
+        "where",
+        "who",
+        "whom",
+        "all",
+        "any",
+        "each",
+        "such",
+        "no",
+        "both",
+        "either",
+        "neither",
+    }
+)
+
+# Additional stop words for WITHIN-document OR-mode text search only.
+# These terms appear in most chunks of a statute document (e.g. the law's own
+# name, jurisdiction, or structural boilerplate) and provide no discriminating
+# signal when searching within a single document.  Kept separate so they still
+# contribute to cross-document searches elsewhere.
+_WITHIN_DOC_STOP_WORDS = _TEXT_SEARCH_STOP_WORDS | frozenset(
+    {
+        # Jurisdiction / corpus identifiers that appear in every chunk header
+        "difc",
+        "czech",
+        "english",
+        "australian",
+        "federal",
+        "dubai",
+        # Generic legal/document terms ubiquitous in statute bodies
+        "law",
+        "act",
+        "regulation",
+        "regulations",
+        "legal",
+        "pursuant",
+        "accordance",
+        "applicable",
+        "provisions",
+        "provision",
+        # High-frequency substantive words in employment/commercial statutes
+        "employment",
+        "employee",
+        "employer",
+        "company",
+        "contract",
+        "court",
+        "tribunal",
+        "proceedings",
+    }
+)
+
+
+def _extract_search_terms(
+    query: str,
+    min_len: int = 3,
+    max_terms: int = 6,
+    stop_words: frozenset[str] | None = None,
+) -> list[str]:
+    """Extract key non-stop-word terms from a query for OR-mode text search.
+
+    Returns the first ``max_terms`` unique lowercased tokens that are not in
+    ``stop_words`` (defaults to ``_TEXT_SEARCH_STOP_WORDS``) and meet the
+    minimum length requirement.
+    """
+    sw = stop_words if stop_words is not None else _TEXT_SEARCH_STOP_WORDS
+    tokens = re.findall(r"\b[a-zA-Z]+\b", query.lower())
+    seen: set[str] = set()
+    result: list[str] = []
+    for t in tokens:
+        if t not in sw and len(t) >= min_len and t not in seen:
+            seen.add(t)
+            result.append(t)
+            if len(result) >= max_terms:
+                break
+    return result
+
+
+def _search_chunks_text_for_doc_or(query: str, pdf_id: str, corpus: str = "difc", top_k: int = 10) -> list[str]:
+    """OR-mode text search within a document — returns chunk_ids ranked by relevance.
+
+    Unlike ``_search_chunks_text_for_doc`` (AND mode), this function extracts
+    key terms from the query and uses OR semantics so that pages containing ANY
+    relevant term are found.  Uses ``_WITHIN_DOC_STOP_WORDS`` which strips
+    terms that are ubiquitous inside a single statute (law name, jurisdiction,
+    structural boilerplate) — these add noise within a document even though
+    they are useful discriminators for cross-document search.
+    """
+    terms = _extract_search_terms(query, stop_words=_WITHIN_DOC_STOP_WORDS)
+    if not terms:
+        return []
+    or_tsq = " | ".join(terms)
+    engine = _get_sync_engine()
+    with SASession(engine) as session:
+        rows = session.execute(
+            sa_text("""
+            SELECT chunk_id,
+                   ts_rank(text_search, to_tsquery('simple', :tsq)) AS rank
+            FROM chunks
+            WHERE corpus = :corpus
+              AND pdf_id = :pdf_id
+              AND text_search @@ to_tsquery('simple', :tsq)
+            ORDER BY rank DESC
+            LIMIT :top_k
+            """),
+            {"tsq": or_tsq, "corpus": corpus, "pdf_id": pdf_id, "top_k": top_k},
         ).fetchall()
     return [row.chunk_id for row in rows]
 
@@ -2551,6 +2719,66 @@ def _retrieve_pages_targeted(
                 if page_num not in page_scores or score_val > page_scores[page_num]:
                     page_scores[page_num] = score_val
                     page_chunk_ids[page_num] = chunk.get("chunk_id", "")
+
+        # CE cluster guard: when many pages from the same document score within a
+        # narrow high band (CE can't discriminate), text search identifies pages
+        # that actually contain the query's substantive terms and boosts them above
+        # the early-occurrence bonus that otherwise selects title/TOC pages first.
+        #
+        # Trigger: ≥ (max_per_doc × 2 + 2) pages score within 5% of top CE score.
+        # This catches large statute documents where every page mentions the law
+        # name, making most CE scores cluster near 0.95–1.0.
+        # For case-law documents, CE typically separates 2–3 relevant pages from
+        # the rest — the cluster size stays below the threshold, so this guard
+        # does not fire and the regular page-gap logic applies undisturbed.
+        _ce_top = max(page_scores.values(), default=0.0)
+        _CE_CLUSTER_BAND = float(os.environ.get("CE_CLUSTER_BAND", "0.05"))
+        _CE_CLUSTER_TRIGGER = max_per_doc * 2 + 2
+
+        _pages_in_band = sum(1 for sc in page_scores.values() if sc >= _ce_top * (1.0 - _CE_CLUSTER_BAND))
+
+        if _pages_in_band >= _CE_CLUSTER_TRIGGER and _ce_top > 0.50:
+            logger.debug(
+                "[retriever] CE cluster guard triggered for %s: %d pages within %.0f%% of "
+                "top score %.4f (threshold %d), applying within-doc text search boost",
+                doc_id[:12],
+                _pages_in_band,
+                _CE_CLUSTER_BAND * 100,
+                _ce_top,
+                _CE_CLUSTER_TRIGGER,
+            )
+            try:
+                _cid_to_page = {c["chunk_id"]: c["metadata"].get("page", 1) for c in doc_chunks}
+                _cluster_hits = _search_chunks_text_for_doc_or(
+                    question,
+                    pdf_id=doc_id,
+                    corpus="difc",
+                    top_k=6,
+                )
+                _cluster_seen: set[int] = set()
+                # Boost: text rank 0 → +0.06, rank 1 → +0.055, etc., flooring at 0.02
+                # The boost is calibrated to overcome the early-occurrence bonus (+0.02/page_num)
+                # that would otherwise always select early pages when CE scores are flat.
+                _CLUSTER_BOOST_BASE = 0.06
+                _CLUSTER_BOOST_STEP = 0.005
+                _CLUSTER_BOOST_MIN = 0.02
+                for _cl_rank, _cl_cid in enumerate(_cluster_hits):
+                    _cl_pg = _cid_to_page.get(_cl_cid)
+                    if _cl_pg is not None and _cl_pg in page_scores and _cl_pg not in _cluster_seen:
+                        _boost = max(
+                            _CLUSTER_BOOST_MIN,
+                            _CLUSTER_BOOST_BASE - _cl_rank * _CLUSTER_BOOST_STEP,
+                        )
+                        page_scores[_cl_pg] += _boost
+                        _cluster_seen.add(_cl_pg)
+                        logger.debug(
+                            "[retriever] cluster boost: p%d +%.3f (text rank %d)",
+                            _cl_pg,
+                            _boost,
+                            _cl_rank,
+                        )
+            except Exception as _cl_err:  # nosec B110
+                logger.debug("[retriever] CE cluster text boost failed: %s", _cl_err)
 
         # Track which pages contain article DEFINITION headers.
         _art_def_pages: set[int] = set()

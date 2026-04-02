@@ -8,6 +8,21 @@ import {cn} from "@/lib/utils"
 import {FileX, Loader2, Maximize2, Minimize2, ZoomIn, ZoomOut} from "lucide-react"
 import {useTheme} from "next-themes"
 
+// Polyfill URL.parse() for browsers that predate the static method (Chrome <126,
+// Safari <18, Firefox <126).  pdfjs-dist 5.x calls URL.parse() in the main
+// thread bundle and in the worker; the worker gets its own copy in the bundled
+// pdf.worker.min.mjs file.
+if (typeof URL.parse === "undefined") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(URL as any).parse = (url: string, base?: string): URL | null => {
+        try {
+            return new URL(url, base)
+        } catch {
+            return null
+        }
+    }
+}
+
 // Use locally-bundled worker (public/pdf.worker.min.mjs) to avoid CDN latency
 pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs"
 

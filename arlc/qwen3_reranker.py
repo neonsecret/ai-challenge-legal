@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 from typing import Optional
 
@@ -24,6 +25,16 @@ import numpy as np
 import torch
 
 logger = logging.getLogger(__name__)
+
+# Regex to detect and parse the "Instruct: ...\nQuery: ..." prefix that
+# _format_reranker_pairs() prepends for Qwen3-Reranker models.
+# The Qwen3Reranker (PyTorch) class uses this prefix inside its own _make_prompt()
+# method.  LlamaServerReranker sends queries directly to llama-server's /v1/rerank
+# endpoint, which constructs the full chat template itself — receiving a
+# double-wrapped prompt produces inverted/wrong relevance scores.
+# This pattern is used by LlamaServerReranker to strip the prefix and pass the
+# instruction as a native API field instead.
+_INSTRUCT_QUERY_RE = re.compile(r"^Instruct: (.*?)\nQuery: (.+)$", re.DOTALL)
 
 # System prompt used by all Qwen3-Reranker model variants
 _SYSTEM_PROMPT = (
@@ -219,10 +230,25 @@ class LlamaServerReranker:
 
         Each result dict has ``index`` (0-based within this batch) and
         ``relevance_score``.
+
+        Handles the ``_format_reranker_pairs`` instruction prefix transparently:
+        if the query starts with ``"Instruct: ...\\nQuery: ..."`` (added by
+        ``_format_reranker_pairs`` for Qwen3-Reranker models), the prefix is
+        parsed and the instruction is passed as the native llama-server
+        ``instruction`` API field.  Embedding the instruction inside the query
+        string causes llama-server to double-wrap it in its own chat template,
+        which inverts relevance scores for substantive legal passages.
         """
+        payload: dict = {"model": "local", "documents": documents}
+        m = _INSTRUCT_QUERY_RE.match(query)
+        if m:
+            payload["instruction"] = m.group(1).strip()
+            payload["query"] = m.group(2).strip()
+        else:
+            payload["query"] = query
         r = self._requests.post(
             f"{self.url}/v1/rerank",
-            json={"model": "local", "query": query, "documents": documents},
+            json=payload,
             timeout=(self.CONNECT_TIMEOUT, read_timeout),
         )
         if not r.ok:

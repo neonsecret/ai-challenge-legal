@@ -19,6 +19,8 @@
  * @licend The above is the entire license notice for the
  * JavaScript code in this page
  */
+// URL.parse polyfill for older browsers (added for pdfjs-dist 5.x compatibility)
+if(typeof URL.parse==="undefined"){URL.parse=function(url,base){try{return new URL(url,base)}catch(e){return null}}}
 /**
  * pdfjsVersion = 5.4.296
  * pdfjsBuild = f56dc8601
