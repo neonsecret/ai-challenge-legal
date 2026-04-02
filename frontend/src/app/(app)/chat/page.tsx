@@ -119,44 +119,51 @@ const DIFC_SCENARIOS: DemoScenario[] = [
 const CZ_SCENARIOS: DemoScenario[] = [
     {
         jurisdiction: "Czech Republic",
-        question: "Jaká je výpovědní doba podle zákoníku práce?",
+        question: "Může zaměstnavatel dát výpověď zaměstnanci z důvodu nadbytečnosti, pokud pracovní místo fakticky zrušeno nebylo?",
         answer: "",
         pdfTitle: "Zákoník práce (262/2006 Sb.)",
-        pdfArticleHeader: "§ 51 — Výpovědní doba",
+        pdfArticleHeader: "§ 52 písm. c) — Výpověď z důvodu nadbytečnosti",
         pdfClauses: [
             {
-                id: "§51(1)",
-                text: "Byla-li dána výpověď, skončí pracovní poměr uplynutím výpovědní doby. Výpovědní doba musí být stejná pro zaměstnavatele i zaměstnance."
+                id: "§52(c)",
+                text: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení, o snížení stavu zaměstnanců nebo o jiných organizačních změnách."
             },
-            {id: "§51(2)", text: "Výpovědní doba činí nejméně 2 měsíce."},
             {
-                id: "§51(3)",
-                text: "Výpovědní doba začíná prvním dnem kalendářního měsíce následujícího po doručení výpovědi."
+                id: "NS 21 Cdo",
+                text: "Nejvyšší soud: Organizační změna musí být skutečná — výpověď je neplatná, bylo-li rozhodnutí o zrušení pracovního místa pouze formální a zaměstnanec byl vzápětí nahrazen jinou osobou na totožné pozici."
+            },
+            {
+                id: "§52 pozn.",
+                text: "Příčinná souvislost mezi organizační změnou a nadbytečností zaměstnance musí existovat v okamžiku podání výpovědi; zaměstnavatel nesmí po výpovědi přijmout nového zaměstnance na stejné místo."
             },
         ],
         highlightRange: [0, 1],
-        sourceBadge: "Zákoník práce · § 51 · p.51",
-        pageBadge: "Page 51",
+        sourceBadge: "Zákoník práce · § 52(c) · judikatura NS",
+        pageBadge: "Page 52",
     },
     {
         jurisdiction: "Czech Republic",
-        question: "Jak je upraveno bezdůvodné obohacení v občanském zákoníku?",
+        question: "Může podnikatel požadovat ochranu jako slabší smluvní strana vůči jinému podnikateli při nepřiměřeně vysokých úrocích ze zápůjčky?",
         answer: "",
         pdfTitle: "Občanský zákoník (89/2012 Sb.)",
-        pdfArticleHeader: "§ 2991 — Bezdůvodné obohacení",
+        pdfArticleHeader: "§ 1796 — Lichva",
         pdfClauses: [
             {
-                id: "§2991(1)",
-                text: "Kdo se na úkor jiného bez spravedlivého důvodu obohatí, musí ochuzenému vydat, oč se obohatil."
+                id: "§1796",
+                text: "Neplatná je smlouva, ke které bylo použito tísně, nezkušenosti, rozumové slabosti nebo rozrušení druhé strany a sjednaná protiplnění jsou ke vzájemnému plnění v hrubém nepoměru."
             },
             {
-                id: "§2991(2)",
-                text: "Bezdůvodně se obohatí zvláště ten, kdo získá majetkový prospěch plněním bez právního důvodu, plněním z právního důvodu, který odpadl, nebo protiprávním užitím cizí hodnoty."
+                id: "§433",
+                text: "Ochrany jako slabší strany se může dovolat i podnikatel, pokud prokáže, že druhá smluvní strana zneužila jeho závislosti, tísně nebo zkušenostní asymetrie — ochrana není omezena pouze na spotřebitele."
+            },
+            {
+                id: "NS 33 Cdo",
+                text: "Nejvyšší soud: Při posouzení lichvy se přihlíží ke konkrétním okolnostem uzavření smlouvy; sjednání úroku mnohonásobně převyšujícího obvyklou míru může naplnit znaky § 1796 i mezi podnikateli."
             },
         ],
         highlightRange: [0, 1],
-        sourceBadge: "Občanský zákoník · § 2991 · p.195",
-        pageBadge: "Page 195",
+        sourceBadge: "Občanský zákoník · § 1796 · judikatura NS",
+        pageBadge: "Page 213",
     },
 ]
 
