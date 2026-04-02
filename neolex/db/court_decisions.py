@@ -1,14 +1,17 @@
-"""Court decisions model — BM25 + JSONB regulation index for Czech judikatura.
+"""Court decisions model — BM25 + vector hybrid search for Czech judikatura.
 
 Stores Czech Supreme Court (Nejvyssi soud) decisions scraped from
 rozhodnuti.nsoud.cz.  Full text is fetched on demand and cached.
 
-Key differences from the ``chunks`` table:
-- No vector embeddings — retrieval is BM25 (tsvector) only
-- Rich case metadata: case number, category, judges, decision type
-- Legal thesis (pravni veta) as a distinct indexed field
-- Statute citation graph via JSONB (regulations field)
-- On-demand full text fetching pattern (full_text_fetched flag)
+Retrieval modes:
+- BM25 only: ``search_decisions()`` — keyword match on legal_thesis, case_number, keywords
+- Vector only: ``search_decisions_vector()`` — Qwen3-8B semantic similarity on legal_thesis
+- Hybrid: ``search_decisions_hybrid()`` — RRF fusion of BM25 + vector (recommended)
+
+The ``embedding`` column is nullable — rows without embeddings are excluded from
+the vector leg but remain searchable via BM25.  This enables a clean migration:
+add the column, backfill asynchronously, hybrid search improves as more rows gain
+embeddings with no code change required.
 """
 
 from __future__ import annotations
@@ -16,6 +19,8 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
+import numpy as np
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import ARRAY, Boolean, Date, Index, String, Text, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -68,6 +73,12 @@ class CourtDecision(Base):
     search_vector : tsvector
         GIN-indexed, auto-populated by DB trigger from
         ``legal_thesis || case_number || keywords``.
+    embedding : Vector(4096) | None
+        Qwen3-8B embedding of legal_thesis for semantic search.
+        Nullable — rows without embeddings are excluded from the vector search
+        leg but remain fully searchable via BM25.
+        No HNSW index: 4096 dims exceeds pgvector's 2000-dim HNSW limit;
+        exact scan at ~50K rows ≈ 150ms (acceptable for this corpus size).
     created_at, updated_at : datetime
         Audit timestamps.
     """
@@ -90,6 +101,7 @@ class CourtDecision(Base):
     regulations: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     keywords: Mapped[list | None] = mapped_column(ARRAY(Text), nullable=True)
     search_vector = mapped_column(TSVECTOR, nullable=True)
+    embedding = mapped_column(Vector(4096), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), default=_utcnow, server_default=func.now(), nullable=False
     )
@@ -107,17 +119,50 @@ class CourtDecision(Base):
         # Descending BTree index for date-ordered queries (most recent first)
         Index("court_decisions_date_desc", text("decision_date DESC")),
         Index("court_decisions_category", "category"),
+        # No HNSW on embedding: pgvector HNSW max is 2000 dims, our embeddings are
+        # 4096-dim.  Exact scan at ~50K rows ≈ 150ms — no index needed.
     )
 
 
 # ---------------------------------------------------------------------------
-# Query helpers
+# Internal helpers
 # ---------------------------------------------------------------------------
 
 
 def _recency_cutoff() -> date:
     """Date object for the 3-year recency cutoff."""
     return (datetime.now(UTC) - timedelta(days=3 * 365)).date()
+
+
+def _normalize(vec: list[float]) -> list[float]:
+    """L2-normalize a float vector in place, return normalized list."""
+    arr = np.array(vec, dtype=np.float32)
+    norm = float(np.linalg.norm(arr))
+    if norm > 0:
+        arr = arr / norm
+    return arr.tolist()
+
+
+def _statute_ref_filter(stmt, statute_ref: tuple[int, int] | None):
+    """Apply JSONB statute reference filter to a SQLAlchemy select statement."""
+    if statute_ref is None:
+        return stmt
+    law_number, law_year = statute_ref
+    return stmt.where(CourtDecision.regulations.contains([{"law_number": law_number, "law_year": law_year}]))
+
+
+def _date_filters(stmt, date_from: date | None, date_to: date | None):
+    """Apply optional date range filters to a SQLAlchemy select statement."""
+    if date_from is not None:
+        stmt = stmt.where(CourtDecision.decision_date >= date_from)
+    if date_to is not None:
+        stmt = stmt.where(CourtDecision.decision_date <= date_to)
+    return stmt
+
+
+# ---------------------------------------------------------------------------
+# BM25 search
+# ---------------------------------------------------------------------------
 
 
 async def search_decisions(
@@ -153,51 +198,184 @@ async def search_decisions(
     if not query or not query.strip():
         return []
 
-    cutoff = _recency_cutoff()  # date object for asyncpg
+    cutoff = _recency_cutoff()
 
-    # Combined score: 60% BM25 ts_rank + 40% recency
-    # Using text() for the ORDER BY expression to keep the SQL straightforward.
-    # Both :q (str) and :cutoff (date) are bound at execute time.
     order_expr = text(
         "ts_rank(search_vector, plainto_tsquery('simple', :q)) * 0.6 "
         "+ CASE WHEN decision_date >= :cutoff THEN 1.0 ELSE 0.4 END * 0.4 DESC"
     )
-
     ts_query_fn = func.plainto_tsquery("simple", bindparam("q"))
 
     stmt = (
         select(CourtDecision).where(CourtDecision.search_vector.op("@@")(ts_query_fn)).order_by(order_expr).limit(limit)
     )
-
-    if statute_ref is not None:
-        law_number, law_year = statute_ref
-        # JSONB containment: regulations array must contain an element with
-        # matching law_number and law_year fields.
-        # Using .contains() which maps to the @> operator via SQLAlchemy JSONB API.
-        stmt = stmt.where(CourtDecision.regulations.contains([{"law_number": law_number, "law_year": law_year}]))
-
-    if date_from is not None:
-        stmt = stmt.where(CourtDecision.decision_date >= date_from)
-    if date_to is not None:
-        stmt = stmt.where(CourtDecision.decision_date <= date_to)
+    stmt = _statute_ref_filter(stmt, statute_ref)
+    stmt = _date_filters(stmt, date_from, date_to)
 
     async with AsyncSessionLocal() as session:
         result = await session.execute(stmt, {"q": query, "cutoff": cutoff})
         return list(result.scalars().all())
 
 
-async def get_decision_by_ecli(ecli: str) -> CourtDecision | None:
-    """Fetch a single decision by ECLI identifier.
+# ---------------------------------------------------------------------------
+# Vector search
+# ---------------------------------------------------------------------------
+
+
+async def search_decisions_vector(
+    query_embedding: list[float],
+    statute_ref: tuple[int, int] | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int = 20,
+) -> list[CourtDecision]:
+    """Semantic vector search on court decisions using Qwen3-8B embeddings.
+
+    Only searches decisions that have ``embedding IS NOT NULL`` — rows without
+    embeddings are skipped (graceful degradation during backfill).
+
+    Uses pgvector inner product (``<#>``) which returns a negative similarity
+    (more negative = more similar for normalized vectors).
 
     Parameters
     ----------
-    ecli : str
-        Full ECLI string, e.g. "ECLI:CZ:NS:2023:21.CDO.1234.2023.1"
+    query_embedding : list[float]
+        4096-dim Qwen3-8B embedding of the query, from ``embed_query()``.
+    statute_ref : (law_number, law_year) | None
+        Optional JSONB containment filter.
+    date_from, date_to : date | None
+        Optional date range filters.
+    limit : int
+        Maximum number of results.
 
     Returns
     -------
-    CourtDecision | None
+    list[CourtDecision]
+        Ordered by inner product similarity (most similar first).
     """
+    normalized = _normalize(query_embedding)
+    vec_literal = "[" + ",".join(str(x) for x in normalized) + "]"
+
+    # Build statement: filter to rows with embeddings, order by inner product
+    stmt = (
+        select(CourtDecision)
+        .where(CourtDecision.embedding.is_not(None))
+        .order_by(text("embedding <#> cast(:vec as vector)"))
+        .limit(limit)
+    )
+    stmt = _statute_ref_filter(stmt, statute_ref)
+    stmt = _date_filters(stmt, date_from, date_to)
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(stmt, {"vec": vec_literal})
+        return list(result.scalars().all())
+
+
+# ---------------------------------------------------------------------------
+# Hybrid BM25 + vector search with RRF
+# ---------------------------------------------------------------------------
+
+_RRF_K = 60  # standard RRF constant (Cormack et al. 2009)
+_RRF_BM25_WEIGHT = 0.4
+_RRF_VECTOR_WEIGHT = 0.6
+
+
+def _rrf_fuse(
+    bm25_results: list[CourtDecision],
+    vector_results: list[CourtDecision],
+    *,
+    bm25_weight: float = _RRF_BM25_WEIGHT,
+    vector_weight: float = _RRF_VECTOR_WEIGHT,
+    k: int = _RRF_K,
+    limit: int = 10,
+) -> list[CourtDecision]:
+    """Reciprocal Rank Fusion of BM25 and vector result lists.
+
+    Score for each document: sum(weight_i / (k + rank_i)) across both legs.
+    Vector gets 0.6 weight (better for semantic/factual queries), BM25 gets 0.4
+    (better for exact legal term matches like statute names and article numbers).
+
+    Documents appearing in only one leg still contribute their single-leg score —
+    this is important when embeddings are sparse (not all rows have embeddings yet).
+    """
+    scores: dict[str, float] = {}
+
+    for rank, doc in enumerate(bm25_results):
+        eid = doc.ecli
+        scores[eid] = scores.get(eid, 0.0) + bm25_weight / (k + rank + 1)
+
+    for rank, doc in enumerate(vector_results):
+        eid = doc.ecli
+        scores[eid] = scores.get(eid, 0.0) + vector_weight / (k + rank + 1)
+
+    # Collect unique docs, preserving CourtDecision objects
+    all_docs: dict[str, CourtDecision] = {}
+    for doc in bm25_results + vector_results:
+        all_docs.setdefault(doc.ecli, doc)
+
+    fused = sorted(all_docs.values(), key=lambda d: scores.get(d.ecli, 0.0), reverse=True)
+    return fused[:limit]
+
+
+async def search_decisions_hybrid(
+    query: str,
+    query_embedding: list[float],
+    statute_ref: tuple[int, int] | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    limit: int = 10,
+) -> list[CourtDecision]:
+    """Hybrid BM25 + vector search with RRF fusion.
+
+    Runs both search legs concurrently, then fuses results using Reciprocal
+    Rank Fusion.  Falls back gracefully when the BM25 or vector leg returns
+    empty results (e.g., empty query → BM25 skipped; no embeddings → vector
+    leg returns nothing).
+
+    Parameters
+    ----------
+    query : str
+        Czech language search terms for the BM25 leg.
+    query_embedding : list[float]
+        4096-dim Qwen3-8B embedding for the vector leg.
+    statute_ref, date_from, date_to :
+        Filters applied to both legs independently.
+    limit : int
+        Maximum results after fusion.
+
+    Returns
+    -------
+    list[CourtDecision]
+        RRF-fused results, most relevant first.
+    """
+    import asyncio
+
+    # Fetch more candidates per leg so fusion has a rich pool to draw from
+    leg_limit = min(limit * 3, 30)
+
+    bm25_coro = search_decisions(query, statute_ref=statute_ref, date_from=date_from, date_to=date_to, limit=leg_limit)
+    vector_coro = search_decisions_vector(
+        query_embedding, statute_ref=statute_ref, date_from=date_from, date_to=date_to, limit=leg_limit
+    )
+
+    bm25_results, vector_results = await asyncio.gather(bm25_coro, vector_coro)
+
+    # If one leg is empty, return the other directly (no fusion needed)
+    if not bm25_results:
+        return vector_results[:limit]
+    if not vector_results:
+        return bm25_results[:limit]
+
+    return _rrf_fuse(bm25_results, vector_results, limit=limit)
+
+
+# ---------------------------------------------------------------------------
+# Standard CRUD helpers
+# ---------------------------------------------------------------------------
+
+
+async def get_decision_by_ecli(ecli: str) -> CourtDecision | None:
+    """Fetch a single decision by ECLI identifier."""
     stmt = select(CourtDecision).where(CourtDecision.ecli == ecli)
     async with AsyncSessionLocal() as session:
         result = await session.execute(stmt)
@@ -211,15 +389,13 @@ async def upsert_decision(data: dict) -> CourtDecision:
     keys are mapped to CourtDecision columns.  Unknown keys are silently
     ignored so the scraper can pass raw parsed dicts.
 
+    The ``embedding`` field is accepted if provided by the caller — this lets
+    the batch embedding script or scraper pass pre-computed embeddings directly.
+
     Parameters
     ----------
     data : dict
         Must include ``ecli`` and ``case_number``.
-
-    Returns
-    -------
-    CourtDecision
-        The inserted or updated record (refreshed from DB).
 
     Raises
     ------
@@ -248,6 +424,7 @@ async def upsert_decision(data: dict) -> CourtDecision:
         "source_unid",
         "regulations",
         "keywords",
+        "embedding",  # accepted when pre-computed by caller
     }
     fields = {k: v for k, v in data.items() if k in _allowed}
 
@@ -275,3 +452,23 @@ async def get_decisions_count() -> int:
     async with AsyncSessionLocal() as session:
         result = await session.execute(stmt)
         return result.scalar_one()
+
+
+async def get_unembedded_decisions(limit: int = 500) -> list[CourtDecision]:
+    """Return decisions that have legal_thesis but no embedding yet.
+
+    Used by the batch embedding script to find rows that need to be processed.
+    Ordered by updated_at DESC so recently-scraped decisions are embedded first.
+    """
+    stmt = (
+        select(CourtDecision)
+        .where(
+            CourtDecision.legal_thesis.is_not(None),
+            CourtDecision.embedding.is_(None),
+        )
+        .order_by(CourtDecision.updated_at.desc())
+        .limit(limit)
+    )
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(stmt)
+        return list(result.scalars().all())

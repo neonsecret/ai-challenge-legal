@@ -1,8 +1,14 @@
 """Agent tool implementations for Czech Supreme Court case law search.
 
 Provides two tools for the LangGraph agent:
-- ``execute_caselaw_search``: BM25 search over court_decisions table
+- ``execute_caselaw_search``: hybrid BM25 + vector search over court_decisions table
 - ``execute_caselaw_fetch``: fetch full Anotace text for a specific ECLI
+
+Search strategy:
+- Primary: hybrid RRF(BM25=0.4, vector=0.6) when embeddings are available
+- Graceful fallback: BM25-only when llama-server is unavailable or embeddings absent
+- The vector leg is skipped if ``embed_query`` raises (offline llama-server),
+  so the agent always gets results even without the embedding service.
 
 These are the *execution* functions; the @tool schema-only wrappers live in
 graph.py alongside the existing ``search_legal_corpus`` schema.
@@ -70,7 +76,12 @@ async def execute_caselaw_search(
     date_to: str = "",
     limit: int = 10,
 ) -> list[SourceDocument]:
-    """Search court_decisions table and return SourceDocument dicts.
+    """Search court_decisions with hybrid BM25 + vector (RRF) and return SourceDocuments.
+
+    Search strategy:
+    1. Try to embed the query with Qwen3-8B (via llama-server)
+    2. If embedding succeeds: run hybrid search (BM25 + vector RRF)
+    3. If embedding fails (llama-server offline): fall back to BM25-only
 
     Parameters
     ----------
@@ -88,25 +99,48 @@ async def execute_caselaw_search(
     list[SourceDocument]
         Each entry has ``source_type="court_decision"`` plus case metadata fields.
     """
-    from neolex.db.court_decisions import search_decisions
+    import asyncio
+
+    from neolex.db.court_decisions import search_decisions, search_decisions_hybrid
 
     statute_ref = _parse_statute_ref(statute_reference)
     df = _parse_date_arg(date_from)
     dt = _parse_date_arg(date_to)
 
     try:
-        decisions = await search_decisions(
-            query=query,
-            statute_ref=statute_ref,
-            date_from=df,
-            date_to=dt,
-            limit=limit,
-        )
+        # Attempt to get query embedding for the vector leg (runs in thread pool
+        # since embed_query is synchronous HTTP to llama-server).
+        query_emb = None
+        if query and query.strip():
+            try:
+                from arlc.retriever import embed_query
+
+                query_emb = await asyncio.to_thread(embed_query, query)
+            except Exception as emb_exc:
+                logger.info("[caselaw] embed_query unavailable, falling back to BM25: %s", emb_exc)
+
+        if query_emb is not None:
+            decisions = await search_decisions_hybrid(
+                query=query,
+                query_embedding=query_emb,
+                statute_ref=statute_ref,
+                date_from=df,
+                date_to=dt,
+                limit=limit,
+            )
+            logger.info("[caselaw] hybrid search query=%r → %d results", query[:60], len(decisions))
+        else:
+            decisions = await search_decisions(
+                query=query,
+                statute_ref=statute_ref,
+                date_from=df,
+                date_to=dt,
+                limit=limit,
+            )
+            logger.info("[caselaw] bm25-only search query=%r → %d results", query[:60], len(decisions))
     except Exception as exc:
         logger.error("[caselaw] search failed: %s", exc)
         return []
-
-    logger.info("[caselaw] search query=%r → %d results", query[:60], len(decisions))
 
     results: list[SourceDocument] = []
     for d in decisions:

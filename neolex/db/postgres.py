@@ -57,6 +57,11 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS sources_json TEXT;"),
         )
+        # Add embedding column to court_decisions if it doesn't exist (idempotent migration).
+        # Vector(4096) — no HNSW index (4096-dim exceeds pgvector's 2000-dim limit).
+        await conn.execute(
+            text("ALTER TABLE court_decisions ADD COLUMN IF NOT EXISTS embedding vector(4096);"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.
