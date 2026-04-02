@@ -31,6 +31,7 @@ the actual answer.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
@@ -90,6 +91,48 @@ def search_legal_corpus(query: str) -> str:
 
 
 @tool
+def search_court_decisions(
+    query: str,
+    statute_reference: str = "",
+    date_from: str = "",
+    date_to: str = "",
+) -> str:
+    """Search Czech Supreme Court case law (judikatura) to find how courts have
+    interpreted and applied the law in specific cases. Returns case summaries
+    with the legal principle (pravni veta) established by each decision.
+
+    Use this when you need to understand judicial interpretation, court practice,
+    legal precedent, or how a statutory provision has been applied in real cases.
+    You can filter by a specific statute reference (e.g. "262/2006" for the
+    Labour Code, or "262/2006 § 52" for a specific section).
+
+    Write search queries in Czech. Always search statutory law first to identify
+    the relevant provision, then search case law to see how courts interpreted it.
+
+    Parameters:
+    - query: search terms in Czech
+    - statute_reference: optional statute filter in "law_number/law_year" format
+      e.g. "262/2006" for Labour Code, "89/2012" for Civil Code
+    - date_from: optional start date in ISO format "YYYY-MM-DD"
+    - date_to: optional end date in ISO format "YYYY-MM-DD"
+    """
+    raise RuntimeError("search_court_decisions is schema-only; execution handled by search_node")
+
+
+@tool
+def fetch_court_decision(ecli: str) -> str:
+    """Retrieve the full reasoning text of a specific Czech court decision to
+    read the court's detailed legal analysis. Use this after
+    search_court_decisions has returned summaries — select the most relevant
+    case(s) and fetch their full text to cite specific passages in your answer.
+
+    Pass the ECLI identifier from the search results (e.g.
+    "ECLI:CZ:NS:2023:21.CDO.1234.2023.1").
+    """
+    raise RuntimeError("fetch_court_decision is schema-only; execution handled by search_node")
+
+
+@tool
 def search_web(query: str) -> str:
     """Search the internet for current legal information not available in the corpus.
 
@@ -121,7 +164,7 @@ def _build_llm_pair():
         location=os.environ.get("VERTEX_LOCATION", "us-east5"),
     )
 
-    tools = [search_legal_corpus]
+    tools = [search_legal_corpus, search_court_decisions, fetch_court_decision]
     if WEB_SEARCH_ENABLED:
         tools.append(search_web)
         logger.info("[agent] web search tool enabled")
@@ -203,7 +246,7 @@ def build_agent_graph():
 
         return {"messages": [response]}
 
-    def search_node(state: AgentState) -> dict:
+    async def search_node(state: AgentState) -> dict:
         last_msg = state["messages"][-1]
         if not hasattr(last_msg, "tool_calls") or not last_msg.tool_calls:
             return {}
@@ -226,6 +269,88 @@ def build_agent_graph():
                 )
                 continue
 
+            # --- Case law search tool ---
+            if tc["name"] == "search_court_decisions":
+                if on_status:
+                    on_status("retrieving:searching case law")
+                from arlc.agent.caselaw_tools import (
+                    execute_caselaw_search,
+                    format_caselaw_search_results,
+                )
+
+                try:
+                    caselaw_docs = await execute_caselaw_search(
+                        query=query,
+                        statute_reference=tc["args"].get("statute_reference", ""),
+                        date_from=tc["args"].get("date_from", ""),
+                        date_to=tc["args"].get("date_to", ""),
+                    )
+                except Exception:
+                    logger.exception("[agent] caselaw search failed: query=%s", query[:80])
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Case law search failed. Try a different query.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                content = format_caselaw_search_results(caselaw_docs)
+                if on_status and caselaw_docs:
+                    on_status(f"retrieving:found {len(caselaw_docs)} case law results")
+                logger.info(
+                    '[agent] caselaw search: query="%s" → %d results',
+                    query[:60],
+                    len(caselaw_docs),
+                )
+                results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
+                continue
+
+            # --- Case law fetch tool ---
+            if tc["name"] == "fetch_court_decision":
+                ecli = tc["args"].get("ecli", "")
+                if not ecli:
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Error: ecli argument is required.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                if on_status:
+                    on_status("retrieving:fetching court decision")
+                from arlc.agent.caselaw_tools import execute_caselaw_fetch, format_caselaw_full
+
+                try:
+                    fetched_doc = await execute_caselaw_fetch(ecli)
+                except Exception:
+                    logger.exception("[agent] caselaw fetch failed: ecli=%s", ecli)
+                    results_msgs.append(
+                        ToolMessage(
+                            content=f"Failed to fetch decision {ecli}. Try searching for it instead.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                if fetched_doc is None:
+                    results_msgs.append(
+                        ToolMessage(
+                            content=f"Decision not found: {ecli}",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                # Add to accumulated docs so it gets proper [DOC-N] numbering
+                doc_offset = len(state["accumulated_docs"]) + len(new_docs_all) + 1
+                content = format_caselaw_full(fetched_doc, doc_offset)
+                new_docs_all.append(fetched_doc)
+                logger.info("[agent] caselaw fetch: ecli=%s → %d chars", ecli[:60], len(content))
+                results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
+                continue
+
             # --- Web search tool ---
             if tc["name"] == "search_web":
                 # Check per-request internet toggle (defaults to True when absent)
@@ -240,7 +365,7 @@ def build_agent_graph():
                     continue
                 if on_status:
                     on_status("retrieving:searching the web")
-                web_results = execute_web_search(query)
+                web_results = await asyncio.to_thread(execute_web_search, query)
                 content = format_web_results(web_results)
                 logger.info('[agent] web search: query="%s" -> %d results', query[:60], len(web_results))
                 results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
@@ -259,7 +384,8 @@ def build_agent_graph():
 
             t0 = time.monotonic()
             try:
-                new_docs = execute_search(
+                new_docs = await asyncio.to_thread(
+                    execute_search,
                     query=query,
                     corpus=state["corpus"],
                     law_filters=state["selected_laws"] or None,
@@ -585,16 +711,25 @@ async def run_agent_turn(
     if final_answer and final_docs:
         final_docs = verify_source_relevance(final_answer, final_docs)
 
-    # Build sources
-    sources = [
-        {
+    # Build sources — include court decision metadata when present
+    sources = []
+    for d in final_docs:
+        source: dict = {
             "doc_id": d["doc_id"],
             "page_numbers": [d["page"]],
             "text": d.get("text", ""),
             "chunk_id": d.get("chunk_id", ""),
         }
-        for d in final_docs
-    ]
+        # Propagate court decision fields if present (backward-compatible)
+        if d.get("source_type") == "court_decision":
+            source["source_type"] = "court_decision"
+            source["case_number"] = d.get("case_number", "")
+            source["decision_date"] = d.get("decision_date", "")
+            source["court"] = d.get("court", "")
+            source["category"] = d.get("category", "")
+            source["ecli"] = d.get("ecli", "")
+            source["legal_thesis"] = d.get("legal_thesis", "")
+        sources.append(source)
 
     # Add web sources with a "web:" prefix to distinguish them from corpus docs
     seen_urls: set[str] = set()

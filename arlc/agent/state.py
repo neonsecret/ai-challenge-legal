@@ -22,7 +22,7 @@ class SourceDocument(TypedDict, total=False):
     Attributes
     ----------
     doc_id : str
-        Canonical document identifier (e.g. "DIFC_LAW_001").
+        Canonical document identifier (e.g. "DIFC_LAW_001" or an ECLI).
     page : int
         1-indexed page number within the source PDF.
     text : str
@@ -33,6 +33,21 @@ class SourceDocument(TypedDict, total=False):
         Whether the source passed keyword-overlap relevance check against the
         answer.  Set by ``verify_source_relevance()`` — optional, absent until
         verification runs.
+    source_type : str
+        ``"statute"`` for statute corpus chunks (default, backward-compatible),
+        ``"court_decision"`` for Czech Supreme Court decisions.
+    case_number : str
+        Case number for court decisions, e.g. "21 Cdo 1234/2023".
+    decision_date : str
+        ISO date string for court decisions, e.g. "2023-06-15".
+    court : str
+        Court name for court decisions, e.g. "Nejvyssi soud".
+    category : str
+        Decision category A-E for court decisions.
+    legal_thesis : str
+        Pravni veta (key legal principle) for court decisions.
+    ecli : str
+        ECLI identifier for court decisions.
     """
 
     doc_id: Required[str]
@@ -42,6 +57,14 @@ class SourceDocument(TypedDict, total=False):
     chunk_id: str
     verified: bool
     _corpus: str  # which corpus this doc came from (for cross-corpus filtering)
+    # Court decision metadata — NotRequired for backward compatibility
+    source_type: NotRequired[str]  # "statute" | "court_decision"
+    case_number: NotRequired[str]  # "21 Cdo 1234/2023"
+    decision_date: NotRequired[str]  # ISO date e.g. "2023-06-15"
+    court: NotRequired[str]  # "Nejvyssi soud"
+    category: NotRequired[str]  # "A" through "E"
+    legal_thesis: NotRequired[str]  # pravni veta
+    ecli: NotRequired[str]  # ECLI identifier
 
 
 class AgentState(TypedDict):
