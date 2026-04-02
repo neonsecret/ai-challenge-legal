@@ -99,14 +99,14 @@ def load_open(lang_filter: str = "all") -> list[dict]:
 
 MCQ_SYSTEM = """You are a legal expert taking a law school exam.
 
-Read the question carefully. Think through each option step by step, briefly explaining why each option is correct or incorrect.
+Read the question carefully. For each option (A, B, C, D), write ONE sentence explaining why it is correct or incorrect. Be concise.
 
-Then state your final answer in this exact format:
+Then on the very last line, state your final answer in this exact format:
 Final answer: X
 
-Where X is exactly one letter: A, B, C, or D.
+Where X is exactly one letter: A, B, C, or D. Always include this line — it is required.
 
-Important: The correct answer is equally likely to be A, B, C, or D. Evaluate each option on its own merits — do not default to any particular letter."""
+Important: The correct answer is equally likely to be A, B, C, or D. Evaluate each option on its own merits — do not default to any particular letter. Answer in English even if the question is in another language."""
 
 OPEN_SYSTEM = """You are a legal expert taking a law school exam. Answer the question in a structured, concise manner as expected in a law school exam setting.
 
@@ -270,7 +270,7 @@ async def eval_mcq_item(item: dict, sem: asyncio.Semaphore, do_shuffle: bool = T
         choices, gold_letter = shuffle_choices(choices, gold_letter, qid)
 
     prompt = build_mcq_prompt(item, choices)
-    response = await call_llm(MCQ_SYSTEM, prompt, 600, sem)
+    response = await call_llm(MCQ_SYSTEM, prompt, 800, sem)
     predicted = parse_mcq_answer(response)
     correct = predicted == gold_letter
 
