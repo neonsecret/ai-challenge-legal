@@ -5,11 +5,13 @@ import {useRouter} from "next/navigation";
 import {useTheme} from "next-themes";
 import {motion, AnimatePresence} from "motion/react";
 import {ArrowRight, FileSearch, Globe, ShieldCheck, Lock, Loader2, Sun, Moon} from "lucide-react";
-import {DemoPanel} from "@/components/landing/demo-panel";
+import {DemoPanel, SCENARIOS} from "@/components/landing/demo-panel";
 import {ValuePillars} from "@/components/landing/value-pillars";
 import {HowItWorks} from "@/components/landing/how-it-works";
 import {TrustSection} from "@/components/landing/trust-section";
+import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
+import {useGeoCountry} from "@/hooks/use-geo-country";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -111,6 +113,9 @@ export default function LandingPage() {
     const [loading, setLoading] = useState(true);
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const geoCountry = useGeoCountry();
+    const isCzech = geoCountry === "CZ";
+    const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
     useEffect(() => {
         setMounted(true);
@@ -229,7 +234,7 @@ export default function LandingPage() {
                         <motion.p initial={{opacity: 0, y: 6}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.1}}
                                   className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
-                                  style={{color: "rgba(201,168,76,0.75)"}}>AI Legal Counsel
+                                  style={{color: "rgba(201,168,76,0.75)"}}>{isCzech ? "AI pr\u00e1vn\u00ed v\u00fdzkum" : "AI Legal Counsel"}
                         </motion.p>
                         <motion.h1 initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
                                    transition={{duration: 0.6, delay: 0.18}}
@@ -239,26 +244,31 @@ export default function LandingPage() {
                             lineHeight: 1.1,
                             color: "rgba(255,255,255,0.95)"
                         }}>
-                            Legal Research at the{" "}
-                            <span style={{
+                            {isCzech ? (<>Pr\u00e1vn\u00ed v\u00fdzkum s{" "}<span style={{
                                 background: "linear-gradient(90deg, #C9A84C 0%, #e8cc7a 50%, #C9A84C 100%)",
                                 backgroundSize: "200% auto",
                                 WebkitBackgroundClip: "text",
                                 backgroundClip: "text",
                                 WebkitTextFillColor: "transparent",
                                 animation: "shimmer 3s linear infinite"
-                            }}>Speed of Thought</span>
+                            }}>um\u011blou inteligenc\u00ed</span></>) : (<>Legal Research at the{" "}<span style={{
+                                background: "linear-gradient(90deg, #C9A84C 0%, #e8cc7a 50%, #C9A84C 100%)",
+                                backgroundSize: "200% auto",
+                                WebkitBackgroundClip: "text",
+                                backgroundClip: "text",
+                                WebkitTextFillColor: "transparent",
+                                animation: "shimmer 3s linear infinite"
+                            }}>Speed of Thought</span></>)}
                         </motion.h1>
                         <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.28}}
                                   className="text-base text-center mb-10 max-w-xl"
                                   style={{color: "rgba(255,255,255,0.48)", lineHeight: 1.6}}>
-                            Precise, source-grounded answers from your legal documents.<br className="hidden sm:block"/>Every
-                            answer cites the exact page and clause.
+                            {isCzech ? (<>Z\u00e1kony a judikatura Nejvy\u0161\u0161\u00edho soudu<br className="hidden sm:block"/>&mdash; v\u0161e na jednom m\u00edst\u011b</>) : (<>Precise, source-grounded answers from your legal documents.<br className="hidden sm:block"/>Every answer cites the exact page and clause.</>)}
                         </motion.p>
                         <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}}
                                     transition={{duration: 0.7, delay: 0.38}} className="w-full max-w-5xl">
-                            <DemoPanel/>
+                            <DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
                         </motion.div>
                     </div>
 
@@ -296,6 +306,8 @@ export default function LandingPage() {
                         }}/>
                     </div>
                 </section>
+
+                {isCzech && <CzechCaselawSection/>}
 
                 <div id="why"><ValuePillars/></div>
                 <HowItWorks/>
@@ -564,7 +576,7 @@ export default function LandingPage() {
                         fontWeight: 600,
                         color: "#5c2e08",
                         marginBottom: 20
-                    }}>AI Legal Counsel
+                    }}>{isCzech ? "AI pr\u00e1vn\u00ed v\u00fdzkum" : "AI Legal Counsel"}
                     </motion.p>
                     <motion.h1 initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
                                transition={{duration: 0.6, delay: 0.18}} style={{
@@ -577,15 +589,21 @@ export default function LandingPage() {
                         marginBottom: 20,
                         maxWidth: 780
                     }}>
-                        Legal Research at the{" "}
-                        <span style={{
+                        {isCzech ? (<>Pr\u00e1vn\u00ed v\u00fdzkum s{" "}<span style={{
                             background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
                             backgroundSize: "200% auto",
                             WebkitBackgroundClip: "text",
                             backgroundClip: "text",
                             WebkitTextFillColor: "transparent",
                             animation: "shimmer 3s linear infinite"
-                        }}>Speed of Thought</span>
+                        }}>um\u011blou inteligenc\u00ed</span></>) : (<>Legal Research at the{" "}<span style={{
+                            background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
+                            backgroundSize: "200% auto",
+                            WebkitBackgroundClip: "text",
+                            backgroundClip: "text",
+                            WebkitTextFillColor: "transparent",
+                            animation: "shimmer 3s linear infinite"
+                        }}>Speed of Thought</span></>)}
                     </motion.h1>
                     <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
                               transition={{duration: 0.5, delay: 0.28}} style={{
@@ -595,8 +613,7 @@ export default function LandingPage() {
                         maxWidth: 520,
                         marginBottom: 48
                     }}>
-                        Precise, source-grounded answers from your legal documents.<br/>Every answer cites the exact
-                        page and clause.
+                        {isCzech ? (<>Z\u00e1kony a judikatura Nejvy\u0161\u0161\u00edho soudu<br/>&mdash; v\u0161e na jednom m\u00edst\u011b</>) : (<>Precise, source-grounded answers from your legal documents.<br/>Every answer cites the exact page and clause.</>)}
                     </motion.p>
                     <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}}
                                 transition={{duration: 0.7, delay: 0.38}} style={{width: "100%", maxWidth: 960}}>
@@ -606,7 +623,7 @@ export default function LandingPage() {
                             padding: 16,
                             boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 24px 64px rgba(100,50,0,0.20)"
                         }}>
-                            <div style={{background: "#0d1520", borderRadius: 16, overflow: "hidden"}}><DemoPanel/>
+                            <div style={{background: "#0d1520", borderRadius: 16, overflow: "hidden"}}><DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
                             </div>
                         </div>
                     </motion.div>

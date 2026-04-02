@@ -10,19 +10,78 @@ import {FakePdf} from "./fake-pdf";
 
 /* ------------------------------------------------------------------ */
 
+export interface SourceCard {
+    title: string;
+    articleHeader: string;
+    clauses: { id: string; text: string }[];
+    highlightRange: [number, number];
+    badge: string;
+    pageBadge: string;
+    type?: "statute" | "court_decision";
+}
+
 export interface DemoScenario {
     jurisdiction: string;
     question: string;
     answer: string;
+    /** Primary source (always shown) */
     pdfTitle: string;
     pdfArticleHeader: string;
     pdfClauses: { id: string; text: string }[];
     highlightRange: [number, number];
     sourceBadge: string;
     pageBadge: string;
+    /** Optional additional sources — shown as stacked cards */
+    sources?: SourceCard[];
 }
 
 const SCENARIOS: DemoScenario[] = [
+    {
+        jurisdiction: "CZ",
+        question:
+            "Kdy je zaměstnanec nadbytečný podle zákoníku práce?",
+        answer:
+            "Podle § 52 písm. c) zákoníku práce může dát zaměstnavatel zaměstnanci výpověď z důvodu nadbytečnosti, pokud:\n\n1. Se zaměstnanec stal nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení nebo snížení stavu zaměstnanců.\n\n2. Rozhodnutí o organizační změně musí být přijato před doručením výpovědi a musí existovat příčinná souvislost mezi organizační změnou a nadbytečností konkrétního zaměstnance.\n\n3. Dle judikatury Nejvyššího soudu (sp. zn. 21 Cdo 262/2006) zaměstnavatel není povinen prokázat, že organizační změna vedla ke zvýšení efektivity — postačí, že rozhodnutí bylo přijato a zaměstnanec se stal nadbytečným.",
+        pdfTitle: "Zákoník práce (zákon č. 262/2006 Sb.)",
+        pdfArticleHeader: "Část druhá — Pracovní poměr",
+        pdfClauses: [
+            {
+                id: "§ 52(c)",
+                text: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele nebo příslušného orgánu o změně jeho úkolů, technického vybavení, o snížení stavu zaměstnanců za účelem zvýšení efektivnosti práce nebo o jiných organizačních změnách.",
+            },
+            {
+                id: "§ 67(1)",
+                text: "Zaměstnanci, u něhož dochází k rozvázání pracovního poměru výpovědí danou zaměstnavatelem z důvodů uvedených v § 52 písm. a) až c), přísluší od zaměstnavatele při skončení pracovního poměru odstupné ve výši nejméně trojnásobku průměrného výdělku.",
+            },
+            {
+                id: "§ 73a(2)",
+                text: "Odvoláním nebo vzdáním se pracovního místa vedoucího zaměstnance pracovní poměr nekončí; zaměstnavatel je povinen tomuto zaměstnanci navrhnout změnu jeho dalšího pracovního zařazení u zaměstnavatele na jinou práci odpovídající jeho zdravotnímu stavu a kvalifikaci.",
+            },
+            {
+                id: "NS 21 Cdo 262/2006",
+                text: "Pro platnost výpovědi z důvodu nadbytečnosti není rozhodné, zda organizační změna skutečně vedla ke zvýšení efektivity práce; postačuje, že zaměstnavatel rozhodl o organizační změně a zaměstnanec se v důsledku tohoto rozhodnutí stal nadbytečným.",
+            },
+        ],
+        highlightRange: [0, 0],
+        sourceBadge: "§ 52(c) · Zákoník práce · Str. 28",
+        pageBadge: "Str. 28",
+        sources: [
+            {
+                title: "NS 21 Cdo 262/2006",
+                articleHeader: "Rozsudek Nejvyššího soudu",
+                clauses: [
+                    {
+                        id: "Právní věta",
+                        text: "Pro platnost výpovědi z důvodu nadbytečnosti postačuje, že zaměstnavatel rozhodl o organizační změně a zaměstnanec se v důsledku tohoto rozhodnutí stal nadbytečným.",
+                    },
+                ],
+                highlightRange: [0, 0],
+                badge: "NS · 21 Cdo 262/2006",
+                pageBadge: "Str. 1",
+                type: "court_decision",
+            },
+        ],
+    },
     {
         jurisdiction: "DIFC",
         question:
@@ -193,8 +252,15 @@ type Phase = "idle" | "typing-question" | "thinking" | "streaming-answer" | "don
 
 /* ------------------------------------------------------------------ */
 
-export function DemoPanel() {
-    const [activeIdx, setActiveIdx] = useState(0);
+interface DemoPanelProps {
+    /** Index into SCENARIOS to start on (default 0). Use to pre-select CZ for Czech visitors. */
+    defaultScenarioIndex?: number;
+}
+
+export { SCENARIOS };
+
+export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
+    const [activeIdx, setActiveIdx] = useState(defaultScenarioIndex);
     const [phase, setPhase] = useState<Phase>("idle");
     const [streamedAnswer, setStreamedAnswer] = useState("");
     const [showHighlights, setShowHighlights] = useState(false);
