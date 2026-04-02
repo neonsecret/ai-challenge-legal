@@ -42,17 +42,8 @@ function isWebSource(source: SourceRef): boolean {
     return source.doc_id.startsWith("web:") || !!source.url
 }
 
-/** Check if a non-web source has a PDF available on the backend.
- *  Only hex hashes (DIFC/UK/AU corpus) and UUIDs (custom uploads) have PDFs.
- *  Named doc_ids (e.g. czech corpus "obcansky_zakonik_03017") are text-only. */
-function isPdfSource(source: SourceRef): boolean {
-    if (isWebSource(source)) return false
-    // Hex hashes: DIFC/UK/AU corpus PDFs (32-64 hex chars)
-    if (/^[0-9a-f]{32,64}$/i.test(source.doc_id)) return true
-    // UUIDs: custom tenant uploads
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(source.doc_id)) return true
-    return false
-}
+/** PDF availability is determined by the backend's chunk-context API (pdf_available field),
+ *  not by doc_id format. TextSourceViewer handles the PDF upgrade when available. */
 
 /** Extract the domain from a URL string. */
 function getDomain(url: string): string {
@@ -347,7 +338,7 @@ function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageCl
     const [pdfFailed, setPdfFailed] = useState(false)
 
     if (pdfFailed) {
-        return <TextSourceViewer source={source} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} />
+        return <TextSourceViewer source={source} page={page} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} />
     }
 
     return (
@@ -707,8 +698,9 @@ function ContextChunkView({
 /** Text-only source viewer — cleans, truncates, and formats raw judgment text.
  *  When source.chunk_id is available, fetches surrounding context from the backend
  *  and renders a needle-in-haystack view with dimmed surrounding chunks. */
-function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
+function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick}: {
     source: SourceRef
+    page: number
     answer: string
     isDark: boolean
     isMobile: boolean
@@ -767,6 +759,20 @@ function TextSourceViewer({source, answer, isDark, isMobile, onPageClick}: {
                     Source text not available for this document.
                 </p>
             </div>
+        )
+    }
+
+    // Backend confirms a PDF exists for this document — render PDF viewer with text fallback
+    if (chunkContext?.pdf_available) {
+        return (
+            <PdfViewerWithFallback
+                source={source}
+                page={page}
+                answer={answer}
+                isDark={isDark}
+                isMobile={isMobile}
+                onPageClick={onPageClick}
+            />
         )
     }
 
@@ -1227,19 +1233,10 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
                                 isDark={isDark}
                                 isMobile={isMobile}
                             />
-                        ) : isPdfSource(activeSource) ? (
-                            <PdfViewerWithFallback
-                                key={activeSource.doc_id}
-                                source={activeSource}
-                                page={activePage}
-                                answer={answer}
-                                isDark={isDark}
-                                isMobile={isMobile}
-                                onPageClick={handlePageFromText}
-                            />
                         ) : (
                             <TextSourceViewer
                                 source={activeSource}
+                                page={activePage}
                                 answer={answer}
                                 isDark={isDark}
                                 isMobile={isMobile}
