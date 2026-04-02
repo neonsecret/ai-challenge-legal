@@ -27,8 +27,32 @@ interface SourceRef {
 function stripChunkPrefix(text: string | null | undefined): string | undefined {
     if (!text) return undefined
     // Match [ANYTHING] optionally followed by text on the same line, then newlines
-    const stripped = text.replace(/^\[[^\]]*\][^\n]*\n+/, "").trim()
+    let stripped = text.replace(/^\[[^\]]*\][^\n]*\n+/, "").trim()
+    // Also strip continuation breadcrumb lines (e.g. "Preamble (continued)")
+    stripped = stripped.replace(/^[^\n]*\(continued\)\s*\n+/i, "").trim()
     return stripped || undefined
+}
+
+/** Remove overlapping text between consecutive chunks.
+ *  Chunks use 200-char overlap for retrieval; when displayed together the overlap duplicates text. */
+function deduplicateChunkTexts(texts: string[]): string[] {
+    if (texts.length <= 1) return texts
+    const result = [texts[0]]
+    for (let i = 1; i < texts.length; i++) {
+        const prev = texts[i - 1]
+        const curr = texts[i]
+        // Find longest suffix of prev that matches a prefix of curr
+        let overlap = 0
+        const maxCheck = Math.min(400, prev.length, curr.length)
+        for (let size = maxCheck; size >= 20; size--) {
+            if (prev.endsWith(curr.slice(0, size))) {
+                overlap = size
+                break
+            }
+        }
+        result.push(overlap > 0 ? curr.slice(overlap).trim() : curr)
+    }
+    return result
 }
 
 /** Check if a URL has a safe protocol (http/https only — blocks javascript: etc). */
@@ -337,6 +361,7 @@ function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageCl
 }) {
     const [pdfFailed, setPdfFailed] = useState(false)
 
+
     if (pdfFailed) {
         return <TextSourceViewer source={source} page={page} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} pdfFailed />
     }
@@ -387,7 +412,8 @@ function ChunkBody({
     onPageClick: (page: number) => void
 }) {
     const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
-    const stripped = stripChunkPrefix(text) ?? text
+    const safeText = typeof text === "string" ? text : String(text ?? "")
+    const stripped = stripChunkPrefix(safeText) ?? safeText
     const cleanedBody = useMemo(() => cleanJudgmentText(stripped), [stripped])
     const needsTruncation = isTarget && cleanedBody.length > TEXT_TRUNCATE_LIMIT
     const displayBody = isTarget && needsTruncation && !expanded
@@ -488,13 +514,20 @@ function ContextChunkView({
 
     // Parse header from the target chunk's raw text for the law name/breadcrumb
     const targetChunk = context.chunks.find((c) => c.is_target)
-    const headerRaw = targetChunk?.text ?? source.text ?? ""
+    const headerRawValue = targetChunk?.text ?? source.text ?? ""
+    const headerRaw = typeof headerRawValue === "string" ? headerRawValue : String(headerRawValue)
     const headerMatch = headerRaw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
     const lawName = headerMatch?.[1] ?? ""
     const breadcrumb = headerMatch?.[2]?.trim() ?? ""
 
     const targetIdx = context.chunks.findIndex((c) => c.is_target)
     const hasPrecedingContext = targetIdx > 0
+
+    // Deduplicate overlapping text between consecutive chunks (200-char retrieval overlap)
+    const dedupedTexts = useMemo(() => {
+        const stripped = context.chunks.map(c => stripChunkPrefix(c.text) ?? c.text)
+        return deduplicateChunkTexts(stripped)
+    }, [context.chunks])
 
     // Scroll to the target chunk after mount
     useEffect(() => {
@@ -666,7 +699,7 @@ function ContextChunkView({
                             </p>
 
                             <ChunkBody
-                                text={chunk.text}
+                                text={dedupedTexts[ci]}
                                 isTarget={isTarget}
                                 expanded={expanded}
                                 onExpandToggle={() => setExpanded((v) => !v)}
@@ -708,7 +741,6 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
     /** Set when this viewer is rendered as a fallback after PDF 404 — prevents re-entering PdfViewerWithFallback. */
     pdfFailed?: boolean
 }) {
-    const [expanded, setExpanded] = useState(false)
     const [chunkContext, setChunkContext] = useState<ChunkContextResult | null>(null)
 
     // Fetch surrounding chunk context when chunk_id is available.
@@ -720,7 +752,6 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
         }
         let cancelled = false
         setChunkContext(null)
-
         fetch(
             `${API_BASE}/api/v1/documents/chunk-context/${encodeURIComponent(source.chunk_id)}?window=1`,
             {credentials: "include"},
@@ -730,14 +761,25 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
                 return res.json() as Promise<ChunkContextResult>
             })
             .then((data) => {
-                if (!cancelled) setChunkContext(data)
+                if (!cancelled) {
+                    // Coerce chunk fields to safe types — prevents React #300
+                    if (data.chunks) {
+                        data.chunks = data.chunks.map((c: ChunkContextItem) => ({
+                            ...c,
+                            text: typeof c.text === "string" ? c.text : String(c.text ?? ""),
+                            chunk_id: typeof c.chunk_id === "string" ? c.chunk_id : String(c.chunk_id ?? ""),
+                            page: typeof c.page === "number" ? c.page : Number(c.page ?? 0),
+                            is_target: !!c.is_target,
+                        }))
+                    }
+                    setChunkContext(data)
+                }
             })
-            .catch(() => {
-                // Silently fall back to single-chunk view — don't surface API errors here
+            .catch((err) => {
             })
 
         return () => { cancelled = true }
-    }, [source.chunk_id])
+    }, [source.chunk_id, pdfFailed])
 
     // Use the retrieved chunk text directly. Never fall back to the AI answer —
     // that would show the LLM's own output as if it were the source document.
@@ -792,7 +834,31 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
         )
     }
 
-    // ── Fallback: single-chunk view (used while context is loading or when chunk_id is absent) ──
+    // Single-chunk fallback — rendered as its own component to isolate hooks
+    return (
+        <SingleChunkView
+            source={source}
+            raw={raw}
+            answer={answer}
+            isDark={isDark}
+            isMobile={isMobile}
+            onPageClick={onPageClick}
+        />
+    )
+}
+
+/** Single-chunk fallback view — used while context is loading or when chunk_id is absent.
+ *  Extracted as a separate component so its hooks are isolated from TextSourceViewer's
+ *  conditional returns (which would otherwise violate the Rules of Hooks). */
+function SingleChunkView({source, raw, answer, isDark, isMobile, onPageClick}: {
+    source: SourceRef
+    raw: string
+    answer: string
+    isDark: boolean
+    isMobile: boolean
+    onPageClick: (page: number) => void
+}) {
+    const [expanded, setExpanded] = useState(false)
 
     // When `source.text` is present it IS the retrieved chunk — the entire chunk
     // is relevant. Skip trigram scoring against the AI answer in that case and
@@ -810,7 +876,6 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
         ? cleanedBody
         : cleanedBody.slice(0, TEXT_TRUNCATE_LIMIT)
 
-    // Split into paragraphs for better readability
     const paragraphs = useMemo(() => {
         return displayBody
             .split(/\n{2,}/)
@@ -818,7 +883,6 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
             .filter(Boolean)
     }, [displayBody])
 
-    // Score against the FULL body so citations beyond the truncation limit are found
     const fullParagraphs = useMemo(() => {
         return cleanedBody
             .split(/\n{2,}/)
@@ -838,19 +902,16 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
     )
     const firstCitedIdxFull = fullCitationScores.findIndex(s => s >= CITATION_SCORE_THRESHOLD)
 
-    // If the first cited paragraph is hidden by truncation, auto-expand so it's visible
     useEffect(() => {
         if (!expanded && needsTruncation && firstCitedIdxFull >= paragraphs.length) {
             setExpanded(true)
         }
     }, [firstCitedIdxFull, paragraphs.length, needsTruncation, expanded])
 
-    // firstCitedIdx into the currently displayed paragraphs array
     const firstCitedIdx = firstCitedIdxFull !== -1 && firstCitedIdxFull < paragraphs.length
         ? firstCitedIdxFull
         : -1
 
-    // Scroll to the first cited paragraph when the viewed source changes
     useEffect(() => {
         const t = setTimeout(() => {
             const container = scrollContainerRef.current
@@ -1053,11 +1114,13 @@ function tokenizeLegalText(text: string): Segment[] {
     return segments
 }
 
-function HighlightedLegalText({text, isDark, onPageClick}: {
+function HighlightedLegalText({text: rawText, isDark, onPageClick}: {
     text: string
     isDark: boolean
     onPageClick?: (page: number) => void
 }) {
+    // Safety: coerce to string — prevents React #300 if an object leaks through
+    const text = typeof rawText === "string" ? rawText : String(rawText ?? "")
     const segments = tokenizeLegalText(text)
     if (segments.length <= 1 && segments[0]?.kind === "text") return <>{text}</>
 
@@ -1160,12 +1223,21 @@ function resolveSource(
 const crossfade = {duration: TIMING.fast.endsWith("ms") ? parseFloat(TIMING.fast) / 1000 : parseFloat(TIMING.fast)}
 
 export function GroundingView({answer, sources: rawSources, isDark = false, isMobile = false, focusDocId, focusPage, focusSeq = 0}: GroundingViewProps) {
-    // Normalize sources — filter out malformed entries that could crash rendering
-    const sources = useMemo(() =>
-        (Array.isArray(rawSources) ? rawSources : []).filter(
-            (s): s is SourceRef => !!s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers)
-        ),
-    [rawSources])
+    // Normalize sources — filter out malformed entries and coerce fields to safe types
+    const sources = useMemo(() => {
+        const arr = Array.isArray(rawSources) ? rawSources : []
+        return arr
+            .filter((s): s is SourceRef => !!s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers))
+            .map(s => ({
+                ...s,
+                // Coerce text fields to strings — prevents React #300 from object values
+                text: s.text != null ? (typeof s.text === "string" ? s.text : String(s.text)) : null,
+                title: s.title != null ? (typeof s.title === "string" ? s.title : String(s.title)) : null,
+                url: s.url != null ? (typeof s.url === "string" ? s.url : String(s.url)) : null,
+                chunk_id: s.chunk_id != null ? (typeof s.chunk_id === "string" ? s.chunk_id : String(s.chunk_id)) : null,
+                page_numbers: s.page_numbers.map(p => typeof p === "number" ? p : Number(p)),
+            }))
+    }, [rawSources])
     const initialSource = resolveSource(sources, focusDocId, focusPage)
     const initialPage = focusPage ?? (initialSource?.page_numbers[0] ?? 1)
 
