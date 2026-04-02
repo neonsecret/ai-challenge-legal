@@ -257,6 +257,9 @@ def build_agent_graph():
         results_msgs: list[ToolMessage] = []
         new_docs_all: list[SourceDocument] = []
         new_web_sources: list[dict] = []
+        # Czech auto-enrichment: fire once per turn so the agent sees case law
+        # alongside the first statute result without having to decide to search.
+        _caselaw_auto_triggered = False
 
         for tc in last_msg.tool_calls:
             query = tc["args"].get("query", "")
@@ -420,6 +423,39 @@ def build_agent_graph():
 
             offset = len(state["accumulated_docs"]) + len(new_docs_all) - len(new_docs)
             doc_text = format_search_results(new_docs, offset=offset)
+
+            # --- Czech auto-enrichment: append related case law to first statute result ---
+            # Fires once per turn when corpus is Czech, so the agent sees relevant
+            # court decisions alongside statutes without needing to decide to call
+            # search_court_decisions explicitly.  Case law is shown as [CASE-N] summaries
+            # (informational context) — the agent calls fetch_court_decision on the ECLIs
+            # it wants to use as full [DOC-N] sources.
+            if state["corpus"] == "czech" and not _caselaw_auto_triggered:
+                _caselaw_auto_triggered = True
+                try:
+                    from arlc.agent.caselaw_tools import (
+                        execute_caselaw_search,
+                        format_caselaw_search_results,
+                    )
+
+                    caselaw_docs = await execute_caselaw_search(query, limit=5)
+                    if caselaw_docs:
+                        case_section = format_caselaw_search_results(caselaw_docs)
+                        doc_text = (
+                            doc_text
+                            + "\n\n---\n## Related Court Decisions\n"
+                            + "Use fetch_court_decision(ecli) on relevant cases below to read full reasoning.\n\n"
+                            + case_section
+                        )
+                        logger.info(
+                            '[agent] czech auto-enrichment: query="%s" → %d case law results',
+                            query[:60],
+                            len(caselaw_docs),
+                        )
+                except Exception:
+                    logger.warning("[agent] czech case law auto-enrichment failed", exc_info=True)
+                    # Non-fatal: statute results are returned as-is
+
             results_msgs.append(ToolMessage(content=doc_text, tool_call_id=tc["id"]))
 
         # Merge new docs with existing, prioritising new over old when at cap.
