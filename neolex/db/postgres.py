@@ -41,9 +41,10 @@ async def get_db():
 
 
 async def init_db() -> None:
-    """Create all tables defined in models.py, operational_models.py, and chunks.py (idempotent)."""
+    """Create all tables defined in models.py, operational_models.py, chunks.py, and court_decisions.py (idempotent)."""
     from neolex.db import (
         chunks,  # noqa: F401 — registers chunk/vector model
+        court_decisions,  # noqa: F401 — registers court decisions model
         models,  # noqa: F401 — registers auth/billing models
         operational_models,  # noqa: F401 — registers operational models
     )
@@ -75,6 +76,35 @@ async def init_db() -> None:
                 CREATE TRIGGER chunks_text_search_update
                     BEFORE INSERT OR UPDATE OF text ON chunks
                     FOR EACH ROW EXECUTE FUNCTION chunks_text_search_trigger();
+            EXCEPTION WHEN duplicate_object THEN NULL;
+            END $$;
+        """),
+        )
+        # Trigger to auto-populate search_vector tsvector on court_decisions INSERT/UPDATE.
+        # Indexes legal_thesis, case_number, and keywords array for BM25 search.
+        # Uses 'simple' tokenizer: language-agnostic, preserves Czech legal terms.
+        await conn.execute(
+            text("""
+            CREATE OR REPLACE FUNCTION court_decisions_search_trigger() RETURNS trigger AS $$
+            BEGIN
+                NEW.search_vector := to_tsvector(
+                    'simple',
+                    coalesce(NEW.legal_thesis, '') || ' ' ||
+                    coalesce(NEW.case_number, '') || ' ' ||
+                    coalesce(array_to_string(NEW.keywords, ' '), '')
+                );
+                RETURN NEW;
+            END
+            $$ LANGUAGE plpgsql;
+        """),
+        )
+        await conn.execute(
+            text("""
+            DO $$ BEGIN
+                CREATE TRIGGER court_decisions_search_update
+                    BEFORE INSERT OR UPDATE OF legal_thesis, case_number, keywords
+                    ON court_decisions
+                    FOR EACH ROW EXECUTE FUNCTION court_decisions_search_trigger();
             EXCEPTION WHEN duplicate_object THEN NULL;
             END $$;
         """),
