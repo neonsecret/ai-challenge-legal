@@ -152,6 +152,7 @@ class ConversationMessage(Base):
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # "user" | "assistant"
     content: Mapped[str] = mapped_column(String, nullable=False)
+    sources_json: Mapped[str | None] = mapped_column(String)  # JSON-serialised list[Source]
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
 
     __table_args__ = (

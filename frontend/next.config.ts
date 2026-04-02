@@ -13,9 +13,10 @@ const nextConfig: NextConfig = {
         const frameSrc = isDev
             ? `frame-src 'self' blob: ${apiOrigin} ${devOrigin}`
             : `frame-src 'self' blob: ${apiOrigin}`;
+        // https://static.cloudflareinsights.com is injected by Cloudflare Tunnel automatically
         const scriptSrc = isDev
-            ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-            : "script-src 'self' 'unsafe-inline'";
+            ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com"
+            : "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com";
         const workerSrc = "worker-src 'self' blob:";
 
         return [

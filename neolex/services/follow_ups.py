@@ -37,8 +37,10 @@ _JURISDICTION_NAMES: dict[str, str] = {
     "czech": "Czech Republic",
 }
 
-# How long to wait for Haiku before giving up (seconds)
-_TIMEOUT_SECONDS = 3.0
+# How long to wait for Haiku before giving up (seconds).
+# Vertex AI cold calls to Haiku regularly take 3-5s including connection overhead,
+# so 3s was causing systematic timeouts. 8s gives enough headroom.
+_TIMEOUT_SECONDS = 8.0
 
 # Client singletons — initialised lazily per backend
 _anthropic_client = None
@@ -65,6 +67,7 @@ def _get_vertex_client():
         _vertex_client = AnthropicVertex(
             project_id=os.environ["VERTEX_PROJECT_ID"],
             region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+            timeout=15.0,
         )
     return _vertex_client
 

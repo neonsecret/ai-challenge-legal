@@ -480,11 +480,11 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                             if (!r.ok) return
                             const data = await r.json()
                             const msgs: Message[] = (data?.messages ?? []).map(
-                                (m: {role: string; content: string; created_at: string}, i: number) => ({
+                                (m: {role: string; content: string; sources?: Source[]; created_at: string}, i: number) => ({
                                     id: `${m.role}-loaded-${i}`,
                                     role: m.role as "user" | "assistant",
                                     content: m.content,
-                                    sources: [],
+                                    sources: m.sources ?? [],
                                 })
                             )
                             if (msgs.length > 0) {

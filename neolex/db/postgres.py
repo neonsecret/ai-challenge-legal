@@ -52,6 +52,10 @@ async def init_db() -> None:
         # Enable pgvector extension (must precede table creation)
         await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
+        # Idempotent schema migrations — add columns that may not exist on older instances.
+        await conn.execute(
+            text("ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS sources_json TEXT;"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.

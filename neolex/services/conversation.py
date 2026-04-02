@@ -202,6 +202,7 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                 select(
                     ConversationMessage.role,
                     ConversationMessage.content,
+                    ConversationMessage.sources_json,
                     ConversationMessage.created_at,
                 )
                 .where(
@@ -212,14 +213,22 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                 .limit(500),
             )
             rows = result.all()
-            return [
-                {
+            messages = []
+            for row in rows:
+                entry: dict = {
                     "role": row.role,
                     "content": row.content,
                     "created_at": row.created_at.isoformat() if row.created_at else None,
                 }
-                for row in rows
-            ]
+                if row.role == "assistant" and row.sources_json:
+                    try:
+                        entry["sources"] = _json.loads(row.sources_json)
+                    except (ValueError, TypeError):
+                        entry["sources"] = []
+                else:
+                    entry["sources"] = []
+                messages.append(entry)
+            return messages
     except Exception:
         logger.exception("Failed to load full conversation for conv=%s", conversation_id)
         return []
@@ -266,6 +275,7 @@ async def save_turn(
     conversation_id: str,
     question: str,
     answer: str,
+    sources_json: str | None = None,
 ) -> None:
     """Append a Q&A pair to the user's conversation history.
 
@@ -292,6 +302,7 @@ async def save_turn(
                     user_id=uid,
                     role="assistant",
                     content=answer[:8000],
+                    sources_json=sources_json,
                 ),
             )
             await session.commit()

@@ -485,6 +485,7 @@ async def query_stream(
                         conversation_id=conversation_id,
                         question=body.question,
                         answer=str(response.answer),
+                        sources_json=sources_json,
                     ),
                 )
                 task.add_done_callback(_log_task_exception)
@@ -505,7 +506,7 @@ async def query_stream(
 
             # Collect follow-up questions (may already be ready since we started early)
             try:
-                follow_up_questions = await asyncio.wait_for(asyncio.shield(follow_ups_task), timeout=3.0)
+                follow_up_questions = await asyncio.wait_for(asyncio.shield(follow_ups_task), timeout=10.0)
                 if follow_up_questions:
                     yield {
                         "event": "follow_ups",
