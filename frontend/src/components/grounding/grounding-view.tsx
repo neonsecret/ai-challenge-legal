@@ -147,18 +147,24 @@ function WebContentPreview({source, answer, isDark, isMobile}: {
         if (!snippetText || snippetText.length < 10) {
             return <span>{fullText}</span>
         }
-        // Normalize whitespace for matching
-        const normalizedSnippet = snippetText.replace(/\s+/g, " ").trim()
-        const normalizedFull = fullText.replace(/\s+/g, " ")
-        const idx = normalizedFull.toLowerCase().indexOf(normalizedSnippet.toLowerCase().slice(0, 60))
-        if (idx === -1) {
+        // Build a whitespace-flexible regex from the snippet prefix to find it in original text
+        const searchPrefix = snippetText.slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")
+        const re = new RegExp(searchPrefix, "i")
+        const match = fullText.match(re)
+        if (!match || match.index === undefined) {
             return <span>{fullText}</span>
         }
 
-        // Map back to original text approximately
+        // Use a second regex for the full snippet to get accurate highlight length in original text
+        const fullPattern = snippetText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")
+        const fullRe = new RegExp(fullPattern, "i")
+        const fullMatch = fullText.match(fullRe)
+        const highlightLen = fullMatch ? fullMatch[0].length : match[0].length
+
+        const idx = match.index
         const before = fullText.slice(0, idx)
-        const highlighted = fullText.slice(idx, idx + normalizedSnippet.length)
-        const after = fullText.slice(idx + normalizedSnippet.length)
+        const highlighted = fullText.slice(idx, idx + highlightLen)
+        const after = fullText.slice(idx + highlightLen)
 
         return (
             <>
@@ -175,7 +181,7 @@ function WebContentPreview({source, answer, isDark, isMobile}: {
         )
     }, [])
 
-    const accentColor = isDark ? COLOR.gold.base : COLOR.gold.base
+    const accentColor = COLOR.gold.base
     const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
     const textColor = isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary
 
@@ -289,7 +295,7 @@ function WebContentPreview({source, answer, isDark, isMobile}: {
                         <div key={i} style={{
                             height: SPACE['4'],
                             borderRadius: RADIUS.xs,
-                            width: `${60 + Math.random() * 35}%`,
+                            width: `${60 + ((i * 17) % 35)}%`,
                             background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
                             animation: "pulse 1.5s ease-in-out infinite",
                         }} />
@@ -1052,7 +1058,7 @@ function HighlightedLegalText({text, isDark, onPageClick}: {
                 if (seg.kind === "text") return <span key={i}>{seg.text}</span>
 
                 if (seg.kind === "page" && onPageClick) {
-                    const pageNum = parseInt(seg.text.replace(/\D+/g, ""), 10)
+                    const pageNum = parseInt(seg.text.match(/\d+/)?.[0] ?? "", 10)
                     return (
                         <span
                             key={i}
@@ -1142,7 +1148,7 @@ function resolveSource(
     return sources[0] ?? null
 }
 
-const crossfade = {duration: parseFloat(TIMING.fast)}
+const crossfade = {duration: TIMING.fast.endsWith("ms") ? parseFloat(TIMING.fast) / 1000 : parseFloat(TIMING.fast)}
 
 export function GroundingView({answer, sources: rawSources, isDark = false, isMobile = false, focusDocId, focusPage, focusSeq = 0}: GroundingViewProps) {
     // Normalize sources — filter out malformed entries that could crash rendering
@@ -1206,7 +1212,7 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
             <AnimatePresence mode="wait">
                 {activeSource ? (
                     <motion.div
-                        key={activeSource.doc_id}
+                        key={`${activeSource.doc_id}-${activeSource.chunk_id ?? ""}-${activePage}`}
                         initial={{opacity: 0}}
                         animate={{opacity: 1}}
                         exit={{opacity: 0}}
