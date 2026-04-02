@@ -41,7 +41,8 @@ class GroundingErrorBoundary extends Component<
         console.error("[Grounding] render error:", error, info)
     }
     componentDidUpdate(_: unknown, prevState: {error: Error | null}) {
-        // Auto-recover once — reset error state so children re-render
+        // Auto-recover once after 500ms (enough for worker cleanup).
+        // Won't loop: retried flag prevents a second reset.
         if (this.state.error && !prevState.error && !this.state.retried) {
             setTimeout(() => this.setState({error: null, retried: true}), 500)
         }

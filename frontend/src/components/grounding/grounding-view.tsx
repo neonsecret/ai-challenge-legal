@@ -3,7 +3,7 @@
 import {useState, useCallback, useEffect, useRef, useMemo} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {PdfViewer} from "./pdf-viewer"
-import {cn} from "@/lib/utils"
+import {cn, toSafeString, toSafeStringOrNull, toSafeNumber} from "@/lib/utils"
 import {Copy, Check, Globe, ExternalLink, ChevronDown, ChevronUp} from "lucide-react"
 import {
     FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE,
@@ -361,7 +361,6 @@ function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageCl
 }) {
     const [pdfFailed, setPdfFailed] = useState(false)
 
-
     if (pdfFailed) {
         return <TextSourceViewer source={source} page={page} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} pdfFailed />
     }
@@ -412,7 +411,7 @@ function ChunkBody({
     onPageClick: (page: number) => void
 }) {
     const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
-    const safeText = typeof text === "string" ? text : String(text ?? "")
+    const safeText = toSafeString(text)
     const stripped = stripChunkPrefix(safeText) ?? safeText
     const cleanedBody = useMemo(() => cleanJudgmentText(stripped), [stripped])
     const needsTruncation = isTarget && cleanedBody.length > TEXT_TRUNCATE_LIMIT
@@ -514,8 +513,7 @@ function ContextChunkView({
 
     // Parse header from the target chunk's raw text for the law name/breadcrumb
     const targetChunk = context.chunks.find((c) => c.is_target)
-    const headerRawValue = targetChunk?.text ?? source.text ?? ""
-    const headerRaw = typeof headerRawValue === "string" ? headerRawValue : String(headerRawValue)
+    const headerRaw = toSafeString(targetChunk?.text ?? source.text ?? "")
     const headerMatch = headerRaw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
     const lawName = headerMatch?.[1] ?? ""
     const breadcrumb = headerMatch?.[2]?.trim() ?? ""
@@ -762,24 +760,25 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, 
             })
             .then((data) => {
                 if (!cancelled) {
-                    // Coerce chunk fields to safe types — prevents React #300
-                    if (data.chunks) {
-                        data.chunks = data.chunks.map((c: ChunkContextItem) => ({
+                    // Coerce chunk fields — prevents React #300 from non-string API values
+                    const coerced = data.chunks
+                        ? data.chunks.map((c: ChunkContextItem) => ({
                             ...c,
-                            text: typeof c.text === "string" ? c.text : String(c.text ?? ""),
-                            chunk_id: typeof c.chunk_id === "string" ? c.chunk_id : String(c.chunk_id ?? ""),
-                            page: typeof c.page === "number" ? c.page : Number(c.page ?? 0),
+                            text: toSafeString(c.text),
+                            chunk_id: toSafeString(c.chunk_id),
+                            page: toSafeNumber(c.page),
                             is_target: !!c.is_target,
                         }))
-                    }
-                    setChunkContext(data)
+                        : data.chunks
+                    setChunkContext({...data, chunks: coerced})
                 }
             })
-            .catch((err) => {
+            .catch(() => {
+                // Silently fall back to single-chunk view
             })
 
         return () => { cancelled = true }
-    }, [source.chunk_id, pdfFailed])
+    }, [source.chunk_id])
 
     // Use the retrieved chunk text directly. Never fall back to the AI answer —
     // that would show the LLM's own output as if it were the source document.
@@ -1119,8 +1118,7 @@ function HighlightedLegalText({text: rawText, isDark, onPageClick}: {
     isDark: boolean
     onPageClick?: (page: number) => void
 }) {
-    // Safety: coerce to string — prevents React #300 if an object leaks through
-    const text = typeof rawText === "string" ? rawText : String(rawText ?? "")
+    const text = toSafeString(rawText)
     const segments = tokenizeLegalText(text)
     if (segments.length <= 1 && segments[0]?.kind === "text") return <>{text}</>
 
@@ -1230,12 +1228,11 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
             .filter((s): s is SourceRef => !!s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers))
             .map(s => ({
                 ...s,
-                // Coerce text fields to strings — prevents React #300 from object values
-                text: s.text != null ? (typeof s.text === "string" ? s.text : String(s.text)) : null,
-                title: s.title != null ? (typeof s.title === "string" ? s.title : String(s.title)) : null,
-                url: s.url != null ? (typeof s.url === "string" ? s.url : String(s.url)) : null,
-                chunk_id: s.chunk_id != null ? (typeof s.chunk_id === "string" ? s.chunk_id : String(s.chunk_id)) : null,
-                page_numbers: s.page_numbers.map(p => typeof p === "number" ? p : Number(p)),
+                text: toSafeStringOrNull(s.text),
+                title: toSafeStringOrNull(s.title),
+                url: toSafeStringOrNull(s.url),
+                chunk_id: toSafeStringOrNull(s.chunk_id),
+                page_numbers: s.page_numbers.map(p => toSafeNumber(p)),
             }))
     }, [rawSources])
     const initialSource = resolveSource(sources, focusDocId, focusPage)
