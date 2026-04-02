@@ -338,7 +338,7 @@ function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageCl
     const [pdfFailed, setPdfFailed] = useState(false)
 
     if (pdfFailed) {
-        return <TextSourceViewer source={source} page={page} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} />
+        return <TextSourceViewer source={source} page={page} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} pdfFailed />
     }
 
     return (
@@ -698,13 +698,15 @@ function ContextChunkView({
 /** Text-only source viewer — cleans, truncates, and formats raw judgment text.
  *  When source.chunk_id is available, fetches surrounding context from the backend
  *  and renders a needle-in-haystack view with dimmed surrounding chunks. */
-function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick}: {
+function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, pdfFailed = false}: {
     source: SourceRef
     page: number
     answer: string
     isDark: boolean
     isMobile: boolean
     onPageClick: (page: number) => void
+    /** Set when this viewer is rendered as a fallback after PDF 404 — prevents re-entering PdfViewerWithFallback. */
+    pdfFailed?: boolean
 }) {
     const [expanded, setExpanded] = useState(false)
     const [chunkContext, setChunkContext] = useState<ChunkContextResult | null>(null)
@@ -762,8 +764,9 @@ function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick}:
         )
     }
 
-    // Backend confirms a PDF exists for this document — render PDF viewer with text fallback
-    if (chunkContext?.pdf_available) {
+    // Backend confirms a PDF exists for this document — render PDF viewer with text fallback.
+    // Skip if we're already a fallback from a failed PDF load (prevents infinite loop).
+    if (chunkContext?.pdf_available && !pdfFailed) {
         return (
             <PdfViewerWithFallback
                 source={source}
