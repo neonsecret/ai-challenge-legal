@@ -67,6 +67,14 @@ class SourceCitation(BaseModel):
     url: str | None = None  # web source URL
     title: str | None = None  # web source title
     chunk_id: str | None = None
+    # Court decision metadata — only present when source_type == "court_decision"
+    source_type: str | None = None  # "statute" | "court_decision"
+    case_number: str | None = None  # e.g. "21 Cdo 1234/2023"
+    decision_date: str | None = None  # ISO date e.g. "2023-06-15"
+    court: str | None = None  # e.g. "Nejvyssi soud"
+    category: str | None = None  # A-E
+    ecli: str | None = None  # ECLI identifier
+    legal_thesis: str | None = None  # pravni veta
 
 
 class QueryResponse(BaseModel):
@@ -99,6 +107,13 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
             url=cp.get("url"),
             title=cp.get("title"),
             chunk_id=cp.get("chunk_id") or None,
+            source_type=cp.get("source_type") or None,
+            case_number=cp.get("case_number") or None,
+            decision_date=cp.get("decision_date") or None,
+            court=cp.get("court") or None,
+            category=cp.get("category") or None,
+            ecli=cp.get("ecli") or None,
+            legal_thesis=cp.get("legal_thesis") or None,
         )
         for cp in result.get("chunk_pages", [])
     ]
