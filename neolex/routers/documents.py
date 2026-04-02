@@ -608,7 +608,7 @@ async def upload_zip(
 @router.get("")
 async def list_documents(
     key_row: dict = Depends(get_api_key),
-):
+) -> dict:
     """List all documents uploaded by this client, with collection info from .meta files."""
     client_slug = key_row["client_slug"]
 
@@ -810,7 +810,7 @@ async def get_reindex_status(
 async def rename_collection(
     request: Request,
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, str | int]:
     """Rename a collection by updating the 'collection' field in all matching .meta files."""
     body = await request.json()
     old_name = body.get("old_name", "").strip()
@@ -859,7 +859,7 @@ async def move_document_collection(
     doc_id: str,
     request: Request,
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, str]:
     """Move a document to a different collection."""
     if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
         raise HTTPException(status_code=400, detail="Invalid doc_id format")

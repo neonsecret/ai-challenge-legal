@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 import anthropic
@@ -347,11 +348,16 @@ def embed_query(question: str) -> list[float]:
     BGE fallback: manual BGE_QUERY_PREFIX prepend.
     """
     model = get_embedding_model()
-    with _embedding_lock:  # tokenizer is not thread-safe
-        if _is_llama_server() or _is_arctic_model():
-            embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
-        else:
-            embedding = model.encode(question, normalize_embeddings=True)
+    if _is_llama_server():
+        # llama-server is a stateless HTTP client — no shared tokenizer, safe
+        # to call concurrently without the embedding lock.
+        embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
+    else:
+        with _embedding_lock:  # tokenizer is not thread-safe for local models
+            if _is_arctic_model():
+                embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
+            else:
+                embedding = model.encode(question, normalize_embeddings=True)
     return embedding.tolist()
 
 
@@ -364,7 +370,7 @@ def _get_sync_engine():
                 url = os.environ.get("DATABASE_URL", "")
                 if "+asyncpg" in url:
                     url = url.replace("+asyncpg", "")
-                _sync_engine = create_engine(url, pool_size=5, max_overflow=10, pool_pre_ping=True)
+                _sync_engine = create_engine(url, pool_size=10, max_overflow=15, pool_pre_ping=True)
     return _sync_engine
 
 
@@ -1530,37 +1536,57 @@ def _doc_fusion_select(
     type_cfg = RETRIEVAL_CONFIGS.get(answer_type, {})
     fusion_top_k = type_cfg.get("top_k", 128)
 
+    # --- Run all 5 signals in parallel via ThreadPoolExecutor ---
+    # Signals are independent: 3 text search queries + 1 embedding + 1 vector query.
+    # Parallelizing cuts wall-clock time from sum(all) to max(any).
+    query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
+    dense_n = min(fusion_top_k, get_chunk_count("difc"))
+
+    def _sig_bm25_std():
+        return _search_chunks_text_scored(question, top_k=fusion_top_k, corpus="difc")
+
+    def _sig_vector():
+        return search_chunks_vector(query_emb, top_k=dense_n, corpus="difc")
+
+    def _sig_bm25_doc():
+        return _search_docs_text_scored(question, top_k=fusion_top_k, corpus="difc")
+
+    def _sig_bm25_p1():
+        return _search_chunks_text_page1_scored(question, top_k=fusion_top_k, corpus="difc")
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        fut_bm25_std = executor.submit(_sig_bm25_std)
+        fut_vector = executor.submit(_sig_vector)
+        fut_bm25_doc = executor.submit(_sig_bm25_doc)
+        fut_bm25_p1 = executor.submit(_sig_bm25_p1)
+
+        bm25_std_results = fut_bm25_std.result()
+        vector_results = fut_vector.result()
+        bm25_doc_results = fut_bm25_doc.result()
+        bm25_p1_results = fut_bm25_p1.result()
+
     # --- Signal 1: Text search standard (max page score per doc) ---
-    bm25_std_results = _search_chunks_text_scored(question, top_k=fusion_top_k, corpus="difc")
     bm25_std_doc_scores: dict[str, float] = {}
     for _chunk_id, pdf_id, score in bm25_std_results:
         if pdf_id not in bm25_std_doc_scores or score > bm25_std_doc_scores[pdf_id]:
             bm25_std_doc_scores[pdf_id] = score
 
-    # Normalize text search std scores
     max_bm25_std = max(bm25_std_doc_scores.values(), default=1.0) or 1.0
     for d in bm25_std_doc_scores:
         bm25_std_doc_scores[d] /= max_bm25_std
 
     # --- Signal 2 & 3: Dense embedding scores + RRF ---
-    query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    dense_n = min(fusion_top_k, get_chunk_count("difc"))
-    vector_results = search_chunks_vector(query_emb, top_k=dense_n, corpus="difc")
-
     dense_std_doc_scores: dict[str, float] = {}
     dense_rrf_doc_scores: dict[str, float] = {}
     k_rrf = 60
     for rank, (meta, dist) in enumerate(zip(vector_results["metadatas"][0], vector_results["distances"][0])):
         doc_id = meta["pdf_id"]
         sim = 1.0 - float(dist)  # cosine distance -> similarity
-        # Signal 2: max dense score per doc
         if doc_id not in dense_std_doc_scores or sim > dense_std_doc_scores[doc_id]:
             dense_std_doc_scores[doc_id] = sim
-        # Signal 3: RRF rank score (accumulate across pages)
         rrf_score = 1.0 / (k_rrf + rank + 1)
         dense_rrf_doc_scores[doc_id] = dense_rrf_doc_scores.get(doc_id, 0.0) + rrf_score
 
-    # Normalize dense scores
     max_dense_std = max(dense_std_doc_scores.values(), default=1.0) or 1.0
     for d in dense_std_doc_scores:
         dense_std_doc_scores[d] /= max_dense_std
@@ -1569,7 +1595,6 @@ def _doc_fusion_select(
         dense_rrf_doc_scores[d] /= max_dense_rrf
 
     # --- Signal 4: Text search doc-level ---
-    bm25_doc_results = _search_docs_text_scored(question, top_k=fusion_top_k, corpus="difc")
     bm25_doc_doc_scored: dict[str, float] = {}
     for pdf_id, score in bm25_doc_results:
         bm25_doc_doc_scored[pdf_id] = score
@@ -1579,7 +1604,6 @@ def _doc_fusion_select(
         bm25_doc_doc_scored[d] /= max_bm25_doc
 
     # --- Signal 5: Text search page1 ---
-    bm25_p1_results = _search_chunks_text_page1_scored(question, top_k=fusion_top_k, corpus="difc")
     bm25_p1_doc_scored: dict[str, float] = {}
     for _chunk_id, pdf_id, score in bm25_p1_results:
         if pdf_id not in bm25_p1_doc_scored or score > bm25_p1_doc_scored[pdf_id]:
@@ -1706,7 +1730,7 @@ def _generate_query_variants(question: str, corpus: str = "difc") -> list[str]:
         return []
 
 
-def prewarm():
+def prewarm() -> None:
     """Pre-warm all caches before parallel processing to avoid race conditions."""
     logger.info("Pre-warming retrieval caches...")
     get_embedding_model()
@@ -1954,34 +1978,56 @@ def retrieve(
     base_top_k = max(n_results, 200)
     top_k = base_top_k * 3 if article_filter else base_top_k
 
-    bm25_ranking = search_chunks_text(question, top_k=top_k, corpus=corpus)
-
-    # Original query embedding
+    # --- Parallel Phase 1: Run BM25 + vector search + HyDE generation + query variant generation ---
+    # All are independent: BM25 and vector are DB queries; HyDE and variants are LLM calls.
+    # Running in parallel saves ~500-1000ms (HyDE Haiku call ~500ms, variant call ~300ms).
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus)
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        fut_bm25 = executor.submit(search_chunks_text, question, top_k, corpus)
+        fut_vector = executor.submit(search_chunks_vector, query_emb, top_k, corpus)
+        # Start LLM calls in parallel with DB queries
+        fut_hyde = executor.submit(generate_hyde_passage, question, corpus) if use_hyde else None
+        fut_variants = executor.submit(_generate_query_variants, question, corpus) if use_hyde else None
+
+        bm25_ranking = fut_bm25.result()
+        vector_results = fut_vector.result()
+        hyde_passage = fut_hyde.result() if fut_hyde else None
+        variants = fut_variants.result() if fut_variants else []
+
     vector_ranking = vector_results["ids"][0]
 
-    # HyDE: generate a hypothetical passage and embed it for additional signal
-    # Only for free_text questions — adds ~500ms Haiku call overhead, worth it for LLM-judged answers
-    hyde_ranking = []
-    hyde_passage = generate_hyde_passage(question, corpus=corpus) if use_hyde else None
-    if hyde_passage:
-        try:
-            hyde_emb = embed_query(hyde_passage)  # uses embed_query prefix internally
-            hyde_results = search_chunks_vector(hyde_emb, top_k=top_k, corpus=corpus)
-            hyde_ranking = hyde_results["ids"][0]
-        except Exception:  # nosec B110
-            pass
+    # --- Parallel Phase 2: HyDE embedding+search + variant text searches ---
+    # These depend on Phase 1 results (hyde_passage, variants).
+    hyde_ranking: list[str] = []
+    variant_rankings: list[list[str]] = []
 
-    # Multi-query expansion: generate variant queries for additional text search signal
-    # Only for free_text (use_hyde=True) to avoid TTFT penalty on deterministic questions
-    variant_rankings = []
-    if use_hyde:
-        variants = _generate_query_variants(question, corpus=corpus)
-        for variant in variants[:2]:
+    phase2_futures = {}
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        if hyde_passage:
+
+            def _hyde_search():
+                hyde_emb = embed_query(hyde_passage)
+                hyde_results = search_chunks_vector(hyde_emb, top_k=top_k, corpus=corpus)
+                return hyde_results["ids"][0]
+
+            phase2_futures["hyde"] = executor.submit(_hyde_search)
+
+        for i, variant in enumerate(variants[:2]):
+            phase2_futures[f"variant_{i}"] = executor.submit(
+                search_chunks_text,
+                variant,
+                top_k,
+                corpus,
+            )
+
+        for key, fut in phase2_futures.items():
             try:
-                v_bm25_ranking = search_chunks_text(variant, top_k=top_k, corpus=corpus)
-                variant_rankings.append(v_bm25_ranking)
+                result = fut.result()
+                if key == "hyde":
+                    hyde_ranking = result
+                else:
+                    variant_rankings.append(result)
             except Exception:  # nosec B110
                 pass
 
@@ -2003,21 +2049,25 @@ def retrieve(
             "distance": vector_results["distances"][0][i],
         }
 
+    # Batch-fetch missing chunks instead of one-by-one DB queries
+    missing_ids = [cid for cid in merged_ranking[:60] if cid not in vector_lookup]
+    missing_lookup: dict[str, dict] = {}
+    if missing_ids:
+        chunk_data = get_chunks_by_ids(missing_ids, corpus=corpus)
+        for i, cid in enumerate(chunk_data["ids"]):
+            missing_lookup[cid] = {
+                "chunk_id": cid,
+                "text": chunk_data["documents"][i],
+                "metadata": chunk_data["metadatas"][i],
+                "distance": 0.5,
+            }
+
     final_chunks = []
     for chunk_id in merged_ranking[:60]:
         if chunk_id in vector_lookup:
             final_chunks.append(vector_lookup[chunk_id])
-        else:
-            chunk_data = get_chunks_by_ids([chunk_id], corpus=corpus)
-            if len(chunk_data["ids"]) > 0:
-                final_chunks.append(
-                    {
-                        "chunk_id": chunk_data["ids"][0],
-                        "text": chunk_data["documents"][0],
-                        "metadata": chunk_data["metadatas"][0],
-                        "distance": 0.5,
-                    },
-                )
+        elif chunk_id in missing_lookup:
+            final_chunks.append(missing_lookup[chunk_id])
 
     # Metadata-aware filtering: promote article-matching chunks to the top
     if article_filter:

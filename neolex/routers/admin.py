@@ -33,7 +33,7 @@ async def get_audit_log(
     table: Annotated[Literal["queries", "events"], Query()] = "queries",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
-):
+) -> dict:
     """Return paginated audit log entries."""
     async with get_audit_db() as db:
         if table == "queries":

@@ -295,7 +295,7 @@ def _evict_cache() -> None:
 async def proxy_web_content(
     url: str = Query(..., description="URL to fetch and extract content from"),
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, str]:
     """Fetch a web page and return extracted readable text content.
 
     Used by the frontend grounding panel for web source previews.

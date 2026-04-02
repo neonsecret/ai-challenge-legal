@@ -27,7 +27,7 @@ def _uptime_seconds(app) -> float:
 
 
 @router.get("/health")
-async def health_check(request: Request):
+async def health_check(request: Request) -> JSONResponse | dict:
     """Full health status including uptime, throughput, and latency metrics.
 
     Returns 503 if the pipeline is not ready (still warming up or failed to start).
@@ -61,7 +61,7 @@ async def health_check(request: Request):
 
 
 @router.get("/health/live")
-async def liveness():
+async def liveness() -> dict[str, str]:
     """Liveness probe — always returns 200.
 
     Load balancers / k8s use this to decide whether to restart the container.
@@ -72,7 +72,7 @@ async def liveness():
 
 
 @router.get("/health/ready")
-async def readiness(request: Request):
+async def readiness(request: Request) -> JSONResponse | dict[str, str]:
     """Readiness probe — returns 200 only when the server can handle traffic.
 
     Checks:

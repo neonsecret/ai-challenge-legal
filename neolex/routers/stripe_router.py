@@ -170,7 +170,7 @@ async def create_checkout_session(
     body: CheckoutRequest,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     """Create a Stripe Checkout session for a specific plan and interval."""
     if not settings.stripe_enabled:
         raise HTTPException(status_code=503, detail="Billing not enabled yet")
@@ -231,7 +231,7 @@ async def create_checkout_session(
 
 
 @router.post("/webhook")
-async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)) -> JSONResponse:
     payload = await request.body()
     sig = request.headers.get("stripe-signature", "")
 
@@ -286,7 +286,7 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/customer-portal")
-async def customer_portal(user: User = Depends(get_current_user)):
+async def customer_portal(user: User = Depends(get_current_user)) -> JSONResponse:
     if not user.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No billing account")
 
@@ -301,7 +301,7 @@ async def customer_portal(user: User = Depends(get_current_user)):
 async def sync_subscription(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     """Sync subscription status from Stripe — fallback when webhooks fail.
 
     Looks up the customer's active subscription directly via the Stripe API
@@ -343,7 +343,7 @@ async def sync_subscription(
 async def cancel_subscription(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     """Cancel the user's Stripe subscription at end of billing period.
 
     Does NOT revoke access immediately — the user keeps their plan until
@@ -409,7 +409,7 @@ async def cancel_subscription(
 async def billing_status(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     """Return full plan info including usage counters and limits."""
     status = user.subscription_status
 

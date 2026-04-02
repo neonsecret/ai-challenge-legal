@@ -190,7 +190,7 @@ async def query_stream(
     body: QueryRequest,
     key_row: dict = Depends(get_api_key),
     db: AsyncSession = Depends(get_db),
-):
+) -> EventSourceResponse:
     """Stream a legal query response as Server-Sent Events.
 
     Accepts a JSON body with question, answer_type, corpus, and optional
@@ -542,7 +542,7 @@ async def query_stream(
 @router.get("/corpora")
 async def list_corpora(
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, list]:
     """Return the list of searchable custom corpora for the authenticated user.
 
     Groups documents by collection name (stored in .meta files) so the frontend
@@ -693,7 +693,7 @@ _LAWS_BY_CORPUS: dict[str, list[dict[str, str]]] = {
 
 
 @router.get("/laws")
-async def list_laws(corpus: str = "czech"):
+async def list_laws(corpus: str = "czech") -> dict[str, list]:
     """Return the available law corpus entries for the law selector UI."""
     laws = _LAWS_BY_CORPUS.get(corpus, [])
     return {"laws": laws}
@@ -703,7 +703,7 @@ async def list_laws(corpus: str = "czech"):
 async def get_last_answer(
     conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, str]:
     """Return the last assistant message for a conversation, if it exists.
 
     Used by the frontend to recover answers after SSE connection drops.
@@ -730,7 +730,7 @@ async def get_last_answer(
 async def get_pipeline_status(
     conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
     key_row: dict = Depends(get_api_key),
-):
+) -> dict:
     """Return the latest pipeline job status for a conversation.
 
     Used by the frontend to poll for pipeline progress after SSE connection
@@ -753,7 +753,7 @@ async def get_pipeline_status(
 @router.get("/conversations")
 async def list_conversations(
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, list]:
     """Return the authenticated user's recent conversations.
 
     Each entry contains:
@@ -772,7 +772,7 @@ async def list_conversations(
 async def delete_conversation(
     conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
     key_row: dict = Depends(get_api_key),
-):
+) -> None:
     """Delete all messages and docs for a conversation owned by the authenticated user."""
     from neolex.services.conversation import delete_conversation as do_delete
 
@@ -786,7 +786,7 @@ async def delete_conversation(
 async def get_conversation_messages(
     conversation_id: str = Path(pattern=r"^[a-zA-Z0-9_-]{1,64}$"),
     key_row: dict = Depends(get_api_key),
-):
+) -> dict[str, list]:
     """Return all messages for a specific conversation.
 
     Used by the frontend to hydrate a conversation that exists in the backend
