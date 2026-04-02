@@ -484,7 +484,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                                     id: `${m.role}-loaded-${i}`,
                                     role: m.role as "user" | "assistant",
                                     content: m.content,
-                                    sources: m.sources ?? [],
+                                    sources: (Array.isArray(m.sources) ? m.sources : []).filter(
+                                        (s: Source) => s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers)
+                                    ),
                                 })
                             )
                             if (msgs.length > 0) {
