@@ -122,48 +122,82 @@ const CZ_SCENARIOS: DemoScenario[] = [
         question: "Může zaměstnavatel dát výpověď zaměstnanci z důvodu nadbytečnosti, pokud pracovní místo fakticky zrušeno nebylo?",
         answer: "",
         pdfTitle: "Zákoník práce (262/2006 Sb.)",
-        pdfArticleHeader: "§ 52 písm. c) — Výpověď z důvodu nadbytečnosti",
-        pdfClauses: [
+        pdfArticleHeader: "§ 52 písm. c)",
+        pdfClauses: [],
+        highlightRange: [0, 0],
+        sourceBadge: "Zákoník práce · § 52(c) + NS judikatura",
+        pageBadge: "",
+        sources: [
             {
-                id: "§52(c)",
-                text: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení, o snížení stavu zaměstnanců nebo o jiných organizačních změnách."
+                title: "Zákoník práce (262/2006 Sb.)",
+                articleHeader: "§ 52 písm. c) — Nadbytečnost",
+                clauses: [
+                    {
+                        id: "§52(c)",
+                        text: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení, o snížení stavu zaměstnanců nebo o jiných organizačních změnách."
+                    },
+                ],
+                highlightRange: [0, 0],
+                badge: "Zákoník práce · § 52 písm. c)",
+                pageBadge: "§ 52",
+                type: "statute",
             },
             {
-                id: "NS 21 Cdo",
-                text: "Nejvyšší soud: Organizační změna musí být skutečná — výpověď je neplatná, bylo-li rozhodnutí o zrušení pracovního místa pouze formální a zaměstnanec byl vzápětí nahrazen jinou osobou na totožné pozici."
-            },
-            {
-                id: "§52 pozn.",
-                text: "Příčinná souvislost mezi organizační změnou a nadbytečností zaměstnance musí existovat v okamžiku podání výpovědi; zaměstnavatel nesmí po výpovědi přijmout nového zaměstnance na stejné místo."
+                title: "21 Cdo 4117/2012 · Nejvyšší soud",
+                articleHeader: "Právní věta — Nadbytečnost",
+                clauses: [
+                    {
+                        id: "NS",
+                        text: "Organizační změna musí být skutečná — výpověď je neplatná, bylo-li rozhodnutí o zrušení pracovního místa pouze formální a zaměstnanec byl vzápětí nahrazen jinou osobou na totožné pozici."
+                    },
+                ],
+                highlightRange: [0, 0],
+                badge: "21 Cdo 4117/2012 · kat. A · judikatura",
+                pageBadge: "NS",
+                type: "court_decision",
             },
         ],
-        highlightRange: [0, 1],
-        sourceBadge: "Zákoník práce · § 52(c) · judikatura NS",
-        pageBadge: "Page 52",
     },
     {
         jurisdiction: "Czech Republic",
         question: "Může podnikatel požadovat ochranu jako slabší smluvní strana vůči jinému podnikateli při nepřiměřeně vysokých úrocích ze zápůjčky?",
         answer: "",
         pdfTitle: "Občanský zákoník (89/2012 Sb.)",
-        pdfArticleHeader: "§ 1796 — Lichva",
-        pdfClauses: [
+        pdfArticleHeader: "§ 1796",
+        pdfClauses: [],
+        highlightRange: [0, 0],
+        sourceBadge: "Občanský zákoník · § 1796 + NS judikatura",
+        pageBadge: "",
+        sources: [
             {
-                id: "§1796",
-                text: "Neplatná je smlouva, ke které bylo použito tísně, nezkušenosti, rozumové slabosti nebo rozrušení druhé strany a sjednaná protiplnění jsou ke vzájemnému plnění v hrubém nepoměru."
+                title: "Občanský zákoník (89/2012 Sb.)",
+                articleHeader: "§ 1796 — Lichva",
+                clauses: [
+                    {
+                        id: "§1796",
+                        text: "Neplatná je smlouva, ke které bylo použito tísně, nezkušenosti, rozumové slabosti nebo rozrušení druhé strany a sjednaná protiplnění jsou ke vzájemnému plnění v hrubém nepoměru."
+                    },
+                ],
+                highlightRange: [0, 0],
+                badge: "Občanský zákoník · § 1796",
+                pageBadge: "§ 1796",
+                type: "statute",
             },
             {
-                id: "§433",
-                text: "Ochrany jako slabší strany se může dovolat i podnikatel, pokud prokáže, že druhá smluvní strana zneužila jeho závislosti, tísně nebo zkušenostní asymetrie — ochrana není omezena pouze na spotřebitele."
-            },
-            {
-                id: "NS 33 Cdo",
-                text: "Nejvyšší soud: Při posouzení lichvy se přihlíží ke konkrétním okolnostem uzavření smlouvy; sjednání úroku mnohonásobně převyšujícího obvyklou míru může naplnit znaky § 1796 i mezi podnikateli."
+                title: "23 ICdo 56/2019 · Nejvyšší soud",
+                articleHeader: "Právní věta — Lichva mezi podnikateli",
+                clauses: [
+                    {
+                        id: "NS",
+                        text: "I fyzická osoba podnikatel může být spotřebitelem mimo rámec své podnikatelské činnosti. Sjednání úroku mnohonásobně převyšujícího obvyklou míru může naplnit znaky lichvy i mezi podnikateli."
+                    },
+                ],
+                highlightRange: [0, 0],
+                badge: "23 ICdo 56/2019 · kat. A · judikatura",
+                pageBadge: "NS",
+                type: "court_decision",
             },
         ],
-        highlightRange: [0, 1],
-        sourceBadge: "Občanský zákoník · § 1796 · judikatura NS",
-        pageBadge: "Page 213",
     },
 ]
 
@@ -573,9 +607,9 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: 0,
                                 willChange: "transform",
-                                background: isDark ? "rgba(15,22,35,0.60)" : "rgba(255,250,235,0.45)",
-                                backdropFilter: "blur(60px) saturate(200%) brightness(110%)",
-                                WebkitBackdropFilter: "blur(60px) saturate(200%) brightness(110%)",
+                                background: isDark ? "rgba(15,22,35,0.95)" : "rgba(255,250,235,0.95)",
+                                backdropFilter: GLASS.dark.blurLight,
+                                WebkitBackdropFilter: GLASS.dark.blurLight,
                                 boxShadow: isDark ? GLASS.dark.innerGlow : GLASS.light.innerGlow,
                                 border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
                             } : makeGlassPanel(isDark)),
@@ -1473,14 +1507,16 @@ export default function ChatPage() {
                             <motion.div
                                 key={m.id}
                                 ref={isLastAssistant ? lastAssistantRef : undefined}
-                                initial={{opacity: 0, y: SPACE['3'], scale: 0.98}}
-                                animate={{opacity: 1, y: 0, scale: 1}}
-                                transition={{
-                                    type: "spring",
-                                    damping: 25,
-                                    stiffness: 200,
-                                    delay: idx === messages.length - 1 ? 0.05 : 0,
-                                }}
+                                initial={{opacity: 0, y: SPACE['3'], ...(isMobile ? {} : {scale: 0.98})}}
+                                animate={{opacity: 1, y: 0, ...(isMobile ? {} : {scale: 1})}}
+                                transition={isMobile
+                                    ? {duration: 0.2, ease: [0.32, 0.72, 0, 1]}
+                                    : {
+                                        type: "spring",
+                                        damping: 25,
+                                        stiffness: 200,
+                                        delay: idx === messages.length - 1 ? 0.05 : 0,
+                                    }}
                             >
                                 <ChatMessage
                                     role={m.role}
@@ -1597,9 +1633,9 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
-                                background: isDark ? "rgba(13,21,32,0.82)" : "rgba(255,252,242,0.75)",
-                                backdropFilter: "blur(48px) saturate(180%) brightness(106%)",
-                                WebkitBackdropFilter: "blur(48px) saturate(180%) brightness(106%)",
+                                background: isDark ? "rgba(13,21,32,0.95)" : "rgba(255,252,242,0.95)",
+                                backdropFilter: GLASS.dark.blurLight,
+                                WebkitBackdropFilter: GLASS.dark.blurLight,
                                 border: isDark ? "0.5px solid rgba(255,255,255,0.18)" : "0.5px solid rgba(255,255,255,0.55)",
                                 boxShadow: isDark
                                     ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"
@@ -1713,9 +1749,9 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
-                                background: isDark ? "rgba(13,21,32,0.82)" : "rgba(255,252,242,0.75)",
-                                backdropFilter: "blur(48px) saturate(180%) brightness(106%)",
-                                WebkitBackdropFilter: "blur(48px) saturate(180%) brightness(106%)",
+                                background: isDark ? "rgba(13,21,32,0.95)" : "rgba(255,252,242,0.95)",
+                                backdropFilter: GLASS.dark.blurLight,
+                                WebkitBackdropFilter: GLASS.dark.blurLight,
                                 border: isDark ? "0.5px solid rgba(255,255,255,0.18)" : "0.5px solid rgba(255,255,255,0.55)",
                                 boxShadow: isDark
                                     ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"
@@ -1850,9 +1886,9 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
-                                background: isDark ? "rgba(13,21,32,0.82)" : "rgba(255,252,242,0.75)",
-                                backdropFilter: "blur(48px) saturate(180%) brightness(106%)",
-                                WebkitBackdropFilter: "blur(48px) saturate(180%) brightness(106%)",
+                                background: isDark ? "rgba(13,21,32,0.95)" : "rgba(255,252,242,0.95)",
+                                backdropFilter: GLASS.dark.blurLight,
+                                WebkitBackdropFilter: GLASS.dark.blurLight,
                                 border: isDark ? "0.5px solid rgba(255,255,255,0.18)" : "0.5px solid rgba(255,255,255,0.55)",
                                 boxShadow: isDark
                                     ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"

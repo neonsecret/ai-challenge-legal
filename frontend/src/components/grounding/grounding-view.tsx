@@ -1508,6 +1508,7 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
             display: "flex",
             gap: SPACE['2'],
             padding: SPACE['2'],
+            paddingBottom: isMobile ? `max(${SPACE['2']}px, env(safe-area-inset-bottom))` : SPACE['2'],
             minHeight: 0,
             maxHeight: 124,
             borderTop: `0.5px solid ${isDark ? GLASS.dark.borderSubtle : GLASS.light.borderSubtle}`,

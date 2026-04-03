@@ -67,6 +67,24 @@ const SCENARIOS: DemoScenario[] = [
         pageBadge: "Str. 28",
         sources: [
             {
+                title: "Zákoník práce (zákon č. 262/2006 Sb.)",
+                articleHeader: "§ 52 písm. c) — Nadbytečnost",
+                clauses: [
+                    {
+                        id: "§ 52(c)",
+                        text: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení, o snížení stavu zaměstnanců nebo o jiných organizačních změnách.",
+                    },
+                    {
+                        id: "§ 67(1)",
+                        text: "Zaměstnanci, u něhož dochází k rozvázání pracovního poměru výpovědí danou zaměstnavatelem z důvodů uvedených v § 52 písm. a) až c), přísluší odstupné ve výši nejméně trojnásobku průměrného výdělku.",
+                    },
+                ],
+                highlightRange: [0, 0],
+                badge: "Zákoník práce · § 52 písm. c) · Str. 28",
+                pageBadge: "Str. 28",
+                type: "statute",
+            },
+            {
                 title: "NS 21 Cdo 262/2006",
                 articleHeader: "Rozsudek Nejvyššího soudu",
                 clauses: [
