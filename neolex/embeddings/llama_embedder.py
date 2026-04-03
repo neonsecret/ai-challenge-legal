@@ -31,12 +31,14 @@ LLAMA_N_GPU_LAYERS Number of layers to offload to GPU/Metal (default: 99)
 
 from __future__ import annotations
 
+import enum
 import logging
 import os
 import shutil
 import signal
 import socket
 import subprocess
+import threading
 import time
 from contextlib import contextmanager
 from typing import Optional, Union
@@ -59,6 +61,26 @@ _DEFAULT_URL = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")
 _REMOTE_URL = os.environ.get("LLAMA_SERVER_REMOTE_URL", "http://100.98.171.97:8088")
 _HEALTH_CHECK_INTERVAL = 30  # seconds between remote health checks
 
+# Circuit breaker defaults for the local embedding server
+_CB_THRESHOLD = int(os.environ.get("EMBED_CB_THRESHOLD", "3"))  # consecutive failures to OPEN
+_CB_COOLDOWN = float(os.environ.get("EMBED_CB_COOLDOWN", "30"))  # seconds before HALF-OPEN probe
+
+
+class _CBState(enum.Enum):
+    CLOSED = "CLOSED"
+    OPEN = "OPEN"
+    HALF_OPEN = "HALF_OPEN"
+
+
+class EmbeddingServerUnavailableError(RuntimeError):
+    """Raised when the local embedding server circuit breaker is OPEN.
+
+    The circuit opens after ``EMBED_CB_THRESHOLD`` consecutive failures and
+    remains open for ``EMBED_CB_COOLDOWN`` seconds before allowing a probe.
+    This prevents cascading 120-second TCP timeouts when llama-server:8088
+    goes offline.
+    """
+
 
 class LlamaServerEmbedder:
     """HTTP client for a llama-server /v1/embeddings endpoint.
@@ -66,6 +88,13 @@ class LlamaServerEmbedder:
     Supports automatic failover: if LLAMA_SERVER_REMOTE_URL is set and healthy,
     it's used as primary (RTX 3070 CUDA >> local MPS).  Falls back to the local
     server on any error.  Health is re-checked periodically.
+
+    Circuit breaker for the local server prevents cascading TCP timeouts when
+    llama-server:8088 goes offline.  After ``EMBED_CB_THRESHOLD`` consecutive
+    failures the circuit OPENS and requests fail fast with
+    ``EmbeddingServerUnavailableError``.  After ``EMBED_CB_COOLDOWN`` seconds a
+    single probe is allowed (HALF-OPEN); success closes the circuit and triggers
+    a remote-server re-check for possible auto-promotion.
 
     Parameters
     ----------
@@ -80,7 +109,14 @@ class LlamaServerEmbedder:
         self._remote_url = _REMOTE_URL.rstrip("/") if _REMOTE_URL else ""
         self._remote_healthy = False
         self._last_health_check = 0.0
+        self._health_lock = threading.Lock()  # prevents concurrent health checks
         self.batch_size = batch_size
+
+        # Circuit breaker state for the local embedding server
+        self._cb_state = _CBState.CLOSED
+        self._cb_fail_count = 0
+        self._cb_open_at = 0.0
+        self._cb_lock = threading.Lock()
 
         # Verify at least the local server is reachable
         self._verify_server_url(self._local_url)
@@ -92,6 +128,10 @@ class LlamaServerEmbedder:
                 logger.info("Remote llama-server at %s is healthy — using as primary", self._remote_url)
             else:
                 logger.info("Remote llama-server at %s is offline — using local only", self._remote_url)
+
+            # Background daemon thread: polls remote health and auto-promotes on recovery.
+            # Runs independently of embedding requests — catches recovery even during idle periods.
+            self._start_health_poll_thread()
 
     @property
     def url(self) -> str:
@@ -105,13 +145,126 @@ class LlamaServerEmbedder:
         return self._local_url
 
     def _check_remote_health(self) -> None:
-        """Quick health check on the remote server."""
-        self._last_health_check = time.monotonic()
+        """Quick health check on the remote server (non-blocking lock prevents concurrent checks)."""
+        if not self._health_lock.acquire(blocking=False):
+            return  # another thread is already checking; skip to avoid duplicate HTTP requests
         try:
-            r = requests.get(f"{self._remote_url}/health", timeout=3)
-            self._remote_healthy = r.ok
-        except Exception:
-            self._remote_healthy = False
+            self._last_health_check = time.monotonic()
+            try:
+                r = requests.get(f"{self._remote_url}/health", timeout=3)
+                self._remote_healthy = r.ok
+            except Exception:
+                self._remote_healthy = False
+        finally:
+            self._health_lock.release()
+
+    # ------------------------------------------------------------------
+    # Circuit breaker — local embedding server
+    # ------------------------------------------------------------------
+
+    @property
+    def circuit_state(self) -> _CBState:
+        """Current circuit breaker state (CLOSED / OPEN / HALF_OPEN)."""
+        with self._cb_lock:
+            return self._cb_state
+
+    def _cb_allow_request(self) -> bool:
+        """Return True if a request to the local server should proceed.
+
+        Transitions OPEN → HALF_OPEN once the cooldown elapses so that a
+        single probe can test whether the server has recovered.
+        """
+        with self._cb_lock:
+            if self._cb_state == _CBState.CLOSED:
+                return True
+            if self._cb_state == _CBState.OPEN:
+                if time.monotonic() - self._cb_open_at >= _CB_COOLDOWN:
+                    self._cb_state = _CBState.HALF_OPEN
+                    logger.info(
+                        "Embedding circuit breaker HALF-OPEN — probing %s",
+                        self._local_url,
+                    )
+                    return True
+                return False  # still within cooldown: fast-fail
+            # HALF_OPEN: allow the probe through
+            return True
+
+    def _cb_record_success(self) -> None:
+        """Record a successful local request; close circuit and trigger remote re-check."""
+        trigger_recheck = False
+        with self._cb_lock:
+            if self._cb_state in (_CBState.HALF_OPEN, _CBState.OPEN):
+                logger.info(
+                    "Embedding circuit breaker CLOSED — %s recovered",
+                    self._local_url,
+                )
+                self._cb_state = _CBState.CLOSED
+                self._cb_fail_count = 0
+                trigger_recheck = bool(self._remote_url and self._remote_url != self._local_url)
+            else:
+                # Reset consecutive-failure counter on any success in CLOSED state
+                self._cb_fail_count = 0
+        if trigger_recheck:
+            # Re-check remote health outside the lock so auto-promotion can proceed
+            threading.Thread(
+                target=self._check_remote_health,
+                daemon=True,
+                name="embed-remote-recheck",
+            ).start()
+
+    def _cb_record_failure(self) -> None:
+        """Record a failed local request; trip circuit after threshold."""
+        with self._cb_lock:
+            if self._cb_state == _CBState.HALF_OPEN:
+                self._cb_state = _CBState.OPEN
+                self._cb_open_at = time.monotonic()
+                logger.warning(
+                    "Embedding circuit breaker OPEN again — probe failed for %s",
+                    self._local_url,
+                )
+            elif self._cb_state == _CBState.CLOSED:
+                self._cb_fail_count += 1
+                if self._cb_fail_count >= _CB_THRESHOLD:
+                    self._cb_state = _CBState.OPEN
+                    self._cb_open_at = time.monotonic()
+                    logger.warning(
+                        "Embedding circuit breaker OPENED after %d consecutive failures for %s",
+                        self._cb_fail_count,
+                        self._local_url,
+                    )
+
+    def _start_health_poll_thread(self) -> None:
+        """Start a daemon thread that polls remote health and auto-promotes on recovery."""
+        t = threading.Thread(
+            target=self._health_poll_loop,
+            daemon=True,
+            name="embed-health-poll",
+        )
+        t.start()
+        logger.debug(
+            "Embedding health poller started for %s (interval=%ds)",
+            self._remote_url,
+            _HEALTH_CHECK_INTERVAL,
+        )
+
+    def _health_poll_loop(self) -> None:
+        """Background loop: poll remote server health every interval, log state transitions."""
+        while True:
+            time.sleep(_HEALTH_CHECK_INTERVAL)
+            was_healthy = self._remote_healthy
+            self._check_remote_health()
+            now_healthy = self._remote_healthy
+            if not was_healthy and now_healthy:
+                logger.info(
+                    "Embedding server %s recovered — auto-promoting to primary",
+                    self._remote_url,
+                )
+            elif was_healthy and not now_healthy:
+                logger.warning(
+                    "Embedding server %s went offline — falling back to local (%s)",
+                    self._remote_url,
+                    self._local_url,
+                )
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -137,18 +290,50 @@ class LlamaServerEmbedder:
     def _embed_batch(self, texts: list[str]) -> np.ndarray:
         """POST a single batch to /v1/embeddings; returns (N, dim) float32.
 
-        Tries the active server (remote if healthy, local otherwise).
-        On failure, falls back to local and marks remote as unhealthy.
+        Uses the active server (remote if healthy, else local).  On remote
+        failure, falls back to local.  The local server is protected by a
+        circuit breaker: when OPEN, raises ``EmbeddingServerUnavailableError``
+        immediately rather than waiting for a TCP timeout.
         """
         active_url = self.url  # property: remote if healthy, else local
+
+        if active_url == self._local_url:
+            # Local is primary — check circuit breaker before attempting
+            if not self._cb_allow_request():
+                raise EmbeddingServerUnavailableError(
+                    f"Embedding server {self._local_url} unavailable "
+                    f"(circuit OPEN, retry after {_CB_COOLDOWN:.0f}s cooldown)"
+                )
+            try:
+                result = self._embed_batch_url(active_url, texts)
+                self._cb_record_success()
+                return result
+            except EmbeddingServerUnavailableError:
+                raise
+            except Exception:
+                self._cb_record_failure()
+                raise
+
+        # Remote is primary — attempt it, fall back to local on any error
         try:
             return self._embed_batch_url(active_url, texts)
         except Exception:
-            if active_url != self._local_url:
-                logger.warning("Remote embedding failed, falling back to local")
-                self._remote_healthy = False
-                return self._embed_batch_url(self._local_url, texts)
-            raise
+            logger.warning("Remote embedding failed, falling back to local")
+            self._remote_healthy = False
+            if not self._cb_allow_request():
+                raise EmbeddingServerUnavailableError(
+                    f"Embedding server {self._local_url} unavailable "
+                    f"(circuit OPEN, retry after {_CB_COOLDOWN:.0f}s cooldown)"
+                )
+            try:
+                result = self._embed_batch_url(self._local_url, texts)
+                self._cb_record_success()
+                return result
+            except EmbeddingServerUnavailableError:
+                raise
+            except Exception:
+                self._cb_record_failure()
+                raise
 
     @staticmethod
     def _embed_batch_url(url: str, texts: list[str]) -> np.ndarray:
