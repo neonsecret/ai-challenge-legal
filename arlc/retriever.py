@@ -450,7 +450,7 @@ def search_chunks_vector(
 _MORPHOLOGICAL_CORPORA: frozenset[str] = frozenset({"czech"})
 
 
-def _tsquery(query: str, corpus: str, **extra) -> tuple[str, dict]:
+def _tsquery(query: str, _corpus: str, **extra) -> tuple[str, dict]:
     """Return ``(sql_fn_fragment, bound_params)`` for a tsvector BM25 query.
 
     For Czech corpora, attempts morphological prefix expansion via
@@ -461,8 +461,12 @@ def _tsquery(query: str, corpus: str, **extra) -> tuple[str, dict]:
 
     For all other corpora, ``plainto_tsquery`` is always used (natural-language
     tokenisation, safe for arbitrary input).
+
+    ``_corpus`` is a private positional-only param used for routing logic.
+    Callers pass ``corpus=corpus`` in ``**extra`` so it flows through to the
+    SQL bound parameters dict (``WHERE corpus = :corpus``).
     """
-    if corpus in _MORPHOLOGICAL_CORPORA:
+    if _corpus in _MORPHOLOGICAL_CORPORA:
         tsq = build_czech_tsquery(query)
         if tsq is not None:
             return "to_tsquery('simple', :tsq)", {"tsq": tsq, **extra}
