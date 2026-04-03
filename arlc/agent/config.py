@@ -13,7 +13,7 @@ SEARCH_ANSWER_TYPE: str = "free_text"
 
 # --- Agent loop ---
 MAX_SEARCHES_PER_TURN: int = int(os.environ.get("AGENT_MAX_SEARCHES", "5"))
-MAX_ACCUMULATED_DOCS: int = int(os.environ.get("AGENT_MAX_DOCS", "10"))
+MAX_ACCUMULATED_DOCS: int = int(os.environ.get("AGENT_MAX_DOCS", "50"))
 MAX_HISTORY_MESSAGES: int = int(os.environ.get("AGENT_MAX_HISTORY", "10"))  # 5 Q&A pairs
 
 # --- Web search ---

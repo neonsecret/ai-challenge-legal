@@ -60,13 +60,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const [locale, setLocaleState] = useState<Locale>("en")
     const [hydrated, setHydrated] = useState(false)
 
-    // Read stored or browser locale once on mount
+    // Read stored or browser locale once on mount.
+    // Cloudflare geo cookie (set by proxy.ts) is a stronger signal than browser locale
+    // for first-time visitors — a Czech user with English browser UI still gets Czech.
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored && isLocale(stored)) {
             setLocaleState(stored)
         } else {
-            setLocaleState(detectBrowserLocale())
+            // Check Cloudflare geo cookie first
+            const geoMatch = document.cookie.split("; ").find(r => r.startsWith("geo_country="))
+            const geoCountry = geoMatch?.split("=")[1]
+            const GEO_TO_LOCALE: Record<string, Locale> = { CZ: "cs", DE: "de", AT: "de", RU: "ru", AE: "ar" }
+            const geoLocale = geoCountry ? GEO_TO_LOCALE[geoCountry] : undefined
+            setLocaleState(geoLocale ?? detectBrowserLocale())
         }
         setHydrated(true)
     }, [])

@@ -48,3 +48,11 @@ other_people/
 tmp/
 models/*.gguf
 .next/
+
+# Superpowers skill artifacts
+.superpowers/
+docs/superpowers/
+
+# Downloaded external files
+*.html
+*_files/

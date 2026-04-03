@@ -316,6 +316,10 @@ def _format_document_context(docs: list[SourceDocument]) -> str:
     them unambiguously in its answer.  Content is wrapped in
     ``<document_content>`` tags to prevent prompt injection from source text.
 
+    Court decisions get a structured format: type label, legal thesis
+    (holding), and full reasoning — so the LLM can distinguish statute
+    pages from court decisions and find specific passages to quote.
+
     IMPORTANT: Documents must be in insertion order (not sorted by score).
     The [DOC-N] labels must match the numbering the LLM saw in tool call
     results during search iterations.  Sorting would break this mapping.
@@ -328,12 +332,62 @@ def _format_document_context(docs: list[SourceDocument]) -> str:
         "You have the full content — do not state that text is missing or was not retrieved."
     )
 
+    def _esc(s: str) -> str:
+        return s.replace("</document_content>", "&lt;/document_content&gt;")
+
     parts: list[str] = [preamble]
     for i, doc in enumerate(docs, start=1):
-        header = f"[DOC-{i}] {doc['doc_id']} (page {doc['page']})"
-        # Escape closing tags to prevent prompt injection via tag boundary escape
-        text = doc["text"].replace("</document_content>", "&lt;/document_content&gt;")
-        parts.append(f"{header}\n<document_content>\n{text}\n</document_content>")
+        if doc.get("source_type") == "court_decision":
+            # Court decisions: enriched header + structured content
+            case_num = doc.get("case_number", doc["doc_id"])
+            court = doc.get("court", "Nejvyssi soud")
+            dec_date = doc.get("decision_date", "")
+            category = doc.get("category", "")
+            ecli = doc.get("ecli", doc["doc_id"])
+
+            header_meta = [case_num, court]
+            if dec_date:
+                header_meta.append(dec_date)
+            if category:
+                header_meta.append(f"kat. {category}")
+            header = f"[DOC-{i}] {' | '.join(filter(None, header_meta))}"
+
+            # Structured content: type → thesis (authoritative) → anotace (supplementary)
+            content_parts: list[str] = []
+            content_parts.append(f"TYP: ROZHODNUTÍ NEJVYŠŠÍHO SOUDU ČR — {case_num}")
+            if ecli and ecli.startswith("ECLI:"):
+                content_parts.append(f"ECLI: {ecli}")
+
+            thesis = doc.get("legal_thesis", "")
+            raw_text = doc.get("text", "")
+
+            # Extract Anotace from raw_text (after the "---" separator)
+            anotace = ""
+            if raw_text and thesis and "\n\n---\n\n" in raw_text:
+                parts_split = raw_text.split("\n\n---\n\n", 1)
+                anotace = parts_split[1] if len(parts_split) > 1 else ""
+            elif raw_text and raw_text != thesis:
+                anotace = raw_text
+
+            if thesis:
+                content_parts.append(
+                    f"\nPRÁVNÍ VĚTA (závazný právní závěr NS ČR — citujte z této části):\n{_esc(thesis)}"
+                )
+            if anotace:
+                content_parts.append(
+                    f"\nANOTACE (shrnutí případu — může obsahovat názory nižších soudů, "
+                    f"které NS zrušil; NECITUJTE § z této části jako závěr NS):\n{_esc(anotace)}"
+                )
+            elif raw_text and not thesis:
+                content_parts.append(f"\nTEXT ROZHODNUTÍ:\n{_esc(raw_text)}")
+
+            content = "\n".join(content_parts)
+            parts.append(f"{header}\n<document_content>\n{content}\n</document_content>")
+        else:
+            # Statute / standard document
+            header = f"[DOC-{i}] {doc['doc_id']} (page {doc['page']})"
+            text = _esc(doc["text"])
+            parts.append(f"{header}\n<document_content>\n{text}\n</document_content>")
 
     return "\n---\n".join(parts)
 
@@ -397,7 +451,40 @@ def build_system_prompt(state: AgentState) -> str:
             "  search_legal_corpus(query='...')\n"
             "  search_court_decisions(query='...', statute_reference='262/2006')\n"
             "- After receiving case law summaries: call fetch_court_decision with the best ECLI.\n"
-            "- NEVER use search_web for court decisions (search_court_decisions is authoritative)."
+            "- NEVER use search_web for court decisions (search_court_decisions is authoritative).\n"
+            "- Court decisions appear as [DOC-N] sources with structured content:\n"
+            "  • TYP: identifies it as a Supreme Court decision\n"
+            "  • PRÁVNÍ VĚTA: the Supreme Court's authoritative holding — cite from HERE\n"
+            "  • ANOTACE: case summary that may describe lower court proceedings the "
+            "Supreme Court reviewed or OVERTURNED — do NOT cite § numbers from this "
+            "section as the Supreme Court's holding\n"
+            "\n"
+            "## CITING COURT DECISIONS (MANDATORY FOR CZECH LAW)\n"
+            "When your answer relies on a court decision, you MUST follow these rules:\n"
+            "1. CITE FROM PRÁVNÍ VĚTA: The authoritative legal principle is in the "
+            "PRÁVNÍ VĚTA section. The ANOTACE section is a case summary that may contain "
+            "lower court reasoning the Supreme Court OVERTURNED. If you see different § "
+            "numbers in PRÁVNÍ VĚTA vs ANOTACE, always use the one from PRÁVNÍ VĚTA.\n"
+            "2. VERIFY section numbers: Before writing '§ NNN', find that exact number "
+            "in the PRÁVNÍ VĚTA of the [DOC-N]. Copy the section number character-by-character "
+            "from the source. Do NOT substitute similar-sounding section numbers.\n"
+            "3. QUOTE specific passages: Extract 10–30 words verbatim from the PRÁVNÍ VĚTA "
+            "and place them in quotation marks, followed by [DOC-N]. Do not paraphrase "
+            "the court's language — quote it.\n"
+            "4. STATE both the principle AND its limits: Courts often qualify their holdings "
+            "with conditions, thresholds, or exceptions. If the court says 'X applies, but "
+            "only when Y', you MUST include the 'but only when Y' part.\n"
+            "5. SEPARATE statute from interpretation: Clearly distinguish what the statute "
+            "text says (cite the statute [DOC-N]) from how the court interpreted it (cite "
+            "the decision [DOC-N]). Example structure:\n"
+            "   '§ 52 písm. c) zákoníku práce stanoví, že ... [DOC-2]. Nejvyšší soud "
+            've věci 21 Cdo 1234/2020 upřesnil, že "..." [DOC-5], přičemž podmínkou je ...\'\n'
+            "6. NEVER overstate remedies: If a court decision describes a remedy with "
+            "conditions or procedural requirements, list those conditions. Do not present "
+            "a conditional remedy as automatically available.\n"
+            "7. ONLY use [DOC-N] citation tags. NEVER use [CASE-N] tags in your answer — "
+            "those are search result labels, not citation tags. Court decisions appear as "
+            "[DOC-N] sources alongside statutes. Use [DOC-N] for everything."
         )
 
     # Custom corpus: inform the LLM that the user has uploaded documents

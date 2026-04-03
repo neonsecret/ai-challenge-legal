@@ -11,26 +11,26 @@ import { COLOR, TEXT_DARK, GLASS, TYPE_SCALE, SPACE } from "@/lib/design-tokens"
 const FEATURES = [
     {
         icon: BookOpen,
-        title: "Z\u00e1kony \u010cR",
+        title: "Zákony ČR",
         description:
-            "V\u0161echny kl\u00ed\u010dov\u00e9 \u010desk\u00e9 z\u00e1kony \u2014 Ob\u010dansk\u00fd z\u00e1kon\u00edk, Z\u00e1kon\u00edk pr\u00e1ce, Trestn\u00ed z\u00e1kon\u00edk a dal\u0161\u00ed.",
+            "Všechny klíčové české zákony — Občanský zákoník, Zákoník práce, Trestní zákoník a další.",
         stat: "11",
-        statLabel: "z\u00e1kon\u016f",
+        statLabel: "zákonů",
     },
     {
         icon: Scale,
         title: "Judikatura NS",
         description:
-            "V\u00edce ne\u017e 33\u00a0000 rozhodnut\u00ed Nejvy\u0161\u0161\u00edho soudu s pln\u00fdm textem a pr\u00e1vn\u00edmi v\u011btami.",
+            "Více než 33\u00a0000 rozhodnutí Nejvyššího soudu s plným textem a právními větami.",
         stat: "33 000+",
-        statLabel: "rozhodnut\u00ed",
+        statLabel: "rozhodnutí",
     },
     {
         icon: RefreshCw,
-        title: "AI anal\u00fdza",
+        title: "AI analýza",
         description:
-            "AI propojuje z\u00e1konn\u00e1 ustanoven\u00ed s v\u00fdkladem soud\u016f \u2014 p\u0159esn\u00fd kontext v jednom dotazu.",
-        stat: "Denn\u011b",
+            "AI propojuje zákonná ustanovení s výkladem soudů — přesný kontext v jednom dotazu.",
+        stat: "Denně",
         statLabel: "aktualizace",
     },
 ] as const
@@ -86,8 +86,7 @@ export function CzechCaselawSection() {
                         marginBottom: SPACE["2"],
                     }}
                 >
-                    {/* "Z\u00e1kony + Judikatura" */}
-                    Z\u00e1kony + Judikatura
+                    Zákony + Judikatura
                 </motion.p>
 
                 {/* heading */}
@@ -104,7 +103,7 @@ export function CzechCaselawSection() {
                         marginBottom: SPACE["3"],
                     }}
                 >
-                    \u010cesk\u00fd pr\u00e1vn\u00ed v\u00fdzkum na jednom m\u00edst\u011b
+                    Český právní výzkum na jednom místě
                 </motion.h2>
 
                 {/* subtitle */}
@@ -124,8 +123,8 @@ export function CzechCaselawSection() {
                         lineHeight: 1.6,
                     }}
                 >
-                    AI propojuje z\u00e1kony s rozsudky Nejvy\u0161\u0161\u00edho soudu &mdash;
-                    nemus\u00edte hledat ve v\u00edce syst\u00e9mech.
+                    AI propojuje zákony s rozsudky Nejvyššího soudu &mdash;
+                    nemusíte hledat ve více systémech.
                 </motion.p>
 
                 {/* 3-card grid */}
@@ -273,7 +272,7 @@ export function CzechCaselawSection() {
                                 fontWeight: 600,
                             }}
                         >
-                            Z\u00e1kon
+                            Zákon
                         </p>
                         <p
                             style={{
@@ -283,7 +282,7 @@ export function CzechCaselawSection() {
                                 marginBottom: SPACE["1"],
                             }}
                         >
-                            {"\u00a7 52 p\u00edsm. c) Z\u00e1kon\u00edk pr\u00e1ce"}
+                            § 52 písm. c) Zákoník práce
                         </p>
                         <p
                             style={{
@@ -292,7 +291,7 @@ export function CzechCaselawSection() {
                                 lineHeight: 1.5,
                             }}
                         >
-                            {"V\u00fdpov\u011b\u010f z d\u016fvodu nadbyte\u010dnosti"}
+                            Výpověď z důvodu nadbytečnosti
                         </p>
                     </div>
 
@@ -353,7 +352,7 @@ export function CzechCaselawSection() {
                                 lineHeight: 1.5,
                             }}
                         >
-                            {"Organiza\u010dn\u00ed zm\u011bna a nadbyte\u010dnost"}
+                            Organizační změna a nadbytečnost
                         </p>
                     </div>
                 </motion.div>

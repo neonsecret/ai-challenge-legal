@@ -78,6 +78,8 @@ async def execute_caselaw_search(
 ) -> list[SourceDocument]:
     """Search court_decisions with hybrid BM25 + vector (RRF) and return SourceDocuments.
 
+    limit is clamped to [1, 30] to prevent excessive DB load from LLM-controlled params.
+
     Search strategy:
     1. Try to embed the query with Qwen3-8B (via llama-server)
     2. If embedding succeeds: run hybrid search (BM25 + vector RRF)
@@ -103,6 +105,7 @@ async def execute_caselaw_search(
 
     from neolex.db.court_decisions import search_decisions, search_decisions_hybrid
 
+    limit = max(1, min(limit, 30))
     statute_ref = _parse_statute_ref(statute_reference)
     df = _parse_date_arg(date_from)
     dt = _parse_date_arg(date_to)
@@ -198,8 +201,9 @@ def format_caselaw_search_results(docs: list[SourceDocument]) -> str:
 
         lines = [header]
         if thesis:
-            # Truncate long thesis to keep context manageable
-            thesis_preview = thesis[:500] + ("..." if len(thesis) > 500 else "")
+            # Truncate long thesis — 1000 chars to preserve critical caveats
+            # and section references that often appear near the end
+            thesis_preview = thesis[:1000] + ("..." if len(thesis) > 1000 else "")
             lines.append(f"Pravni veta: {thesis_preview}")
         if ecli and ecli.startswith("ECLI:"):
             lines.append(f"ECLI: {ecli}")
@@ -230,7 +234,13 @@ async def execute_caselaw_fetch(ecli: str) -> SourceDocument | None:
     -------
     SourceDocument | None
     """
+    import re
+
     from neolex.db.court_decisions import get_decision_by_ecli, upsert_decision
+
+    if not ecli or not re.match(r"^(ECLI:CZ:NS:|NSOUD:)[A-Za-z0-9.:_-]+$", ecli):
+        logger.warning("[caselaw] invalid ECLI format: %s", ecli)
+        return None
 
     record = await get_decision_by_ecli(ecli)
     if not record:
@@ -244,7 +254,10 @@ async def execute_caselaw_fetch(ecli: str) -> SourceDocument | None:
 
             from scripts.scrape_supreme_court import _HEADERS, fetch_decision
 
-            async with httpx.AsyncClient(headers=_HEADERS, timeout=30, follow_redirects=True) as client:
+            _MAX_RESPONSE_BYTES = 10 * 1024 * 1024  # 10 MB
+            async with httpx.AsyncClient(
+                headers=_HEADERS, timeout=30, follow_redirects=True, max_redirects=3
+            ) as client:
                 enrichment = await fetch_decision(record.source_unid, client)
 
             if enrichment.get("full_text"):
@@ -265,14 +278,41 @@ async def execute_caselaw_fetch(ecli: str) -> SourceDocument | None:
         return None
 
     decision_date_str = record.decision_date.isoformat() if record.decision_date else ""
-    full_text = record.full_text or record.legal_thesis or ""
-    if len(full_text) > _FULL_TEXT_MAX_CHARS:
-        full_text = full_text[:_FULL_TEXT_MAX_CHARS]
+
+    # CRITICAL: legal_thesis = "Právní věta" = the Supreme Court's authoritative holding.
+    # full_text = "Anotace" = case summary that may include LOWER COURT reasoning
+    # which the Supreme Court OVERTURNED.  The agent must see the legal_thesis as
+    # the primary content, with Anotace as supplementary context only.
+    thesis = record.legal_thesis or ""
+    anotace = record.full_text or ""
+
+    # Assemble text: thesis first (authoritative), then Anotace (supplementary).
+    # The formatters (format_caselaw_full, _format_document_context) add their own
+    # labels, but the raw text field should also be structured so any code path
+    # that reads doc["text"] gets the thesis first.
+    text_parts: list[str] = []
+    if thesis:
+        text_parts.append(thesis)
+    if anotace and anotace != thesis:
+        text_parts.append(anotace)
+    combined_text = "\n\n---\n\n".join(text_parts) if text_parts else ""
+
+    if len(combined_text) > _FULL_TEXT_MAX_CHARS:
+        # Truncate the Anotace portion, never the thesis
+        if thesis and anotace and anotace != thesis:
+            remaining = _FULL_TEXT_MAX_CHARS - len(thesis) - len("\n\n---\n\n")
+            if remaining > 200:
+                combined_text = thesis + "\n\n---\n\n" + anotace[:remaining]
+            else:
+                # Not enough room for Anotace — thesis alone
+                combined_text = thesis
+        else:
+            combined_text = combined_text[:_FULL_TEXT_MAX_CHARS]
 
     return SourceDocument(
         doc_id=record.ecli or f"NSOUD:{record.source_unid}",
         page=1,
-        text=full_text,
+        text=combined_text,
         score=1.0,
         chunk_id=record.source_unid or "",
         _corpus="czech",
@@ -281,7 +321,7 @@ async def execute_caselaw_fetch(ecli: str) -> SourceDocument | None:
         decision_date=decision_date_str,
         court=record.court or "Nejvyssi soud",
         category=record.category or "",
-        legal_thesis=record.legal_thesis or "",
+        legal_thesis=thesis,
         ecli=record.ecli or "",
     )
 
@@ -291,6 +331,15 @@ def format_caselaw_full(doc: SourceDocument, doc_index: int) -> str:
 
     Uses the same ``<document_content>`` tag wrapping as statute sources to
     maintain consistent citation mechanics and prevent prompt injection.
+
+    Structure inside <document_content>:
+    1. TYPE label ("ROZHODNUTÍ NEJVYŠŠÍHO SOUDU ČR") so the agent knows this
+       is a court decision, not a statute.
+    2. PRÁVNÍ VĚTA (legal thesis) — the Supreme Court's authoritative holding.
+       This is the part the agent should cite and quote from.
+    3. ANOTACE (case summary) — supplementary context that may describe lower
+       court proceedings the Supreme Court reviewed or overturned.  The agent
+       must NOT cite section numbers from this section as the court's holding.
 
     Parameters
     ----------
@@ -308,6 +357,7 @@ def format_caselaw_full(doc: SourceDocument, doc_index: int) -> str:
     court = doc.get("court", "Nejvyssi soud")
     dec_date = doc.get("decision_date", "")
     category = doc.get("category", "")
+    ecli = doc.get("ecli", doc.get("doc_id", ""))
 
     header_parts = [case_num, court]
     if dec_date:
@@ -316,8 +366,39 @@ def format_caselaw_full(doc: SourceDocument, doc_index: int) -> str:
         header_parts.append(f"kat. {category}")
     header = " | ".join(filter(None, header_parts))
 
-    text = doc.get("text", "")
     # Escape closing tags to prevent prompt injection via tag boundary escape
-    text = text.replace("</document_content>", "&lt;/document_content&gt;")
+    def _esc(s: str) -> str:
+        return s.replace("</document_content>", "&lt;/document_content&gt;")
 
-    return f"[DOC-{doc_index}] {header}\n<document_content>\n{text}\n</document_content>"
+    # Build structured content: type label → legal thesis → full reasoning
+    content_parts: list[str] = []
+    content_parts.append(f"TYP: ROZHODNUTÍ NEJVYŠŠÍHO SOUDU ČR — {case_num}")
+    if ecli and ecli.startswith("ECLI:"):
+        content_parts.append(f"ECLI: {ecli}")
+
+    thesis = doc.get("legal_thesis", "")
+    raw_text = doc.get("text", "")
+
+    # raw_text may contain "thesis\n\n---\n\nanotace" from execute_caselaw_fetch.
+    # Extract the Anotace portion (everything after the separator) if present.
+    anotace = ""
+    if raw_text and thesis and "\n\n---\n\n" in raw_text:
+        parts_split = raw_text.split("\n\n---\n\n", 1)
+        anotace = parts_split[1] if len(parts_split) > 1 else ""
+    elif raw_text and raw_text != thesis:
+        anotace = raw_text
+
+    if thesis:
+        content_parts.append(f"\nPRÁVNÍ VĚTA (závazný právní závěr NS ČR — citujte z této části):\n{_esc(thesis)}")
+
+    if anotace:
+        content_parts.append(
+            f"\nANOTACE (shrnutí případu — může obsahovat názory nižších soudů, "
+            f"které NS zrušil; NECITUJTE § z této části jako závěr NS):\n{_esc(anotace)}"
+        )
+    elif raw_text and not thesis:
+        content_parts.append(f"\nTEXT ROZHODNUTÍ:\n{_esc(raw_text)}")
+
+    content = "\n".join(content_parts)
+
+    return f"[DOC-{doc_index}] {header}\n<document_content>\n{content}\n</document_content>"

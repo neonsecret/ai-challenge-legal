@@ -136,13 +136,62 @@ def execute_search(
 
 
 def format_search_results(docs: list[SourceDocument], offset: int = 0) -> str:
-    """Format search results as numbered document blocks for the LLM."""
+    """Format search results as numbered document blocks for the LLM.
+
+    Court decisions get structured formatting with type label, legal thesis,
+    and full text wrapped in ``<document_content>`` tags — consistent with
+    how they appear in accumulated doc context.
+    """
     if not docs:
         return "No new documents found for this query."
+
+    def _esc(s: str) -> str:
+        return s.replace("</document_content>", "&lt;/document_content&gt;")
+
     parts = []
     for i, doc in enumerate(docs):
         idx = offset + i + 1
-        parts.append(f"[DOC-{idx}] {doc['doc_id']} (page {doc['page']})\n{doc['text']}")
+        if doc.get("source_type") == "court_decision":
+            case_num = doc.get("case_number", doc["doc_id"])
+            court = doc.get("court", "")
+            dec_date = doc.get("decision_date", "")
+            ecli = doc.get("ecli", doc["doc_id"])
+            header = f"[DOC-{idx}] {case_num} | {court} | {dec_date}"
+
+            # Structured content: type label → thesis (authoritative) → anotace (supplementary)
+            content_parts: list[str] = []
+            content_parts.append(f"TYP: ROZHODNUTÍ NEJVYŠŠÍHO SOUDU ČR — {case_num}")
+            if ecli and ecli.startswith("ECLI:"):
+                content_parts.append(f"ECLI: {ecli}")
+
+            thesis = doc.get("legal_thesis", "")
+            raw_text = doc.get("text", "")
+
+            # Extract Anotace from raw_text (after the "---" separator)
+            anotace = ""
+            if raw_text and thesis and "\n\n---\n\n" in raw_text:
+                parts_split = raw_text.split("\n\n---\n\n", 1)
+                anotace = parts_split[1] if len(parts_split) > 1 else ""
+            elif raw_text and raw_text != thesis:
+                anotace = raw_text
+
+            if thesis:
+                content_parts.append(
+                    f"\nPRÁVNÍ VĚTA (závazný právní závěr NS ČR — citujte z této části):\n{_esc(thesis)}"
+                )
+            if anotace:
+                content_parts.append(
+                    f"\nANOTACE (shrnutí případu — může obsahovat názory nižších soudů, "
+                    f"které NS zrušil; NECITUJTE § z této části jako závěr NS):\n{_esc(anotace)}"
+                )
+            elif raw_text and not thesis:
+                content_parts.append(f"\nTEXT ROZHODNUTÍ:\n{_esc(raw_text)}")
+
+            content = "\n".join(content_parts)
+            parts.append(f"{header}\n<document_content>\n{content}\n</document_content>")
+        else:
+            header = f"[DOC-{idx}] {doc['doc_id']} (page {doc['page']})"
+            parts.append(f"{header}\n{doc['text']}")
     return "\n---\n".join(parts)
 
 

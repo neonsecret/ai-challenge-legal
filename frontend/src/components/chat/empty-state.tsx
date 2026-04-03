@@ -28,16 +28,16 @@ const DIFC_QUESTIONS: PresetQuestion[] = [
 
 const CZ_QUESTIONS: PresetQuestion[] = [
     {
-        before: "Jaká je výpovědní doba podle ",
-        law: "zákoníku práce",
-        after: "?",
-        full: "Jaká je výpovědní doba podle zákoníku práce?",
+        before: "Může zaměstnavatel dát výpověď z důvodu ",
+        law: "nadbytečnosti",
+        after: ", pokud pracovní místo fakticky zrušeno nebylo?",
+        full: "Může zaměstnavatel dát výpověď zaměstnanci z důvodu nadbytečnosti, pokud pracovní místo fakticky zrušeno nebylo?",
     },
     {
-        before: "Jak je upraveno bezdůvodné obohacení v ",
-        law: "občanském zákoníku",
-        after: "?",
-        full: "Jak je upraveno bezdůvodné obohacení v občanském zákoníku?",
+        before: "Může podnikatel požadovat ochranu jako ",
+        law: "slabší smluvní strana",
+        after: " při nepřiměřeně vysokých úrocích ze zápůjčky?",
+        full: "Může podnikatel požadovat ochranu jako slabší smluvní strana vůči jinému podnikateli při nepřiměřeně vysokých úrocích ze zápůjčky?",
     },
 ]
 
