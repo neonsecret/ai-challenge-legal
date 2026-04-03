@@ -197,6 +197,89 @@ def test_extract_regulations_empty_text():
     assert regs == []
 
 
+# ---------------------------------------------------------------------------
+# _extract_regulations_from_dotcene — nsoud.cz official format
+# ---------------------------------------------------------------------------
+
+
+def test_dotcene_official_format_labour_code():
+    """nsoud.cz uses 'předpisu č. NNN/YYYY Sb.' in Dotčené předpisy — must parse correctly."""
+    from scripts.scrape_supreme_court import _extract_regulations_from_dotcene
+
+    # Actual format captured from nsoud.cz (21 Cdo 2608/2023)
+    dotcene = (
+        "§ 34a předpisu č. 262/2006\xa0Sb.\n"
+        "§ 151 předpisu č. 262/2006\xa0Sb.\n"
+        "§ 152 písm. b)) předpisu č. 262/2006\xa0Sb.\n"
+        "§ 40 předpisu č. 262/2006\xa0Sb.\n"
+        "§ 1a písm. a)) předpisu č. 262/2006\xa0Sb."
+    )
+    regs = _extract_regulations_from_dotcene(dotcene)
+    law_numbers = {r["law_number"] for r in regs}
+    assert 262 in law_numbers, "Labour Code (262) missing from parsed regulations"
+    paragraphs = {r["paragraph"] for r in regs}
+    assert "34a" in paragraphs
+    assert "151" in paragraphs
+    assert "152" in paragraphs
+    assert "40" in paragraphs
+    assert "1a" in paragraphs
+
+
+def test_dotcene_official_format_no_space_before_sb():
+    """nsoud.cz sometimes omits space before Sb. — must still parse."""
+    from scripts.scrape_supreme_court import _extract_regulations_from_dotcene
+
+    # Observed format: no space between year and Sb. (e.g. "262/2006Sb.")
+    dotcene = "§ 38 odst. 1 předpisu č. 262/2006Sb. ve znění do 30.09.2015"
+    regs = _extract_regulations_from_dotcene(dotcene)
+    assert any(r["law_number"] == 262 and r["law_year"] == 2006 for r in regs)
+    assert regs[0]["paragraph"] == "38"
+
+
+def test_dotcene_mixed_format():
+    """Some decisions mix abbreviated and official formats in Dotčené předpisy."""
+    from scripts.scrape_supreme_court import _extract_regulations_from_dotcene
+
+    # Actual format from nsoud.cz (21 Cdo 2862/2019)
+    dotcene = "§ 545 o. z.\n§ 552 o. z.\n§ 554 o. z.\n§ 38 odst. 1 předpisu č. 262/2006\xa0Sb. ve znění do 30.09.2015"
+    regs = _extract_regulations_from_dotcene(dotcene)
+    law_numbers = {r["law_number"] for r in regs}
+    assert 89 in law_numbers, "Civil Code (89) should be parsed via abbreviated format"
+    assert 262 in law_numbers, "Labour Code (262) should be parsed via official format"
+
+
+def test_dotcene_classic_abbreviated_format():
+    """Ensure abbreviated format (o. s. ř., tr. zákoník) still works after fix."""
+    from scripts.scrape_supreme_court import _extract_regulations_from_dotcene
+
+    dotcene = "§ 237 o. s. ř.\n§ 243c odst. 1 o. s. ř.\n§ 650 o. z."
+    regs = _extract_regulations_from_dotcene(dotcene)
+    law_numbers = {r["law_number"] for r in regs}
+    assert 99 in law_numbers, "CPC (99) missing"
+    assert 89 in law_numbers, "Civil Code (89) missing"
+    paragraphs = {r["paragraph"] for r in regs}
+    assert "237" in paragraphs
+    assert "243c" in paragraphs
+    assert "650" in paragraphs
+
+
+def test_dotcene_empty_input():
+    from scripts.scrape_supreme_court import _extract_regulations_from_dotcene
+
+    assert _extract_regulations_from_dotcene("") == []
+    assert _extract_regulations_from_dotcene("   ") == []
+
+
+def test_extract_regulations_predpisu_format():
+    """extract_regulations should handle 'předpisu č. NNN/YYYY Sb.' in legal thesis text."""
+    from scripts.scrape_supreme_court import extract_regulations
+
+    text = "Zaměstnavatel porušil § 52 předpisu č. 262/2006 Sb. tím, že nepostupoval dle..."
+    regs = extract_regulations(text)
+    labour = [r for r in regs if r["law_number"] == 262 and r["law_year"] == 2006]
+    assert len(labour) > 0, "Labour Code via 'předpisu č.' format not extracted"
+
+
 def test_extract_regulations_maps_to_corpus():
     """Extracted regulations should match our statute corpus entries."""
     from scripts.scrape_supreme_court import extract_regulations

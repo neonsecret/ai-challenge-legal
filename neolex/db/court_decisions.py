@@ -16,7 +16,6 @@ embeddings with no code change required.
 
 from __future__ import annotations
 
-import re
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
@@ -27,6 +26,7 @@ from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.expression import bindparam
 
+from arlc.czech_morphology import build_czech_tsquery
 from neolex.db.postgres import AsyncSessionLocal, Base
 
 
@@ -144,55 +144,6 @@ def _normalize(vec: list[float]) -> list[float]:
     return arr.tolist()
 
 
-def _build_prefix_tsquery(query: str) -> str:
-    """Build a PostgreSQL tsquery string with prefix matching for Czech morphology.
-
-    Czech has rich declension/conjugation, so exact token matching misses valid
-    results (e.g., "nadbytečnost" won't match "nadbytečným" in the tsvector).
-
-    Strategy:
-    1. Split query into words, keep only Czech/Latin alphabetic tokens
-    2. For each word ≥ 5 chars, truncate to approximate stem (remove last 3 chars)
-       to capture Czech inflected forms (e.g., "nadbytečn" matches both
-       "nadbytečnost" and "nadbytečným")
-    3. Shorter words get plain prefix matching (word:*)
-    4. Terms joined with OR (|) so partial matches are returned — ts_rank
-       naturally scores multi-term matches higher than single-term ones
-
-    Returns a tsquery string like ``'nadbytečn:* | výpov:*'``.
-    Falls back to the raw query if no valid terms can be extracted.
-    """
-    # Extract Czech/Latin words and numbers (diacritics included)
-    words = re.findall(r"[a-záčďéěíňóřšťúůýžA-ZÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ0-9]+", query)
-    if not words:
-        return query
-
-    terms: list[str] = []
-    for word in words:
-        w = word.lower()
-        if len(w) < 2:
-            continue
-        # Numbers (section references like "52", "588") — exact match, no truncation
-        if w.isdigit():
-            terms.append(w)
-            continue
-        if len(w) < 3:
-            continue
-        if len(w) >= 5:
-            # Truncate to approximate Czech stem: remove last 3 chars
-            # "nadbytečnost" (13) → "nadbytečno" → but we need "nadbytečn" to match "nadbytečným"
-            # Use aggressive truncation: remove ceil(30%) of chars, min stem = 4
-            stem_len = max(4, len(w) - 3)
-            terms.append(f"{w[:stem_len]}:*")
-        else:
-            terms.append(f"{w}:*")
-
-    if not terms:
-        return query
-
-    return " | ".join(terms)
-
-
 def _statute_ref_filter(stmt, statute_ref: tuple[int, int] | None):
     """Apply JSONB statute reference filter to a SQLAlchemy select statement."""
     if statute_ref is None:
@@ -250,10 +201,9 @@ async def search_decisions(
 
     cutoff = _recency_cutoff()
 
-    # Build prefix-matched tsquery for Czech morphology.
-    # Uses OR between terms so partial matches are returned; ts_rank
-    # naturally scores multi-term matches higher.
-    tsq_str = _build_prefix_tsquery(query)
+    # Build morphologically-expanded tsquery for Czech.
+    # Uses simplemma lemmatization + prefix matching so inflected forms are matched.
+    tsq_str = build_czech_tsquery(query)
 
     order_expr = text(
         "ts_rank(search_vector, to_tsquery('simple', :q)) * 0.6 "
@@ -508,6 +458,57 @@ async def get_decisions_count() -> int:
     async with AsyncSessionLocal() as session:
         result = await session.execute(stmt)
         return result.scalar_one()
+
+
+async def backfill_regulations_from_thesis(batch_size: int = 500) -> int:
+    """Backfill empty regulations from legal_thesis text for decisions that have both.
+
+    Targets decisions where:
+    - ``regulations = []`` (enrichment ran but old parser missed the statute)
+    - ``legal_thesis IS NOT NULL AND legal_thesis != ''``
+
+    Runs ``extract_regulations`` from the scraper module on each thesis and
+    updates the DB.  This is a fast, network-free backfill path for decisions
+    where the legal_thesis text contains inline statute references.
+
+    Parameters
+    ----------
+    batch_size : int
+        Maximum rows to update per call.
+
+    Returns
+    -------
+    int
+        Number of rows updated with at least one regulation.
+    """
+    from scripts.scrape_supreme_court import extract_regulations
+
+    stmt = (
+        select(CourtDecision)
+        .where(
+            CourtDecision.regulations == [],  # type: ignore[arg-type]
+            CourtDecision.legal_thesis.is_not(None),
+            CourtDecision.legal_thesis != "",
+        )
+        .limit(batch_size)
+    )
+    async with AsyncSessionLocal() as session:
+        rows = list((await session.execute(stmt)).scalars().all())
+
+    updated = 0
+    for decision in rows:
+        regs = extract_regulations(decision.legal_thesis or "")
+        if not regs:
+            continue
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(CourtDecision).where(CourtDecision.ecli == decision.ecli))
+            record = result.scalar_one_or_none()
+            if record is not None:
+                record.regulations = regs
+                record.updated_at = _utcnow()
+                await session.commit()
+                updated += 1
+    return updated
 
 
 async def get_unembedded_decisions(limit: int = 500) -> list[CourtDecision]:

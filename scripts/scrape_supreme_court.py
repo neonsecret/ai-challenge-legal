@@ -250,8 +250,15 @@ def parse_decision_page(html: str) -> dict:
 def _extract_regulations_from_dotcene(text: str) -> list[dict]:
     """Parse 'Dotčené předpisy' raw text into structured regulation objects.
 
-    Input example:
-        "§ 13 tr. zákoníku§ 16 tr. zákoníku§ 22 odst. 1 tr. zákoníku"
+    Handles two formats used by nsoud.cz:
+
+    Official format (modern, most common):
+        "§ 52 předpisu č. 262/2006\xa0Sb."
+        "§ 366 a násl předpisu č. 262/2006\xa0Sb. ve znění do 31.12.2010"
+
+    Abbreviated format (older):
+        "§ 13 tr. zákoníku"
+        "§ 237 o. s. ř."
 
     Output:
         [{"paragraph": "13", "law_number": 40, "law_year": 2009}, ...]
@@ -259,30 +266,39 @@ def _extract_regulations_from_dotcene(text: str) -> list[dict]:
     results = []
     seen: set[tuple] = set()
 
-    # Split on § signs that are not at the start
+    # nsoud.cz separates statute refs with <br> → space/newline after get_text().
+    # Split on § so each item is one statute reference.
     items = re.split(r"(?=§)", text)
     for item in items:
         item = item.strip()
-        if not item:
+        if not item.startswith("§"):
             continue
 
-        # Extract paragraph: §NN or § NN odst. X pism. Y etc.
-        par_match = re.match(
-            r"§\s*(\d[\w\s]*?)(?:\s+(?:odst|písm|al)\b.*?)?(?:\s+(?:tr\.|obč\.|o\.|z\.|zákoník|zákon)|$)", item, re.I
-        )
+        # Extract leading paragraph number (digits + optional trailing letters, e.g. "34a", "243c")
+        par_match = re.match(r"§\s*(\d\w*)", item, re.I)
         if not par_match:
             continue
-        paragraph = par_match.group(1).strip()
+        paragraph = par_match.group(1)
 
-        # Find law abbreviation in item text
-        law_number, law_year = _match_law_abbreviation(item)
-        if not law_number:
+        # Strategy 1: official "č. NNN/YYYY Sb." format used by nsoud.cz.
+        # Handles: regular space, non-breaking space (\xa0), and no space before Sb.
+        num_match = re.search(r"\bč\.?\s*(\d{1,4})/(\d{4})[\xa0\s]*Sb\.?", item, re.I)
+        if num_match:
+            law_number = int(num_match.group(1))
+            law_year = int(num_match.group(2))
+            key = (paragraph, law_number, law_year)
+            if key not in seen:
+                seen.add(key)
+                results.append({"paragraph": paragraph, "law_number": law_number, "law_year": law_year})
             continue
 
-        key = (paragraph, law_number, law_year)
-        if key not in seen:
-            seen.add(key)
-            results.append({"paragraph": paragraph, "law_number": law_number, "law_year": law_year})
+        # Strategy 2: abbreviated law name (e.g. "o. s. ř.", "tr. zákoníku", "zákoníku práce")
+        law_number, law_year = _match_law_abbreviation(item)
+        if law_number:
+            key = (paragraph, law_number, law_year)
+            if key not in seen:
+                seen.add(key)
+                results.append({"paragraph": paragraph, "law_number": law_number, "law_year": law_year})
 
     return results
 
@@ -308,9 +324,14 @@ def extract_regulations(text: str) -> list[dict]:
     results = []
     seen: set[tuple] = set()
 
-    # Pattern 1: "z. č. NNN/YYYY Sb." or "zákona č. NNN/YYYY"
+    # Pattern 1: official statute citation formats
+    # Handles:
+    # - "zákon č. NNN/YYYY Sb." / "zákona č. NNN/YYYY Sb."  (full Czech law name, any case form)
+    # - "z. č. NNN/YYYY Sb."  (abbreviated "zákon")
+    # - "předpisu č. NNN/YYYY Sb."  (genitive of "předpis", used in nsoud.cz Dotčené předpisy)
+    # The word prefix is made optional so bare "č. NNN/YYYY Sb." also matches.
     official_pat = re.compile(
-        r"(?:zákon|z\.)\s*č\.?\s*(\d{1,4})/(\d{4})\s*Sb\.?",
+        r"(?:(?:zákon|předpis)\w*\s+|z\.\s+)?č\.?\s*(\d{1,4})/(\d{4})[\xa0\s]*Sb\.?",
         re.I,
     )
     for m in official_pat.finditer(text):
@@ -686,6 +707,77 @@ async def run_sync(days: int = 7) -> None:
     logger.info("[scraper] sync complete: %d upserted, %d errors", new_count, err_count)
 
 
+async def run_reparse_empty(concurrency: int = 5) -> None:
+    """Re-fetch individual decision pages for all decisions with empty regulations.
+
+    Targets decisions where regulations = [] (enrichment ran but the old parser
+    missed the 'č. NNN/YYYY Sb.' format used by nsoud.cz).  Re-fetches each
+    individual metadata page with the fixed parser and updates the DB.
+
+    Parameters
+    ----------
+    concurrency : int
+        Concurrent page fetches (default: 5).
+    """
+    from sqlalchemy import select
+
+    from neolex.db.court_decisions import CourtDecision, upsert_decision
+    from neolex.db.postgres import AsyncSessionLocal
+
+    # Fetch all decisions with empty regulations and a known source_unid
+    async with AsyncSessionLocal() as session:
+        stmt = select(CourtDecision.ecli, CourtDecision.case_number, CourtDecision.source_unid).where(
+            CourtDecision.regulations == [],  # type: ignore[arg-type]
+            CourtDecision.source_unid.is_not(None),
+        )
+        rows = (await session.execute(stmt)).all()
+
+    total = len(rows)
+    logger.info("[reparse] %d decisions with empty regulations to re-process", total)
+    if not total:
+        return
+
+    updated = 0
+    errors = 0
+
+    async def _reparse_one(
+        ecli: str,
+        case_number: str,
+        unid: str,
+        client: httpx.AsyncClient,
+        sem: asyncio.Semaphore,
+    ) -> None:
+        nonlocal updated, errors
+        async with sem:
+            try:
+                enrichment = await fetch_decision(unid, client)
+                await asyncio.sleep(_REQUEST_DELAY_S)
+            except Exception as exc:
+                logger.warning("[reparse] fetch failed for %s: %s", case_number, exc)
+                errors += 1
+                return
+
+        regs = enrichment.get("regulations")
+        if regs is None:
+            # Individual page parse returned nothing useful
+            return
+
+        try:
+            await upsert_decision({"ecli": ecli, "case_number": case_number, "regulations": regs})
+            if regs:
+                updated += 1
+                logger.debug("[reparse] updated %s → %d regulation(s)", case_number, len(regs))
+        except Exception as exc:
+            logger.warning("[reparse] upsert failed for %s: %s", case_number, exc)
+            errors += 1
+
+    semaphore = asyncio.Semaphore(concurrency)
+    async with httpx.AsyncClient(headers=_HEADERS, timeout=30, follow_redirects=True) as client:
+        await asyncio.gather(*[_reparse_one(ecli, case_number, unid, client, semaphore) for ecli, case_number, unid in rows])
+
+    logger.info("[reparse] done: %d updated with non-empty regulations, %d errors (of %d total)", updated, errors, total)
+
+
 async def run_fetch_text(ecli: str) -> None:
     """Fetch full text for a specific decision by ECLI and cache in DB."""
     from neolex.db.court_decisions import get_decision_by_ecli, upsert_decision
@@ -736,11 +828,12 @@ Examples:
   uv run python scripts/scrape_supreme_court.py --mode sync --days 7
   uv run python scripts/scrape_supreme_court.py --mode fetch-text --ecli ECLI:CZ:NS:2024:4.TDO.621.2024.1
   uv run python scripts/scrape_supreme_court.py --mode bulk --from-year 2025 --no-enrich
+  uv run python scripts/scrape_supreme_court.py --mode reparse-empty --concurrency 5
 """,
     )
     parser.add_argument(
         "--mode",
-        choices=["bulk", "sync", "fetch-text"],
+        choices=["bulk", "sync", "fetch-text", "reparse-empty"],
         required=True,
         help="Operation mode",
     )
@@ -787,6 +880,8 @@ def main() -> None:
         if not args.ecli:
             parser.error("--ecli is required for fetch-text mode")
         asyncio.run(run_fetch_text(args.ecli))
+    elif args.mode == "reparse-empty":
+        asyncio.run(run_reparse_empty(concurrency=args.concurrency))
 
 
 if __name__ == "__main__":
