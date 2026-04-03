@@ -293,6 +293,80 @@ def _extract_caselaw_query(docs: list[SourceDocument]) -> str:
 # Graph builder
 # ---------------------------------------------------------------------------
 
+# Tool names that belong to the case-law budget (not the corpus search cap).
+_CASELAW_TOOLS: frozenset[str] = frozenset({"search_court_decisions", "fetch_court_decision"})
+
+
+def should_continue(state: AgentState) -> str:
+    """Route the graph after a reason-node invocation.
+
+    Returns
+    -------
+    "search"
+        There are pending tool calls and the relevant budget has not been hit.
+    "cap_reached"
+        A tool-call budget (corpus or case-law) has been exhausted.
+    "end"
+        The LLM produced a final answer (no tool calls).
+    """
+    last = state["messages"][-1]
+    if not (hasattr(last, "tool_calls") and last.tool_calls):
+        return "end"
+
+    has_only_caselaw = all(tc["name"] in _CASELAW_TOOLS for tc in last.tool_calls)
+    if has_only_caselaw:
+        # Case-law tools have a separate budget (10 calls max).
+        caselaw_count = sum(
+            1
+            for m in state["messages"]
+            if hasattr(m, "tool_calls")
+            for tc in (m.tool_calls or [])
+            if tc.get("name") in _CASELAW_TOOLS
+        )
+        if caselaw_count >= 10:
+            logger.warning("[agent] hit caselaw cap (10), forcing answer")
+            return "cap_reached"
+        return "search"
+
+    if state["search_count"] >= MAX_SEARCHES_PER_TURN:
+        logger.warning("[agent] hit search cap (%d), forcing answer", MAX_SEARCHES_PER_TURN)
+        return "cap_reached"
+    return "search"
+
+
+def cap_reached_node(state: AgentState) -> dict:
+    """When search cap is hit, respond to pending tool calls telling the LLM to answer.
+
+    Increments search_count to prevent infinite loops: if the LLM ignores
+    the instruction and issues tool calls again, should_continue routes here
+    again but search_count keeps rising. After MAX_SEARCHES_PER_TURN + 3
+    cap_reached iterations, the agent timeout (600s) will terminate it.
+
+    Parameters
+    ----------
+    state : AgentState
+        Current graph state. ``state["messages"][-1]`` must be an AIMessage
+        with at least one tool call.
+
+    Returns
+    -------
+    dict
+        State delta: ``messages`` (ToolMessage replies) and incremented
+        ``search_count``.
+    """
+    last_msg = state["messages"][-1]
+    results = [
+        ToolMessage(
+            content="Search limit reached. You MUST answer now using the documents already retrieved. Do NOT call any more tools.",
+            tool_call_id=tc["id"],
+        )
+        for tc in last_msg.tool_calls
+    ]
+    return {
+        "messages": results,
+        "search_count": state["search_count"] + len(last_msg.tool_calls),
+    }
+
 
 def _build_llm_pair():
     """Build fast (Haiku) and full (Sonnet) LLMs for two-round strategy.
@@ -695,7 +769,6 @@ def build_agent_graph():
 
         # Count actual tool calls dispatched, excluding case law tools (they have a
         # separate DB and should not compete with statute search budget).
-        _CASELAW_TOOLS = {"search_court_decisions", "fetch_court_decision"}
         tool_call_count = sum(1 for tc in last_msg.tool_calls if tc["name"] not in _CASELAW_TOOLS)
 
         return {
@@ -703,54 +776,6 @@ def build_agent_graph():
             "accumulated_docs": updated_docs,
             "web_sources": updated_web_sources,
             "search_count": state["search_count"] + tool_call_count,
-        }
-
-    _CASELAW_TOOLS_SET = {"search_court_decisions", "fetch_court_decision"}
-
-    def should_continue(state: AgentState) -> str:
-        last = state["messages"][-1]
-        if hasattr(last, "tool_calls") and last.tool_calls:
-            # Case law tools have their own budget (10 calls max) — they search a
-            # different database and don't count against the corpus search cap.
-            has_only_caselaw = all(tc["name"] in _CASELAW_TOOLS_SET for tc in last.tool_calls)
-            if has_only_caselaw:
-                caselaw_count = sum(
-                    1
-                    for m in state["messages"]
-                    if hasattr(m, "tool_calls")
-                    for tc in (m.tool_calls or [])
-                    if tc.get("name") in _CASELAW_TOOLS_SET
-                )
-                if caselaw_count >= 10:
-                    logger.warning("[agent] hit caselaw cap (10), forcing answer")
-                    return "cap_reached"
-                return "search"
-            if state["search_count"] >= MAX_SEARCHES_PER_TURN:
-                logger.warning("[agent] hit search cap (%d), forcing answer", MAX_SEARCHES_PER_TURN)
-                return "cap_reached"
-            return "search"
-        return "end"
-
-    def cap_reached_node(state: AgentState) -> dict:
-        """When search cap is hit, respond to pending tool calls telling the LLM to answer.
-
-        Increments search_count to prevent infinite loops: if the LLM ignores
-        the instruction and issues tool calls again, should_continue routes here
-        again but search_count keeps rising. After MAX_SEARCHES_PER_TURN + 3
-        cap_reached iterations, the agent timeout (600s) will terminate it.
-        """
-        last_msg = state["messages"][-1]
-        results = []
-        for tc in last_msg.tool_calls:
-            results.append(
-                ToolMessage(
-                    content="Search limit reached. You MUST answer now using the documents already retrieved. Do NOT call any more tools.",
-                    tool_call_id=tc["id"],
-                ),
-            )
-        return {
-            "messages": results,
-            "search_count": state["search_count"] + len(last_msg.tool_calls),
         }
 
     graph.add_node("reason", reason_node)
