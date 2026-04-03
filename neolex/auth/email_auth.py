@@ -5,7 +5,6 @@ import logging
 import secrets
 import shutil
 import time
-from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -43,9 +42,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # In-memory fallback for rate limiting when the audit DB is unavailable.
 # Keyed by "auth_{action}:{ip}", values are lists of time.monotonic() timestamps.
-_fallback_rates: dict[str, list[float]] = defaultdict(list)
+_fallback_rates: dict[str, list[float]] = {}
 _FALLBACK_WINDOW = 300  # 5 minutes
 _FALLBACK_MAX = 10
+_last_fallback_cleanup: float = 0.0
 
 
 async def _auth_rate_check(request: Request, action: str) -> None:
@@ -68,13 +68,15 @@ async def _auth_rate_check(request: Request, action: str) -> None:
         raise
     except Exception:
         # Fallback: in-memory rate limiting when audit DB is unavailable
+        global _last_fallback_cleanup
         now = time.monotonic()
-        # Evict stale buckets periodically to prevent unbounded growth
-        if len(_fallback_rates) > 5_000:
+        # Evict stale buckets every FALLBACK_WINDOW seconds to prevent unbounded growth
+        if now - _last_fallback_cleanup >= _FALLBACK_WINDOW:
             stale = [k for k, v in _fallback_rates.items() if not v or all(now - t >= _FALLBACK_WINDOW for t in v)]
             for k in stale:
                 del _fallback_rates[k]
-        attempts = _fallback_rates[bucket]
+            _last_fallback_cleanup = now
+        attempts = _fallback_rates.setdefault(bucket, [])
         attempts[:] = [t for t in attempts if now - t < _FALLBACK_WINDOW]
         if len(attempts) >= _FALLBACK_MAX:
             raise HTTPException(status_code=429, detail="Too many attempts. Try again later.") from None

@@ -13,6 +13,7 @@ lives in ``arlc.retriever`` — this module just adapts it for the agent:
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable
 
 from arlc.agent.config import SEARCH_ANSWER_TYPE, SEARCH_MAX_PER_DOC, SEARCH_TOP_K, WEB_SEARCH_MAX_RESULTS
@@ -146,7 +147,7 @@ def format_search_results(docs: list[SourceDocument], offset: int = 0) -> str:
         return "No new documents found for this query."
 
     def _esc(s: str) -> str:
-        return s.replace("</document_content>", "&lt;/document_content&gt;")
+        return re.sub(r"</document_content>", "&lt;/document_content&gt;", s, flags=re.IGNORECASE)
 
     parts = []
     for i, doc in enumerate(docs):
@@ -191,7 +192,7 @@ def format_search_results(docs: list[SourceDocument], offset: int = 0) -> str:
             parts.append(f"{header}\n<document_content>\n{content}\n</document_content>")
         else:
             header = f"[DOC-{idx}] {doc['doc_id']} (page {doc['page']})"
-            parts.append(f"{header}\n{doc['text']}")
+            parts.append(f"{header}\n<document_content>\n{_esc(doc['text'])}\n</document_content>")
     return "\n---\n".join(parts)
 
 
@@ -273,7 +274,7 @@ def format_web_results(results: list[dict]) -> str:
         return "No web results found."
 
     def _esc(s: str) -> str:
-        return s.replace("</web_content>", "&lt;/web_content&gt;")
+        return re.sub(r"</web_content>", "&lt;/web_content&gt;", s, flags=re.IGNORECASE)
 
     parts = []
     for r in results:

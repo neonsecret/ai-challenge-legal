@@ -245,7 +245,9 @@ async def execute_caselaw_fetch(ecli: str) -> SourceDocument | None:
 
     from neolex.db.court_decisions import get_decision_by_ecli, upsert_decision
 
-    if not ecli or not re.match(r"^(ECLI:CZ:NS:|NSOUD:)[A-Za-z0-9.:_-]+$", ecli):
+    # Accept all Czech court ECLIs: NS (Supreme), US (Constitutional), NSS (Admin Supreme),
+    # plus synthetic NSOUD: and US: prefixes used when ECLI is not yet resolved.
+    if not ecli or not re.match(r"^(ECLI:CZ:(NS|US|NSS):|NSOUD:|US:)[A-Za-z0-9.:_-]+$", ecli):
         logger.warning("[caselaw] invalid ECLI format: %s", ecli)
         return None
 
@@ -375,11 +377,22 @@ def format_caselaw_full(doc: SourceDocument, doc_index: int) -> str:
 
     # Escape closing tags to prevent prompt injection via tag boundary escape
     def _esc(s: str) -> str:
-        return s.replace("</document_content>", "&lt;/document_content&gt;")
+        return re.sub(r"</document_content>", "&lt;/document_content&gt;", s, flags=re.IGNORECASE)
+
+    # Court-aware type label and citation guidance
+    _COURT_LABELS = {
+        "Ustavni soud": ("ROZHODNUTÍ ÚSTAVNÍHO SOUDU ČR", "závazný nález ÚS"),
+        "Nejvyssi soud": ("ROZHODNUTÍ NEJVYŠŠÍHO SOUDU ČR", "závazný právní závěr NS ČR"),
+        "Nejvyšší správní soud": ("ROZHODNUTÍ NEJVYŠŠÍHO SPRÁVNÍHO SOUDU ČR", "závazný právní závěr NSS"),
+    }
+    court_label, cite_label = _COURT_LABELS.get(
+        court,
+        ("ROZHODNUTÍ SOUDU", "právní závěr soudu"),
+    )
 
     # Build structured content: type label → legal thesis → full reasoning
     content_parts: list[str] = []
-    content_parts.append(f"TYP: ROZHODNUTÍ NEJVYŠŠÍHO SOUDU ČR — {case_num}")
+    content_parts.append(f"TYP: {court_label} — {case_num}")
     if ecli and ecli.startswith("ECLI:"):
         content_parts.append(f"ECLI: {ecli}")
 
@@ -396,12 +409,12 @@ def format_caselaw_full(doc: SourceDocument, doc_index: int) -> str:
         anotace = raw_text
 
     if thesis:
-        content_parts.append(f"\nPRÁVNÍ VĚTA (závazný právní závěr NS ČR — citujte z této části):\n{_esc(thesis)}")
+        content_parts.append(f"\nPRÁVNÍ VĚTA ({cite_label} — citujte z této části):\n{_esc(thesis)}")
 
     if anotace:
         content_parts.append(
             f"\nANOTACE (shrnutí případu — může obsahovat názory nižších soudů, "
-            f"které NS zrušil; NECITUJTE § z této části jako závěr NS):\n{_esc(anotace)}"
+            f"které soud zrušil; NECITUJTE § z této části jako závěr soudu):\n{_esc(anotace)}"
         )
     elif raw_text and not thesis:
         content_parts.append(f"\nTEXT ROZHODNUTÍ:\n{_esc(raw_text)}")

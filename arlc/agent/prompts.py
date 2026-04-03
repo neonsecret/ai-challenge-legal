@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 
 from arlc.agent.state import AgentState, SourceDocument
 
@@ -333,7 +334,7 @@ def _format_document_context(docs: list[SourceDocument]) -> str:
     )
 
     def _esc(s: str) -> str:
-        return s.replace("</document_content>", "&lt;/document_content&gt;")
+        return re.sub(r"</document_content>", "&lt;/document_content&gt;", s, flags=re.IGNORECASE)
 
     parts: list[str] = [preamble]
     for i, doc in enumerate(docs, start=1):
