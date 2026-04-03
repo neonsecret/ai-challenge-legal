@@ -17,6 +17,8 @@ from sqlalchemy import create_engine
 from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Session as SASession
 
+from arlc.czech_morphology import build_czech_tsquery
+
 # SentenceTransformer is used by the snowflake embedding backend.
 # CrossEncoder is used only when RERANKER_MODEL is not a Qwen model (non-default).
 # Both are imported lazily inside their respective factory functions so that the
@@ -444,71 +446,98 @@ def search_chunks_vector(
     return {"ids": [ids], "documents": [documents], "metadatas": [metadatas], "distances": [distances]}
 
 
+# Corpora that require morphological query expansion for BM25 (highly inflected languages).
+_MORPHOLOGICAL_CORPORA: frozenset[str] = frozenset({"czech"})
+
+
+def _tsquery(query: str, corpus: str, **extra) -> tuple[str, dict]:
+    """Return ``(sql_fn_fragment, bound_params)`` for a tsvector BM25 query.
+
+    For Czech corpora, attempts morphological prefix expansion via
+    ``build_czech_tsquery``.  If no valid terms survive (empty query,
+    punctuation-only input, or all tokens filtered), falls back to
+    ``plainto_tsquery`` so callers never pass an invalid string to
+    ``to_tsquery`` — which raises a PostgreSQL syntax error on empty input.
+
+    For all other corpora, ``plainto_tsquery`` is always used (natural-language
+    tokenisation, safe for arbitrary input).
+    """
+    if corpus in _MORPHOLOGICAL_CORPORA:
+        tsq = build_czech_tsquery(query)
+        if tsq is not None:
+            return "to_tsquery('simple', :tsq)", {"tsq": tsq, **extra}
+    return "plainto_tsquery('simple', :query)", {"query": query, **extra}
+
+
 def search_chunks_text(query: str, top_k: int = 200, corpus: str = "difc") -> list[str]:
     """Search chunks via tsvector full-text search, returning ranked chunk_ids."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            sa_text(f"""
+            SELECT chunk_id, ts_rank(text_search, {tsfn}) AS rank
             FROM chunks
-            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            WHERE corpus = :corpus AND text_search @@ {tsfn}
             ORDER BY rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [row.chunk_id for row in rows]
 
 
 def search_chunks_text_page1(query: str, top_k: int = 200, corpus: str = "difc") -> list[str]:
     """Text search over page-1 chunks only (document identification signal)."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            sa_text(f"""
+            SELECT chunk_id, ts_rank(text_search, {tsfn}) AS rank
             FROM chunks
-            WHERE corpus = :corpus AND page = 1 AND text_search @@ plainto_tsquery('simple', :query)
+            WHERE corpus = :corpus AND page = 1 AND text_search @@ {tsfn}
             ORDER BY rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [row.chunk_id for row in rows]
 
 
 def search_docs_text(query: str, top_k: int = 200, corpus: str = "difc") -> list[str]:
     """Text search aggregated to document level (sum of chunk ranks per doc)."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT pdf_id, SUM(ts_rank(text_search, plainto_tsquery('simple', :query))) AS total_rank
+            sa_text(f"""
+            SELECT pdf_id, SUM(ts_rank(text_search, {tsfn})) AS total_rank
             FROM chunks
-            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            WHERE corpus = :corpus AND text_search @@ {tsfn}
             GROUP BY pdf_id
             ORDER BY total_rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [row.pdf_id for row in rows]
 
 
 def _search_chunks_text_scored(query: str, top_k: int = 200, corpus: str = "difc") -> list[tuple[str, str, float]]:
     """Text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT chunk_id, pdf_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            sa_text(f"""
+            SELECT chunk_id, pdf_id, ts_rank(text_search, {tsfn}) AS rank
             FROM chunks
-            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            WHERE corpus = :corpus AND text_search @@ {tsfn}
             ORDER BY rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [(row.chunk_id, row.pdf_id, float(row.rank)) for row in rows]
 
@@ -519,53 +548,56 @@ def _search_chunks_text_page1_scored(
     corpus: str = "difc",
 ) -> list[tuple[str, str, float]]:
     """Page-1 text search returning (chunk_id, pdf_id, rank_score) tuples for fusion scoring."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT chunk_id, pdf_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            sa_text(f"""
+            SELECT chunk_id, pdf_id, ts_rank(text_search, {tsfn}) AS rank
             FROM chunks
-            WHERE corpus = :corpus AND page = 1 AND text_search @@ plainto_tsquery('simple', :query)
+            WHERE corpus = :corpus AND page = 1 AND text_search @@ {tsfn}
             ORDER BY rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [(row.chunk_id, row.pdf_id, float(row.rank)) for row in rows]
 
 
 def _search_docs_text_scored(query: str, top_k: int = 200, corpus: str = "difc") -> list[tuple[str, float]]:
     """Doc-level text search returning (pdf_id, total_rank) tuples for fusion scoring."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT pdf_id, SUM(ts_rank(text_search, plainto_tsquery('simple', :query))) AS total_rank
+            sa_text(f"""
+            SELECT pdf_id, SUM(ts_rank(text_search, {tsfn})) AS total_rank
             FROM chunks
-            WHERE corpus = :corpus AND text_search @@ plainto_tsquery('simple', :query)
+            WHERE corpus = :corpus AND text_search @@ {tsfn}
             GROUP BY pdf_id
             ORDER BY total_rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [(row.pdf_id, float(row.total_rank)) for row in rows]
 
 
 def _search_chunks_text_for_doc(query: str, pdf_id: str, corpus: str = "difc", top_k: int = 50) -> list[str]:
     """Text search within a specific document, returning chunk_ids."""
+    tsfn, tsparams = _tsquery(query, corpus, corpus=corpus, pdf_id=pdf_id, top_k=top_k)
     engine = _get_sync_engine()
     with SASession(engine) as session:
         rows = session.execute(
-            sa_text("""
-            SELECT chunk_id, ts_rank(text_search, plainto_tsquery('simple', :query)) AS rank
+            sa_text(f"""
+            SELECT chunk_id, ts_rank(text_search, {tsfn}) AS rank
             FROM chunks
             WHERE corpus = :corpus AND pdf_id = :pdf_id
-              AND text_search @@ plainto_tsquery('simple', :query)
+              AND text_search @@ {tsfn}
             ORDER BY rank DESC
             LIMIT :top_k
         """),
-            {"query": query, "corpus": corpus, "pdf_id": pdf_id, "top_k": top_k},
+            tsparams,
         ).fetchall()
     return [row.chunk_id for row in rows]
 
@@ -2158,13 +2190,24 @@ def _retrieve_pages_simple(
     cached_query_emb=None,
     doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
-    """Simplified retrieval for non-DIFC corpora: vector search + cross-encoder reranking.
+    """Simplified retrieval for non-DIFC corpora: hybrid search + cross-encoder reranking.
+
+    For morphologically rich corpora (Czech), BM25 is fused with vector search
+    via RRF before cross-encoder reranking.  BM25 uses prefix-based morphological
+    query expansion (``build_czech_tsquery``) to capture inflected forms.  For
+    other non-DIFC corpora, only vector search is performed.
 
     answer_type: used for per-type vector candidate pool depth (T-03) and per-type
                  reranker instructions (T-04). Falls back to defaults for unknown types.
-    No text search fusion, no routing metadata, no DIFC-specific heuristics.
+    No routing metadata, no DIFC-specific heuristics.
     """
-    logger.debug("[retriever] simple retrieval for corpus=%r answer_type=%r", corpus, answer_type)
+    use_bm25_fusion = corpus in _MORPHOLOGICAL_CORPORA
+    logger.debug(
+        "[retriever] simple retrieval for corpus=%r answer_type=%r bm25_fusion=%s",
+        corpus,
+        answer_type,
+        use_bm25_fusion,
+    )
     if on_status:
         on_status("retrieving:searching corpus")
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
@@ -2184,26 +2227,80 @@ def _retrieve_pages_simple(
     top_k = min(_SIMPLE_TOP_K_BY_TYPE.get(answer_type, 100), get_chunk_count(corpus=corpus))
     if on_status:
         on_status("retrieving:searching corpus")
-    vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
 
-    # Convert to chunk dicts for reranking
-    chunks = []
-    for i in range(len(vector_results["ids"][0])):
-        chunks.append(
-            {
-                "chunk_id": vector_results["ids"][0][i],
+    if use_bm25_fusion:
+        # Czech: run vector + BM25 concurrently, fuse with RRF for better recall
+        # on exact legal term matches (statute §, specific legal terms).
+        def _vec():
+            return search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
+
+        def _bm25():
+            return search_chunks_text(question, top_k=top_k, corpus=corpus)
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            vec_fut = executor.submit(_vec)
+            bm25_fut = executor.submit(_bm25)
+            vector_results = vec_fut.result()
+            bm25_chunk_ids = bm25_fut.result()
+
+        # Build chunk lookup from vector results (already has text + metadata)
+        chunk_by_id: dict[str, dict] = {}
+        for i in range(len(vector_results["ids"][0])):
+            cid = vector_results["ids"][0][i]
+            chunk_by_id[cid] = {
+                "chunk_id": cid,
                 "text": vector_results["documents"][0][i],
                 "metadata": vector_results["metadatas"][0][i],
                 "distance": vector_results["distances"][0][i],
-            },
-        )
+            }
+
+        # RRF fusion: combine BM25 and vector rankings
+        # RRF constant k=60 (Cormack et al. 2009)
+        _rrf_k = 60
+        rrf_scores: dict[str, float] = {}
+
+        # Vector signal (weight 0.7 — embedding model handles Czech semantics well)
+        for rank, cid in enumerate(vector_results["ids"][0]):
+            rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + rank + 1)
+
+        # BM25 signal (weight 0.3 — keyword match for exact legal terms / §-numbers)
+        for rank, cid in enumerate(bm25_chunk_ids):
+            rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.3 / (_rrf_k + rank + 1)
+
+        # Fetch text/metadata for BM25-only hits not in vector results
+        bm25_only_ids = [cid for cid in bm25_chunk_ids if cid not in chunk_by_id]
+        if bm25_only_ids:
+            extra = get_chunks_by_ids(bm25_only_ids, corpus=corpus)
+            for cid, text, meta in zip(
+                extra.get("ids", [[]])[0],
+                extra.get("documents", [[]])[0],
+                extra.get("metadatas", [[]])[0],
+            ):
+                if cid not in chunk_by_id:
+                    chunk_by_id[cid] = {"chunk_id": cid, "text": text, "metadata": meta, "distance": 1.0}
+
+        # Sort all candidates by RRF score descending
+        fused_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
+        chunks = [chunk_by_id[cid] for cid in fused_ids if cid in chunk_by_id]
+    else:
+        vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
+        chunks = []
+        for i in range(len(vector_results["ids"][0])):
+            chunks.append(
+                {
+                    "chunk_id": vector_results["ids"][0][i],
+                    "text": vector_results["documents"][0][i],
+                    "metadata": vector_results["metadatas"][0][i],
+                    "distance": vector_results["distances"][0][i],
+                }
+            )
 
     # Filter by law prefixes if specified (Czech corpus law selector)
     if laws:
         law_prefixes = set(laws)
         chunks = [c for c in chunks if any(c["metadata"].get("doc_id", "").startswith(p) for p in law_prefixes)]
 
-    # Preserve top vector result before reranking — embedding models handle
+    # Preserve top vector/fused result before reranking — embedding models handle
     # cross-language queries better than the reranker for non-DIFC corpora.
     vector_top = chunks[0] if chunks else None
 
