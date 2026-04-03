@@ -2,24 +2,14 @@
 
 import {ArrowRight, ShieldCheck, Globe, Lock} from "lucide-react";
 import {motion} from "motion/react";
+import {useI18n} from "@/lib/i18n";
 
-const trustItems = [
-    {
-        icon: Globe,
-        label: "5 Jurisdictions",
-        sub: "DIFC · EU · UK · US · AU",
-    },
-    {
-        icon: ShieldCheck,
-        label: "SOC 2 Ready",
-        sub: "Enterprise security posture",
-    },
-    {
-        icon: Lock,
-        label: "Zero Model Training",
-        sub: "Your documents stay private",
-    },
-];
+const TRUST_ICONS = [Globe, ShieldCheck, Lock] as const;
+const TRUST_KEYS = [
+    {label: "landing.trust_jurisdictions", sub: "landing.trust_jurisdictions_sub"},
+    {label: "landing.trust_soc2", sub: "landing.trust_soc2_sub"},
+    {label: "landing.trust_privacy", sub: "landing.trust_privacy_sub"},
+] as const;
 
 interface TrustSectionProps {
     demoMode?: boolean;
@@ -30,6 +20,7 @@ export function TrustSection({
                                  demoMode: _demoMode = false,
                                  initialApiKey: _initialApiKey = "",
                              }: TrustSectionProps) {
+    const {t} = useI18n();
     return (
         <section
             id="access"
@@ -74,7 +65,7 @@ export function TrustSection({
                     className="text-center text-[11px] uppercase tracking-[0.2em] font-semibold mb-3"
                     style={{color: "rgba(201,168,76,0.7)"}}
                 >
-                    14-Day Free Trial
+                    {t("landing.cta_label")}
                 </motion.p>
 
                 <motion.h2
@@ -89,7 +80,7 @@ export function TrustSection({
                         lineHeight: 1.15,
                     }}
                 >
-                    Start researching today
+                    {t("landing.cta_heading")}
                 </motion.h2>
 
                 {/* Trust badges */}
@@ -100,9 +91,11 @@ export function TrustSection({
                     transition={{duration: 0.5, delay: 0.1}}
                     className="flex flex-wrap justify-center gap-3 mb-12"
                 >
-                    {trustItems.map((item, i) => (
+                    {TRUST_KEYS.map((keys, i) => {
+                        const Icon = TRUST_ICONS[i];
+                        return (
                         <motion.div
-                            key={item.label}
+                            key={keys.label}
                             initial={{opacity: 0, y: 8}}
                             whileInView={{opacity: 1, y: 0}}
                             viewport={{once: true}}
@@ -123,24 +116,25 @@ export function TrustSection({
                                     border: "1px solid rgba(201,168,76,0.2)",
                                 }}
                             >
-                                <item.icon className="size-3" style={{color: "#C9A84C"}}/>
+                                <Icon className="size-3" style={{color: "#C9A84C"}}/>
                             </div>
                             <div>
                                 <p
                                     className="text-[12px] font-semibold leading-none mb-0.5"
                                     style={{color: "rgba(255,255,255,0.88)"}}
                                 >
-                                    {item.label}
+                                    {t(keys.label)}
                                 </p>
                                 <p
                                     className="text-[10px] leading-none"
                                     style={{color: "rgba(255,255,255,0.38)"}}
                                 >
-                                    {item.sub}
+                                    {t(keys.sub)}
                                 </p>
                             </div>
                         </motion.div>
-                    ))}
+                        );
+                    })}
                 </motion.div>
 
                 {/* CTA card */}
@@ -163,13 +157,13 @@ export function TrustSection({
                         className="font-heading text-xl font-bold mb-2"
                         style={{color: "rgba(255,255,255,0.95)"}}
                     >
-                        No credit card required
+                        {t("landing.cta_no_cc")}
                     </h3>
                     <p
                         className="text-sm mb-8"
                         style={{color: "rgba(255,255,255,0.38)"}}
                     >
-                        Sign up with Google or email · Free plan available · No payment required
+                        {t("landing.cta_signup_info")}
                     </p>
 
                     <div className="flex flex-col gap-3 max-w-xs mx-auto">
@@ -185,7 +179,7 @@ export function TrustSection({
                                 textDecoration: "none",
                             }}
                         >
-                            Get Started Free
+                            {t("landing.cta_get_started")}
                             <ArrowRight className="size-4"/>
                         </a>
                         <a
@@ -198,7 +192,7 @@ export function TrustSection({
                                 textDecoration: "none",
                             }}
                         >
-                            Already have an account? Sign in
+                            {t("landing.cta_sign_in")}
                         </a>
                     </div>
                 </motion.div>

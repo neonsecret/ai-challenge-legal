@@ -11,7 +11,7 @@ import {HowItWorks} from "@/components/landing/how-it-works";
 import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
-import {useGeoCountry} from "@/hooks/use-geo-country";
+import {useI18n} from "@/lib/i18n";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -22,53 +22,16 @@ const warmGlass = {
     boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
 } as const;
 
-const lightPillars = [
-    {
-        stat: "100%",
-        statLabel: "verified accuracy",
-        title: "Reliable Legal Research",
-        body: "Every answer is grounded in actual legislation. Independently tested across multiple jurisdictions and legal domains.",
-        icon: ShieldCheck
-    },
-    {
-        stat: "100%",
-        statLabel: "citation accuracy",
-        title: "Every Claim Cited",
-        body: "Every legal statement references the exact article, section, and source document. Nothing is fabricated.",
-        icon: FileSearch
-    },
-    {
-        stat: "+36%",
-        statLabel: "above published SOTA",
-        title: "Benchmark Proven",
-        body: "Independently verified on GaRAGe (ACL 2025). Our retrieval accuracy exceeds every published system by 36%.",
-        icon: ShieldCheck
-    },
-];
+const LIGHT_PILLAR_ICONS = [ShieldCheck, FileSearch, ShieldCheck] as const;
 
-const lightSteps = [
-    {
-        number: "01",
-        title: "Ask in plain language",
-        body: "Type your question the way you'd ask a colleague. No query syntax, no boolean operators."
-    },
-    {
-        number: "02",
-        title: "AI reads the full document",
-        body: "The system locates the right pages, ranks by relevance, and extracts the exact answer."
-    },
-    {
-        number: "03",
-        title: "Every answer cites sources",
-        body: "Answers include exact page numbers and clause references so you can verify instantly."
-    },
-];
+const LIGHT_STEP_NUMBERS = ["01", "02", "03"] as const;
 
-const lightTrustItems = [
-    {icon: Globe, label: "4 Jurisdictions", sub: "DIFC · Czech · UK · AU"},
-    {icon: ShieldCheck, label: "SOC 2 Ready", sub: "Enterprise security posture"},
-    {icon: Lock, label: "Zero Model Training", sub: "Your documents stay private"},
-];
+const LIGHT_TRUST_ICONS = [Globe, ShieldCheck, Lock] as const;
+const LIGHT_TRUST_KEYS = [
+    {label: "landing.trust_jurisdictions", sub: "landing.trust_jurisdictions_sub"},
+    {label: "landing.trust_soc2", sub: "landing.trust_soc2_sub"},
+    {label: "landing.trust_privacy", sub: "landing.trust_privacy_sub"},
+] as const;
 
 type BenchmarkData = {
     name: string;
@@ -113,8 +76,8 @@ export default function LandingPage() {
     const [loading, setLoading] = useState(true);
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const geoCountry = useGeoCountry();
-    const isCzech = geoCountry === "CZ";
+    const { locale, t } = useI18n();
+    const isCzech = locale === "cs";
     const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
     useEffect(() => {
@@ -134,8 +97,14 @@ export default function LandingPage() {
             .catch(() => setLoading(false));
     }, []);
 
+    const lightSteps = LIGHT_STEP_NUMBERS.map((num, i) => ({
+        number: num,
+        title: t(`landing.step${i + 1}_title`),
+        body: t(`landing.step${i + 1}_body`),
+    }));
+
     useEffect(() => {
-        const id = setInterval(() => setActiveStep(p => (p + 1) % lightSteps.length), 5000);
+        const id = setInterval(() => setActiveStep(p => (p + 1) % LIGHT_STEP_NUMBERS.length), 5000);
         return () => clearInterval(id);
     }, []);
 
@@ -209,12 +178,12 @@ export default function LandingPage() {
                                            border: "1px solid rgba(201,168,76,0.3)",
                                            color: "#C9A84C"
                                        }}>
-                                        Go to Chat <ArrowRight size={13}/>
+                                        {t("landing.go_to_chat")} <ArrowRight size={13}/>
                                     </a>
                                 ) : (
                                     <>
                                         <a href="/login" className="text-sm font-medium transition-colors"
-                                           style={{color: "rgba(255,255,255,0.55)"}}>Sign in</a>
+                                           style={{color: "rgba(255,255,255,0.55)"}}>{t("landing.sign_in")}</a>
                                         <a href="/login"
                                            className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all"
                                            style={{
@@ -222,7 +191,7 @@ export default function LandingPage() {
                                                border: "1px solid rgba(201,168,76,0.3)",
                                                color: "#C9A84C"
                                            }}>
-                                            Get Started
+                                            {t("landing.get_started")}
                                         </a>
                                     </>
                                 )}
@@ -234,7 +203,7 @@ export default function LandingPage() {
                         <motion.p initial={{opacity: 0, y: 6}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.1}}
                                   className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
-                                  style={{color: "rgba(201,168,76,0.75)"}}>{isCzech ? "AI pr\u00e1vn\u00ed v\u00fdzkum" : "AI Legal Counsel"}
+                                  style={{color: "rgba(201,168,76,0.75)"}}>{t("landing.tag")}
                         </motion.p>
                         <motion.h1 initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
                                    transition={{duration: 0.6, delay: 0.18}}
@@ -244,27 +213,20 @@ export default function LandingPage() {
                             lineHeight: 1.1,
                             color: "rgba(255,255,255,0.95)"
                         }}>
-                            {isCzech ? (<>Pr\u00e1vn\u00ed v\u00fdzkum s{" "}<span style={{
+                            {t("landing.hero_title_prefix")}{" "}<span style={{
                                 background: "linear-gradient(90deg, #C9A84C 0%, #e8cc7a 50%, #C9A84C 100%)",
                                 backgroundSize: "200% auto",
                                 WebkitBackgroundClip: "text",
                                 backgroundClip: "text",
                                 WebkitTextFillColor: "transparent",
                                 animation: "shimmer 3s linear infinite"
-                            }}>um\u011blou inteligenc\u00ed</span></>) : (<>Legal Research at the{" "}<span style={{
-                                background: "linear-gradient(90deg, #C9A84C 0%, #e8cc7a 50%, #C9A84C 100%)",
-                                backgroundSize: "200% auto",
-                                WebkitBackgroundClip: "text",
-                                backgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                animation: "shimmer 3s linear infinite"
-                            }}>Speed of Thought</span></>)}
+                            }}>{t("landing.hero_title_highlight")}</span>
                         </motion.h1>
                         <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.28}}
                                   className="text-base text-center mb-10 max-w-xl"
-                                  style={{color: "rgba(255,255,255,0.48)", lineHeight: 1.6}}>
-                            {isCzech ? (<>Z\u00e1kony a judikatura Nejvy\u0161\u0161\u00edho soudu<br className="hidden sm:block"/>&mdash; v\u0161e na jednom m\u00edst\u011b</>) : (<>Precise, source-grounded answers from your legal documents.<br className="hidden sm:block"/>Every answer cites the exact page and clause.</>)}
+                                  style={{color: "rgba(255,255,255,0.48)", lineHeight: 1.6, whiteSpace: "pre-line"}}>
+                            {t("landing.hero_subtitle")}
                         </motion.p>
                         <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}}
                                     transition={{duration: 0.7, delay: 0.38}} className="w-full max-w-5xl">
@@ -277,7 +239,7 @@ export default function LandingPage() {
                         <a href="#why"
                            className="flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-widest"
                            style={{color: "rgba(255,255,255,0.25)"}}>
-                            scroll to explore
+                            {t("landing.scroll_to_explore")}
                             <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="animate-float-down">
                                 <path d="M5 1v12M1 9l4 4 4-4" stroke="currentColor" strokeWidth="1.2"
                                       strokeLinecap="round" strokeLinejoin="round"/>
@@ -337,7 +299,7 @@ export default function LandingPage() {
                                   viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5}}
                                   className="text-center text-[11px] uppercase tracking-[0.16em] font-semibold mb-2.5"
                                   style={{color: "rgba(201,168,76,0.60)"}}>
-                            Independently Verified
+                            {t("landing.bench_label")}
                         </motion.p>
                         <motion.h2 initial={{opacity: 0, y: 12}} whileInView={{opacity: 1, y: 0}}
                                    viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.08}}
@@ -347,13 +309,13 @@ export default function LandingPage() {
                                        letterSpacing: "-0.03em",
                                        color: "rgba(255,255,255,0.90)"
                                    }}>
-                            Benchmark Performance
+                            {t("landing.bench_heading")}
                         </motion.h2>
                         <motion.p initial={{opacity: 0}} whileInView={{opacity: 1}}
                                   viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.14}}
                                   className="text-center text-sm mb-10"
                                   style={{color: "rgba(255,255,255,0.38)"}}>
-                            Results on public, independent legal AI benchmarks
+                            {t("landing.bench_subtitle")}
                         </motion.p>
                         <div style={{
                             display: "grid",
@@ -389,9 +351,9 @@ export default function LandingPage() {
                         <p className="text-[11px]" style={{color: "rgba(255,255,255,0.28)"}}>
                             {new Date().getFullYear()} Vitreon Legal
                             <span className="mx-2" style={{color: "rgba(255,255,255,0.15)"}}>·</span>
-                            <a href="/privacy" className="hover:text-white/50 transition-colors">Privacy</a>
+                            <a href="/privacy" className="hover:text-white/50 transition-colors">{t("landing.privacy")}</a>
                             <span className="mx-2" style={{color: "rgba(255,255,255,0.15)"}}>·</span>
-                            <a href="/terms" className="hover:text-white/50 transition-colors">Terms</a>
+                            <a href="/terms" className="hover:text-white/50 transition-colors">{t("landing.terms")}</a>
                         </p>
                     </div>
                 </footer>
@@ -526,7 +488,7 @@ export default function LandingPage() {
                                     textDecoration: "none",
                                     boxShadow: "0 2px 10px rgba(92,46,8,0.28)"
                                 }}>
-                                    Go to Chat <ArrowRight size={12} strokeWidth={2.5}/>
+                                    {t("landing.go_to_chat")} <ArrowRight size={12} strokeWidth={2.5}/>
                                 </a>
                             ) : (
                                 <>
@@ -535,7 +497,7 @@ export default function LandingPage() {
                                         fontWeight: 500,
                                         color: "rgba(46,31,8,0.55)",
                                         textDecoration: "none"
-                                    }}>Sign in</a>
+                                    }}>{t("landing.sign_in")}</a>
                                     <a href="/login" style={{
                                         display: "inline-flex",
                                         alignItems: "center",
@@ -549,7 +511,7 @@ export default function LandingPage() {
                                         textDecoration: "none",
                                         boxShadow: "0 2px 10px rgba(92,46,8,0.28)"
                                     }}>
-                                        Get Started <ArrowRight size={12} strokeWidth={2.5}/>
+                                        {t("landing.get_started")} <ArrowRight size={12} strokeWidth={2.5}/>
                                     </a>
                                 </>
                             )}
@@ -576,7 +538,7 @@ export default function LandingPage() {
                         fontWeight: 600,
                         color: "#5c2e08",
                         marginBottom: 20
-                    }}>{isCzech ? "AI pr\u00e1vn\u00ed v\u00fdzkum" : "AI Legal Counsel"}
+                    }}>{t("landing.tag")}
                     </motion.p>
                     <motion.h1 initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
                                transition={{duration: 0.6, delay: 0.18}} style={{
@@ -589,21 +551,14 @@ export default function LandingPage() {
                         marginBottom: 20,
                         maxWidth: 780
                     }}>
-                        {isCzech ? (<>Pr\u00e1vn\u00ed v\u00fdzkum s{" "}<span style={{
+                        {t("landing.hero_title_prefix")}{" "}<span style={{
                             background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
                             backgroundSize: "200% auto",
                             WebkitBackgroundClip: "text",
                             backgroundClip: "text",
                             WebkitTextFillColor: "transparent",
                             animation: "shimmer 3s linear infinite"
-                        }}>um\u011blou inteligenc\u00ed</span></>) : (<>Legal Research at the{" "}<span style={{
-                            background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
-                            backgroundSize: "200% auto",
-                            WebkitBackgroundClip: "text",
-                            backgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                            animation: "shimmer 3s linear infinite"
-                        }}>Speed of Thought</span></>)}
+                        }}>{t("landing.hero_title_highlight")}</span>
                     </motion.h1>
                     <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
                               transition={{duration: 0.5, delay: 0.28}} style={{
@@ -611,9 +566,10 @@ export default function LandingPage() {
                         color: "rgba(46,31,8,0.60)",
                         lineHeight: 1.6,
                         maxWidth: 520,
-                        marginBottom: 48
+                        marginBottom: 48,
+                        whiteSpace: "pre-line"
                     }}>
-                        {isCzech ? (<>Z\u00e1kony a judikatura Nejvy\u0161\u0161\u00edho soudu<br/>&mdash; v\u0161e na jednom m\u00edst\u011b</>) : (<>Precise, source-grounded answers from your legal documents.<br/>Every answer cites the exact page and clause.</>)}
+                        {t("landing.hero_subtitle")}
                     </motion.p>
                     <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}}
                                 transition={{duration: 0.7, delay: 0.38}} style={{width: "100%", maxWidth: 960}}>
@@ -648,7 +604,7 @@ export default function LandingPage() {
                         color: "rgba(46,31,8,0.35)",
                         textDecoration: "none"
                     }}>
-                        scroll to explore
+                        {t("landing.scroll_to_explore")}
                         <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="animate-float-down">
                             <path d="M5 1v12M1 9l4 4 4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"
                                   strokeLinejoin="round"/>
@@ -684,7 +640,7 @@ export default function LandingPage() {
                         fontWeight: 600,
                         color: "rgba(46,31,8,0.45)",
                         marginBottom: 10
-                    }}>Why Vitreon Legal
+                    }}>{t("landing.why_label")}
                     </motion.p>
                     <motion.h2 initial={{opacity: 0, y: 12}} whileInView={{opacity: 1, y: 0}}
                                viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.08}}
@@ -696,11 +652,17 @@ export default function LandingPage() {
                                    letterSpacing: "-0.03em",
                                    color: "#1a0e04",
                                    marginBottom: 52
-                               }}>Built for legal precision
+                               }}>{t("landing.light_why_heading")}
                     </motion.h2>
                     <div
                         style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16}}>
-                        {lightPillars.map(({stat, statLabel, title, body, icon: Icon}, i) => (
+                        {[1, 2, 3].map((n, i) => {
+                            const stat = t(`landing.light_pillar${n}_stat`);
+                            const statLabel = t(`landing.light_pillar${n}_stat_label`);
+                            const title = t(`landing.light_pillar${n}_title`);
+                            const body = t(`landing.light_pillar${n}_body`);
+                            const Icon = LIGHT_PILLAR_ICONS[i];
+                            return (
                             <motion.div key={title} initial={{opacity: 0, y: 28}} whileInView={{opacity: 1, y: 0}}
                                         viewport={{once: true, margin: "-80px"}}
                                         transition={{duration: 0.55, delay: i * 0.12}}
@@ -754,7 +716,7 @@ export default function LandingPage() {
                                 </div>
                                 <p style={{fontSize: 13, lineHeight: 1.65, color: "rgba(46,31,8,0.60)"}}>{body}</p>
                             </motion.div>
-                        ))}
+                        ); })}
                     </div>
                 </div>
             </section>
@@ -785,7 +747,7 @@ export default function LandingPage() {
                         fontWeight: 600,
                         color: "rgba(46,31,8,0.45)",
                         marginBottom: 10
-                    }}>How it works
+                    }}>{t("landing.how_label")}
                     </motion.p>
                     <motion.h2 initial={{opacity: 0, y: 10}} whileInView={{opacity: 1, y: 0}}
                                viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5, delay: 0.08}}
@@ -797,7 +759,7 @@ export default function LandingPage() {
                                    letterSpacing: "-0.03em",
                                    color: "#1a0e04",
                                    marginBottom: 40
-                               }}>Three steps from question to answer
+                               }}>{t("landing.how_heading")}
                     </motion.h2>
                     <motion.div initial={{opacity: 0, y: 16}} whileInView={{opacity: 1, y: 0}}
                                 viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5, delay: 0.18}}>
@@ -996,7 +958,7 @@ export default function LandingPage() {
                         fontWeight: 600,
                         color: "rgba(46,31,8,0.45)",
                         marginBottom: 10
-                    }}>Independently Verified</motion.p>
+                    }}>{t("landing.bench_label")}</motion.p>
                     <motion.h2 initial={{opacity: 0, y: 10}} whileInView={{opacity: 1, y: 0}}
                                viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5, delay: 0.08}}
                                style={{
@@ -1007,7 +969,7 @@ export default function LandingPage() {
                                    letterSpacing: "-0.03em",
                                    color: "#1a0e04",
                                    marginBottom: 8
-                               }}>Benchmark Performance</motion.h2>
+                               }}>{t("landing.bench_heading")}</motion.h2>
                     <motion.p initial={{opacity: 0}} whileInView={{opacity: 1}}
                               viewport={{once: true, margin: "-60px"}} transition={{duration: 0.5, delay: 0.14}}
                               style={{
@@ -1015,7 +977,7 @@ export default function LandingPage() {
                                   fontSize: 13,
                                   color: "rgba(46,31,8,0.50)",
                                   marginBottom: 40
-                              }}>Results on public, independent legal AI benchmarks</motion.p>
+                              }}>{t("landing.bench_subtitle")}</motion.p>
                     <div style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -1061,7 +1023,7 @@ export default function LandingPage() {
                         fontWeight: 600,
                         color: "rgba(46,31,8,0.45)",
                         marginBottom: 10
-                    }}>14-Day Free Trial
+                    }}>{t("landing.cta_label")}
                     </motion.p>
                     <motion.h2 initial={{opacity: 0, y: 10}} whileInView={{opacity: 1, y: 0}} viewport={{once: true}}
                                transition={{duration: 0.5, delay: 0.08}} style={{
@@ -1072,7 +1034,7 @@ export default function LandingPage() {
                         letterSpacing: "-0.03em",
                         color: "#1a0e04",
                         marginBottom: 40
-                    }}>Start researching today
+                    }}>{t("landing.cta_heading")}
                     </motion.h2>
                     <motion.div initial={{opacity: 0, y: 16}} whileInView={{opacity: 1, y: 0}} viewport={{once: true}}
                                 transition={{duration: 0.5, delay: 0.1}} style={{
@@ -1082,8 +1044,12 @@ export default function LandingPage() {
                         gap: 10,
                         marginBottom: 32
                     }}>
-                        {lightTrustItems.map(({icon: Icon, label, sub}, i) => (
-                            <motion.div key={label} initial={{opacity: 0, y: 8}} whileInView={{opacity: 1, y: 0}}
+                        {LIGHT_TRUST_KEYS.map((keys, i) => {
+                            const Icon = LIGHT_TRUST_ICONS[i];
+                            const label = t(keys.label);
+                            const sub = t(keys.sub);
+                            return (
+                            <motion.div key={keys.label} initial={{opacity: 0, y: 8}} whileInView={{opacity: 1, y: 0}}
                                         viewport={{once: true}} transition={{duration: 0.4, delay: 0.15 + i * 0.08}}
                                         style={{
                                             display: "flex",
@@ -1115,7 +1081,7 @@ export default function LandingPage() {
                                     <p style={{fontSize: 10, color: "rgba(46,31,8,0.45)", lineHeight: 1}}>{sub}</p>
                                 </div>
                             </motion.div>
-                        ))}
+                        ); })}
                     </motion.div>
                     <motion.div initial={{opacity: 0, y: 24}} whileInView={{opacity: 1, y: 0}} viewport={{once: true}}
                                 transition={{duration: 0.6, delay: 0.2}} style={{
@@ -1131,9 +1097,8 @@ export default function LandingPage() {
                             fontWeight: 700,
                             color: "#1a0e04",
                             margin: "0 0 8px"
-                        }}>No credit card required</h3>
-                        <p style={{fontSize: 13, color: "rgba(46,31,8,0.50)", margin: "0 0 24px"}}>Sign up with Google
-                            or email · Free plan available · No payment required</p>
+                        }}>{t("landing.cta_no_cc")}</h3>
+                        <p style={{fontSize: 13, color: "rgba(46,31,8,0.50)", margin: "0 0 24px"}}>{t("landing.cta_signup_info")}</p>
                         <div style={{
                             display: "flex",
                             flexDirection: "column",
@@ -1155,7 +1120,7 @@ export default function LandingPage() {
                                 textDecoration: "none",
                                 boxShadow: "0 2px 12px rgba(92,46,8,0.28)"
                             }}>
-                                Get Started Free <ArrowRight size={14}/>
+                                {t("landing.cta_get_started")} <ArrowRight size={14}/>
                             </a>
                             <a href="/login" style={{
                                 display: "flex",
@@ -1171,7 +1136,7 @@ export default function LandingPage() {
                                 color: "#2e1f08",
                                 textDecoration: "none"
                             }}>
-                                Already have an account? Sign in
+                                {t("landing.cta_sign_in")}
                             </a>
                         </div>
                     </motion.div>
@@ -1205,9 +1170,9 @@ export default function LandingPage() {
                     <p style={{fontSize: 11, color: "rgba(46,31,8,0.35)", margin: 0}}>
                         {new Date().getFullYear()} Vitreon Legal
                         <span style={{margin: "0 8px", color: "rgba(46,31,8,0.20)"}}>·</span>
-                        <a href="/privacy" style={{color: "rgba(46,31,8,0.40)", textDecoration: "none"}}>Privacy</a>
+                        <a href="/privacy" style={{color: "rgba(46,31,8,0.40)", textDecoration: "none"}}>{t("landing.privacy")}</a>
                         <span style={{margin: "0 8px", color: "rgba(46,31,8,0.20)"}}>·</span>
-                        <a href="/terms" style={{color: "rgba(46,31,8,0.40)", textDecoration: "none"}}>Terms</a>
+                        <a href="/terms" style={{color: "rgba(46,31,8,0.40)", textDecoration: "none"}}>{t("landing.terms")}</a>
                     </p>
                 </div>
             </footer>

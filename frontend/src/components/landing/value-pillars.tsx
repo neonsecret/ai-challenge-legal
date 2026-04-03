@@ -1,54 +1,38 @@
 "use client";
 
 import {motion} from "motion/react";
+import {useI18n} from "@/lib/i18n";
 
-const pillars = [
-    {
-        stat: "4,800+",
-        statLabel: "legal documents indexed",
-        title: "Comprehensive Coverage",
-        body: "Full DIFC law library and court judgments. Search across legislation, case law, and your own documents.",
-        icon: (
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <circle cx="10" cy="10" r="7" stroke="#C9A84C" strokeWidth="1.5"/>
-                <path d="M15.5 15.5L19 19" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"/>
-                <path d="M10 7v3l2.5 1.5" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"
-                      strokeLinejoin="round"/>
-            </svg>
-        ),
-    },
-    {
-        stat: "100%",
-        statLabel: "source-grounded",
-        title: "Verified Citations",
-        body: "Every answer cites the exact page, clause, and document. Verify any claim instantly.",
-        icon: (
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <rect x="3" y="2" width="12" height="17" rx="2" stroke="#C9A84C" strokeWidth="1.5"/>
-                <path d="M6 8h6M6 11h6M6 14h4" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"/>
-                <circle cx="16" cy="16" r="4" fill="#0A1120" stroke="#C9A84C" strokeWidth="1.5"/>
-                <path d="M15 16.2l.8.8 1.7-1.7" stroke="#C9A84C" strokeWidth="1.2" strokeLinecap="round"
-                      strokeLinejoin="round"/>
-            </svg>
-        ),
-    },
-    {
-        stat: "+36%",
-        statLabel: "above published SOTA",
-        title: "Benchmark Proven",
-        body: "Independently verified on GaRAGe (ACL 2025). Our retrieval accuracy exceeds every published system by 36%.",
-        icon: (
-            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-                <path d="M11 2L3 6v5c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6l-8-4z" stroke="#C9A84C" strokeWidth="1.5"
-                      strokeLinejoin="round"/>
-                <path d="M8 11.5l2 2 4-4" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"
-                      strokeLinejoin="round"/>
-            </svg>
-        ),
-    },
+const ICONS = [
+    (
+        <svg key="search" width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <circle cx="10" cy="10" r="7" stroke="#C9A84C" strokeWidth="1.5"/>
+            <path d="M15.5 15.5L19 19" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M10 7v3l2.5 1.5" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"
+                  strokeLinejoin="round"/>
+        </svg>
+    ),
+    (
+        <svg key="cite" width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <rect x="3" y="2" width="12" height="17" rx="2" stroke="#C9A84C" strokeWidth="1.5"/>
+            <path d="M6 8h6M6 11h6M6 14h4" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"/>
+            <circle cx="16" cy="16" r="4" fill="#0A1120" stroke="#C9A84C" strokeWidth="1.5"/>
+            <path d="M15 16.2l.8.8 1.7-1.7" stroke="#C9A84C" strokeWidth="1.2" strokeLinecap="round"
+                  strokeLinejoin="round"/>
+        </svg>
+    ),
+    (
+        <svg key="shield" width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 2L3 6v5c0 5.5 3.4 10.7 8 12 4.6-1.3 8-6.5 8-12V6l-8-4z" stroke="#C9A84C" strokeWidth="1.5"
+                  strokeLinejoin="round"/>
+            <path d="M8 11.5l2 2 4-4" stroke="#C9A84C" strokeWidth="1.5" strokeLinecap="round"
+                  strokeLinejoin="round"/>
+        </svg>
+    ),
 ];
 
 export function ValuePillars() {
+    const {t} = useI18n();
     return (
         <section
             className="py-28 px-6 relative overflow-hidden"
@@ -73,7 +57,7 @@ export function ValuePillars() {
                     className="text-center text-[11px] uppercase tracking-widest font-semibold mb-3"
                     style={{color: "rgba(201,168,76,0.7)"}}
                 >
-                    Why Vitreon Legal
+                    {t("landing.why_label")}
                 </motion.p>
                 <motion.h2
                     initial={{opacity: 0, y: 12}}
@@ -87,11 +71,19 @@ export function ValuePillars() {
                         lineHeight: 1.15,
                     }}
                 >
-                    Built for legal professionals
+                    {t("landing.why_heading")}
                 </motion.h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {pillars.map((p, i) => (
+                    {[1, 2, 3].map((n, i) => {
+                        const p = {
+                            stat: t(`landing.pillar${n}_stat`),
+                            statLabel: t(`landing.pillar${n}_stat_label`),
+                            title: t(`landing.pillar${n}_title`),
+                            body: t(`landing.pillar${n}_body`),
+                            icon: ICONS[i],
+                        };
+                        return (
                         <motion.div
                             key={p.title}
                             initial={{opacity: 0, y: 28}}
@@ -184,7 +176,7 @@ export function ValuePillars() {
                                 {p.body}
                             </p>
                         </motion.div>
-                    ))}
+                    ); })}
                 </div>
             </div>
         </section>

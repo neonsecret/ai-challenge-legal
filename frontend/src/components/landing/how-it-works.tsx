@@ -2,26 +2,11 @@
 
 import {useState, useEffect} from "react";
 import {motion, AnimatePresence} from "motion/react";
+import {useI18n} from "@/lib/i18n";
 
 const AUTO_ADVANCE_MS = 6000;
 
-const steps = [
-    {
-        number: "01",
-        title: "Ask in plain language",
-        body: "Type your question the way you'd ask a colleague. No query syntax, no boolean operators.",
-    },
-    {
-        number: "02",
-        title: "AI reads the full document",
-        body: "The system locates the right pages, ranks by relevance, and extracts the exact answer.",
-    },
-    {
-        number: "03",
-        title: "Every answer cites sources",
-        body: "Answers include exact page numbers and clause references so you can verify instantly.",
-    },
-];
+const STEP_NUMBERS = ["01", "02", "03"] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Step visuals                                                        */
@@ -157,8 +142,15 @@ const VISUALS = [TypingVisual, ScanningVisual, HighlightVisual];
 /* ------------------------------------------------------------------ */
 
 export function HowItWorks() {
+    const {t} = useI18n();
     const [activeStep, setActiveStep] = useState(0);
     const [userInteracted, setUserInteracted] = useState(false);
+
+    const steps = [
+        { number: STEP_NUMBERS[0], title: t("landing.step1_title"), body: t("landing.step1_body") },
+        { number: STEP_NUMBERS[1], title: t("landing.step2_title"), body: t("landing.step2_body") },
+        { number: STEP_NUMBERS[2], title: t("landing.step3_title"), body: t("landing.step3_body") },
+    ];
 
     // Auto-advance only until the user takes control
     useEffect(() => {
@@ -167,7 +159,7 @@ export function HowItWorks() {
             setActiveStep((prev) => (prev + 1) % steps.length);
         }, AUTO_ADVANCE_MS);
         return () => clearInterval(id);
-    }, [userInteracted]);
+    }, [userInteracted, steps.length]);
 
     const goTo = (i: number) => {
         setActiveStep(i);
@@ -193,7 +185,7 @@ export function HowItWorks() {
                     className="text-center text-[11px] uppercase tracking-widest font-semibold mb-3"
                     style={{color: "rgba(201,168,76,0.7)"}}
                 >
-                    How it works
+                    {t("landing.how_label")}
                 </motion.p>
                 <motion.h2
                     initial={{opacity: 0, y: 10}}
@@ -207,7 +199,7 @@ export function HowItWorks() {
                         lineHeight: 1.15,
                     }}
                 >
-                    Three steps from question to answer
+                    {t("landing.how_heading")}
                 </motion.h2>
 
                 <motion.div
