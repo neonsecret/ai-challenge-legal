@@ -123,7 +123,9 @@ async def test_execute_caselaw_fetch_unknown_ecli_returns_none():
 
 
 def test_format_caselaw_search_results_format():
-    """format_caselaw_search_results produces [CASE-N] blocks."""
+    """format_caselaw_search_results produces plain-numbered summaries without [CASE-N] brackets."""
+    import re
+
     from arlc.agent.caselaw_tools import format_caselaw_search_results
     from arlc.agent.state import SourceDocument
 
@@ -143,7 +145,11 @@ def test_format_caselaw_search_results_format():
         )
     ]
     output = format_caselaw_search_results(docs)
-    assert "[CASE-1]" in output
+    # Must NOT use bracket labels — these get mistaken for citation tags by the LLM
+    assert not re.search(r"\[CASE-\d+\]", output), (
+        f"[CASE-N] bracket label found — leaks as citation tag into final answers:\n{output}"
+    )
+    assert "Case 1:" in output
     assert "21 Cdo 1/2023" in output
     assert "Pravni veta:" in output
 

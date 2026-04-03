@@ -13,8 +13,10 @@ Search strategy:
 These are the *execution* functions; the @tool schema-only wrappers live in
 graph.py alongside the existing ``search_legal_corpus`` schema.
 
-Format helpers produce [CASE-N] summaries (for search) and [DOC-N] document
-blocks (for fetch) consistent with the existing citation mechanism.
+Format helpers produce plain-numbered summaries (for search) and [DOC-N] document
+blocks (for fetch) consistent with the existing citation mechanism.  Search
+results deliberately avoid [CASE-N] bracket labels to prevent the LLM from
+using them as citation tags in final answers.
 """
 
 from __future__ import annotations
@@ -170,7 +172,12 @@ async def execute_caselaw_search(
 
 
 def format_caselaw_search_results(docs: list[SourceDocument]) -> str:
-    """Format case law search results as [CASE-N] summaries for the LLM.
+    """Format case law search results as plain numbered summaries for the LLM.
+
+    Deliberately avoids bracket labels (e.g. [CASE-N]) to prevent the LLM
+    from treating search-result indices as citation tags.  Promoted documents
+    are added as [DOC-N] blocks in the same tool response and should be cited
+    via those labels only.
 
     Parameters
     ----------
@@ -193,8 +200,8 @@ def format_caselaw_search_results(docs: list[SourceDocument]) -> str:
         thesis = doc.get("legal_thesis", doc.get("text", ""))
         ecli = doc.get("ecli", doc.get("doc_id", ""))
 
-        # Format regulations citation if available — extract from text
-        header = f"[CASE-{i}] {case_num}"
+        # Plain "Case N:" prefix — not a citation tag, just a search result index
+        header = f"Case {i}: {case_num}"
         if dec_date or category:
             meta = ", ".join(filter(None, [dec_date, f"kategorie {category}" if category else ""]))
             header += f" ({meta})"

@@ -983,6 +983,12 @@ async def run_agent_turn(
     )
     final_answer = _preamble_pat.sub("", final_answer).lstrip("\n -")
 
+    # Strip any leaked [CASE-N] labels — these are search-result indices and
+    # must never appear in the final answer.  Prompt Rule #7 instructs the LLM
+    # not to use them, but this is the defence-in-depth safety net.
+    _case_tag_pat = _re.compile(r"\[CASE-\d+\]")
+    final_answer = _case_tag_pat.sub("", final_answer)
+
     # Fallback: if streaming missed the answer (e.g. astream_events quirk),
     # extract it from the final graph output
     if not final_answer:

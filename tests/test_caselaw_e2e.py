@@ -223,7 +223,15 @@ class TestSourceCitationSchema:
 class TestCaselawTools:
     """Caselaw tool format functions (no DB or backend required)."""
 
-    def test_format_search_results_contains_case_n(self):
+    def test_format_search_results_plain_numbered(self):
+        """Search results must use plain 'Case N:' format, never [CASE-N] brackets.
+
+        [CASE-N] labels look like citation tags to the LLM and cause it to emit
+        them in final answers.  The search result list is not citable; only
+        promoted [DOC-N] blocks are.
+        """
+        import re
+
         from arlc.agent.caselaw_tools import format_caselaw_search_results
         from arlc.agent.state import SourceDocument
 
@@ -242,9 +250,39 @@ class TestCaselawTools:
             )
         ]
         output = format_caselaw_search_results(docs)
-        assert "[CASE-1]" in output
+        # Must NOT contain bracket citation labels
+        assert not re.search(r"\[CASE-\d+\]", output), (
+            f"[CASE-N] bracket label found in search result output — this will leak into final answers:\n{output}"
+        )
+        # Must contain the plain-numbered prefix and case content
+        assert "Case 1:" in output
         assert "21 Cdo 1/2023" in output
         assert "Pravni veta:" in output
+
+    def test_format_search_results_no_case_bracket_multiple(self):
+        """Multiple search results must all use plain numbering, never [CASE-N]."""
+        import re
+
+        from arlc.agent.caselaw_tools import format_caselaw_search_results
+        from arlc.agent.state import SourceDocument
+
+        docs = [
+            SourceDocument(
+                doc_id=f"ECLI:CZ:NS:2023:21.CDO.{i}.2023.1",
+                page=1,
+                text="Text.",
+                score=0.9,
+                source_type="court_decision",
+                case_number=f"21 Cdo {i}/2023",
+                ecli=f"ECLI:CZ:NS:2023:21.CDO.{i}.2023.1",
+            )
+            for i in range(1, 4)
+        ]
+        output = format_caselaw_search_results(docs)
+        assert not re.search(r"\[CASE-\d+\]", output)
+        assert "Case 1:" in output
+        assert "Case 2:" in output
+        assert "Case 3:" in output
 
     def test_format_full_wraps_document_content(self):
         from arlc.agent.caselaw_tools import format_caselaw_full
