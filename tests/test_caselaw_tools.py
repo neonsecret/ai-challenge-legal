@@ -46,6 +46,16 @@ async def seed_decisions():
     )
     yield
 
+    # Teardown: remove test records so they don't persist in the dev database
+    from neolex.db.court_decisions import CourtDecision
+    from neolex.db.postgres import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        from sqlalchemy import delete
+
+        await session.execute(delete(CourtDecision).where(CourtDecision.source_unid.like("TEST%")))
+        await session.commit()
+
 
 # ---------------------------------------------------------------------------
 # _parse_statute_ref

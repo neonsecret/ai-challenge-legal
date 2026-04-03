@@ -25,10 +25,21 @@ pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session", autouse=True)
 async def ensure_table():
-    """Create the court_decisions table once per session."""
+    """Create the court_decisions table once per session; clean up test records after."""
     from neolex.db.postgres import init_db
 
     await init_db()
+    yield
+
+    # Teardown: remove test records so they don't persist in the dev database
+    from sqlalchemy import delete
+
+    from neolex.db.court_decisions import CourtDecision
+    from neolex.db.postgres import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(delete(CourtDecision).where(CourtDecision.source_unid.like("TEST%")))
+        await session.commit()
 
 
 @pytest.fixture
