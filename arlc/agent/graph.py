@@ -104,16 +104,17 @@ def search_court_decisions(
 
     Use this when you need to understand judicial interpretation, court practice,
     legal precedent, or how a statutory provision has been applied in real cases.
-    You can filter by a specific statute reference (e.g. "262/2006" for the
-    Labour Code, or "262/2006 § 52" for a specific section).
 
     Write search queries in Czech. Always search statutory law first to identify
     the relevant provision, then search case law to see how courts interpreted it.
 
     Parameters:
     - query: search terms in Czech
-    - statute_reference: optional statute filter in "law_number/law_year" format
-      e.g. "262/2006" for Labour Code, "89/2012" for Civil Code
+    - statute_reference: optional statute filter — use "law_number/law_year" for
+      all decisions citing a statute (e.g. "262/2006" for Labour Code), or
+      "law_number/law_year § paragraph" for decisions citing a specific paragraph
+      (e.g. "89/2012 § 2079" for NOZ § 2079, "262/2006 § 52" for ZP § 52).
+      ALWAYS include the paragraph when the user asks about a specific provision.
     - date_from: optional start date in ISO format "YYYY-MM-DD"
     - date_to: optional end date in ISO format "YYYY-MM-DD"
     """

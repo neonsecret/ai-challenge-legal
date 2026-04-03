@@ -166,6 +166,48 @@ async def test_regulation_filter(sample_decision, second_decision):
     assert second_decision["ecli"] not in eclis
 
 
+async def test_paragraph_filter(sample_decision, second_decision):
+    """statute_ref 3-tuple filters to decisions citing a specific paragraph."""
+    from neolex.db.court_decisions import search_decisions, upsert_decision
+
+    await upsert_decision(sample_decision)  # regulations: [{paragraph: "52", law_number: 262, ...}]
+    await upsert_decision(second_decision)  # regulations: [{paragraph: "2991", law_number: 89, ...}]
+
+    # Matching paragraph: Labour Code § 52
+    results = await search_decisions("vypoved", statute_ref=(262, 2006, "52"))
+    eclis = [r.ecli for r in results]
+    assert sample_decision["ecli"] in eclis
+
+    # Wrong paragraph for the same statute: Labour Code § 53 → no match
+    results_miss = await search_decisions("vypoved", statute_ref=(262, 2006, "53"))
+    eclis_miss = [r.ecli for r in results_miss]
+    assert sample_decision["ecli"] not in eclis_miss
+
+    # Matching paragraph: Civil Code § 2991
+    # Use multiple terms from legal_thesis + keywords for reliable BM25 match
+    results_civil = await search_decisions("bezduvodni obohaceni obcansky zakonik", statute_ref=(89, 2012, "2991"))
+    eclis_civil = [r.ecli for r in results_civil]
+    assert second_decision["ecli"] in eclis_civil
+
+    # Wrong paragraph for Civil Code: § 2079 → no match
+    results_civil_miss = await search_decisions("bezduvodni obohaceni obcansky zakonik", statute_ref=(89, 2012, "2079"))
+    eclis_civil_miss = [r.ecli for r in results_civil_miss]
+    assert second_decision["ecli"] not in eclis_civil_miss
+
+
+async def test_statute_filter_2tuple_still_works(sample_decision, second_decision):
+    """2-tuple statute_ref (no paragraph) still works for backward compatibility."""
+    from neolex.db.court_decisions import search_decisions, upsert_decision
+
+    await upsert_decision(sample_decision)
+    await upsert_decision(second_decision)
+
+    # 2-tuple: Labour Code (all paragraphs)
+    results = await search_decisions("vypoved", statute_ref=(262, 2006))
+    eclis = [r.ecli for r in results]
+    assert sample_decision["ecli"] in eclis
+
+
 async def test_date_range_filter(sample_decision, second_decision):
     """date_from / date_to filters constrain results to the specified range."""
     from neolex.db.court_decisions import search_decisions, upsert_decision

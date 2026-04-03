@@ -48,6 +48,65 @@ async def seed_decisions():
 
 
 # ---------------------------------------------------------------------------
+# _parse_statute_ref
+# ---------------------------------------------------------------------------
+
+
+def test_parse_statute_ref_law_only():
+    """Parse '262/2006' returns 2-tuple."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    result = _parse_statute_ref("262/2006")
+    assert result == (262, 2006)
+
+
+def test_parse_statute_ref_with_paragraph():
+    """Parse '262/2006 § 52' returns 3-tuple with paragraph."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    result = _parse_statute_ref("262/2006 § 52")
+    assert result == (262, 2006, "52")
+
+
+def test_parse_statute_ref_with_paragraph_noz():
+    """Parse '89/2012 § 2079' returns 3-tuple for Civil Code paragraph."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    result = _parse_statute_ref("89/2012 § 2079")
+    assert result == (89, 2012, "2079")
+
+
+def test_parse_statute_ref_par_format():
+    """Parse 'par' and 'par.' Czech abbreviations for paragraph."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    assert _parse_statute_ref("262/2006 par 52") == (262, 2006, "52")
+    assert _parse_statute_ref("262/2006 par. 52") == (262, 2006, "52")
+
+
+def test_parse_statute_ref_odst_format():
+    """Parse 'odst.' Czech abbreviation for subsection/paragraph."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    assert _parse_statute_ref("262/2006 odst. 3") == (262, 2006, "3")
+
+
+def test_parse_statute_ref_empty():
+    """Empty string returns None."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    assert _parse_statute_ref("") is None
+    assert _parse_statute_ref("   ") is None
+
+
+def test_parse_statute_ref_invalid():
+    """Non-matching string returns None."""
+    from arlc.agent.caselaw_tools import _parse_statute_ref
+
+    assert _parse_statute_ref("zakonik prace") is None
+
+
+# ---------------------------------------------------------------------------
 # execute_caselaw_search
 # ---------------------------------------------------------------------------
 
@@ -91,6 +150,24 @@ async def test_execute_caselaw_search_statute_ref_filter():
     if results:
         eclis = [r["doc_id"] for r in results]
         assert any("TOOLS_TEST" in e for e in eclis)
+
+
+async def test_execute_caselaw_search_paragraph_filter():
+    """statute_reference with paragraph filters to that specific paragraph."""
+    from arlc.agent.caselaw_tools import execute_caselaw_search
+
+    # Seeded decision has regulations=[{paragraph: "52", law_number: 262, law_year: 2006}]
+    # Search with matching paragraph → should find
+    results = await execute_caselaw_search("vypoved", statute_reference="262/2006 § 52")
+    eclis = [r["doc_id"] for r in results]
+    assert any("TOOLS_TEST" in e for e in eclis), f"Expected test ECLI with § 52 filter, got: {eclis[:5]}"
+
+    # Search with non-matching paragraph → should NOT find
+    results_miss = await execute_caselaw_search("vypoved", statute_reference="262/2006 § 53")
+    eclis_miss = [r["doc_id"] for r in results_miss]
+    assert not any("TOOLS_TEST" in e for e in eclis_miss), (
+        f"Paragraph filter should exclude non-matching decisions, got: {eclis_miss[:5]}"
+    )
 
 
 # ---------------------------------------------------------------------------

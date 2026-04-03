@@ -144,12 +144,21 @@ def _normalize(vec: list[float]) -> list[float]:
     return arr.tolist()
 
 
-def _statute_ref_filter(stmt, statute_ref: tuple[int, int] | None):
-    """Apply JSONB statute reference filter to a SQLAlchemy select statement."""
+def _statute_ref_filter(stmt, statute_ref: tuple[int, int] | tuple[int, int, str] | None):
+    """Apply JSONB statute reference filter to a SQLAlchemy select statement.
+
+    Accepts a 2-tuple ``(law_number, law_year)`` for statute-level filtering
+    or a 3-tuple ``(law_number, law_year, paragraph)`` for paragraph-level filtering.
+    """
     if statute_ref is None:
         return stmt
-    law_number, law_year = statute_ref
-    return stmt.where(CourtDecision.regulations.contains([{"law_number": law_number, "law_year": law_year}]))
+    law_number, law_year = statute_ref[0], statute_ref[1]
+    paragraph = statute_ref[2] if len(statute_ref) >= 3 else None
+
+    filter_obj: dict = {"law_number": law_number, "law_year": law_year}
+    if paragraph:
+        filter_obj["paragraph"] = paragraph
+    return stmt.where(CourtDecision.regulations.contains([filter_obj]))
 
 
 def _date_filters(stmt, date_from: date | None, date_to: date | None):
@@ -168,7 +177,7 @@ def _date_filters(stmt, date_from: date | None, date_to: date | None):
 
 async def search_decisions(
     query: str,
-    statute_ref: tuple[int, int] | None = None,
+    statute_ref: tuple[int, int] | tuple[int, int, str] | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = 10,
@@ -183,9 +192,10 @@ async def search_decisions(
     ----------
     query : str
         Czech language search terms.
-    statute_ref : (law_number, law_year) | None
+    statute_ref : (law_number, law_year[, paragraph]) | None
         Filter to decisions citing this statute.
-        E.g. ``(262, 2006)`` for the Labour Code.
+        E.g. ``(262, 2006)`` for the Labour Code or
+        ``(89, 2012, "2079")`` for NOZ § 2079.
     date_from, date_to : date | None
         Optional date range filters (inclusive).
     limit : int
@@ -230,7 +240,7 @@ async def search_decisions(
 
 async def search_decisions_vector(
     query_embedding: list[float],
-    statute_ref: tuple[int, int] | None = None,
+    statute_ref: tuple[int, int] | tuple[int, int, str] | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = 20,
@@ -247,8 +257,9 @@ async def search_decisions_vector(
     ----------
     query_embedding : list[float]
         4096-dim Qwen3-8B embedding of the query, from ``embed_query()``.
-    statute_ref : (law_number, law_year) | None
-        Optional JSONB containment filter.
+    statute_ref : (law_number, law_year[, paragraph]) | None
+        Optional JSONB containment filter. Include paragraph for section-level
+        filtering, e.g. ``(89, 2012, "2079")`` for NOZ § 2079.
     date_from, date_to : date | None
         Optional date range filters.
     limit : int
@@ -326,7 +337,7 @@ def _rrf_fuse(
 async def search_decisions_hybrid(
     query: str,
     query_embedding: list[float],
-    statute_ref: tuple[int, int] | None = None,
+    statute_ref: tuple[int, int] | tuple[int, int, str] | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
     limit: int = 10,
@@ -344,8 +355,11 @@ async def search_decisions_hybrid(
         Czech language search terms for the BM25 leg.
     query_embedding : list[float]
         4096-dim Qwen3-8B embedding for the vector leg.
-    statute_ref, date_from, date_to :
-        Filters applied to both legs independently.
+    statute_ref : (law_number, law_year[, paragraph]) | None
+        Filters applied to both legs independently. Include paragraph for
+        section-level filtering.
+    date_from, date_to : date | None
+        Date range filters applied to both legs.
     limit : int
         Maximum results after fusion.
 

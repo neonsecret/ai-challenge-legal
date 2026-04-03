@@ -33,24 +33,32 @@ logger = logging.getLogger(__name__)
 _FULL_TEXT_MAX_CHARS = 12_000
 
 
-def _parse_statute_ref(statute_reference: str) -> tuple[int, int] | None:
+def _parse_statute_ref(statute_reference: str) -> tuple[int, int] | tuple[int, int, str] | None:
     """Parse 'law_number/law_year' or 'law_number/law_year § paragraph' into tuple.
 
     Parameters
     ----------
     statute_reference : str
-        E.g. ``"262/2006"`` or ``"262/2006 § 52"``
+        E.g. ``"262/2006"`` or ``"262/2006 § 52"`` or ``"89/2012 par 2079"``
 
     Returns
     -------
-    (law_number, law_year) | None
+    (law_number, law_year) | (law_number, law_year, paragraph) | None
+        Returns a 3-tuple when a paragraph number is present in the input.
     """
     if not statute_reference:
         return None
     m = re.match(r"(\d{1,4})/(\d{4})", statute_reference.strip())
-    if m:
-        return int(m.group(1)), int(m.group(2))
-    return None
+    if not m:
+        return None
+    law_number, law_year = int(m.group(1)), int(m.group(2))
+
+    # Check for paragraph after the law reference: "§ 52", "par 52", "par. 52", "odst. 3"
+    rest = statute_reference.strip()[m.end() :]
+    pm = re.match(r"\s*(?:§|par\.?|odst\.?)\s*(\d+\w*)", rest, re.IGNORECASE)
+    if pm:
+        return (law_number, law_year, pm.group(1))
+    return (law_number, law_year)
 
 
 def _parse_date_arg(value: str) -> date | None:
