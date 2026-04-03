@@ -5,6 +5,7 @@ import {useEffect, useState} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {X} from "lucide-react"
 import {GroundingView} from "./grounding-view"
+import {useIsMobile} from "@/hooks/use-mobile"
 
 interface SourceRef {
     doc_id: string
@@ -26,6 +27,7 @@ export function GroundingDrawer({
                                 }: GroundingDrawerProps) {
     const {resolvedTheme} = useTheme()
     const [mounted, setMounted] = useState(false)
+    const isMobile = useIsMobile()
     useEffect(() => setMounted(true), [])
     const isDark = mounted && resolvedTheme === "dark"
 
@@ -60,7 +62,7 @@ export function GroundingDrawer({
                             position: "fixed",
                             top: 8,
                             right: 8,
-                            bottom: 8,
+                            bottom: isMobile ? 64 : 8,
                             width: "min(90vw, 1200px)",
                             zIndex: 61,
                             display: "flex",
