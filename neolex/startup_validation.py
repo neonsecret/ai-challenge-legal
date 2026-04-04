@@ -36,7 +36,6 @@ _REQUIRED_DATA_FILES = [
 # ---------------------------------------------------------------------------
 
 _RECOMMENDED_ENV_VARS = [
-    ("VERTEX_PROJECT_ID", "LLM requests via Vertex AI will fail without a GCP project ID"),
     ("GOOGLE_APPLICATION_CREDENTIALS", "Vertex AI auth will fail without service account credentials"),
     # RERANKER_MODEL not checked here because it has a safe default (Qwen/Qwen3-Reranker-0.6B),
     # but we log it so operators know which model will be downloaded on first warm-up.
@@ -100,6 +99,13 @@ def validate_startup(data_dir: str) -> None:
                 f"Start it with: llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf "
                 f"--embedding --pooling last -ngl 99 -c 4096 --port 8088",
             )
+
+    # --- VERTEX_PROJECT_ID is required for agent queries ---
+    if not os.environ.get("VERTEX_PROJECT_ID"):
+        errors.append(
+            "VERTEX_PROJECT_ID must be set — agent queries (use_agent=True) will crash "
+            "with KeyError without a configured GCP project ID."
+        )
 
     # --- Auth / billing secret validation ---
     from neolex.config import settings as _s

@@ -22,6 +22,9 @@ speed_agent/page_cache.json
 client_secret*.json
 *credentials*.json
 
+# Docker Compose with secrets (use .example template)
+docker-compose.langfuse.yml
+
 # IDE
 .idea/
 .vscode/

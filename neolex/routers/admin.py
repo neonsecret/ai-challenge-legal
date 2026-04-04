@@ -14,10 +14,14 @@ from neolex.db.models import User
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-# Admin emails — configurable via ADMIN_EMAILS env var (comma-separated).
-_ADMIN_EMAILS: set[str] = {
-    e.strip() for e in os.environ.get("ADMIN_EMAILS", "admin@vitreon.app").split(",") if e.strip()
-}
+# Admin emails — configured via ADMIN_EMAILS env var (comma-separated).
+# No default: forces explicit configuration to prevent unauthorized admin access.
+_raw_admin_emails = os.environ.get("ADMIN_EMAILS", "")
+if not _raw_admin_emails.strip():
+    raise RuntimeError(
+        "ADMIN_EMAILS environment variable is not set. Set it to a comma-separated list of admin email addresses."
+    )
+_ADMIN_EMAILS: set[str] = {e.strip() for e in _raw_admin_emails.split(",") if e.strip()}
 
 
 async def get_admin(user: User = Depends(get_current_user)) -> User:
