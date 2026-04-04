@@ -2,7 +2,7 @@
 
 import {useState, useEffect} from "react";
 import {Moon, Sun, Monitor, LogOut, User, Loader2, ChevronDown} from "lucide-react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import {useRouter} from "next/navigation";
 import {useI18n} from "@/lib/i18n";
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/design-tokens";

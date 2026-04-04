@@ -4,7 +4,7 @@ import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, typ
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
 import {SquarePen, History, Trash2, BookOpen, Globe} from "lucide-react"
-import {useTheme} from "next-themes"
+import {useTheme} from "@/lib/theme"
 import {ChatInput} from "@/components/chat/chat-input"
 import {ChatMessage, type Source} from "@/components/chat/chat-message"
 import {useChatState} from "@/components/chat/chat-state"

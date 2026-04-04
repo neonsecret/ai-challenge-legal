@@ -2,7 +2,7 @@
 
 import {useState, useEffect} from "react";
 import {FileText, Trash2} from "lucide-react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import type {Document} from "./use-documents";
 
 function formatSize(bytes: number): string {

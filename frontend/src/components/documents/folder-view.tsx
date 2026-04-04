@@ -1,7 +1,7 @@
 "use client";
 
 import {useMemo, useState, useCallback} from "react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import {Folder, FileText, ChevronDown, ChevronRight, Trash2, CheckCircle2, Pencil, Check, X} from "lucide-react";
 import type {Document} from "./use-documents";
 import {useI18n} from "@/lib/i18n";

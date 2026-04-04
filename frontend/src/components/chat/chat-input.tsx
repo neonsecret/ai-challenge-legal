@@ -1,7 +1,7 @@
 "use client"
 
 import {useRef, useCallback, useEffect, useState} from "react"
-import {useTheme} from "next-themes"
+import {useTheme} from "@/lib/theme"
 import {ArrowUp, StopCircle} from "lucide-react"
 import {useI18n} from "@/lib/i18n"
 

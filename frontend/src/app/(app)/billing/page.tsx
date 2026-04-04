@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useTheme } from "next-themes";
+import {useTheme} from "@/lib/theme";
 import { useI18n } from "@/lib/i18n";
 import {
   Crown,

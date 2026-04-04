@@ -2,7 +2,7 @@
 
 import {useState, useEffect, Suspense} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";

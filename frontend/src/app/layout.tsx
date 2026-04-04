@@ -34,12 +34,14 @@ export default function RootLayout({
             suppressHydrationWarning
             className={`${playfair.variable} ${inter.variable} h-full antialiased`}
         >
+        <head>
+            {/* Inline theme script — runs sync before body paint to prevent FOUC.
+                Mirrors next-themes behaviour (storageKey='theme', attribute='class',
+                defaultTheme='system') now that ThemeProvider uses ssr:false. */}
+            <script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'||!t)&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}`}} />
+        </head>
         <body className="h-full bg-background text-foreground">
-        <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-        >
+        <ThemeProvider>
             <I18nProvider>
                 <TooltipProvider>
                     <ToastProvider>

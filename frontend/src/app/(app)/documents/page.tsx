@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState, useCallback} from "react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import Link from "next/link";
 import {UploadZone} from "@/components/documents/upload-zone";
 import {FolderView} from "@/components/documents/folder-view";

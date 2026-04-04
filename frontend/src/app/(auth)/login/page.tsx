@@ -2,7 +2,7 @@
 
 import {useState, useEffect} from "react";
 import {useRouter} from "next/navigation";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import {motion, AnimatePresence} from "motion/react";
 import {useAuth} from "@/lib/use-auth";
 

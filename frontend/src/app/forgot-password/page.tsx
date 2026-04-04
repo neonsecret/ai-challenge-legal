@@ -1,7 +1,7 @@
 "use client";
 
 import {useState, useEffect} from "react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";

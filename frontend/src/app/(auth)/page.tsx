@@ -2,7 +2,7 @@
 
 import {useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import {motion, AnimatePresence} from "motion/react";
 import {ArrowRight, FileSearch, Globe, ShieldCheck, Lock, Loader2, Sun, Moon} from "lucide-react";
 import {DemoPanel, SCENARIOS} from "@/components/landing/demo-panel";
@@ -150,7 +150,7 @@ export default function LandingPage() {
                             <div className="flex items-center gap-3">
                                 <LanguageToggle />
                                 <button
-                                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                                    onClick={() => setTheme(isDark ? "light" : "dark")}
                                     style={{
                                         display: "flex",
                                         alignItems: "center",
@@ -168,7 +168,7 @@ export default function LandingPage() {
                                     onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
                                     aria-label="Toggle theme"
                                 >
-                                    {mounted ? (resolvedTheme === "dark" ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
+                                    {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
                                 </button>
                                 {isAuthenticated ? (
                                     <a href="/chat"
@@ -454,7 +454,7 @@ export default function LandingPage() {
                         <div style={{display: "flex", alignItems: "center", gap: 12}}>
                             <LanguageToggle />
                             <button
-                                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                                onClick={() => setTheme(isDark ? "light" : "dark")}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -472,7 +472,7 @@ export default function LandingPage() {
                                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
                                 aria-label="Toggle theme"
                             >
-                                {mounted ? (resolvedTheme === "dark" ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
+                                {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
                             </button>
                             {isAuthenticated ? (
                                 <a href="/chat" style={{

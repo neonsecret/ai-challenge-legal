@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useTheme } from "next-themes"
+import {useTheme} from "@/lib/theme"
 import { useI18n, LOCALES, type Locale } from "@/lib/i18n"
 import { useIsMobile } from "@/hooks/use-mobile"
 

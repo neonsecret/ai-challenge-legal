@@ -10,7 +10,7 @@ import {
     SidebarFooter,
 } from "@/components/ui/sidebar";
 import {useEffect, useState} from "react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 
 const navItems = [
     {href: "/chat", label: "Chat", icon: MessageSquare},

@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import {Database, Activity, CheckCircle2, AlertCircle, Loader2} from "lucide-react";
 import {useI18n} from "@/lib/i18n";
 

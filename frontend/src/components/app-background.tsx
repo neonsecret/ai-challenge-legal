@@ -1,6 +1,6 @@
 "use client";
 
-import {useTheme} from "next-themes";
+import {useTheme} from "@/lib/theme";
 import {useEffect, useState} from "react";
 
 export function AppBackground({children}: { children: React.ReactNode }) {
