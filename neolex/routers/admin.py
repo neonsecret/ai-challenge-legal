@@ -14,19 +14,16 @@ from neolex.db.models import User
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
-# Admin emails — configured via ADMIN_EMAILS env var (comma-separated).
-# No default: forces explicit configuration to prevent unauthorized admin access.
-_raw_admin_emails = os.environ.get("ADMIN_EMAILS", "")
-if not _raw_admin_emails.strip():
-    raise RuntimeError(
-        "ADMIN_EMAILS environment variable is not set. Set it to a comma-separated list of admin email addresses."
-    )
-_ADMIN_EMAILS: set[str] = {e.strip() for e in _raw_admin_emails.split(",") if e.strip()}
+
+def _get_admin_emails() -> set[str]:
+    """Read ADMIN_EMAILS from env at call time (not import time) so tests can set it in fixtures."""
+    raw = os.environ.get("ADMIN_EMAILS", "")
+    return {e.strip() for e in raw.split(",") if e.strip()}
 
 
 async def get_admin(user: User = Depends(get_current_user)) -> User:
     """Verify that the authenticated user has admin privileges."""
-    if user.email not in _ADMIN_EMAILS:
+    if user.email not in _get_admin_emails():
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
 

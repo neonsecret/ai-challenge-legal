@@ -107,6 +107,10 @@ def validate_startup(data_dir: str) -> None:
             "with KeyError without a configured GCP project ID."
         )
 
+    # --- ADMIN_EMAILS is required for the admin router ---
+    if not os.environ.get("ADMIN_EMAILS", "").strip():
+        errors.append("ADMIN_EMAILS must be set to a comma-separated list of admin email addresses.")
+
     # --- Auth / billing secret validation ---
     from neolex.config import settings as _s
 

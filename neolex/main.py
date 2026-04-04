@@ -221,6 +221,9 @@ app = FastAPI(
     openapi_url=None,
 )
 
+# Initialize ready state before lifespan so tests that skip startup can read it.
+app.state.ready = False
+
 
 # ---------------------------------------------------------------------------
 # Global exception handler — catch ALL unhandled exceptions and return JSON.

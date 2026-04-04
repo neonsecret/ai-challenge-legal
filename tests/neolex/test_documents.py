@@ -197,13 +197,18 @@ async def test_upload_stores_in_client_dir(doc_client, tmp_path, monkeypatch):
 
 
 async def test_upload_requires_auth():
-    """AUTH-01: Upload endpoint requires Bearer token."""
+    """AUTH-01: Upload endpoint requires Bearer token.
+
+    Must include X-Requested-With to bypass CSRF middleware — we want to verify
+    auth (401), not CSRF protection (403).
+    """
     from neolex.main import app
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/documents",
             files={"file": ("contract.pdf", MINIMAL_PDF, "application/pdf")},
+            headers={"X-Requested-With": "XMLHttpRequest"},
         )
     assert response.status_code == 401
 
