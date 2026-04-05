@@ -36,19 +36,20 @@ logger = logging.getLogger("ragas_eval")
 
 
 def build_ragas_llm():
-    """Create a RAGAS-compatible LLM from our Vertex AI config."""
-    from anthropic import AnthropicVertex
-    from ragas.llms import llm_factory
+    """Create a RAGAS-compatible LLM via LangchainLLMWrapper + ChatAnthropicVertex.
 
-    client = AnthropicVertex(
-        project_id=os.environ["VERTEX_PROJECT_ID"],
-        region=os.environ.get("VERTEX_LOCATION", "us-east5"),
+    Uses the LangChain adapter for Claude on Vertex AI so RAGAS can call
+    generate/agenerate on a standard BaseChatModel interface.
+    """
+    from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+    from ragas.llms import LangchainLLMWrapper
+
+    chat_model = ChatAnthropicVertex(
+        model_name="claude-sonnet-4-6",
+        project=os.environ["VERTEX_PROJECT_ID"],
+        location=os.environ.get("VERTEX_LOCATION", "us-east5"),
     )
-    return llm_factory(
-        model="claude-sonnet-4-6",
-        provider="anthropic",
-        client=client,
-    )
+    return LangchainLLMWrapper(chat_model)
 
 
 def _get_langfuse():
@@ -161,7 +162,7 @@ async def collect_samples(
                     with propagate_attributes(
                         tags=["ragas-eval", f"corpus:{corpus}"],
                         trace_name="ragas-eval-sample",
-                        metadata={k: str(v) for k, v in trace_metadata.items() if isinstance(v, str)},
+                        metadata={k: str(v) for k, v in trace_metadata.items()},
                     ):
                         obs = langfuse.start_observation(
                             name="ragas-eval-sample",
@@ -170,10 +171,9 @@ async def collect_samples(
                             output=trace_output,
                             metadata=trace_metadata,
                         )
-
-                    obs.set_trace_io(input=trace_input, output=trace_output)
-                    obs.end()
-                    trace_id = obs.trace_id
+                        obs.set_trace_io(input=trace_input, output=trace_output)
+                        obs.end()
+                        trace_id = obs.trace_id
                 except Exception:
                     logger.debug("Failed to create langfuse trace for eval sample", exc_info=True)
             trace_ids.append(trace_id)
@@ -238,8 +238,16 @@ def run_ragas_evaluation(samples: list[dict], metrics_list: list[str]) -> dict:
     elapsed = time.perf_counter() - start
     logger.info("RAGAS evaluation completed in %.1fs", elapsed)
 
+    # Extract per-sample scores (list of dicts, one per sample, same order as input).
+    # result.scores is available in RAGAS 0.2.x; fall back gracefully for older builds.
+    try:
+        per_sample_scores: list[dict] | None = list(result.scores)
+    except AttributeError:
+        per_sample_scores = None
+
     return {
         "scores": dict(result),
+        "per_sample_scores": per_sample_scores,
         "elapsed_seconds": elapsed,
         "num_samples": len(eval_samples),
         "metrics": metrics_list,
@@ -247,30 +255,36 @@ def run_ragas_evaluation(samples: list[dict], metrics_list: list[str]) -> dict:
 
 
 def push_scores_to_langfuse(langfuse, trace_ids: list[str | None], result: dict, metrics_list: list[str]) -> None:
-    """Push per-sample RAGAS scores to Langfuse as evaluation scores on traces."""
-    scores = result.get("scores", {})
-    if not scores or not langfuse:
+    """Push per-sample RAGAS scores to Langfuse as evaluation scores on traces.
+
+    Uses per-sample scores from result["per_sample_scores"] when available
+    (RAGAS 0.2.x result.scores); falls back to aggregate score as a last resort.
+    """
+    aggregate_scores = result.get("scores", {})
+    per_sample_scores: list[dict] | None = result.get("per_sample_scores")
+    if not aggregate_scores or not langfuse:
         return
 
     pushed = 0
     for i, trace_id in enumerate(trace_ids):
         if trace_id is None:
             continue
+        sample_scores = (per_sample_scores[i] if per_sample_scores and i < len(per_sample_scores) else {}) or {}
         for metric_name in metrics_list:
-            if metric_name in scores:
-                # RAGAS returns a single aggregate score; per-sample scores
-                # are in the DataFrame if available. Use aggregate as fallback.
-                value = scores[metric_name]
-                try:
-                    langfuse.create_score(
-                        trace_id=trace_id,
-                        name=metric_name,
-                        value=float(value),
-                        comment=f"RAGAS {metric_name} (aggregate over {result.get('num_samples', 0)} samples)",
-                    )
-                    pushed += 1
-                except Exception:
-                    logger.debug("Failed to push score %s for trace %s", metric_name, trace_id, exc_info=True)
+            value = sample_scores.get(metric_name, aggregate_scores.get(metric_name))
+            if value is None:
+                continue
+            is_per_sample = metric_name in sample_scores
+            try:
+                langfuse.create_score(
+                    trace_id=trace_id,
+                    name=metric_name,
+                    value=float(value),
+                    comment=f"RAGAS {metric_name} ({'per-sample' if is_per_sample else f'aggregate over {result.get(\"num_samples\", 0)} samples'})",
+                )
+                pushed += 1
+            except Exception:
+                logger.debug("Failed to push score %s for trace %s", metric_name, trace_id, exc_info=True)
 
     if pushed > 0:
         langfuse.flush()
