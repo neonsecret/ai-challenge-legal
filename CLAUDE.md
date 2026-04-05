@@ -32,6 +32,9 @@
 | Embedding (llama-server) | 8088 | app.vitreon.llama |
 | Reranker (llama-server) | 8089 | app.vitreon.reranker |
 | Cloudflare Tunnel | — | app.vitreon.tunnel |
+| Langfuse (observability) | 3040 | docker-compose.langfuse.yml (optional) |
+
+> **Langfuse secret rotation (mandatory before first start):** All `LANGFUSE_*` vars must be set in `.env` before running Langfuse. Generate crypto-safe values: `openssl rand -hex 32` for `LANGFUSE_ENCRYPTION_KEY`, `LANGFUSE_SALT`, and `LANGFUSE_NEXTAUTH_SECRET`. Never use all-zeros or placeholder values — Langfuse will start but data at rest will be unencrypted.
 
 - **RTX 3070**: 100.98.171.97 (optional, primary for embedding + reranking when online, it's my personal computer so it's sometimes disabled)
 - **Domain**: vitreon.app (Cloudflare Tunnel → Mac:3000 frontend, Mac:8000 backend)
