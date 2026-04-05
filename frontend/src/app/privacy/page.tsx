@@ -365,23 +365,6 @@ export default function PrivacyPage() {
                         .
                     </BodyText>
 
-                    <SubHeading>Langfuse</SubHeading>
-                    <BodyText>
-                        We use Langfuse for LLM observability and quality monitoring. Query content and
-                        AI-generated responses are sent to Langfuse for performance tracing and debugging.
-                        Langfuse processes this data solely on our behalf as a sub-processor. See{" "}
-                        <a
-                            href="https://langfuse.com/privacy"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{color: "#C9A84C"}}
-                            className="hover:underline"
-                        >
-                            Langfuse&apos;s Privacy Policy
-                        </a>
-                        .
-                    </BodyText>
-
                     <SubHeading>Google (OAuth)</SubHeading>
                     <BodyText>
                         If you choose to sign in with Google, we receive your email, name, and profile picture
