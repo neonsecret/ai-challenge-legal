@@ -2,28 +2,31 @@
 
 // This MUST be a "use client" component (Next.js 16 requirement for global-error).
 //
-// IMPORTANT: The `useTheme` import below is NOT optional — it is a deliberate
-// workaround for a Turbopack SSR module-initialization ordering bug.
+// Root cause of build failures on this page:
 //
-// Background: the `/_global-error` page bypasses the root layout (by design).
-// As a result, its SSR bundle is minimal and does not include `theme.tsx`.
-// Next.js's own router-context code (in node_modules_next_dist_0h9llsw chunk)
-// calls `(0, React.useContext)(AppRouterContext)` during prerender. Due to how
-// Turbopack lazily evaluates modules, `React` (module 72131) can be null at
-// that point — causing `TypeError: Cannot read properties of null (reading
-// 'useContext')` and a build failure.
+// 1. NODE_ENV leak — if the build process inherits NODE_ENV=development from the
+//    shell, Next.js 16's build worker doesn't fully initialise the React vendor
+//    module before prerendering /_global-error. Fix: always run `next build` with
+//    NODE_ENV=production (see build script in package.json).
 //
-// Pages that render through the root layout work because `theme.tsx` imports
-// React via `a.i(72131)` at module scope (`createContext`), which forces the
-// React vendor module to be fully initialized. By importing `useTheme` here,
-// `theme.tsx` is pulled into the `_global-error` SSR bundle, replicating that
-// initialization for this page too.
+// 2. Turbopack module ordering — /_global-error bypasses the root layout, so its
+//    SSR bundle is minimal. Turbopack lazily evaluates modules; if the React
+//    vendor chunk isn't eagerly evaluated, Next.js's router code throws:
+//    "TypeError: Cannot read properties of null (reading 'useContext')".
+//    Importing the React default export (`import React`) forces eager evaluation.
+//    Named-only imports ({useState, useEffect}) go through indirect re-exports
+//    that Turbopack doesn't eagerly evaluate in its multi-worker SSR context.
 //
-// Related: BillingSuccessClient.tsx uses the same DOM-based pattern to avoid
-// calling useTheme() where ThemeProvider may be absent.
+// Note: `export const dynamic = "force-dynamic"` does NOT prevent the prerender
+// of /_global-error — Next.js always prerenders it to generate 500.html,
+// ignoring route-level dynamic config for this special page.
+//
+// Theme: ThemeProvider is absent here (no root layout), so we read the theme
+// from the DOM class list after mount. See BillingSuccessClient.tsx for the
+// same pattern.
 
-import {useTheme} from "@/lib/theme";
-import {useState, useEffect} from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React, {useState, useEffect} from "react";
 
 const fontStack =
     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
@@ -35,14 +38,16 @@ export default function GlobalError({
     reset?: () => void;
 }) {
     const [mounted, setMounted] = useState(false);
+    const [isDark, setIsDark] = useState(false);
 
-    // useTheme forces theme.tsx into the _global-error SSR bundle.
-    // It returns a safe fallback ({resolvedTheme: undefined}) when
-    // ThemeProvider is absent (which it always is here), so this is safe.
-    const {resolvedTheme} = useTheme();
-    const isDark = mounted && resolvedTheme === "dark";
+    useEffect(() => {
+        setMounted(true);
+        // Read theme from DOM — layout.tsx inline script sets .dark on <html>
+        // before hydration, so this is reliable even without ThemeProvider.
+        setIsDark(document.documentElement.classList.contains("dark"));
+    }, []);
 
-    useEffect(() => setMounted(true), []);
+    const dark = mounted && isDark;
 
     return (
         <html lang="en">
@@ -54,8 +59,8 @@ export default function GlobalError({
                     justifyContent: "center",
                     minHeight: "100vh",
                     fontFamily: fontStack,
-                    background: isDark ? "#0f1623" : "#fffbf4",
-                    color: isDark ? "rgba(255,255,255,0.85)" : "#1e1208",
+                    background: dark ? "#0f1623" : "#fffbf4",
+                    color: dark ? "rgba(255,255,255,0.85)" : "#1e1208",
                     margin: 0,
                 }}
             >
@@ -86,10 +91,10 @@ export default function GlobalError({
                             marginBottom: "12px",
                             padding: "9px 28px",
                             borderRadius: "10px",
-                            background: isDark
+                            background: dark
                                 ? "linear-gradient(135deg,#C9A84C,#e8cc7a)"
                                 : "#5c2e08",
-                            color: isDark ? "#0F1623" : "#fff8ee",
+                            color: dark ? "#0F1623" : "#fff8ee",
                             border: "none",
                             cursor: "pointer",
                             fontWeight: 600,
@@ -106,7 +111,7 @@ export default function GlobalError({
                         opacity: 0.55,
                         fontSize: "12px",
                         fontFamily: fontStack,
-                        color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.60)",
+                        color: dark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.60)",
                         textDecoration: "underline",
                     }}
                 >
