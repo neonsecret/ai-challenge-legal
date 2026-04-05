@@ -13,7 +13,7 @@ export default function AppLayout({
                 {/* Main content */}
                 <main
                     className="flex-1 overflow-auto min-w-0"
-                    style={{position: "relative", zIndex: 1, paddingBottom: "96px", overflowX: "hidden", maxWidth: "100vw"}}
+                    style={{position: "relative", paddingBottom: "96px", overflowX: "hidden", maxWidth: "100vw"}}
                 >
                     {children}
                 </main>
