@@ -188,7 +188,8 @@ export default function TermsPage() {
                         current billing period and no pro-rata refund is issued for the remaining days.
                     </BodyText>
                     <BodyText>
-                        Plan upgrades and downgrades take effect at the start of the next billing cycle.
+                        Plan upgrades take effect immediately after payment is processed. Plan downgrades
+                        take effect at the start of the next billing cycle.
                         All payments are processed by{" "}
                         <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{color: "#C9A84C"}} className="hover:underline">
                             Stripe
