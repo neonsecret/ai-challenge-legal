@@ -26,21 +26,26 @@ export function useTypewriter({
         setDisplayed("");
         setDone(false);
 
+        let intervalId: ReturnType<typeof setInterval> | null = null;
+
         const startTimer = setTimeout(() => {
-            const interval = setInterval(() => {
+            intervalId = setInterval(() => {
                 const next = indexRef.current + 1;
                 setDisplayed(text.slice(0, next));
                 indexRef.current = next;
                 if (next >= text.length) {
-                    clearInterval(interval);
+                    if (intervalId) clearInterval(intervalId);
+                    intervalId = null;
                     setDone(true);
                     onCompleteRef.current?.();
                 }
             }, speed);
-            return () => clearInterval(interval);
         }, startDelay);
 
-        return () => clearTimeout(startTimer);
+        return () => {
+            clearTimeout(startTimer);
+            if (intervalId) clearInterval(intervalId);
+        };
     }, [text, speed, startDelay]);
 
     return {displayed, done};
