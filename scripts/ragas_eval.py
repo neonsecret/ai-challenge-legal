@@ -276,11 +276,12 @@ def push_scores_to_langfuse(langfuse, trace_ids: list[str | None], result: dict,
                 continue
             is_per_sample = metric_name in sample_scores
             try:
+                score_kind = "per-sample" if is_per_sample else f"aggregate over {result.get('num_samples', 0)} samples"
                 langfuse.create_score(
                     trace_id=trace_id,
                     name=metric_name,
                     value=float(value),
-                    comment=f"RAGAS {metric_name} ({'per-sample' if is_per_sample else f'aggregate over {result.get(\"num_samples\", 0)} samples'})",
+                    comment=f"RAGAS {metric_name} ({score_kind})",
                 )
                 pushed += 1
             except Exception:
