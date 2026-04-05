@@ -7,7 +7,7 @@ export const metadata: Metadata = {
         "Terms and conditions governing your use of the Vitreon Legal AI legal research platform.",
 };
 
-const LAST_UPDATED = "March 27, 2026";
+const LAST_UPDATED = "April 5, 2026";
 
 export default function TermsPage() {
     return (
@@ -105,7 +105,7 @@ export default function TermsPage() {
                 <Section>
                     <SectionTitle index="1">Acceptance of Terms</SectionTitle>
                     <BodyText>
-                        By creating an account, configuring an API key, or otherwise accessing the Service, you
+                        By creating an account or otherwise accessing the Service, you
                         represent that you are at least 18 years of age and have the authority to enter into
                         these Terms on behalf of yourself or the organisation you represent.
                     </BodyText>
@@ -137,9 +137,9 @@ export default function TermsPage() {
                     </Callout>
 
                     <BodyText>
-                        The Service is provided on a self-hosted, bring-your-own-key basis. You are responsible
-                        for providing a valid Anthropic API key and for all costs associated with API usage
-                        billed by Anthropic to your account.
+                        The Service is provided as a hosted platform at vitreon.app. Access requires creating
+                        an account. Usage is subject to the subscription plan and daily query limits associated
+                        with your account tier.
                     </BodyText>
                 </Section>
 
@@ -168,33 +168,98 @@ export default function TermsPage() {
 
                 <Divider/>
 
-                {/* 4. API Key Security */}
+                {/* 4. Subscription and Billing */}
                 <Section>
-                    <SectionTitle index="4">API Key Security</SectionTitle>
+                    <SectionTitle index="4">Subscription and Billing</SectionTitle>
                     <BodyText>
-                        To use the Service you must supply a valid Anthropic API key. Your API key grants access
-                        to Anthropic&apos;s services and you are solely responsible for:
+                        The Service is available under the following plans:
                     </BodyText>
                     <BulletList
                         items={[
-                            "Keeping your API key confidential and not sharing it with unauthorised persons.",
-                            "All activity and charges that occur under your API key, whether or not authorised.",
-                            "Immediately revoking and replacing your key if you suspect it has been compromised.",
-                            "Complying with Anthropic's usage policies and terms of service governing your API key.",
+                            "Free: $0/month — up to 3 queries per day. No payment information required.",
+                            "Starter: $29/month — up to 30 queries per day.",
+                            "Pro: $179/month — up to 200 queries per day.",
+                            "Enterprise: $499/month — unlimited queries.",
                         ]}
                     />
                     <BodyText>
-                        Vitreon Legal stores your API key exclusively in your browser&apos;s localStorage and does not
-                        transmit it to Vitreon Legal servers. Nevertheless, you should treat your API key with the same
-                        care as a password.
+                        Paid subscriptions renew automatically at the start of each billing cycle. You may
+                        cancel your subscription at any time; cancellation takes effect at the end of the
+                        current billing period and no pro-rata refund is issued for the remaining days.
+                    </BodyText>
+                    <BodyText>
+                        Plan upgrades and downgrades take effect at the start of the next billing cycle.
+                        All payments are processed by{" "}
+                        <a href="https://stripe.com" target="_blank" rel="noopener noreferrer" style={{color: "#C9A84C"}} className="hover:underline">
+                            Stripe
+                        </a>
+                        . Any billing disputes should be directed to Stripe or to{" "}
+                        <a href="mailto:billing@vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
+                            billing@vitreon.app
+                        </a>
+                        .
                     </BodyText>
                 </Section>
 
                 <Divider/>
 
-                {/* 5. Intellectual Property */}
+                {/* 5. Account Security */}
                 <Section>
-                    <SectionTitle index="5">Intellectual Property</SectionTitle>
+                    <SectionTitle index="5">Account Security</SectionTitle>
+                    <BodyText>
+                        Your account is protected by the following measures:
+                    </BodyText>
+                    <BulletList
+                        items={[
+                            "Passwords are hashed using bcrypt — we never store your password in plain text.",
+                            "Sessions use HttpOnly, SameSite cookies that cannot be accessed by client-side scripts.",
+                            "Brute-force protection limits failed login attempts per IP address.",
+                        ]}
+                    />
+                    <BodyText>
+                        You are solely responsible for keeping your login credentials confidential and for all
+                        activity that occurs under your account. If you suspect your account has been
+                        compromised, you should change your password immediately and contact{" "}
+                        <a href="mailto:security@vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
+                            security@vitreon.app
+                        </a>
+                        .
+                    </BodyText>
+                </Section>
+
+                <Divider/>
+
+                {/* 6. Termination and Suspension */}
+                <Section>
+                    <SectionTitle index="6">Termination and Suspension</SectionTitle>
+                    <BodyText>
+                        Either party may terminate your account at any time. You may delete your account from
+                        your account settings or by emailing{" "}
+                        <a href="mailto:legal@vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
+                            legal@vitreon.app
+                        </a>
+                        .
+                    </BodyText>
+                    <BodyText>
+                        Upon account deletion, all your personal data, conversations, documents, and sessions
+                        are permanently removed in accordance with the retention policy described in our{" "}
+                        <a href="/privacy" style={{color: "#C9A84C"}} className="hover:underline">
+                            Privacy Policy
+                        </a>
+                        . Any active paid subscription is automatically cancelled.
+                    </BodyText>
+                    <BodyText>
+                        We may suspend or terminate your access without prior notice if you violate these Terms
+                        or the Acceptable Use provisions. In the event of termination for cause, no refund is
+                        issued for the current billing period.
+                    </BodyText>
+                </Section>
+
+                <Divider/>
+
+                {/* 7. Intellectual Property */}
+                <Section>
+                    <SectionTitle index="7">Intellectual Property</SectionTitle>
 
                     <SubHeading>Our intellectual property</SubHeading>
                     <BodyText>
@@ -222,9 +287,9 @@ export default function TermsPage() {
 
                 <Divider/>
 
-                {/* 6. Limitation of Liability */}
+                {/* 8. Limitation of Liability */}
                 <Section>
-                    <SectionTitle index="6">Disclaimer and Limitation of Liability</SectionTitle>
+                    <SectionTitle index="8">Disclaimer and Limitation of Liability</SectionTitle>
 
                     <SubHeading>Disclaimer of warranties</SubHeading>
                     <BodyText>
@@ -252,9 +317,9 @@ export default function TermsPage() {
 
                 <Divider/>
 
-                {/* 7. Enterprise */}
+                {/* 9. Enterprise */}
                 <Section>
-                    <SectionTitle index="7">Enterprise Licences</SectionTitle>
+                    <SectionTitle index="9">Enterprise Licences</SectionTitle>
                     <BodyText>
                         Organisations requiring data processing agreements (DPA), extended SLAs, custom
                         retention policies, on-premise deployment, or dedicated support should contact us to
@@ -272,9 +337,9 @@ export default function TermsPage() {
 
                 <Divider/>
 
-                {/* 8. Governing Law */}
+                {/* 10. Governing Law */}
                 <Section>
-                    <SectionTitle index="8">Governing Law and Jurisdiction</SectionTitle>
+                    <SectionTitle index="10">Governing Law and Jurisdiction</SectionTitle>
                     <BodyText>
                         These Terms are governed by and construed in accordance with the laws of the{" "}
                         <strong style={{color: "rgba(255,255,255,0.85)"}}>Czech Republic</strong>, without
@@ -305,9 +370,9 @@ export default function TermsPage() {
 
                 <Divider/>
 
-                {/* 9. Changes */}
+                {/* 11. Changes */}
                 <Section>
-                    <SectionTitle index="9">Changes to These Terms</SectionTitle>
+                    <SectionTitle index="11">Changes to These Terms</SectionTitle>
                     <BodyText>
                         We may update these Terms from time to time. When we make material changes we will
                         update the &ldquo;Last updated&rdquo; date at the top of this page and, where
@@ -323,9 +388,9 @@ export default function TermsPage() {
 
                 <Divider/>
 
-                {/* 10. Contact */}
+                {/* 12. Contact */}
                 <Section>
-                    <SectionTitle index="10">Contact</SectionTitle>
+                    <SectionTitle index="12">Contact</SectionTitle>
                     <BodyText>
                         For legal enquiries or questions about these Terms, please contact:
                     </BodyText>

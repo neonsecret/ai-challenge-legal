@@ -7,7 +7,7 @@ export const metadata: Metadata = {
         "How Vitreon Legal collects, uses, and protects your data when you use our AI-powered legal research platform.",
 };
 
-const LAST_UPDATED = "March 2026";
+const LAST_UPDATED = "April 5, 2026";
 
 export default function PrivacyPage() {
     return (
@@ -186,6 +186,20 @@ export default function PrivacyPage() {
                         ]}
                     />
 
+                    <SubHeading>Lawful basis for processing</SubHeading>
+                    <BodyText>
+                        Under GDPR Article 6, we rely on the following legal bases for processing your
+                        personal data:
+                    </BodyText>
+                    <BulletList
+                        items={[
+                            "Service delivery (queries, answers, conversation history): contractual necessity — Article 6(1)(b).",
+                            "Billing and subscription management: contractual necessity — Article 6(1)(b).",
+                            "Security and abuse prevention (rate limiting, brute-force protection, audit logs): legitimate interests — Article 6(1)(f).",
+                            "Legal compliance (tax records, regulatory obligations): legal obligation — Article 6(1)(c).",
+                        ]}
+                    />
+
                     <Callout>
                         We do <strong>not</strong> use your queries, answers, or uploaded documents to
                         train, fine-tune, or evaluate AI models. Your data is processed solely to generate
@@ -351,6 +365,23 @@ export default function PrivacyPage() {
                         .
                     </BodyText>
 
+                    <SubHeading>Langfuse</SubHeading>
+                    <BodyText>
+                        We use Langfuse for LLM observability and quality monitoring. Query content and
+                        AI-generated responses are sent to Langfuse for performance tracing and debugging.
+                        Langfuse processes this data solely on our behalf as a sub-processor. See{" "}
+                        <a
+                            href="https://langfuse.com/privacy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{color: "#C9A84C"}}
+                            className="hover:underline"
+                        >
+                            Langfuse&apos;s Privacy Policy
+                        </a>
+                        .
+                    </BodyText>
+
                     <SubHeading>Google (OAuth)</SubHeading>
                     <BodyText>
                         If you choose to sign in with Google, we receive your email, name, and profile picture
@@ -435,17 +466,36 @@ export default function PrivacyPage() {
                            style={{color: "rgba(255,255,255,0.9)"}}>
                             Vitreon Legal — Privacy Team
                         </p>
-                        <p className="text-sm" style={{color: "rgba(255,255,255,0.55)"}}>
+                        <p className="text-sm mb-2" style={{color: "rgba(255,255,255,0.55)"}}>
                             Email:{" "}
                             <a href="mailto:privacy@vitreon.app" style={{color: "#C9A84C"}} className="hover:underline">
                                 privacy@vitreon.app
                             </a>
                         </p>
+                        <p className="text-sm" style={{color: "rgba(255,255,255,0.55)"}}>
+                            Vitreon Legal is currently operated as a sole trader (OSVČ) based in Prague,
+                            Czech Republic. The data controller is the platform operator, Viacheslav Ivannikov.
+                        </p>
                     </div>
                     <BodyText>
                         <span className="mt-4 block">
                             If you are not satisfied with our response, you have the right to lodge a complaint
-                            with your local data protection supervisory authority.
+                            with your local data protection supervisory authority. For users in the Czech
+                            Republic, the supervisory authority is the{" "}
+                            <strong style={{color: "rgba(255,255,255,0.78)"}}>
+                                Office for Personal Data Protection (Úřad pro ochranu osobních údajů — ÚOOÚ)
+                            </strong>{" "}
+                            at{" "}
+                            <a
+                                href="https://uoou.cz"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{color: "#C9A84C"}}
+                                className="hover:underline"
+                            >
+                                uoou.cz
+                            </a>
+                            .
                         </span>
                     </BodyText>
                 </Section>
