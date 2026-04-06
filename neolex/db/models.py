@@ -194,6 +194,7 @@ class PipelineJob(Base):
     """
 
     __tablename__ = "pipeline_jobs"
+    __table_args__ = (Index("ix_pipeline_job_user_conv", "user_id", "conversation_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -246,5 +247,3 @@ class Feedback(Base):
     rating: Mapped[str] = mapped_column(String, nullable=False)  # 'positive' | 'negative'
     comment: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
-
-    __table_args__ = (Index("ix_pipeline_job_user_conv", "user_id", "conversation_id"),)
