@@ -12,6 +12,7 @@ import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
+import {useIsMobile} from "@/hooks/use-mobile";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -77,6 +78,7 @@ export default function LandingPage() {
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { locale, t } = useI18n();
+    const isMobile = useIsMobile();
     const isCzech = locale === "cs";
     const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
@@ -144,7 +146,7 @@ export default function LandingPage() {
                                               strokeWidth="1.2" strokeLinejoin="round" fill="rgba(201,168,76,0.15)"/>
                                     </svg>
                                 </div>
-                                <span className="font-heading text-lg font-bold tracking-tight"
+                                <span className="hidden sm:inline font-heading text-lg font-bold tracking-tight"
                                       style={{color: "rgba(255,255,255,0.95)"}}>Vitreon Legal</span>
                             </div>
                             <div className="flex items-center gap-3">
@@ -155,8 +157,8 @@ export default function LandingPage() {
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        width: 32,
-                                        height: 32,
+                                        minWidth: 44,
+                                        minHeight: 44,
                                         borderRadius: 10,
                                         border: "none",
                                         background: "transparent",
@@ -172,7 +174,7 @@ export default function LandingPage() {
                                 </button>
                                 {isAuthenticated ? (
                                     <a href="/chat"
-                                       className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all"
+                                       className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
                                        style={{
                                            background: "rgba(201,168,76,0.12)",
                                            border: "1px solid rgba(201,168,76,0.3)",
@@ -182,10 +184,10 @@ export default function LandingPage() {
                                     </a>
                                 ) : (
                                     <>
-                                        <a href="/login" className="text-sm font-medium transition-colors"
+                                        <a href="/login" className="hidden sm:inline text-sm font-medium transition-colors"
                                            style={{color: "rgba(255,255,255,0.55)"}}>{t("landing.sign_in")}</a>
                                         <a href="/login"
-                                           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all"
+                                           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
                                            style={{
                                                background: "rgba(201,168,76,0.12)",
                                                border: "1px solid rgba(201,168,76,0.3)",
@@ -199,7 +201,7 @@ export default function LandingPage() {
                         </div>
                     </nav>
 
-                    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-12 pb-8">
+                    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 sm:pt-12 pb-12 sm:pb-8">
                         <motion.p initial={{opacity: 0, y: 6}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.1}}
                                   className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
@@ -443,13 +445,13 @@ export default function LandingPage() {
                                     lineHeight: 1
                                 }}>N</span>
                             </div>
-                            <span style={{
+                            {!isMobile && <span style={{
                                 fontSize: 16,
                                 fontWeight: 700,
                                 color: "#1a0e04",
                                 fontFamily: "Georgia, 'Times New Roman', serif",
                                 letterSpacing: "-0.04em"
-                            }}>Vitreon Legal</span>
+                            }}>Vitreon Legal</span>}
                         </div>
                         <div style={{display: "flex", alignItems: "center", gap: 12}}>
                             <LanguageToggle />
@@ -459,8 +461,8 @@ export default function LandingPage() {
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    width: 32,
-                                    height: 32,
+                                    minWidth: 44,
+                                    minHeight: 44,
                                     borderRadius: 10,
                                     border: "none",
                                     background: "transparent",
@@ -480,6 +482,7 @@ export default function LandingPage() {
                                     alignItems: "center",
                                     gap: 6,
                                     padding: "7px 16px",
+                                    minHeight: 44,
                                     borderRadius: "9999px",
                                     fontSize: 13,
                                     fontWeight: 600,
@@ -492,7 +495,7 @@ export default function LandingPage() {
                                 </a>
                             ) : (
                                 <>
-                                    <a href="/login" style={{
+                                    <a href="/login" className="hidden sm:inline" style={{
                                         fontSize: 13,
                                         fontWeight: 500,
                                         color: "rgba(46,31,8,0.55)",
@@ -503,6 +506,7 @@ export default function LandingPage() {
                                         alignItems: "center",
                                         gap: 6,
                                         padding: "7px 16px",
+                                        minHeight: 44,
                                         borderRadius: "9999px",
                                         fontSize: 13,
                                         fontWeight: 600,
@@ -519,13 +523,14 @@ export default function LandingPage() {
                     </div>
                 </nav>
 
-                <div style={{
+                <div className="pt-16 sm:pt-12 pb-12 sm:pb-8" style={{
                     flex: 1,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: "48px 24px 32px",
+                    paddingLeft: "24px",
+                    paddingRight: "24px",
                     position: "relative",
                     zIndex: 1,
                     textAlign: "center"
@@ -614,9 +619,10 @@ export default function LandingPage() {
             </section>
 
             {/* ── VALUE PILLARS ── */}
-            <section id="why" style={{
+            <section id="why" className="py-16 sm:py-20" style={{
                 position: "relative",
-                padding: "80px 24px",
+                paddingLeft: "24px",
+                paddingRight: "24px",
                 background: "linear-gradient(180deg, #dbb870 0%, #e8d4b8 100%)",
                 overflow: "hidden"
             }}>
@@ -722,8 +728,9 @@ export default function LandingPage() {
             </section>
 
             {/* ── HOW IT WORKS ── */}
-            <section style={{
-                padding: "80px 24px",
+            <section className="py-16 sm:py-20" style={{
+                paddingLeft: "24px",
+                paddingRight: "24px",
                 background: "linear-gradient(180deg, #e8d4b8 0%, #dfc090 100%)",
                 position: "relative"
             }}>
@@ -800,10 +807,10 @@ export default function LandingPage() {
                                         style={{
                                             ...warmGlass,
                                             borderRadius: 20,
-                                            padding: "28px 32px",
+                                            padding: isMobile ? "20px" : "28px 32px",
                                             display: "grid",
-                                            gridTemplateColumns: "1fr 1fr",
-                                            gap: 32,
+                                            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                                            gap: isMobile ? 20 : 32,
                                             alignItems: "center"
                                         }}>
                                 <div>

@@ -451,7 +451,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                 <div className="flex items-center gap-1.5 px-4 pb-3">
                     <button
                         onClick={handlePrev}
-                        className="shrink-0 flex items-center justify-center size-6 rounded-md transition-colors hover:bg-white/10"
+                        className="shrink-0 flex items-center justify-center size-6 min-h-[44px] min-w-[44px] rounded-md transition-colors hover:bg-white/10"
                         style={{
                             background: "rgba(255,255,255,0.06)",
                             border: "1px solid rgba(255,255,255,0.08)",
@@ -470,7 +470,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                             <button
                                 key={s.jurisdiction}
                                 onClick={() => handleTabClick(i)}
-                                className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition-all"
+                                className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1 min-h-[44px] text-[11px] font-medium transition-all"
                                 style={{
                                     background:
                                         i === activeIdx
@@ -491,7 +491,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
 
                     <button
                         onClick={handleNext}
-                        className="shrink-0 flex items-center justify-center size-6 rounded-md transition-colors hover:bg-white/10"
+                        className="shrink-0 flex items-center justify-center size-6 min-h-[44px] min-w-[44px] rounded-md transition-colors hover:bg-white/10"
                         style={{
                             background: "rgba(255,255,255,0.06)",
                             border: "1px solid rgba(255,255,255,0.08)",

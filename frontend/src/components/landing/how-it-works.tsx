@@ -173,7 +173,7 @@ export function HowItWorks() {
 
     return (
         <section
-            className="py-24 px-6"
+            className="py-16 sm:py-24 px-6"
             style={{background: "linear-gradient(180deg, #0F1623 0%, #0A1120 100%)"}}
         >
             <div className="max-w-4xl mx-auto">
@@ -213,7 +213,7 @@ export function HowItWorks() {
                         {/* Prev arrow */}
                         <button
                             onClick={goPrev}
-                            className="shrink-0 flex items-center justify-center size-8 rounded-full transition-colors hover:bg-white/10"
+                            className="shrink-0 flex items-center justify-center size-8 min-h-[44px] min-w-[44px] rounded-full transition-colors hover:bg-white/10"
                             style={{
                                 background: "rgba(255,255,255,0.06)",
                                 border: "1px solid rgba(255,255,255,0.10)",
@@ -233,7 +233,7 @@ export function HowItWorks() {
                                 <button
                                     key={s.number}
                                     onClick={() => goTo(i)}
-                                    className="flex items-center gap-2 rounded-full px-4 py-2 transition-all"
+                                    className="flex items-center gap-2 rounded-full px-4 py-2 min-h-[44px] transition-all"
                                     style={{
                                         background:
                                             i === activeStep
@@ -260,7 +260,7 @@ export function HowItWorks() {
                         {/* Next arrow */}
                         <button
                             onClick={goNext}
-                            className="shrink-0 flex items-center justify-center size-8 rounded-full transition-colors hover:bg-white/10"
+                            className="shrink-0 flex items-center justify-center size-8 min-h-[44px] min-w-[44px] rounded-full transition-colors hover:bg-white/10"
                             style={{
                                 background: "rgba(255,255,255,0.06)",
                                 border: "1px solid rgba(255,255,255,0.10)",
