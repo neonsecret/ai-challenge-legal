@@ -49,25 +49,40 @@ export function useAuth(): {
         error: null,
     });
 
-    // Check for existing session on mount
+    // Check for existing session on mount.
+    // On the OAuth redirect destination (/chat) the session cookie may arrive a
+    // few ms after the first request, so we retry up to 3 times with increasing
+    // delays (500 ms → 1 000 ms → 2 000 ms) to recover without a hard reload.
+    // On any other path a single attempt is sufficient.
     useEffect(() => {
         let cancelled = false;
+        const isOAuthRedirect = typeof window !== "undefined" && window.location.pathname === "/chat";
+        const delays = isOAuthRedirect ? [500, 1000, 2000] : [];
+
         (async () => {
-            try {
-                const res = await fetch(`${API}/auth/me`, {
-                    credentials: "include",
-                });
-                if (!cancelled && res.ok) {
-                    const user: User = await res.json();
-                    localStorage.setItem("neolex_uid", user.id);
-                    setState({user, loading: false, error: null});
-                } else if (!cancelled) {
-                    setState({user: null, loading: false, error: null});
+            const attempts = 1 + delays.length;
+            for (let attempt = 0; attempt < attempts; attempt++) {
+                if (cancelled) return;
+                try {
+                    const res = await fetch(`${API}/auth/me`, {
+                        credentials: "include",
+                    });
+                    if (!cancelled && res.ok) {
+                        const user: User = await res.json();
+                        localStorage.setItem("neolex_uid", user.id);
+                        setState({user, loading: false, error: null});
+                        return;
+                    }
+                } catch {
+                    // network error — fall through to retry or give up
                 }
-            } catch {
-                if (!cancelled) {
-                    setState({user: null, loading: false, error: null});
+                // If there are more attempts left, wait before retrying
+                if (attempt < delays.length) {
+                    await new Promise<void>((resolve) => setTimeout(resolve, delays[attempt]));
                 }
+            }
+            if (!cancelled) {
+                setState({user: null, loading: false, error: null});
             }
         })();
         return () => {
