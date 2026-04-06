@@ -103,6 +103,14 @@ async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
             content={"detail": "This email is already linked to a different Google account."},
         )
 
+    # Commit user upsert before creating the session so the user row is
+    # visible to other connections (e.g. /auth/me) before the session cookie
+    # reaches the browser.  Without this, flush() leaves the row in-flight
+    # inside the current transaction while create_session() does its own
+    # commit, causing a tiny window where /auth/me sees the session token but
+    # cannot find the user.
+    await db.commit()
+
     ip = getattr(request.client, "host", None)
     user_agent = request.headers.get("user-agent")
     token_str = await create_session(user, db, ip=ip, user_agent=user_agent)
