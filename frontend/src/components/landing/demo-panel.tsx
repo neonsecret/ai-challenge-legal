@@ -470,7 +470,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                             <button
                                 key={s.jurisdiction}
                                 onClick={() => handleTabClick(i)}
-                                className="shrink-0 flex items-center gap-1.5 rounded-full px-3 py-1 min-h-[44px] text-[11px] font-medium transition-all"
+                                className="shrink-0 flex items-center justify-center gap-1.5 rounded-full px-3 py-1 min-h-[44px] min-w-[44px] text-[11px] font-medium transition-all"
                                 style={{
                                     background:
                                         i === activeIdx
