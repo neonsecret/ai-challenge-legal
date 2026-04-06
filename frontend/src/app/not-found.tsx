@@ -1,6 +1,7 @@
-// force-dynamic prevents a Next.js 16 Turbopack bug where ThemeProvider's
-// React module is null during build-time prerender of this page.
-export const dynamic = "force-dynamic";
+// Importing the React default export forces eager Turbopack module evaluation.
+// See global-error.tsx for the full explanation.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import React from "react";
 
 export default function NotFound() {
     return (
