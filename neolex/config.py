@@ -41,6 +41,10 @@ Environment variables:
     FRONTEND_URL                Frontend base URL (default: http://localhost:3000)
     BACKEND_URL                 Backend base URL for email links (default: http://localhost:8000)
     DEV_MODE                    Disable secure cookies for local dev (default: false)
+    LANGFUSE_ENABLED            Enable Langfuse observability (default: false)
+    LANGFUSE_PUBLIC_KEY         Langfuse project public key
+    LANGFUSE_SECRET_KEY         Langfuse project secret key
+    LANGFUSE_HOST               Langfuse server URL (default: http://localhost:3040)
 """
 
 import os
@@ -151,6 +155,12 @@ class Settings:
 
     # --- Dev mode (disables Secure flag on cookies for local http) ---
     dev_mode: bool = os.environ.get("DEV_MODE", "false").lower() in ("1", "true", "yes")
+
+    # --- Langfuse observability ---
+    langfuse_enabled: bool = os.environ.get("LANGFUSE_ENABLED", "").lower() in ("1", "true", "yes")
+    langfuse_public_key: str = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    langfuse_secret_key: str = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    langfuse_host: str = os.environ.get("LANGFUSE_HOST", "http://localhost:3040")
 
 
 settings = Settings()
