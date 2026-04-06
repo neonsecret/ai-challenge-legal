@@ -12,6 +12,7 @@ import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
+import {useIsMobile} from "@/hooks/use-mobile";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -77,6 +78,7 @@ export default function LandingPage() {
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { locale, t } = useI18n();
+    const isMobile = useIsMobile();
     const isCzech = locale === "cs";
     const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
@@ -144,7 +146,7 @@ export default function LandingPage() {
                                               strokeWidth="1.2" strokeLinejoin="round" fill="rgba(201,168,76,0.15)"/>
                                     </svg>
                                 </div>
-                                <span className="font-heading text-lg font-bold tracking-tight"
+                                <span className="hidden sm:inline font-heading text-lg font-bold tracking-tight"
                                       style={{color: "rgba(255,255,255,0.95)"}}>Vitreon Legal</span>
                             </div>
                             <div className="flex items-center gap-3">
@@ -443,13 +445,13 @@ export default function LandingPage() {
                                     lineHeight: 1
                                 }}>N</span>
                             </div>
-                            <span style={{
+                            {!isMobile && <span style={{
                                 fontSize: 16,
                                 fontWeight: 700,
                                 color: "#1a0e04",
                                 fontFamily: "Georgia, 'Times New Roman', serif",
                                 letterSpacing: "-0.04em"
-                            }}>Vitreon Legal</span>
+                            }}>Vitreon Legal</span>}
                         </div>
                         <div style={{display: "flex", alignItems: "center", gap: 12}}>
                             <LanguageToggle />
@@ -805,10 +807,10 @@ export default function LandingPage() {
                                         style={{
                                             ...warmGlass,
                                             borderRadius: 20,
-                                            padding: "28px 32px",
+                                            padding: isMobile ? "20px" : "28px 32px",
                                             display: "grid",
-                                            gridTemplateColumns: "1fr 1fr",
-                                            gap: 32,
+                                            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
+                                            gap: isMobile ? 20 : 32,
                                             alignItems: "center"
                                         }}>
                                 <div>
