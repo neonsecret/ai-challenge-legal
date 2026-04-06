@@ -45,6 +45,7 @@ Environment variables:
     LANGFUSE_PUBLIC_KEY         Langfuse project public key
     LANGFUSE_SECRET_KEY         Langfuse project secret key
     LANGFUSE_HOST               Langfuse server URL (default: http://localhost:3040)
+    RAGAS_SAMPLE_RATE           Fraction of queries scored by async RAGAS eval (0.0–1.0, default: 1.0)
 """
 
 import os
@@ -161,6 +162,11 @@ class Settings:
     langfuse_public_key: str = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
     langfuse_secret_key: str = os.environ.get("LANGFUSE_SECRET_KEY", "")
     langfuse_host: str = os.environ.get("LANGFUSE_HOST", "http://localhost:3040")
+
+    # --- RAGAS production evaluation ---
+    # Fraction of production queries that trigger async RAGAS scoring (0.0–1.0).
+    # Set to 0.0 to disable entirely; 1.0 to score every query.
+    ragas_sample_rate: float = float(os.environ.get("RAGAS_SAMPLE_RATE", "1.0"))
 
 
 settings = Settings()
