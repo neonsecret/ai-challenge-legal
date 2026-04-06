@@ -30,6 +30,7 @@ from neolex.middleware.request_id import RequestIDMiddleware
 from neolex.middleware.timeout import TimeoutMiddleware
 from neolex.routers import admin as admin_router
 from neolex.routers import documents as documents_router
+from neolex.routers import feedback as feedback_router
 from neolex.routers import health, stripe_router
 from neolex.routers import query as query_router
 from neolex.routers import web_proxy as web_proxy_router
@@ -185,6 +186,11 @@ async def lifespan(app: FastAPI):
         # Start periodic cleanup of expired sessions and auth tokens.
         app.state.cleanup_task = asyncio.create_task(_cleanup_expired())
 
+        # Initialize Langfuse observability (no-op when LANGFUSE_ENABLED is false).
+        from neolex.observability import init_observability
+
+        init_observability()
+
         app.state.ready = True
         app.state.startup_time = time.monotonic()
         logger.info("Vitreon Legal startup complete. Ready to serve requests.")
@@ -207,6 +213,12 @@ async def lifespan(app: FastAPI):
 
     await pg_engine.dispose()
     logger.info("PostgreSQL engine disposed.")
+
+    # Flush pending Langfuse spans before exit (no-op when disabled).
+    from neolex.observability import shutdown_observability
+
+    shutdown_observability()
+
     app.state.ready = False
 
 
@@ -307,6 +319,7 @@ app.include_router(health.router)
 app.include_router(query_router.router)
 app.include_router(admin_router.router)
 app.include_router(documents_router.router)
+app.include_router(feedback_router.router)
 app.include_router(oauth_router.router)
 app.include_router(email_auth_router.router)
 app.include_router(stripe_router.router)
