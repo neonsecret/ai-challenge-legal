@@ -24,7 +24,7 @@ export function TrustSection({
     return (
         <section
             id="access"
-            className="relative py-32 px-6 overflow-hidden"
+            className="relative py-16 sm:py-32 px-6 overflow-hidden"
             style={{background: "#080E1A"}}
         >
             {/* Aurora orbs */}

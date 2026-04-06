@@ -155,8 +155,8 @@ export default function LandingPage() {
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
-                                        width: 32,
-                                        height: 32,
+                                        minWidth: 44,
+                                        minHeight: 44,
                                         borderRadius: 10,
                                         border: "none",
                                         background: "transparent",
@@ -172,7 +172,7 @@ export default function LandingPage() {
                                 </button>
                                 {isAuthenticated ? (
                                     <a href="/chat"
-                                       className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all"
+                                       className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
                                        style={{
                                            background: "rgba(201,168,76,0.12)",
                                            border: "1px solid rgba(201,168,76,0.3)",
@@ -182,10 +182,10 @@ export default function LandingPage() {
                                     </a>
                                 ) : (
                                     <>
-                                        <a href="/login" className="text-sm font-medium transition-colors"
+                                        <a href="/login" className="hidden sm:inline text-sm font-medium transition-colors"
                                            style={{color: "rgba(255,255,255,0.55)"}}>{t("landing.sign_in")}</a>
                                         <a href="/login"
-                                           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all"
+                                           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
                                            style={{
                                                background: "rgba(201,168,76,0.12)",
                                                border: "1px solid rgba(201,168,76,0.3)",
@@ -199,7 +199,7 @@ export default function LandingPage() {
                         </div>
                     </nav>
 
-                    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-12 pb-8">
+                    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 sm:pt-12 pb-12 sm:pb-8">
                         <motion.p initial={{opacity: 0, y: 6}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.1}}
                                   className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
@@ -459,8 +459,8 @@ export default function LandingPage() {
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    width: 32,
-                                    height: 32,
+                                    minWidth: 44,
+                                    minHeight: 44,
                                     borderRadius: 10,
                                     border: "none",
                                     background: "transparent",
@@ -480,6 +480,7 @@ export default function LandingPage() {
                                     alignItems: "center",
                                     gap: 6,
                                     padding: "7px 16px",
+                                    minHeight: 44,
                                     borderRadius: "9999px",
                                     fontSize: 13,
                                     fontWeight: 600,
@@ -492,7 +493,7 @@ export default function LandingPage() {
                                 </a>
                             ) : (
                                 <>
-                                    <a href="/login" style={{
+                                    <a href="/login" className="hidden sm:inline" style={{
                                         fontSize: 13,
                                         fontWeight: 500,
                                         color: "rgba(46,31,8,0.55)",
@@ -503,6 +504,7 @@ export default function LandingPage() {
                                         alignItems: "center",
                                         gap: 6,
                                         padding: "7px 16px",
+                                        minHeight: 44,
                                         borderRadius: "9999px",
                                         fontSize: 13,
                                         fontWeight: 600,
@@ -519,13 +521,14 @@ export default function LandingPage() {
                     </div>
                 </nav>
 
-                <div style={{
+                <div className="pt-16 sm:pt-12 pb-12 sm:pb-8" style={{
                     flex: 1,
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
-                    padding: "48px 24px 32px",
+                    paddingLeft: "24px",
+                    paddingRight: "24px",
                     position: "relative",
                     zIndex: 1,
                     textAlign: "center"
@@ -614,9 +617,10 @@ export default function LandingPage() {
             </section>
 
             {/* ── VALUE PILLARS ── */}
-            <section id="why" style={{
+            <section id="why" className="py-16 sm:py-20" style={{
                 position: "relative",
-                padding: "80px 24px",
+                paddingLeft: "24px",
+                paddingRight: "24px",
                 background: "linear-gradient(180deg, #dbb870 0%, #e8d4b8 100%)",
                 overflow: "hidden"
             }}>
@@ -722,8 +726,9 @@ export default function LandingPage() {
             </section>
 
             {/* ── HOW IT WORKS ── */}
-            <section style={{
-                padding: "80px 24px",
+            <section className="py-16 sm:py-20" style={{
+                paddingLeft: "24px",
+                paddingRight: "24px",
                 background: "linear-gradient(180deg, #e8d4b8 0%, #dfc090 100%)",
                 position: "relative"
             }}>

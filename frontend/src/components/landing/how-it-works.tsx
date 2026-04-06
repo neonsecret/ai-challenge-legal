@@ -173,7 +173,7 @@ export function HowItWorks() {
 
     return (
         <section
-            className="py-24 px-6"
+            className="py-16 sm:py-24 px-6"
             style={{background: "linear-gradient(180deg, #0F1623 0%, #0A1120 100%)"}}
         >
             <div className="max-w-4xl mx-auto">

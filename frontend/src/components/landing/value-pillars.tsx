@@ -35,7 +35,7 @@ export function ValuePillars() {
     const {t} = useI18n();
     return (
         <section
-            className="py-28 px-6 relative overflow-hidden"
+            className="py-16 sm:py-28 px-6 relative overflow-hidden"
             style={{background: "#0A1120"}}
         >
             {/* Subtle radial glow behind cards */}
