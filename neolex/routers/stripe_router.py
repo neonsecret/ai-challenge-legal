@@ -6,7 +6,7 @@ Intervals: monthly, biweekly.
 
 import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import stripe
 from fastapi import APIRouter, Depends, HTTPException
@@ -657,20 +657,26 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
                 sub["id"],
             )
         else:
-            # No other active subscription — revert to canceled, clean up corpora
+            # No other active subscription — revert to canceled.
+            # Schedule corpus deletion 7 days out to give the user a grace period.
             user.subscription_status = "canceled"
             user.max_corpora = 0
+            deletion_date = datetime.now(UTC) + timedelta(days=7)
+            user.corpus_deletion_scheduled_at = deletion_date
             await db.commit()
-            # Fire-and-forget corpus cleanup (with error logging)
-            task = asyncio.create_task(_delete_user_corpora(user))
-            task.add_done_callback(
-                lambda t: (
-                    logger.error("Corpus cleanup failed: %s", t.exception())
-                    if not t.cancelled() and t.exception()
-                    else None
-                ),
+            # Send warning email (fire-and-forget — billing state must not fail on email errors)
+            deletion_date_str = deletion_date.strftime("%B %d, %Y")
+            try:
+                from neolex.auth.email_service import send_corpus_deletion_warning_email
+
+                asyncio.create_task(send_corpus_deletion_warning_email(user.email, deletion_date_str))
+            except Exception:
+                logger.exception("Failed to send corpus deletion warning email to user %s", user.id)
+            logger.info(
+                "User %s subscription canceled, corpus deletion scheduled for %s",
+                user.id,
+                deletion_date_str,
             )
-            logger.info("User %s subscription canceled, corpora cleanup scheduled", user.id)
     elif stripe_status in ("active",):
         # Plan may have changed (upgrade/downgrade)
         plan = _plan_from_price(price_id) if price_id else user.subscription_status

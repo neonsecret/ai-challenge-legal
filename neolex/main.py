@@ -133,6 +133,49 @@ async def _cleanup_expired() -> None:
         await asyncio.sleep(3600)  # Every hour
 
 
+async def _cleanup_scheduled_corpus_deletions() -> None:
+    """Nightly job: execute corpus deletions whose grace period has expired.
+
+    Queries users where corpus_deletion_scheduled_at <= now(), runs the
+    corpus cleanup for each, then clears the column so they are not re-processed.
+    Runs once per day — intentionally after the hourly session cleanup to avoid
+    database contention during peak usage.
+    """
+    from sqlalchemy import select as sql_select
+
+    from neolex.db.models import User
+    from neolex.db.postgres import AsyncSessionLocal
+    from neolex.routers.stripe_router import _delete_user_corpora
+
+    while True:
+        await asyncio.sleep(86400)  # 24 hours between runs
+        try:
+            async with AsyncSessionLocal() as db:
+                now = datetime.now(UTC)
+                result = await db.execute(
+                    sql_select(User).where(
+                        User.corpus_deletion_scheduled_at != None,  # noqa: E711
+                        User.corpus_deletion_scheduled_at <= now,
+                    )
+                )
+                users_due = result.scalars().all()
+
+            for user in users_due:
+                try:
+                    await _delete_user_corpora(user)
+                    async with AsyncSessionLocal() as db:
+                        # Reload user in new session to safely clear the field
+                        fresh = (await db.execute(sql_select(User).where(User.id == user.id))).scalar_one_or_none()
+                        if fresh:
+                            fresh.corpus_deletion_scheduled_at = None
+                            await db.commit()
+                    logger.info("Corpus deletion complete for user %s", user.id)
+                except Exception:
+                    logger.exception("Corpus deletion failed for user %s", user.id)
+        except Exception:
+            logger.exception("Scheduled corpus deletion job failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- STARTUP ---
@@ -186,6 +229,9 @@ async def lifespan(app: FastAPI):
         # Start periodic cleanup of expired sessions and auth tokens.
         app.state.cleanup_task = asyncio.create_task(_cleanup_expired())
 
+        # Start nightly corpus deletion job (executes grace-period deletions).
+        app.state.corpus_deletion_task = asyncio.create_task(_cleanup_scheduled_corpus_deletions())
+
         # Initialize Langfuse observability (no-op when LANGFUSE_ENABLED is false).
         from neolex.observability import init_observability
 
@@ -208,6 +254,9 @@ async def lifespan(app: FastAPI):
     cleanup_task = getattr(app.state, "cleanup_task", None)
     if cleanup_task and not cleanup_task.done():
         cleanup_task.cancel()
+    corpus_deletion_task = getattr(app.state, "corpus_deletion_task", None)
+    if corpus_deletion_task and not corpus_deletion_task.done():
+        corpus_deletion_task.cancel()
     # Dispose the SQLAlchemy async engine to release all pooled connections
     from neolex.db.postgres import engine as pg_engine
 

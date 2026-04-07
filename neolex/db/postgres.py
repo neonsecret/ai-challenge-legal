@@ -71,6 +71,11 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_warning BOOLEAN NOT NULL DEFAULT FALSE;"),
         )
+        # corpus_deletion_scheduled_at: set on cancellation; corpus deleted at this timestamp.
+        # 7-day grace period lets users export data before permanent deletion.
+        await conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS corpus_deletion_scheduled_at TIMESTAMPTZ;"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.
