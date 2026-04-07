@@ -672,6 +672,24 @@ export function ChatMessage({
                         </span>
                     )}
 
+                    {/* Submitted comment — shown when a conversation is reloaded with persisted
+                        negative feedback that includes a comment, or after a live submission
+                        once the comment panel has closed. */}
+                    {feedback?.rating === "negative" && feedback.comment && !commentOpen && (
+                        <p style={{
+                            margin: `${SPACE[1]}px 0 0`,
+                            fontSize: TYPE_SCALE.xs,
+                            color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            fontFamily: FONT.sans,
+                            lineHeight: 1.5,
+                            fontStyle: "italic",
+                            maxWidth: "40ch",
+                            wordBreak: "break-word",
+                        }}>
+                            {feedback.comment}
+                        </p>
+                    )}
+
                     <AnimatePresence>
                         {commentOpen && (
                             <motion.div

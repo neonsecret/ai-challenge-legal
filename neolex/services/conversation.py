@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from sqlalchemy import case, func, select
 from sqlalchemy import update as sql_update
 
-from neolex.db.models import ConversationMessage, PipelineJob
+from neolex.db.models import ConversationMessage, Feedback, PipelineJob
 from neolex.db.postgres import AsyncSessionLocal
 
 logger = logging.getLogger(__name__)
@@ -214,6 +214,20 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                 .limit(500),
             )
             rows = result.all()
+
+            feedback_result = await session.execute(
+                select(Feedback.trace_id, Feedback.rating, Feedback.comment).where(
+                    Feedback.user_id == uid,
+                    Feedback.conversation_id == conversation_id,
+                )
+            )
+            feedback_by_trace: dict[str, dict] = {}
+            for _fb_row in feedback_result.all():
+                _fb: dict = {"rating": _fb_row.rating}
+                if _fb_row.comment is not None:
+                    _fb["comment"] = _fb_row.comment
+                feedback_by_trace[_fb_row.trace_id] = _fb
+
             messages = []
             for row in rows:
                 entry: dict = {
@@ -230,6 +244,9 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                     entry["sources"] = []
                 if row.role == "assistant" and row.trace_id:
                     entry["trace_id"] = row.trace_id
+                    entry["feedback"] = feedback_by_trace.get(row.trace_id)
+                else:
+                    entry["feedback"] = None
                 messages.append(entry)
             return messages
     except Exception:
