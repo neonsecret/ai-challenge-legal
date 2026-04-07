@@ -53,7 +53,7 @@ function LoginPageContent() {
     // Derive URL error message directly from search params (no effect needed)
     const urlErrorParam = searchParams.get("error");
     const urlError = urlErrorParam === "oauth_denied"
-        ? "You denied access. Please try again."
+        ? "Google sign-in was cancelled. Please try again."
         : null;
 
     useEffect(() => {
