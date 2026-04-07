@@ -226,16 +226,20 @@ textarea::placeholder { color: #b29254; }
     --sidebar-border: #E2E8F0;
     --sidebar-ring: #4F46E5;
 
-    /* Glass — subtler (less blur, tighter borders, reduced opacity) */
-    --glass-bg: rgba(255, 255, 255, 0.05);
-    --glass-bg-subtle: rgba(255, 255, 255, 0.03);
-    --glass-bg-heavy: rgba(255, 255, 255, 0.08);
-    --glass-bg-nav: rgba(6, 12, 22, 0.75);
+    /* Glass — frosted-panel values for the light (#F3F4F6) background.
+       Low-opacity white is invisible on near-white; use high-opacity white
+       for panels and slate-tinted borders instead. */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-bg-subtle: rgba(255, 255, 255, 0.55);
+    --glass-bg-heavy: rgba(255, 255, 255, 0.85);
+    /* Nav: light slate panel — was dark near-black (rgba 6,12,22) which is wrong
+       for a cool-slate light palette */
+    --glass-bg-nav: rgba(248, 250, 252, 0.88);
     --glass-bg-gold: rgba(79, 70, 229, 0.07);
-    --glass-border-color: rgba(255, 255, 255, 0.08);
-    --glass-border-subtle: rgba(255, 255, 255, 0.05);
+    --glass-border-color: rgba(99, 102, 241, 0.15);
+    --glass-border-subtle: rgba(99, 102, 241, 0.10);
     --glass-border-gold: rgba(79, 70, 229, 0.22);
-    --glass-border-strong: rgba(255, 255, 255, 0.11);
+    --glass-border-strong: rgba(99, 102, 241, 0.20);
     --glass-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.07);
     --glass-shadow-heavy: 0 6px 28px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.09);
     --glass-shadow-sm: 0 1px 6px rgba(0, 0, 0, 0.10);
