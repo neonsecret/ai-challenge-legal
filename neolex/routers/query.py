@@ -504,6 +504,25 @@ async def query_stream(
 
             yield {"event": "answer", "data": response.model_dump_json()}
 
+            # Fire RAGAS background evaluation after the answer is flushed.
+            # The user never waits for this — scores land in Langfuse asynchronously.
+            _ragas_trace_id = pipeline_result.get("trace_id")
+            if _ragas_trace_id:
+                from neolex.services.ragas_background import run_ragas_eval
+
+                _ragas_contexts = [cp["text"] for cp in pipeline_result.get("chunk_pages", []) if cp.get("text")]
+                _ragas_task = asyncio.create_task(
+                    run_ragas_eval(
+                        question=body.question,
+                        answer=str(response.answer) if response.answer is not None else "",
+                        contexts=_ragas_contexts,
+                        trace_id=_ragas_trace_id,
+                        corpus=corpus,
+                        answer_type=body.answer_type,
+                    )
+                )
+                _ragas_task.add_done_callback(_log_task_exception)
+
             # Collect follow-up questions (may already be ready since we started early)
             try:
                 follow_up_questions = await asyncio.wait_for(asyncio.shield(follow_ups_task), timeout=10.0)

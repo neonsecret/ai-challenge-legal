@@ -1,13 +1,13 @@
 """SQLAlchemy ORM models for auth and billing tables.
 
-Tables: users, sessions, auth_tokens, subscriptions, invoices.
+Tables: users, sessions, auth_tokens, subscriptions, invoices, feedback.
 Operational tables (api_keys, queries, etc.) are in operational_models.py.
 """
 
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
@@ -194,6 +194,7 @@ class PipelineJob(Base):
     """
 
     __tablename__ = "pipeline_jobs"
+    __table_args__ = (Index("ix_pipeline_job_user_conv", "user_id", "conversation_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -220,4 +221,29 @@ class PipelineJob(Base):
         nullable=False,
     )
 
-    __table_args__ = (Index("ix_pipeline_job_user_conv", "user_id", "conversation_id"),)
+
+class Feedback(Base):
+    """Per-message user feedback (thumbs up/down) on query responses.
+
+    One row per (message_id, user_id) — upserted on repeat submissions.
+    The unique index enforces at most one rating per user per message.
+    """
+
+    __tablename__ = "feedback"
+    __table_args__ = (
+        Index("feedback_message_user_uq", "message_id", "user_id", unique=True),
+        CheckConstraint("rating IN ('positive', 'negative')", name="feedback_rating_check"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    trace_id: Mapped[str] = mapped_column(String, nullable=False)
+    message_id: Mapped[str] = mapped_column(String, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(String, nullable=False)
+    rating: Mapped[str] = mapped_column(String, nullable=False)  # 'positive' | 'negative'
+    comment: Mapped[str | None] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)

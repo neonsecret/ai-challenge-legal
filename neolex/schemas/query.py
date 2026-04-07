@@ -83,6 +83,7 @@ class QueryResponse(BaseModel):
     confidence: str  # "high" | "degraded" | "not_found"
     latency_ms: int
     model_name: str
+    trace_id: str | None = None  # Langfuse trace ID; None when tracing is disabled
 
 
 class ErrorResponse(BaseModel):
@@ -151,4 +152,5 @@ def pipeline_dict_to_response(result: dict) -> QueryResponse:
         confidence=confidence,
         latency_ms=int(result.get("total_time_ms", 0)),
         model_name=public_model_name,
+        trace_id=result.get("trace_id") or None,
     )

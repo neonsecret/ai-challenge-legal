@@ -57,6 +57,10 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS sources_json TEXT;"),
         )
+        # Ensure feedback unique index exists on older instances (created by create_all on new ones).
+        await conn.execute(
+            text("CREATE UNIQUE INDEX IF NOT EXISTS feedback_message_user_uq ON feedback(message_id, user_id);"),
+        )
         # Add embedding column to court_decisions if it doesn't exist (idempotent migration).
         # Vector(4096) — no HNSW index (4096-dim exceeds pgvector's 2000-dim limit).
         await conn.execute(
