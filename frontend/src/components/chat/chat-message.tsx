@@ -281,7 +281,7 @@ export function ChatMessage({
         })
     }
 
-    const postFeedback = async (rating: "positive" | "negative", comment?: string) => {
+    const postFeedback = async (rating: "positive" | "negative", comment?: string, keepPanelOpen = false) => {
         if (!messageId || !traceId || !conversationId) return
         const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
         setSubmitting(true)
@@ -301,8 +301,10 @@ export function ChatMessage({
             })
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             onFeedback?.(messageId, rating, comment)
-            setCommentOpen(false)
-            setCommentText("")
+            if (!keepPanelOpen) {
+                setCommentOpen(false)
+                setCommentText("")
+            }
         } catch {
             setFeedbackError("Couldn't save feedback. Try again.")
         } finally {
@@ -317,6 +319,7 @@ export function ChatMessage({
 
     const handleThumbsDown = () => {
         if (feedback?.rating === "negative") return
+        postFeedback("negative", undefined, true)
         setCommentOpen(true)
         setTimeout(() => textareaRef.current?.focus(), 50)
     }
@@ -726,9 +729,6 @@ export function ChatMessage({
                                                 setCommentOpen(false)
                                                 setCommentText("")
                                                 setFeedbackError(null)
-                                                if (feedback?.rating !== "negative") {
-                                                    postFeedback("negative")
-                                                }
                                             }}
                                             disabled={submitting}
                                             style={{
