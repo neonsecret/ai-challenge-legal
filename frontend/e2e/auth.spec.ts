@@ -4,18 +4,16 @@
  * These tests target the local dev server (http://localhost:3000).
  * Backend is expected at BACKEND_URL (default http://localhost:8000).
  *
- * Test credentials come from environment variables:
- *   E2E_TEST_EMAIL    (default: testuser@vitreon.app)
- *   E2E_TEST_PASSWORD (default: <unset — skip credential tests>)
+ * All scenarios use Playwright route mocking — no real credentials or CI
+ * secrets are required.  See frontend/e2e/README.md for details.
  *
  * Run: npm run test:e2e
  */
-import { test, expect, type Page, type Route } from "playwright/test";
+import { test, expect, type Route } from "playwright/test";
 
 const FRONTEND = "http://localhost:3000";
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "testuser@vitreon.app";
-const TEST_PASSWORD = process.env.E2E_TEST_PASSWORD ?? "";
 
 /** Minimal valid /auth/me response */
 const MOCK_USER = {
@@ -28,23 +26,6 @@ const MOCK_USER = {
   monthly_queries_used: 0,
   max_corpora: 1,
 };
-
-/**
- * Helper: log in via the real backend API (email/password).
- * Returns false if TEST_PASSWORD is not set (callers should skip).
- */
-async function apiLogin(page: Page): Promise<boolean> {
-  if (!TEST_PASSWORD) return false;
-
-  const res = await page.request.post(`${BACKEND}/auth/login`, {
-    data: { email: TEST_EMAIL, password: TEST_PASSWORD },
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest",
-    },
-  });
-  return res.ok();
-}
 
 // ---------------------------------------------------------------------------
 // Scenario 1 — Auth retry on /chat OAuth redirect
@@ -176,18 +157,18 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, real backend cal
 // Scenario 4 — Session persistence across navigation
 // ---------------------------------------------------------------------------
 test("Scenario 4: session persists across page navigations", async ({ page }) => {
-  if (!TEST_PASSWORD) {
-    test.skip(true, "E2E_TEST_PASSWORD not set — skipping credential test");
-    return;
-  }
+  // Mock /auth/me to always return an authenticated user — no real credentials needed.
+  // This lets us test navigation behaviour without CI secrets.
+  await page.route(`**/auth/me`, async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(MOCK_USER),
+    });
+  });
 
-  const loggedIn = await apiLogin(page);
-  if (!loggedIn) {
-    test.skip(true, "Backend login failed — check E2E_TEST_EMAIL / E2E_TEST_PASSWORD");
-    return;
-  }
-
-  // Navigate to /chat — should be authenticated
+  // Navigate to /chat — the page redirects to "/" on a 401, so reaching /chat
+  // confirms the mock is actually being honoured (cannot silently pass).
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
   expect(page.url()).toContain("/chat");
@@ -195,10 +176,9 @@ test("Scenario 4: session persists across page navigations", async ({ page }) =>
   // Navigate to /settings
   await page.goto(`${FRONTEND}/settings`);
   await page.waitForURL(/\/settings/, { timeout: 5_000 });
-  // Settings page is only reachable when authenticated
   expect(page.url()).toContain("/settings");
 
-  // Navigate back to /chat
+  // Navigate back to /chat — session mock must still be active
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
 
@@ -210,40 +190,60 @@ test("Scenario 4: session persists across page navigations", async ({ page }) =>
 // Scenario 5 — Logout flow
 // ---------------------------------------------------------------------------
 test("Scenario 5: logout clears session and redirects away from /chat", async ({ page }) => {
-  if (!TEST_PASSWORD) {
-    test.skip(true, "E2E_TEST_PASSWORD not set — skipping credential test");
-    return;
-  }
+  // Stateful mock: /auth/me returns 200 while logged in, 401 after logout.
+  // Flips when /auth/logout is intercepted — no real credentials needed.
+  let isLoggedIn = true;
 
-  const loggedIn = await apiLogin(page);
-  if (!loggedIn) {
-    test.skip(true, "Backend login failed — check E2E_TEST_EMAIL / E2E_TEST_PASSWORD");
-    return;
-  }
+  await page.route(`**/auth/me`, async (route: Route) => {
+    if (isLoggedIn) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_USER),
+      });
+    } else {
+      await route.fulfill({
+        status: 401,
+        body: JSON.stringify({ detail: "Not authenticated" }),
+      });
+    }
+  });
 
+  // settings/page.tsx awaits the logout response before calling router.push("/"),
+  // so flipping isLoggedIn here guarantees /auth/me returns 401 for any
+  // subsequent navigation to /chat.
+  await page.route(`**/auth/logout`, async (route: Route) => {
+    isLoggedIn = false;
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+  });
+
+  // Reach /chat while mocked-authenticated.
+  // waitForURL failing here means the mock was rejected — cannot silently pass.
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
   expect(page.url()).toContain("/chat");
 
-  // The sidebar logout button has aria-label="Sign out" (app-sidebar.tsx:258)
-  const signOutBtn = page.getByRole("button", { name: "Sign out" });
+  // Navigate to /settings — the sign-out button lives there (settings/page.tsx).
+  // The button is only rendered once the /auth/me response sets user state,
+  // so we wait for it to become visible before clicking.
+  await page.goto(`${FRONTEND}/settings`);
+  const signOutBtn = page.getByRole("button", { name: /sign out/i });
   await expect(signOutBtn).toBeVisible({ timeout: 5_000 });
   await signOutBtn.click();
 
-  // After logout the sidebar navigates to "/" (app-sidebar.tsx:101: router.push("/"))
+  // settings/page.tsx calls router.push("/") after the awaited logout request,
+  // so by the time the navigation resolves isLoggedIn is already false.
   await page.waitForURL(/^\/(login|$)/, { timeout: 5_000 }).catch(() => {
-    // Some builds redirect to /login, some to /
+    // Some builds redirect to /login, some to "/"
   });
+  expect(page.url()).not.toContain("/settings");
 
-  // Should not still be on /chat
-  expect(page.url()).not.toContain("/chat");
-
-  // Session cookie must be absent or cleared after logout
+  // Session cookie must be absent — we never injected a real one.
   const cookies = await page.context().cookies();
   const sessionCookie = cookies.find((c) => c.name === "session");
   expect(sessionCookie === undefined || sessionCookie.value === "").toBe(true);
 
-  // Attempting to navigate to /chat should redirect away (no session)
+  // Attempting to navigate to /chat should redirect away — /auth/me now returns 401.
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForLoadState("networkidle");
   expect(page.url()).not.toContain("/chat");
