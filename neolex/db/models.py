@@ -48,6 +48,9 @@ class User(Base):
     daily_queries_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     daily_queries_reset_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     max_corpora: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Set on subscription cancellation — corpus is deleted at this datetime (7-day grace period).
+    # NULL means no deletion is pending. Cleared after the nightly job executes the deletion.
+    corpus_deletion_scheduled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
