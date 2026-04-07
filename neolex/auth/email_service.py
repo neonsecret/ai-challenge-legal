@@ -36,6 +36,48 @@ async def send_verification_email(email: str, token: str) -> None:
     )
 
 
+async def send_corpus_deletion_warning_email(email: str, deletion_date: str) -> None:
+    """Notify a user that their uploaded corpora will be deleted after a 7-day grace period."""
+    _client()
+    account_url = f"{settings.frontend_url}/account"
+    billing_url = f"{settings.frontend_url}/billing"
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": email,
+            "subject": "Your uploaded documents will be deleted on " + deletion_date,
+            "html": f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2>Your Vitreon Legal subscription has been cancelled</h2>
+          <p>Your uploaded documents and custom corpora will be permanently deleted on
+             <strong>{deletion_date}</strong>.</p>
+          <p>Want to keep your documents? Resubscribe before <strong>{deletion_date}</strong>
+             and your data will be fully preserved:</p>
+          <p style="margin:32px 0">
+            <a href="{billing_url}"
+               style="background:#1a56db;color:#fff;padding:12px 28px;border-radius:6px;
+                      text-decoration:none;font-weight:600">
+              Resubscribe Now
+            </a>
+          </p>
+          <p>Or export a copy of your data before the deletion date:</p>
+          <p style="margin:32px 0">
+            <a href="{account_url}"
+               style="background:#000;color:#fff;padding:12px 28px;border-radius:6px;
+                      text-decoration:none;font-weight:600">
+              Export My Data
+            </a>
+          </p>
+          <p style="color:#666;font-size:14px">
+            Questions? Contact us at
+            <a href="mailto:support@vitreon.app">support@vitreon.app</a>.
+          </p>
+        </div>
+        """,
+        },
+    )
+
+
 async def send_password_reset_email(email: str, token: str) -> None:
     _client()
     reset_url = f"{settings.frontend_url}/reset-password?token={token}"
