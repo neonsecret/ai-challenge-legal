@@ -306,6 +306,9 @@ export function useQueryStream(): UseQueryStreamReturn {
                             const extracted = extractAnswerContent(cleanAnswer)
                             cleanAnswer = extracted ?? cleanAnswer.replace(/<\/?(?:analysis|answer)>/g, "").trim()
                         }
+                        // trace_id is a Langfuse trace identifier; null when tracing is disabled.
+                        // For sessions loaded from the backend (different device / expired localStorage)
+                        // trace_id must come from the messages API response — see NEO-303.
                         setState((prev) => ({
                             ...prev,
                             answer: cleanAnswer ?? prev.answer,

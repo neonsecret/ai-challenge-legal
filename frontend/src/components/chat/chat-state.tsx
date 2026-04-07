@@ -494,14 +494,19 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                             )
                             if (!r.ok) return
                             const data = await r.json()
+                            // trace_id is populated by the backend only after NEO-303 schema migration.
+                            // Until that lands, trace_id is absent/null and traceId stays undefined
+                            // on backend-loaded messages — the feedback bar will remain hidden for
+                            // those sessions, which is the correct fallback behaviour.
                             const msgs: Message[] = (data?.messages ?? []).map(
-                                (m: {role: string; content: string; sources?: Source[]; created_at: string}, i: number) => ({
+                                (m: {role: string; content: string; sources?: Source[]; created_at: string; trace_id?: string | null}, i: number) => ({
                                     id: `${m.role}-loaded-${i}`,
                                     role: m.role as "user" | "assistant",
                                     content: m.content,
                                     sources: (Array.isArray(m.sources) ? m.sources : []).filter(
                                         (s: Source) => s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers)
                                     ),
+                                    ...(m.role === "assistant" && m.trace_id != null ? {traceId: m.trace_id} : {}),
                                 })
                             )
                             if (msgs.length > 0) {
