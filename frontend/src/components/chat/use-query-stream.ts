@@ -137,6 +137,7 @@ interface StreamState {
     answer: string | null
     sources: Source[]
     confidence: string | null
+    traceId: string | null
     isStreaming: boolean
     streamingStatus: string | null
     streamingProgress: Progress | null
@@ -151,12 +152,14 @@ export interface UseQueryStreamReturn extends StreamState {
     abort: () => void
 }
 
+
 export function useQueryStream(): UseQueryStreamReturn {
     const router = useRouter()
     const [state, setState] = useState<StreamState>({
         answer: null,
         sources: [],
         confidence: null,
+        traceId: null,
         isStreaming: false,
         streamingStatus: null,
         streamingProgress: null,
@@ -183,6 +186,7 @@ export function useQueryStream(): UseQueryStreamReturn {
             answer: null,
             sources: [],
             confidence: null,
+            traceId: null,
             isStreaming: false,
             streamingStatus: null,
             streamingProgress: null,
@@ -249,6 +253,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                 answer: null,
                 sources: [],
                 confidence: null,
+                traceId: null,
                 isStreaming: true,
                 streamingStatus: "Connecting...",
                 streamingProgress: null,
@@ -306,6 +311,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             answer: cleanAnswer ?? prev.answer,
                             sources: parsed.sources ?? [],
                             confidence: parsed.confidence ?? null,
+                            traceId: parsed.trace_id ?? null,
                             streamingStatus: null,
                             streamingProgress: null,
                         }))
