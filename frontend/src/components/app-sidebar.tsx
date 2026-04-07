@@ -12,6 +12,7 @@ import {
 import {useEffect, useState} from "react";
 import {useTheme} from "@/lib/theme";
 import {useDesignVersion} from "@/lib/design-version";
+import {DesignVersionToggle} from "@/components/design-version-toggle";
 
 const navItems = [
     {href: "/chat", label: "Chat", icon: MessageSquare},
@@ -23,22 +24,44 @@ const RECENT_QUERIES_KEY = "neolex_recent_queries";
 const MAX_RECENT = 5;
 
 // macOS Tahoe Liquid Glass sidebar — transparent enough to see through, distinct enough to read
-function makeLiquidGlass(isDark: boolean) {
-    return isDark ? {
-        background: "rgba(255,255,255,0.07)",
-        backdropFilter: "blur(32px) saturate(180%) brightness(108%)",
-        WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(108%)",
-        borderRadius: "18px",
-        boxShadow: [
-            "inset 0 1.5px 0 rgba(255,255,255,0.10)",
-            "inset 1px 0 0 rgba(255,255,255,0.06)",
-            "inset -1px 0 0 rgba(255,255,255,0.04)",
-            "inset 0 -1px 0 rgba(0,0,0,0.08)",
-            "0 8px 40px rgba(0,0,0,0.40)",
-            "0 1px 3px rgba(0,0,0,0.20)",
-        ].join(", "),
-        border: "0.5px solid rgba(255,255,255,0.14)",
-    } : {
+function makeLiquidGlass(isDark: boolean, isV2: boolean) {
+    if (isDark) {
+        return {
+            background: "rgba(255,255,255,0.07)",
+            backdropFilter: "blur(32px) saturate(180%) brightness(108%)",
+            WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(108%)",
+            borderRadius: "18px",
+            boxShadow: [
+                "inset 0 1.5px 0 rgba(255,255,255,0.10)",
+                "inset 1px 0 0 rgba(255,255,255,0.06)",
+                "inset -1px 0 0 rgba(255,255,255,0.04)",
+                "inset 0 -1px 0 rgba(0,0,0,0.08)",
+                "0 8px 40px rgba(0,0,0,0.40)",
+                "0 1px 3px rgba(0,0,0,0.20)",
+            ].join(", "),
+            border: "0.5px solid rgba(255,255,255,0.14)",
+        };
+    }
+    if (isV2) {
+        // V2 light — cool grey-slate palette, subtler blur (matches .design-v2 sidebar tokens)
+        return {
+            background: "rgba(248, 250, 252, 0.88)",
+            backdropFilter: "blur(16px) saturate(130%) brightness(103%)",
+            WebkitBackdropFilter: "blur(16px) saturate(130%) brightness(103%)",
+            borderRadius: "18px",
+            boxShadow: [
+                "inset 0 1.5px 0 rgba(255,255,255,0.90)",
+                "inset 1px 0 0 rgba(255,255,255,0.60)",
+                "inset -1px 0 0 rgba(255,255,255,0.30)",
+                "inset 0 -1px 0 rgba(30,50,100,0.04)",
+                "0 8px 32px rgba(30,50,100,0.10)",
+                "0 1px 3px rgba(30,50,100,0.06)",
+            ].join(", "),
+            border: "0.5px solid rgba(99,102,241,0.18)",
+        };
+    }
+    // V1 light — warm amber
+    return {
         background: "rgba(255, 250, 235, 0.22)",
         backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
         WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
@@ -73,10 +96,11 @@ export function AppSidebar() {
     const router = useRouter();
     const [recentQueries, setRecentQueries] = useState<string[]>([]);
     const {resolvedTheme} = useTheme();
-    const {version: designVersion, setVersion: setDesignVersion} = useDesignVersion();
+    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === "dark";
+    const isV2 = mounted && designVersion === "v2";
 
     useEffect(() => {
         fetch(`/api/v1/demo/config`).catch(() => {
@@ -106,7 +130,7 @@ export function AppSidebar() {
     return (
         <Sidebar
             className="border-0"
-            style={makeLiquidGlass(isDark)}
+            style={makeLiquidGlass(isDark, isV2)}
         >
             {/* ── App name ── */}
             <SidebarHeader style={{padding: "16px 14px 12px"}}>
@@ -240,36 +264,8 @@ export function AppSidebar() {
                 borderTop: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.25)",
             }}>
                 {/* Design version toggle — Classic / Modern */}
-                <div style={{
-                    display: "flex", alignItems: "center", gap: "4px",
-                    padding: "4px 10px 6px",
-                }}>
-                    {(["v1", "v2"] as const).map((v) => (
-                        <button
-                            key={v}
-                            onClick={() => setDesignVersion(v)}
-                            style={{
-                                flex: 1, padding: "4px 0", borderRadius: "7px",
-                                fontSize: "11px", fontWeight: 600,
-                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
-                                cursor: designVersion === v ? "default" : "pointer",
-                                border: designVersion === v
-                                    ? isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.40)"
-                                    : "0.5px solid transparent",
-                                background: designVersion === v
-                                    ? isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)"
-                                    : "transparent",
-                                color: designVersion === v
-                                    ? isDark ? "rgba(255,255,255,0.75)" : "rgba(46,20,4,0.75)"
-                                    : isDark ? "rgba(255,255,255,0.28)" : "rgba(46,31,8,0.30)",
-                                transition: "all 0.15s ease",
-                            }}
-                            aria-label={v === "v1" ? "Classic design" : "Modern design"}
-                            aria-pressed={designVersion === v}
-                        >
-                            {v === "v1" ? "Classic" : "Modern"}
-                        </button>
-                    ))}
+                <div style={{padding: "4px 10px 6px"}}>
+                    <DesignVersionToggle variant={isDark ? "dark" : isV2 ? "v2-light" : "light"} />
                 </div>
                 <button
                     onClick={handleLogout}

@@ -4,10 +4,11 @@ import { useDesignVersion } from "@/lib/design-version";
 
 interface DesignVersionToggleProps {
     /**
-     * "dark" — gold accent (used on dark/navy nav backgrounds).
-     * "light" — slate/sepia accent (used on light/warm nav backgrounds).
+     * "dark"     — gold accent (used on dark/navy nav backgrounds).
+     * "light"    — slate/sepia accent (used on V1 light/warm nav backgrounds).
+     * "v2-light" — indigo accent (used on V2 cool grey-slate nav backgrounds).
      */
-    variant?: "dark" | "light";
+    variant?: "dark" | "light" | "v2-light";
 }
 
 const VARIANTS = {
@@ -22,6 +23,12 @@ const VARIANTS = {
         activeBackground: "rgba(92,46,8,0.10)",
         activeColor: "#5c2e08",
         inactiveColor: "rgba(92,46,8,0.35)",
+    },
+    "v2-light": {
+        border: "1px solid rgba(99,102,241,0.22)",
+        activeBackground: "rgba(99,102,241,0.12)",
+        activeColor: "#4F46E5",
+        inactiveColor: "rgba(30,50,100,0.40)",
     },
 } as const;
 
