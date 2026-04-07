@@ -315,13 +315,11 @@ async def export_my_data(
     docs_result = await db.execute(select(ConversationDocs).where(ConversationDocs.user_id == user.id))
     conversation_docs = {str(d.conversation_id): d.docs_json for d in docs_result.scalars()}
 
-    # 5. Uploaded corpus metadata (GDPR Article 20 — portability; file bytes excluded)
-    import asyncio as _asyncio
-
+    # 5. Uploaded corpus metadata (GDPR Article 20 — portability; raw file bytes excluded)
     from neolex.services.document_manager import list_documents as _list_documents
 
     client_slug = str(user.id)
-    raw_docs = await _asyncio.to_thread(_list_documents, client_slug)
+    raw_docs = await asyncio.to_thread(_list_documents, client_slug)
     corpora = [
         {
             "doc_id": d.get("doc_id"),

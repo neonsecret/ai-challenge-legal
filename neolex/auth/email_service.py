@@ -39,6 +39,7 @@ async def send_verification_email(email: str, token: str) -> None:
 async def send_corpus_deletion_warning_email(email: str, deletion_date: str) -> None:
     """Notify a user that their uploaded corpora will be deleted after a 7-day grace period."""
     _client()
+    account_url = f"{settings.frontend_url}/account"
     resend.Emails.send(
         {
             "from": settings.email_from,
@@ -49,11 +50,20 @@ async def send_corpus_deletion_warning_email(email: str, deletion_date: str) -> 
           <h2>Your Vitreon Legal subscription has been cancelled</h2>
           <p>Your uploaded documents and custom corpora will be permanently deleted on
              <strong>{deletion_date}</strong>.</p>
-          <p>To keep a copy of your data before then, please visit your account and
-             use the <strong>Export My Data</strong> option.</p>
+          <p>To keep a copy of your data before then, visit your account and use
+             the <strong>Export My Data</strong> option:</p>
+          <p style="margin:32px 0">
+            <a href="{account_url}"
+               style="background:#000;color:#fff;padding:12px 28px;border-radius:6px;
+                      text-decoration:none;font-weight:600">
+              Go to My Account
+            </a>
+          </p>
           <p style="color:#666;font-size:14px">
             If you believe this is a mistake or would like to reactivate your subscription,
-            please contact us before the deletion date.
+            contact us at
+            <a href="mailto:support@vitreon.app">support@vitreon.app</a>
+            before the deletion date.
           </p>
         </div>
         """,
