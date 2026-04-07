@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import {Playfair_Display, Inter} from "next/font/google";
 import "./globals.css";
 import {ThemeProvider} from "@/components/theme-provider";
+import {DesignVersionProvider} from "@/lib/design-version";
 import {TooltipProvider} from "@/components/ui/tooltip";
 import {ToastProvider} from "@/components/ui/toast";
 import {I18nProvider} from "@/lib/i18n";
@@ -39,16 +40,21 @@ export default function RootLayout({
                 Mirrors next-themes behaviour (storageKey='theme', attribute='class',
                 defaultTheme='system') now that ThemeProvider uses ssr:false. */}
             <script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'||!t)&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}`}} />
+            {/* Inline design-version script — prevents FOUC for users with V2 saved.
+                Must run before paint so CSS tokens load correctly on first frame. */}
+            <script dangerouslySetInnerHTML={{__html: `try{if(localStorage.getItem('vitreon-design-version')==='v2'){document.documentElement.classList.add('design-v2')}}catch(e){}`}} />
         </head>
         <body className="h-full bg-background text-foreground">
         <ThemeProvider>
-            <I18nProvider>
-                <TooltipProvider>
-                    <ToastProvider>
-                        {children}
-                    </ToastProvider>
-                </TooltipProvider>
-            </I18nProvider>
+            <DesignVersionProvider>
+                <I18nProvider>
+                    <TooltipProvider>
+                        <ToastProvider>
+                            {children}
+                        </ToastProvider>
+                    </TooltipProvider>
+                </I18nProvider>
+            </DesignVersionProvider>
         </ThemeProvider>
         </body>
         </html>

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import {useEffect, useState} from "react";
 import {useTheme} from "@/lib/theme";
+import {useDesignVersion} from "@/lib/design-version";
 
 const navItems = [
     {href: "/chat", label: "Chat", icon: MessageSquare},
@@ -72,6 +73,7 @@ export function AppSidebar() {
     const router = useRouter();
     const [recentQueries, setRecentQueries] = useState<string[]>([]);
     const {resolvedTheme} = useTheme();
+    const {version: designVersion, setVersion: setDesignVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === "dark";
@@ -237,6 +239,38 @@ export function AppSidebar() {
                 padding: "8px",
                 borderTop: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.25)",
             }}>
+                {/* Design version toggle — Classic / Modern */}
+                <div style={{
+                    display: "flex", alignItems: "center", gap: "4px",
+                    padding: "4px 10px 6px",
+                }}>
+                    {(["v1", "v2"] as const).map((v) => (
+                        <button
+                            key={v}
+                            onClick={() => setDesignVersion(v)}
+                            style={{
+                                flex: 1, padding: "4px 0", borderRadius: "7px",
+                                fontSize: "11px", fontWeight: 600,
+                                fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                                cursor: designVersion === v ? "default" : "pointer",
+                                border: designVersion === v
+                                    ? isDark ? "0.5px solid rgba(255,255,255,0.14)" : "0.5px solid rgba(255,255,255,0.40)"
+                                    : "0.5px solid transparent",
+                                background: designVersion === v
+                                    ? isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)"
+                                    : "transparent",
+                                color: designVersion === v
+                                    ? isDark ? "rgba(255,255,255,0.75)" : "rgba(46,20,4,0.75)"
+                                    : isDark ? "rgba(255,255,255,0.28)" : "rgba(46,31,8,0.30)",
+                                transition: "all 0.15s ease",
+                            }}
+                            aria-label={v === "v1" ? "Classic design" : "Modern design"}
+                            aria-pressed={designVersion === v}
+                        >
+                            {v === "v1" ? "Classic" : "Modern"}
+                        </button>
+                    ))}
+                </div>
                 <button
                     onClick={handleLogout}
                     style={{

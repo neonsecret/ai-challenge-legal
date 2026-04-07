@@ -8,6 +8,7 @@ import {MessageSquare, FileText, Settings, CreditCard, Sun, Moon} from "lucide-r
 import {useIsMobile} from "@/hooks/use-mobile";
 import {useI18n} from "@/lib/i18n";
 import {LanguageToggle} from "@/components/language-toggle";
+import {useDesignVersion} from "@/lib/design-version";
 
 const navItemDefs = [
     {href: "/chat", labelKey: "nav.chat", icon: MessageSquare},
@@ -19,6 +20,7 @@ const navItemDefs = [
 export function BottomNav() {
     const pathname = usePathname();
     const {resolvedTheme, setTheme} = useTheme();
+    const {version: designVersion, setVersion: setDesignVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     const isMobile = useIsMobile();
     const {t} = useI18n();
@@ -156,6 +158,48 @@ export function BottomNav() {
                 }}>
           {isDark ? t("theme_toggle.light") : t("theme_toggle.dark")}
         </span>
+            </button>
+
+            {/* Design version toggle */}
+            <button
+                onClick={() => setDesignVersion(designVersion === "v1" ? "v2" : "v1")}
+                title={designVersion === "v1" ? "Switch to Modern design" : "Switch to Classic design"}
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: isMobile ? "2px" : "3px",
+                    padding: isMobile ? "6px 10px" : "8px 14px",
+                    borderRadius: "16px",
+                    background: designVersion === "v2"
+                        ? isDark ? "rgba(201,168,76,0.16)" : "rgba(255,255,255,0.30)"
+                        : "transparent",
+                    border: designVersion === "v2"
+                        ? isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(255,255,255,0.50)"
+                        : "0.5px solid transparent",
+                    cursor: "pointer",
+                    transition: "all 0.14s ease",
+                    color: designVersion === "v2"
+                        ? isDark ? "#C9A84C" : "#5c2e08"
+                        : isDark ? "rgba(255,255,255,0.42)" : "rgba(46,31,8,0.48)",
+                }}
+                onMouseEnter={(e) => {
+                    if (designVersion !== "v2") e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)";
+                }}
+                onMouseLeave={(e) => {
+                    if (designVersion !== "v2") e.currentTarget.style.background = "transparent";
+                }}
+                aria-label={designVersion === "v1" ? "Switch to Modern design" : "Switch to Classic design"}
+                aria-pressed={designVersion === "v2"}
+            >
+                <span suppressHydrationWarning style={{
+                    fontSize: isMobile ? "9px" : "10px",
+                    fontWeight: designVersion === "v2" ? 600 : 400,
+                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                    letterSpacing: "0.01em",
+                }}>
+                    {designVersion === "v1" ? "Modern" : "Classic"}
+                </span>
             </button>
 
             {/* Language toggle */}

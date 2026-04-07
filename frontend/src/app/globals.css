@@ -182,6 +182,179 @@ textarea::placeholder { color: #b29254; }
 }
 
 /* ============================================================
+   V2 DESIGN THEME — cooler SaaS palette, subtler glassmorphism
+   Applied by adding `.design-v2` class to <html>.
+   Overrides V1 tokens; V1 is the default.
+   ============================================================ */
+
+/* Light mode V2 tokens */
+.design-v2 {
+    /* Surfaces — cool grey/slate base (vs warm off-white V1) */
+    --background: #F3F4F6;
+    --foreground: #111827;
+    --card: #FFFFFF;
+    --card-foreground: #111827;
+    --popover: #FFFFFF;
+    --popover-foreground: #111827;
+
+    /* Brand — modern blue (vs V1 deep navy #1B2B4B) */
+    --primary: #1E40AF;
+    --primary-foreground: #FFFFFF;
+
+    /* Secondary / muted — slate-tinted */
+    --secondary: #EEF2FF;
+    --secondary-foreground: #1E3A8A;
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+
+    /* Accent — indigo (vs V1 gold #C9A84C) */
+    --accent: #4F46E5;
+    --accent-foreground: #FFFFFF;
+
+    /* Functional */
+    --border: #E2E8F0;
+    --input: #E2E8F0;
+    --ring: #4F46E5;
+
+    /* Sidebar — clean slate */
+    --sidebar: #F1F5F9;
+    --sidebar-foreground: #1E3A8A;
+    --sidebar-primary: #4F46E5;
+    --sidebar-primary-foreground: #1E3A8A;
+    --sidebar-accent: #E0E7FF;
+    --sidebar-accent-foreground: #1E3A8A;
+    --sidebar-border: #E2E8F0;
+    --sidebar-ring: #4F46E5;
+
+    /* Glass — frosted-panel values for the light (#F3F4F6) background.
+       Low-opacity white is invisible on near-white; use high-opacity white
+       for panels and slate-tinted borders instead. */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-bg-subtle: rgba(255, 255, 255, 0.55);
+    --glass-bg-heavy: rgba(255, 255, 255, 0.85);
+    /* Nav: light slate panel — was dark near-black (rgba 6,12,22) which is wrong
+       for a cool-slate light palette */
+    --glass-bg-nav: rgba(248, 250, 252, 0.88);
+    --glass-bg-gold: rgba(79, 70, 229, 0.07);
+    --glass-border-color: rgba(99, 102, 241, 0.15);
+    --glass-border-subtle: rgba(99, 102, 241, 0.10);
+    --glass-border-gold: rgba(79, 70, 229, 0.22);
+    --glass-border-strong: rgba(99, 102, 241, 0.20);
+    --glass-shadow: 0 2px 12px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --glass-shadow-heavy: 0 6px 28px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    --glass-shadow-sm: 0 1px 6px rgba(0, 0, 0, 0.10);
+    --glass-inset-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    --glass-top-line: linear-gradient(90deg, transparent, rgba(79, 70, 229, 0.35), transparent);
+
+    /* Orb palette — cool blue/indigo */
+    --orb-gold-color: oklch(0.55 0.20 265);
+    --orb-blue-color: oklch(0.40 0.22 260);
+    --orb-teal-color: oklch(0.45 0.18 230);
+    --orb-navy-color: oklch(0.35 0.16 255);
+
+    /* Typography — Apple-inspired (SF Pro priority, tighter tracking) */
+    --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+
+    /* Geometry — tighter radius */
+    --radius: 0.5rem;
+}
+
+/* Dark mode V2 overrides */
+.design-v2.dark {
+    /* Surfaces — deep cool dark (vs V1 warm amber) */
+    --background: #0D1117;
+    --foreground: rgba(255, 255, 255, 0.90);
+    --card: rgba(255, 255, 255, 0.04);
+    --card-foreground: rgba(255, 255, 255, 0.90);
+    --popover: #161B22;
+    --popover-foreground: rgba(255, 255, 255, 0.90);
+
+    /* Brand — bright blue */
+    --primary: #3B82F6;
+    --primary-foreground: #F8FAFC;
+
+    /* Secondary / muted */
+    --secondary: rgba(30, 64, 175, 0.18);
+    --secondary-foreground: rgba(255, 255, 255, 0.85);
+    --muted: rgba(30, 64, 175, 0.12);
+    --muted-foreground: rgba(255, 255, 255, 0.48);
+
+    /* Accent — lighter indigo */
+    --accent: #6366F1;
+    --accent-foreground: #F8FAFC;
+
+    /* Functional */
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.10);
+    --ring: #6366F1;
+
+    /* Sidebar */
+    --sidebar: rgba(13, 17, 23, 0.88);
+    --sidebar-foreground: rgba(255, 255, 255, 0.80);
+    --sidebar-primary: #6366F1;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: rgba(99, 102, 241, 0.14);
+    --sidebar-accent-foreground: rgba(255, 255, 255, 0.80);
+    --sidebar-border: rgba(255, 255, 255, 0.07);
+    --sidebar-ring: #6366F1;
+
+    /* Glass dark V2 — cooler tint, even more transparent */
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-bg-subtle: rgba(255, 255, 255, 0.02);
+    --glass-bg-heavy: rgba(255, 255, 255, 0.06);
+    --glass-bg-gold: rgba(99, 102, 241, 0.07);
+    --glass-border-gold: rgba(99, 102, 241, 0.20);
+}
+
+/* V2: subtler blur across all glass utilities */
+.design-v2 .glass-sm {
+    backdrop-filter: blur(8px) saturate(110%);
+    -webkit-backdrop-filter: blur(8px) saturate(110%);
+}
+
+.design-v2 .glass-md {
+    backdrop-filter: blur(12px) saturate(115%);
+    -webkit-backdrop-filter: blur(12px) saturate(115%);
+}
+
+.design-v2 .glass-lg {
+    backdrop-filter: blur(16px) saturate(118%);
+    -webkit-backdrop-filter: blur(16px) saturate(118%);
+}
+
+.design-v2 .glass-heavy {
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
+}
+
+.design-v2 .glass-gold {
+    backdrop-filter: blur(10px) saturate(112%);
+    -webkit-backdrop-filter: blur(10px) saturate(112%);
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(79, 70, 229, 0.04) 100%);
+}
+
+/* V2: sidebar glass override */
+.design-v2 [data-slot="sidebar"] {
+    backdrop-filter: blur(16px) saturate(130%) brightness(103%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(130%) brightness(103%) !important;
+}
+
+/* V2: pill shimmer uses indigo instead of gold */
+.design-v2 .shimmer-text {
+    background: linear-gradient(
+        90deg,
+        #4F46E5 0%,
+        #818CF8 40%,
+        #4F46E5 80%
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+}
+
+/* ============================================================
    THEME SWITCHING — smooth transition when dark/light toggles
    ============================================================ */
 html {

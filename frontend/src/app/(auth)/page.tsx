@@ -12,6 +12,7 @@ import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
+import {DesignVersionToggle} from "@/components/design-version-toggle";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -170,6 +171,7 @@ export default function LandingPage() {
                                 >
                                     {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
                                 </button>
+                                <DesignVersionToggle variant="dark" />
                                 {isAuthenticated ? (
                                     <a href="/chat"
                                        className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
@@ -474,6 +476,7 @@ export default function LandingPage() {
                             >
                                 {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
                             </button>
+                            <DesignVersionToggle variant="light" />
                             {isAuthenticated ? (
                                 <a href="/chat" style={{
                                     display: "inline-flex",
