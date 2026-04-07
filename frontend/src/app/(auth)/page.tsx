@@ -192,7 +192,7 @@ export default function LandingPage() {
                                     }}
                                     aria-label={`Switch to ${designVersion === "v1" ? "Modern" : "Classic"} design`}
                                 >
-                                    {designVersion === "v1" ? "Classic" : "Modern"}
+                                    {designVersion === "v1" ? "Modern" : "Classic"}
                                 </button>
                                 {isAuthenticated ? (
                                     <a href="/chat"
@@ -518,7 +518,7 @@ export default function LandingPage() {
                                 }}
                                 aria-label={`Switch to ${designVersion === "v1" ? "Modern" : "Classic"} design`}
                             >
-                                {designVersion === "v1" ? "Classic" : "Modern"}
+                                {designVersion === "v1" ? "Modern" : "Classic"}
                             </button>
                             {isAuthenticated ? (
                                 <a href="/chat" style={{
