@@ -161,12 +161,28 @@ async def _cleanup_scheduled_corpus_deletions() -> None:
 
             for user in users_due:
                 try:
+                    # TOCTOU guard: re-fetch under a fresh query before deleting.
+                    # The user may have re-subscribed between the bulk fetch and now,
+                    # which clears corpus_deletion_scheduled_at — skip in that case.
+                    async with AsyncSessionLocal() as guard_db:
+                        guard = (
+                            await guard_db.execute(
+                                sql_select(User).where(
+                                    User.id == user.id,
+                                    User.corpus_deletion_scheduled_at != None,  # noqa: E711
+                                    User.corpus_deletion_scheduled_at <= now,
+                                )
+                            )
+                        ).scalar_one_or_none()
+                    if guard is None:
+                        logger.info("Corpus deletion skipped — field cleared since fetch (user %s)", user.id)
+                        continue
                     await _delete_user_corpora(user)
                     async with AsyncSessionLocal() as db:
                         # Reload user in new session to safely clear the field
-                        fresh = (await db.execute(sql_select(User).where(User.id == user.id))).scalar_one_or_none()
-                        if fresh:
-                            fresh.corpus_deletion_scheduled_at = None
+                        to_clear = (await db.execute(sql_select(User).where(User.id == user.id))).scalar_one_or_none()
+                        if to_clear:
+                            to_clear.corpus_deletion_scheduled_at = None
                             await db.commit()
                     logger.info("Corpus deletion complete for user %s", user.id)
                 except Exception:
