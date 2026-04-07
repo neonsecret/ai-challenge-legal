@@ -12,6 +12,7 @@ import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
+import {useDesignVersion} from "@/lib/design-version";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -78,6 +79,7 @@ export default function LandingPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { locale, t } = useI18n();
     const isCzech = locale === "cs";
+    const { version: designVersion, setVersion: setDesignVersion } = useDesignVersion();
     const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
     useEffect(() => {
@@ -169,6 +171,28 @@ export default function LandingPage() {
                                     aria-label="Toggle theme"
                                 >
                                     {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
+                                </button>
+                                <button
+                                    onClick={() => setDesignVersion(designVersion === "v1" ? "v2" : "v1")}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        height: 28,
+                                        padding: "0 10px",
+                                        borderRadius: 8,
+                                        border: "1px solid rgba(201,168,76,0.22)",
+                                        background: designVersion === "v2" ? "rgba(201,168,76,0.14)" : "transparent",
+                                        cursor: "pointer",
+                                        color: designVersion === "v2" ? "#C9A84C" : "rgba(255,255,255,0.35)",
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        letterSpacing: "0.04em",
+                                        transition: "all 0.15s ease",
+                                    }}
+                                    aria-label={`Switch to design ${designVersion === "v1" ? "V2" : "V1"}`}
+                                >
+                                    {designVersion === "v1" ? "V1" : "V2"}
                                 </button>
                                 {isAuthenticated ? (
                                     <a href="/chat"
@@ -473,6 +497,28 @@ export default function LandingPage() {
                                 aria-label="Toggle theme"
                             >
                                 {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
+                            </button>
+                            <button
+                                onClick={() => setDesignVersion(designVersion === "v1" ? "v2" : "v1")}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    height: 28,
+                                    padding: "0 10px",
+                                    borderRadius: 8,
+                                    border: "1px solid rgba(92,46,8,0.18)",
+                                    background: designVersion === "v2" ? "rgba(92,46,8,0.10)" : "transparent",
+                                    cursor: "pointer",
+                                    color: designVersion === "v2" ? "#5c2e08" : "rgba(92,46,8,0.35)",
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    letterSpacing: "0.04em",
+                                    transition: "all 0.15s ease",
+                                }}
+                                aria-label={`Switch to design ${designVersion === "v1" ? "V2" : "V1"}`}
+                            >
+                                {designVersion === "v1" ? "V1" : "V2"}
                             </button>
                             {isAuthenticated ? (
                                 <a href="/chat" style={{

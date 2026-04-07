@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import {Playfair_Display, Inter} from "next/font/google";
 import "./globals.css";
 import {ThemeProvider} from "@/components/theme-provider";
+import {DesignVersionProvider} from "@/lib/design-version";
 import {TooltipProvider} from "@/components/ui/tooltip";
 import {ToastProvider} from "@/components/ui/toast";
 import {I18nProvider} from "@/lib/i18n";
@@ -42,13 +43,15 @@ export default function RootLayout({
         </head>
         <body className="h-full bg-background text-foreground">
         <ThemeProvider>
-            <I18nProvider>
-                <TooltipProvider>
-                    <ToastProvider>
-                        {children}
-                    </ToastProvider>
-                </TooltipProvider>
-            </I18nProvider>
+            <DesignVersionProvider>
+                <I18nProvider>
+                    <TooltipProvider>
+                        <ToastProvider>
+                            {children}
+                        </ToastProvider>
+                    </TooltipProvider>
+                </I18nProvider>
+            </DesignVersionProvider>
         </ThemeProvider>
         </body>
         </html>
