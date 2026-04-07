@@ -226,6 +226,72 @@ async def test_gdpr_export_includes_corpora() -> None:
     assert "indexed" not in doc
 
 
+# ---------------------------------------------------------------------------
+# (d) TOCTOU guard: skip-path fires when corpus_deletion_scheduled_at is
+#     cleared between the bulk fetch and the per-user re-check
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_cleanup_toctou_guard_skips_when_field_cleared(caplog) -> None:
+    """TOCTOU guard fires: deletion is skipped when corpus_deletion_scheduled_at is
+    cleared between the bulk fetch and the per-user re-check.
+
+    Simulates a concurrent re-subscription happening between the nightly bulk query
+    and the guard re-fetch.  Asserts that:
+      - _delete_user_corpora is NOT called
+      - the guard log message is emitted with the correct user id
+    """
+    import asyncio
+    import logging
+    import uuid
+    from datetime import UTC, datetime, timedelta
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from neolex.main import _cleanup_scheduled_corpus_deletions
+
+    mock_user = MagicMock()
+    mock_user.id = uuid.uuid4()
+    mock_user.corpus_deletion_scheduled_at = datetime.now(UTC) - timedelta(hours=1)
+
+    session_call = 0
+
+    def _make_session_ctx(execute_result):
+        ctx = AsyncMock()
+        ctx.__aenter__ = AsyncMock(return_value=ctx)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        ctx.execute = AsyncMock(return_value=execute_result)
+        return ctx
+
+    def _session_factory():
+        nonlocal session_call
+        session_call += 1
+        result = MagicMock()
+        if session_call == 1:
+            # Bulk fetch: user is due for deletion
+            result.scalars.return_value.all.return_value = [mock_user]
+        else:
+            # Guard re-fetch: field was cleared (re-subscription happened concurrently)
+            result.scalar_one_or_none.return_value = None
+        return _make_session_ctx(result)
+
+    with caplog.at_level(logging.INFO, logger="neolex.main"):
+        with (
+            patch("neolex.db.postgres.AsyncSessionLocal", side_effect=_session_factory),
+            patch(
+                "neolex.routers.stripe_router._delete_user_corpora",
+                new_callable=AsyncMock,
+            ) as mock_delete,
+            patch("asyncio.sleep", side_effect=asyncio.CancelledError),
+        ):
+            with pytest.raises(asyncio.CancelledError):
+                await _cleanup_scheduled_corpus_deletions()
+
+    mock_delete.assert_not_called()
+    assert "Corpus deletion skipped" in caplog.text
+    assert str(mock_user.id) in caplog.text
+
+
 @pytest.mark.asyncio
 async def test_gdpr_export_empty_corpora_when_no_docs() -> None:
     """export_my_data returns corpora=[] when the user has no uploaded documents."""
