@@ -486,6 +486,7 @@ async def query_stream(
                         question=body.question,
                         answer=str(response.answer),
                         sources_json=sources_json,
+                        trace_id=pipeline_result.get("trace_id"),
                     ),
                 )
                 task.add_done_callback(_log_task_exception)
