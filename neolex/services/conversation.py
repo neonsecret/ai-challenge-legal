@@ -221,9 +221,12 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                     Feedback.conversation_id == conversation_id,
                 )
             )
-            feedback_by_trace: dict[str, dict] = {
-                row.trace_id: {"rating": row.rating, "comment": row.comment} for row in feedback_result.all()
-            }
+            feedback_by_trace: dict[str, dict] = {}
+            for _fb_row in feedback_result.all():
+                _fb: dict = {"rating": _fb_row.rating}
+                if _fb_row.comment is not None:
+                    _fb["comment"] = _fb_row.comment
+                feedback_by_trace[_fb_row.trace_id] = _fb
 
             messages = []
             for row in rows:

@@ -164,6 +164,6 @@ async def test_load_full_conversation_mixed_feedback():
 
     assert len(messages) == 4
     assert messages[0]["feedback"] is None  # user
-    assert messages[1]["feedback"] == {"rating": "negative", "comment": None}
+    assert messages[1]["feedback"] == {"rating": "negative"}
     assert messages[2]["feedback"] is None  # user
     assert messages[3]["feedback"] is None  # assistant without feedback
