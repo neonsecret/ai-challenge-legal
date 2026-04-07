@@ -11,7 +11,7 @@ Run with:
 import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -349,13 +349,19 @@ class TestWebhookHandler:
             assert u.subscription_status == "pro"
 
     async def test_subscription_updated_past_due_revokes_access(self, client: AsyncClient, test_user: User):
-        """customer.subscription.updated (status=past_due) → user.subscription_status=canceled, max_corpora=0."""
+        """customer.subscription.updated (status=past_due) → access preserved during retry window, payment_warning=True.
+
+        Stripe retries failed payments for ~7 days before firing customer.subscription.deleted.
+        We do NOT revoke access immediately on past_due — only flag payment_warning so the
+        UI can surface a warning banner. Actual revocation happens on customer.subscription.deleted.
+        """
         async with _pg.AsyncSessionLocal() as session:
             result = await session.execute(select(User).where(User.id == test_user.id))
             u = result.scalar_one()
             u.stripe_customer_id = "cus_past_001"
             u.subscription_status = "starter"
             u.max_corpora = settings.starter_max_corpora
+            u.payment_warning = False
             await session.commit()
 
         await _seed_subscription(test_user.id, stripe_sub_id="sub_past_001")
@@ -372,13 +378,20 @@ class TestWebhookHandler:
 
         async with _pg.AsyncSessionLocal() as session:
             u = (await session.execute(select(User).where(User.id == test_user.id))).scalar_one()
-            assert u.subscription_status == "canceled"
-            assert u.max_corpora == 0
+            # Access preserved — Stripe retry window still active
+            assert u.subscription_status == "starter"
+            assert u.max_corpora == settings.starter_max_corpora
+            # Warning flag set so the UI can surface a payment-failure banner
+            assert u.payment_warning is True
 
     async def test_subscription_deleted_revokes_access_and_schedules_cleanup(
         self, client: AsyncClient, test_user: User
     ):
-        """customer.subscription.deleted (no other active sub) → access revoked, cleanup task scheduled."""
+        """customer.subscription.deleted (no other active sub) → access revoked, 7-day grace period scheduled.
+
+        Since NEO-300, corpus deletion is deferred by 7 days. We verify that corpus_deletion_scheduled_at
+        is set ~7 days in the future rather than calling _delete_user_corpora immediately.
+        """
         async with _pg.AsyncSessionLocal() as session:
             result = await session.execute(select(User).where(User.id == test_user.id))
             u = result.scalar_one()
@@ -397,16 +410,21 @@ class TestWebhookHandler:
             "items": {"data": [{"price": {"id": _STARTER_M}, "current_period_end": 1702592000}]},
         }
 
-        with patch("neolex.routers.stripe_router._delete_user_corpora", new_callable=AsyncMock) as mock_cleanup:
-            resp = await self._post(client, _fake_event("customer.subscription.deleted", data_obj, "evt_del_001"))
+        before = datetime.now(UTC)
+        resp = await self._post(client, _fake_event("customer.subscription.deleted", data_obj, "evt_del_001"))
+        after = datetime.now(UTC)
 
         assert resp.status_code == 200
-        mock_cleanup.assert_called_once()
 
         async with _pg.AsyncSessionLocal() as session:
             u = (await session.execute(select(User).where(User.id == test_user.id))).scalar_one()
             assert u.subscription_status == "canceled"
             assert u.max_corpora == 0
+            # Grace period: corpus deletion scheduled ~7 days out, NOT immediate
+            assert u.corpus_deletion_scheduled_at is not None
+            expected_min = before + timedelta(days=6, hours=23)
+            expected_max = after + timedelta(days=7, hours=1)
+            assert expected_min <= u.corpus_deletion_scheduled_at <= expected_max
 
     async def test_subscription_deleted_with_other_active_sub_does_not_revoke(
         self, client: AsyncClient, test_user: User
