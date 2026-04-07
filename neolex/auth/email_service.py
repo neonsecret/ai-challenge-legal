@@ -106,6 +106,39 @@ async def send_password_reset_email(email: str, token: str) -> None:
     )
 
 
+async def send_resubscription_data_preserved_email(email: str) -> None:
+    """Notify a user that their corpora survived re-subscription within the grace period."""
+    _client()
+    account_url = f"{settings.frontend_url}/account"
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": email,
+            "subject": "Your Vitreon Legal documents have been preserved",
+            "html": f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2>Your documents are safe</h2>
+          <p>Welcome back! You re-subscribed before the deletion date, so
+             <strong>all your uploaded documents and custom corpora have been fully preserved</strong>.
+             No action is needed on your part.</p>
+          <p>You can pick up right where you left off:</p>
+          <p style="margin:32px 0">
+            <a href="{account_url}"
+               style="background:#1a56db;color:#fff;padding:12px 28px;border-radius:6px;
+                      text-decoration:none;font-weight:600">
+              View My Documents
+            </a>
+          </p>
+          <p style="color:#666;font-size:14px">
+            Questions? Contact us at
+            <a href="mailto:support@vitreon.app">support@vitreon.app</a>.
+          </p>
+        </div>
+        """,
+        },
+    )
+
+
 async def send_payment_action_required_email(email: str, invoice_url: str) -> None:
     """Notify a user that 3D Secure authentication is required to complete their payment."""
     _client()

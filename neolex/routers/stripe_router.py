@@ -590,6 +590,7 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
     user.subscription_status = plan
     user.max_corpora = _max_corpora_for_plan(plan)
     # Cancel any pending corpus deletion — user just paid, restore full access.
+    had_deletion_scheduled = user.corpus_deletion_scheduled_at is not None
     user.corpus_deletion_scheduled_at = None
 
     # Reset daily counters for the new plan
@@ -628,6 +629,16 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
 
     await db.commit()
     logger.info("User %s subscribed to %s plan (price %s)", user.id, plan, price_id)
+
+    # If the user had corpus deletion scheduled before this checkout, notify them
+    # that their data survived.  Fire-and-forget — email failure must not affect billing.
+    if had_deletion_scheduled:
+        try:
+            from neolex.auth.email_service import send_resubscription_data_preserved_email
+
+            asyncio.create_task(send_resubscription_data_preserved_email(user.email))
+        except Exception:
+            logger.exception("Failed to send resubscription data-preserved email to user %s", user.id)
 
 
 async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
@@ -688,7 +699,15 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
         user.max_corpora = _max_corpora_for_plan(plan)
         user.payment_warning = False  # Clear warning if subscription recovered
         # Clear any pending corpus deletion — subscription is active again.
+        had_deletion_scheduled = user.corpus_deletion_scheduled_at is not None
         user.corpus_deletion_scheduled_at = None
+        if had_deletion_scheduled:
+            try:
+                from neolex.auth.email_service import send_resubscription_data_preserved_email
+
+                asyncio.create_task(send_resubscription_data_preserved_email(user.email))
+            except Exception:
+                logger.exception("Failed to send resubscription data-preserved email to user %s", user.id)
     elif stripe_status in ("past_due", "unpaid"):
         # Stripe retries for ~7 days before firing customer.subscription.deleted.
         # Preserve access during the retry window — only flag the warning.
