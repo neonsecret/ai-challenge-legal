@@ -190,9 +190,9 @@ export default function LandingPage() {
                                         letterSpacing: "0.04em",
                                         transition: "all 0.15s ease",
                                     }}
-                                    aria-label={`Switch to design ${designVersion === "v1" ? "V2" : "V1"}`}
+                                    aria-label={`Switch to ${designVersion === "v1" ? "Modern" : "Classic"} design`}
                                 >
-                                    {designVersion === "v1" ? "V1" : "V2"}
+                                    {designVersion === "v1" ? "Classic" : "Modern"}
                                 </button>
                                 {isAuthenticated ? (
                                     <a href="/chat"
@@ -516,9 +516,9 @@ export default function LandingPage() {
                                     letterSpacing: "0.04em",
                                     transition: "all 0.15s ease",
                                 }}
-                                aria-label={`Switch to design ${designVersion === "v1" ? "V2" : "V1"}`}
+                                aria-label={`Switch to ${designVersion === "v1" ? "Modern" : "Classic"} design`}
                             >
-                                {designVersion === "v1" ? "V1" : "V2"}
+                                {designVersion === "v1" ? "Classic" : "Modern"}
                             </button>
                             {isAuthenticated ? (
                                 <a href="/chat" style={{
