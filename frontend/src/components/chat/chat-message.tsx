@@ -317,6 +317,7 @@ export function ChatMessage({
 
     const handleThumbsDown = () => {
         if (feedback?.rating === "negative") return
+        postFeedback("negative")   // submit bare negative rating immediately
         setCommentOpen(true)
         setTimeout(() => textareaRef.current?.focus(), 50)
     }
