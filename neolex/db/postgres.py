@@ -66,11 +66,6 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE court_decisions ADD COLUMN IF NOT EXISTS embedding vector(4096);"),
         )
-        # payment_warning: soft flag while Stripe retries a failed payment.
-        # Access is preserved during the retry window; flag clears on recovery or invoice.paid.
-        await conn.execute(
-            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_warning BOOLEAN NOT NULL DEFAULT FALSE;"),
-        )
         # corpus_deletion_scheduled_at: set on cancellation; corpus deleted at this timestamp.
         # 7-day grace period lets users export data before permanent deletion.
         await conn.execute(
