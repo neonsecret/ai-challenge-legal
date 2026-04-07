@@ -656,6 +656,19 @@ export function ChatMessage({
                         </button>
                     </div>
 
+                    {/* Inline error for thumbs-up failures (commentOpen is false so the in-panel error is hidden) */}
+                    {!commentOpen && feedbackError && (
+                        <span style={{
+                            display: "block",
+                            marginTop: SPACE[1],
+                            fontSize: TYPE_SCALE.xs,
+                            color: isDark ? "rgba(255,120,100,0.85)" : "#b83228",
+                            fontFamily: FONT.sans,
+                        }}>
+                            {feedbackError}
+                        </span>
+                    )}
+
                     <AnimatePresence>
                         {commentOpen && (
                             <motion.div
