@@ -3,21 +3,25 @@
 POST /api/feedback
   Auth: session cookie required
   Body: { trace_id, message_id, conversation_id, rating, comment? }
-  Rate limit: 1 feedback per message per user (upsert on conflict)
+  Rate limit: 60 feedback submissions per hour per user (audit DB, fail-open)
+  Ownership: conversation_id must belong to the requesting user
 """
 
 import asyncio
 import logging
+import time
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel, Field
+from sqlalchemy import exists, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.session import get_current_user
-from neolex.db.models import Feedback, User
+from neolex.db.audit import get_audit_db
+from neolex.db.models import Feedback, PipelineJob, User
 from neolex.db.postgres import get_db
 from neolex.observability import get_langfuse
 
@@ -74,6 +78,36 @@ async def submit_feedback(
     Uses upsert so repeated feedback on the same message updates in place
     rather than duplicating rows (1 feedback per message per user).
     """
+    # --- Rate limit: 60 submissions per hour per user (fail-open) ---
+    bucket = f"feedback:{user.id}"
+    try:
+        async with get_audit_db() as audit:
+            _, exceeded = await audit.check_and_increment_rate(
+                bucket=bucket,
+                window_seconds=3600.0,
+                limit=60,
+                now=time.time(),
+            )
+        if exceeded:
+            raise HTTPException(status_code=429, detail="Too many feedback submissions. Try again later.")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.debug("Feedback rate limit DB unavailable, skipping", exc_info=True)
+        # Fail open — do NOT block the user if the audit DB is down
+
+    # --- Ownership check: conversation_id must belong to requesting user ---
+    conversation_owned = await db.scalar(
+        select(
+            exists().where(
+                PipelineJob.conversation_id == body.conversation_id,
+                PipelineJob.user_id == user.id,
+            )
+        )
+    )
+    if not conversation_owned:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     stmt = (
         pg_insert(Feedback)
         .values(
