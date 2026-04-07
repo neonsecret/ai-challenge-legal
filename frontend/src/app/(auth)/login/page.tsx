@@ -1,7 +1,7 @@
 "use client";
 
-import {useState, useEffect} from "react";
-import {useRouter} from "next/navigation";
+import {useState, useEffect, Suspense} from "react";
+import {useRouter, useSearchParams} from "next/navigation";
 import {useTheme} from "@/lib/theme";
 import {motion, AnimatePresence} from "motion/react";
 import {useAuth} from "@/lib/use-auth";
@@ -35,8 +35,9 @@ function GoogleIcon({size = 18}: { size?: number }) {
 
 type Mode = "login" | "register";
 
-export default function LoginPage() {
+function LoginPageContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const {resolvedTheme} = useTheme();
     const {user, login, loginWithGoogle, register, error, clearError} =
         useAuth();
@@ -48,6 +49,12 @@ export default function LoginPage() {
     const [name, setName] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [registerSuccess, setRegisterSuccess] = useState(false);
+
+    // Derive URL error message directly from search params (no effect needed)
+    const urlErrorParam = searchParams.get("error");
+    const urlError = urlErrorParam === "oauth_denied"
+        ? "You denied access. Please try again."
+        : null;
 
     useEffect(() => {
         setMounted(true);
@@ -492,6 +499,28 @@ export default function LoginPage() {
                         />
                     </div>
 
+                    {/* URL error message (e.g. OAuth denial redirect) */}
+                    {urlError && (
+                        <div
+                            style={{
+                                background: isDark
+                                    ? "rgba(239,68,68,0.12)"
+                                    : "rgba(220,38,38,0.08)",
+                                border: isDark
+                                    ? "0.5px solid rgba(239,68,68,0.30)"
+                                    : "0.5px solid rgba(220,38,38,0.25)",
+                                borderRadius: "10px",
+                                padding: "10px 14px",
+                                marginBottom: 16,
+                                fontSize: "13px",
+                                color: isDark ? "#fca5a5" : "#b91c1c",
+                                fontFamily: fontStack,
+                            }}
+                        >
+                            {urlError}
+                        </div>
+                    )}
+
                     {/* Error message */}
                     {error && (
                         <div
@@ -764,5 +793,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginPageContent />
+        </Suspense>
     );
 }
