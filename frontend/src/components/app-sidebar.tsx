@@ -265,7 +265,7 @@ export function AppSidebar() {
             }}>
                 {/* Design version toggle — Classic / Modern */}
                 <div style={{padding: "4px 10px 6px"}}>
-                    <DesignVersionToggle variant={isDark ? "dark" : "light"} />
+                    <DesignVersionToggle variant={isDark ? "dark" : isV2 ? "v2-light" : "light"} />
                 </div>
                 <button
                     onClick={handleLogout}

@@ -28,7 +28,7 @@ export function BottomNav() {
     useEffect(() => setMounted(true), []);
 
     const isDark = mounted && resolvedTheme === "dark";
-    const isV2Light = !isDark && designVersion === "v2";
+    const isV2Light = mounted && !isDark && designVersion === "v2";
 
     const pill = isDark ? {
         background: "rgba(15,22,35,0.80)",
@@ -181,7 +181,7 @@ export function BottomNav() {
                 alignItems: "center",
                 padding: isMobile ? "6px 6px" : "8px 8px",
             }}>
-                <DesignVersionToggle variant={isDark ? "dark" : "light"} />
+                <DesignVersionToggle variant={isDark ? "dark" : isV2Light ? "v2-light" : "light"} />
             </div>
 
             {/* Language toggle */}
