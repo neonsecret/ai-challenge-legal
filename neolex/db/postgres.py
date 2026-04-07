@@ -66,6 +66,11 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE court_decisions ADD COLUMN IF NOT EXISTS embedding vector(4096);"),
         )
+        # payment_warning: soft flag while Stripe retries a failed payment.
+        # Access is preserved during the retry window; flag clears on recovery or invoice.paid.
+        await conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_warning BOOLEAN NOT NULL DEFAULT FALSE;"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.
