@@ -147,8 +147,7 @@ async def _cleanup_scheduled_corpus_deletions() -> None:
     from neolex.db.postgres import AsyncSessionLocal
     from neolex.routers.stripe_router import _delete_user_corpora
 
-    while True:
-        await asyncio.sleep(86400)  # 24 hours between runs
+    async def _run_once() -> None:
         try:
             async with AsyncSessionLocal() as db:
                 now = datetime.now(UTC)
@@ -174,6 +173,14 @@ async def _cleanup_scheduled_corpus_deletions() -> None:
                     logger.exception("Corpus deletion failed for user %s", user.id)
         except Exception:
             logger.exception("Scheduled corpus deletion job failed")
+
+    # Run once immediately at startup to catch any deletions that were due
+    # while the server was offline (e.g. after a restart during the grace period).
+    await _run_once()
+
+    while True:
+        await asyncio.sleep(86400)  # 24 hours between runs
+        await _run_once()
 
 
 @asynccontextmanager

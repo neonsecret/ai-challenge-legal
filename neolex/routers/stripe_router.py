@@ -587,6 +587,8 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
     # Update user to the new plan
     user.subscription_status = plan
     user.max_corpora = _max_corpora_for_plan(plan)
+    # Cancel any pending corpus deletion — user just paid, restore full access.
+    user.corpus_deletion_scheduled_at = None
 
     # Reset daily counters for the new plan
     user.daily_queries_used = 0
@@ -683,6 +685,8 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
         user.subscription_status = plan
         user.max_corpora = _max_corpora_for_plan(plan)
         user.payment_warning = False  # Clear warning if subscription recovered
+        # Clear any pending corpus deletion — subscription is active again.
+        user.corpus_deletion_scheduled_at = None
     elif stripe_status in ("past_due", "unpaid"):
         # Stripe retries for ~7 days before firing customer.subscription.deleted.
         # Preserve access during the retry window — only flag the warning.
