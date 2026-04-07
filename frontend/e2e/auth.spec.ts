@@ -4,9 +4,8 @@
  * These tests target the local dev server (http://localhost:3000).
  * Backend is expected at BACKEND_URL (default http://localhost:8000).
  *
- * All 5 scenarios use network mocks — no real credentials required.
- * Scenarios 4 & 5 mock /auth/me so they always run in CI without
- * E2E_TEST_PASSWORD being set.
+ * All scenarios use Playwright route mocking — no real credentials or CI
+ * secrets are required.  See frontend/e2e/README.md for details.
  *
  * Run: npm run test:e2e
  */
@@ -111,9 +110,7 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, real backend cal
   const pageErrors: Error[] = [];
 
   // Capture unhandled JS errors before any navigation
-  page.on("pageerror", (err) => {
-    pageErrors.push(err);
-  });
+  page.on("pageerror", (err) => { pageErrors.push(err); });
 
   await page.route(`${BACKEND}/auth/google`, async (route: Route) => {
     googleRedirectCaught = true;
@@ -132,7 +129,7 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, real backend cal
 
   // Click the Google OAuth button on the login page
   const googleBtn = page.getByRole("button", { name: /continue with google/i });
-  const hasGoogleBtn = (await googleBtn.count()) > 0;
+  const hasGoogleBtn = await googleBtn.count() > 0;
 
   if (!hasGoogleBtn) {
     // If not on the login page yet, navigate there
@@ -160,32 +157,28 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, real backend cal
 // Scenario 4 — Session persistence across navigation
 // ---------------------------------------------------------------------------
 test("Scenario 4: session persists across page navigations", async ({ page }) => {
-  // Mock /auth/me to always return MOCK_USER — no real credentials required,
-  // so this test always runs in CI.  Both the use-auth hook and the chat page's
-  // own auth check call GET /auth/me; the mock covers both.
+  // Mock /auth/me to always return an authenticated user — no real credentials needed.
+  // This lets us test navigation behaviour without CI secrets.
   await page.route(`**/auth/me`, async (route: Route) => {
-    if (route.request().method() === "GET") {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(MOCK_USER),
-      });
-    } else {
-      await route.continue();
-    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(MOCK_USER),
+    });
   });
 
-  // Navigate to /chat — should be authenticated
+  // Navigate to /chat — the page redirects to "/" on a 401, so reaching /chat
+  // confirms the mock is actually being honoured (cannot silently pass).
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
   expect(page.url()).toContain("/chat");
 
-  // Navigate to /settings (only reachable when authenticated)
+  // Navigate to /settings
   await page.goto(`${FRONTEND}/settings`);
   await page.waitForURL(/\/settings/, { timeout: 5_000 });
   expect(page.url()).toContain("/settings");
 
-  // Navigate back to /chat — session must still be valid
+  // Navigate back to /chat — session mock must still be active
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
 
@@ -197,61 +190,60 @@ test("Scenario 4: session persists across page navigations", async ({ page }) =>
 // Scenario 5 — Logout flow
 // ---------------------------------------------------------------------------
 test("Scenario 5: logout clears session and redirects away from /chat", async ({ page }) => {
-  // Stateful flag — toggled when the logout endpoint is called, so the /auth/me
-  // mock can switch from 200 → 401 without real credentials.
-  let loggedOut = false;
+  // Stateful mock: /auth/me returns 200 while logged in, 401 after logout.
+  // Flips when /auth/logout is intercepted — no real credentials needed.
+  let isLoggedIn = true;
 
-  // Mock /auth/me: returns MOCK_USER while logged in, 401 after logout.
-  // Both use-auth and the chat page's own auth check are covered by this.
   await page.route(`**/auth/me`, async (route: Route) => {
-    if (route.request().method() !== "GET") {
-      await route.continue();
-      return;
-    }
-    if (loggedOut) {
-      await route.fulfill({
-        status: 401,
-        contentType: "application/json",
-        body: JSON.stringify({ detail: "Not authenticated" }),
-      });
-    } else {
+    if (isLoggedIn) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(MOCK_USER),
       });
+    } else {
+      await route.fulfill({
+        status: 401,
+        body: JSON.stringify({ detail: "Not authenticated" }),
+      });
     }
   });
 
-  // Mock POST /auth/logout — set the flag and return success.
-  // The sidebar fires this fire-and-forget before calling router.push("/").
+  // settings/page.tsx awaits the logout response before calling router.push("/"),
+  // so flipping isLoggedIn here guarantees /auth/me returns 401 for any
+  // subsequent navigation to /chat.
   await page.route(`**/auth/logout`, async (route: Route) => {
-    loggedOut = true;
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ message: "logged out" }),
-    });
+    isLoggedIn = false;
+    await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
   });
 
+  // Reach /chat while mocked-authenticated.
+  // waitForURL failing here means the mock was rejected — cannot silently pass.
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
   expect(page.url()).toContain("/chat");
 
-  // The sidebar logout button (app-sidebar.tsx handleLogout)
-  const signOutBtn = page.getByRole("button", { name: "Sign out" });
+  // Navigate to /settings — the sign-out button lives there (settings/page.tsx).
+  // The button is only rendered once the /auth/me response sets user state,
+  // so we wait for it to become visible before clicking.
+  await page.goto(`${FRONTEND}/settings`);
+  const signOutBtn = page.getByRole("button", { name: /sign out/i });
   await expect(signOutBtn).toBeVisible({ timeout: 5_000 });
   await signOutBtn.click();
 
-  // After logout the sidebar calls router.push("/") immediately
+  // settings/page.tsx calls router.push("/") after the awaited logout request,
+  // so by the time the navigation resolves isLoggedIn is already false.
   await page.waitForURL(/^\/(login|$)/, { timeout: 5_000 }).catch(() => {
-    // Some builds redirect to /login, some to /
+    // Some builds redirect to /login, some to "/"
   });
+  expect(page.url()).not.toContain("/settings");
 
-  // Should not still be on /chat
-  expect(page.url()).not.toContain("/chat");
+  // Session cookie must be absent — we never injected a real one.
+  const cookies = await page.context().cookies();
+  const sessionCookie = cookies.find((c) => c.name === "session");
+  expect(sessionCookie === undefined || sessionCookie.value === "").toBe(true);
 
-  // Attempting to navigate to /chat should redirect away — /auth/me now returns 401
+  // Attempting to navigate to /chat should redirect away — /auth/me now returns 401.
   await page.goto(`${FRONTEND}/chat`);
   await page.waitForLoadState("networkidle");
   expect(page.url()).not.toContain("/chat");
