@@ -389,8 +389,11 @@ class TestWebhookHandler:
     ):
         """customer.subscription.deleted (no other active sub) → access revoked, 7-day grace period scheduled.
 
-        Since NEO-300, corpus deletion is deferred by 7 days. We verify that corpus_deletion_scheduled_at
-        is set ~7 days in the future rather than calling _delete_user_corpora immediately.
+        Since NEO-300, corpus deletion is deferred by 7 days (NEO-300):
+        1. _delete_user_corpora is NOT called immediately
+        2. corpus_deletion_scheduled_at is set ~7 days in the future
+        3. subscription_status reverts to "canceled", max_corpora set to 0
+        4. Warning email (send_corpus_deletion_warning_email) is dispatched
         """
         async with _pg.AsyncSessionLocal() as session:
             result = await session.execute(select(User).where(User.id == test_user.id))
@@ -424,11 +427,18 @@ class TestWebhookHandler:
         # Warning email dispatched (fire-and-forget via asyncio.create_task)
         mock_email.assert_called_once()
 
+        # 1. Corpus deletion NOT triggered synchronously — grace period instead
+        mock_cleanup.assert_not_called()
+
+        # 4. Warning email dispatched (fire-and-forget via asyncio.create_task)
+        mock_email.assert_called_once()
+
         async with _pg.AsyncSessionLocal() as session:
             u = (await session.execute(select(User).where(User.id == test_user.id))).scalar_one()
+            # 3. Access revoked
             assert u.subscription_status == "canceled"
             assert u.max_corpora == 0
-            # Grace period: corpus deletion scheduled ~7 days out, NOT immediate
+            # 2. Grace period: corpus deletion scheduled ~7 days out
             assert u.corpus_deletion_scheduled_at is not None
             expected_min = before + timedelta(days=6, hours=23)
             expected_max = after + timedelta(days=7, hours=1)
