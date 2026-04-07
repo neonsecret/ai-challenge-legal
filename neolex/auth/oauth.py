@@ -5,7 +5,7 @@ Requires SessionMiddleware to be registered in main.py (for OAuth state CSRF).
 
 from datetime import UTC, datetime
 
-from authlib.integrations.starlette_client import OAuth
+from authlib.integrations.starlette_client import OAuth, OAuthError
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy import select
@@ -39,7 +39,11 @@ async def google_login(request: Request):
 @router.get("/google/callback", name="google_callback")
 async def google_callback(request: Request, db: AsyncSession = Depends(get_db)):
     """Handle Google OAuth callback — upsert user, set session cookie."""
-    token = await _oauth.google.authorize_access_token(request)
+    try:
+        token = await _oauth.google.authorize_access_token(request)
+    except OAuthError:
+        # User denied OAuth, state expired, or callback replayed — redirect cleanly
+        return RedirectResponse(url=f"{settings.frontend_url}/login?error=oauth_denied")
     userinfo = token["userinfo"]
 
     email: str = userinfo["email"]
