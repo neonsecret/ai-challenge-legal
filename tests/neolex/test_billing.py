@@ -11,7 +11,7 @@ Run with:
 import asyncio
 import uuid
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import Depends, FastAPI
@@ -411,10 +411,18 @@ class TestWebhookHandler:
         }
 
         before = datetime.now(UTC)
-        resp = await self._post(client, _fake_event("customer.subscription.deleted", data_obj, "evt_del_001"))
+        with (
+            patch("neolex.routers.stripe_router._delete_user_corpora", new_callable=AsyncMock) as mock_cleanup,
+            patch("neolex.auth.email_service.send_corpus_deletion_warning_email", new_callable=AsyncMock) as mock_email,
+        ):
+            resp = await self._post(client, _fake_event("customer.subscription.deleted", data_obj, "evt_del_001"))
         after = datetime.now(UTC)
 
         assert resp.status_code == 200
+        # Corpus deletion must NOT fire immediately — grace period is used instead
+        mock_cleanup.assert_not_called()
+        # Warning email dispatched (fire-and-forget via asyncio.create_task)
+        mock_email.assert_called_once()
 
         async with _pg.AsyncSessionLocal() as session:
             u = (await session.execute(select(User).where(User.id == test_user.id))).scalar_one()
@@ -851,3 +859,32 @@ class TestHelperFunctions:
         from neolex.routers.stripe_router import _max_corpora_for_plan
 
         assert _max_corpora_for_plan("unknown_plan") == 0
+
+
+# ---------------------------------------------------------------------------
+# 7. GET /stripe/customer-portal
+# ---------------------------------------------------------------------------
+
+
+class TestCustomerPortal:
+    """GET /stripe/customer-portal"""
+
+    async def test_no_stripe_customer_id_returns_400(self, client: AsyncClient):
+        """User with no stripe_customer_id → 400."""
+        resp = await client.get("/stripe/customer-portal")
+        assert resp.status_code == 400
+        assert "No billing account" in resp.json()["detail"]
+
+    async def test_valid_customer_returns_portal_url(self, client_with_customer: AsyncClient):
+        """Valid customer → portal URL returned from Stripe billing portal session."""
+        mock_portal = MagicMock()
+        mock_portal.url = "https://billing.stripe.com/session/test_portal_session"
+
+        with patch(
+            "neolex.routers.stripe_router.stripe.billing_portal.Session.create",
+            return_value=mock_portal,
+        ):
+            resp = await client_with_customer.get("/stripe/customer-portal")
+
+        assert resp.status_code == 200
+        assert resp.json()["url"] == "https://billing.stripe.com/session/test_portal_session"
