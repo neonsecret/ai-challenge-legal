@@ -12,7 +12,6 @@ import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
-import {useIsMobile} from "@/hooks/use-mobile";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -78,7 +77,6 @@ export default function LandingPage() {
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { locale, t } = useI18n();
-    const isMobile = useIsMobile();
     const isCzech = locale === "cs";
     const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
@@ -445,13 +443,13 @@ export default function LandingPage() {
                                     lineHeight: 1
                                 }}>N</span>
                             </div>
-                            {!isMobile && <span style={{
+                            <span className="hidden sm:inline" style={{
                                 fontSize: 16,
                                 fontWeight: 700,
                                 color: "#1a0e04",
                                 fontFamily: "Georgia, 'Times New Roman', serif",
                                 letterSpacing: "-0.04em"
-                            }}>Vitreon Legal</span>}
+                            }}>Vitreon Legal</span>
                         </div>
                         <div style={{display: "flex", alignItems: "center", gap: 12}}>
                             <LanguageToggle />
@@ -804,13 +802,10 @@ export default function LandingPage() {
                         <AnimatePresence mode="wait">
                             <motion.div key={activeStep} initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
                                         exit={{opacity: 0, y: -8}} transition={{duration: 0.3}}
+                                        className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8 p-5 sm:py-7 sm:px-8"
                                         style={{
                                             ...warmGlass,
                                             borderRadius: 20,
-                                            padding: isMobile ? "20px" : "28px 32px",
-                                            display: "grid",
-                                            gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr",
-                                            gap: isMobile ? 20 : 32,
                                             alignItems: "center"
                                         }}>
                                 <div>
