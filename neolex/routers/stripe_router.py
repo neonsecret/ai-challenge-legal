@@ -198,7 +198,7 @@ async def create_checkout_session(
 
     if not user.stripe_customer_id:
         try:
-            customer = stripe.Customer.create(email=user.email, name=user.name or user.email)
+            customer = await asyncio.to_thread(stripe.Customer.create, email=user.email, name=user.name or user.email)
         except stripe.StripeError as err:
             logger.exception("Failed to create Stripe customer for user %s", user.id)
             raise HTTPException(status_code=502, detail="Could not reach payment provider. Please try again.") from err
@@ -219,7 +219,8 @@ async def create_checkout_session(
     if old_sub:
         metadata["previous_subscription_id"] = old_sub.stripe_subscription_id
 
-    session = stripe.checkout.Session.create(
+    session = await asyncio.to_thread(
+        stripe.checkout.Session.create,
         customer=user.stripe_customer_id,
         line_items=[{"price": price_id, "quantity": 1}],
         mode="subscription",
@@ -290,7 +291,8 @@ async def customer_portal(user: User = Depends(get_current_user)):
     if not user.stripe_customer_id:
         raise HTTPException(status_code=400, detail="No billing account")
 
-    portal = stripe.billing_portal.Session.create(
+    portal = await asyncio.to_thread(
+        stripe.billing_portal.Session.create,
         customer=user.stripe_customer_id,
         return_url=f"{settings.frontend_url}/billing",
     )
@@ -311,7 +313,9 @@ async def sync_subscription(
         raise HTTPException(status_code=400, detail="No billing account linked")
 
     try:
-        subs = stripe.Subscription.list(customer=user.stripe_customer_id, status="active", limit=1)
+        subs = await asyncio.to_thread(
+            stripe.Subscription.list, customer=user.stripe_customer_id, status="active", limit=1
+        )
     except Exception as err:
         logger.exception("Failed to query Stripe subscriptions for user %s", user.id)
         raise HTTPException(status_code=502, detail="Could not reach Stripe") from err
@@ -367,7 +371,8 @@ async def cancel_subscription(
 
     # Tell Stripe to cancel at the end of the current billing period
     try:
-        stripe_sub = stripe.Subscription.modify(
+        stripe_sub = await asyncio.to_thread(
+            stripe.Subscription.modify,
             sub_record.stripe_subscription_id,
             cancel_at_period_end=True,
         )
@@ -538,7 +543,7 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
         return
 
     try:
-        sub = stripe.Subscription.retrieve(subscription_id)
+        sub = await asyncio.to_thread(stripe.Subscription.retrieve, subscription_id)
     except stripe.StripeError:
         logger.exception("Failed to retrieve subscription %s", subscription_id)
         return
@@ -552,7 +557,7 @@ async def _on_checkout_completed(session: dict, db: AsyncSession) -> None:
     prev_sub_id = metadata.get("previous_subscription_id")
     if prev_sub_id:
         try:
-            stripe.Subscription.cancel(prev_sub_id)
+            await asyncio.to_thread(stripe.Subscription.cancel, prev_sub_id)
             logger.info(
                 "Canceled previous subscription %s for user %s (upgrade to %s)",
                 prev_sub_id,

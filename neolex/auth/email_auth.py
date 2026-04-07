@@ -1,5 +1,6 @@
 """Email/password auth routes: register, login, verify-email, forgot/reset password, data export, account deletion."""
 
+import asyncio
 import hashlib
 import logging
 import secrets
@@ -448,7 +449,7 @@ async def _cancel_stripe_subscriptions(user: User, db: AsyncSession) -> None:
 
     for sub in active_subs:
         try:
-            stripe.Subscription.cancel(sub.stripe_subscription_id)
+            await asyncio.to_thread(stripe.Subscription.cancel, sub.stripe_subscription_id)
             logger.info(
                 "Cancelled Stripe subscription %s for user %s",
                 sub.stripe_subscription_id,
