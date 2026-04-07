@@ -14,6 +14,8 @@ export interface Message {
     sources?: Source[]
     confidence?: string | null
     trace?: string[]
+    traceId?: string | null
+    feedback?: { rating: "positive" | "negative"; comment?: string } | null
 }
 
 export interface ChatSession {
@@ -126,6 +128,7 @@ interface ChatState {
     loadSession: (id: string) => void
     newChat: () => void
     deleteSession: (id: string) => void
+    setMessageFeedback: (messageId: string, rating: "positive" | "negative", comment?: string) => void
 }
 
 const ChatStateContext = createContext<ChatState | null>(null)
@@ -343,17 +346,29 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         if (onStreamingSession) {
             setMessages((prev) => prev.map((m) =>
                 m.id === id
-                    ? {...m, content: stream.answer, sources: stream.sources ?? [], confidence: stream.confidence ?? null}
+                    ? {
+                        ...m,
+                        content: stream.answer,
+                        sources: stream.sources ?? [],
+                        confidence: stream.confidence ?? null,
+                        ...(stream.traceId != null ? {traceId: stream.traceId} : {}),
+                    }
                     : m
             ))
         } else {
             streamingMessagesRef.current = streamingMessagesRef.current.map((m) =>
                 m.id === id
-                    ? {...m, content: stream.answer, sources: stream.sources ?? [], confidence: stream.confidence ?? null}
+                    ? {
+                        ...m,
+                        content: stream.answer,
+                        sources: stream.sources ?? [],
+                        confidence: stream.confidence ?? null,
+                        ...(stream.traceId != null ? {traceId: stream.traceId} : {}),
+                    }
                     : m
             )
         }
-    }, [stream.answer, stream.sources, stream.confidence, currentSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [stream.answer, stream.sources, stream.confidence, stream.traceId, currentSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (stream.isStreaming && stream.streamingStatus && !traceRef.current.includes(stream.streamingStatus)) {
@@ -479,14 +494,19 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                             )
                             if (!r.ok) return
                             const data = await r.json()
+                            // trace_id is populated by the backend only after NEO-303 schema migration.
+                            // Until that lands, trace_id is absent/null and traceId stays undefined
+                            // on backend-loaded messages — the feedback bar will remain hidden for
+                            // those sessions, which is the correct fallback behaviour.
                             const msgs: Message[] = (data?.messages ?? []).map(
-                                (m: {role: string; content: string; sources?: Source[]; created_at: string}, i: number) => ({
+                                (m: {role: string; content: string; sources?: Source[]; created_at: string; trace_id?: string | null}, i: number) => ({
                                     id: `${m.role}-loaded-${i}`,
                                     role: m.role as "user" | "assistant",
                                     content: m.content,
                                     sources: (Array.isArray(m.sources) ? m.sources : []).filter(
                                         (s: Source) => s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers)
                                     ),
+                                    ...(m.role === "assistant" && m.trace_id != null ? {traceId: m.trace_id} : {}),
                                 })
                             )
                             if (msgs.length > 0) {
@@ -662,6 +682,17 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
     const currentCorpora = sessions.find(s => s.id === currentSessionId)?.corpora ?? []
 
+    const setMessageFeedback = useCallback((messageId: string, rating: "positive" | "negative", comment?: string) => {
+        const update = (m: Message) =>
+            m.id === messageId ? {...m, feedback: {rating, ...(comment ? {comment} : {})}} : m
+        setMessages(prev => prev.map(update))
+        setSessions(prev => prev.map(s =>
+            s.id === currentSessionIdRef.current
+                ? {...s, messages: s.messages.map(update)}
+                : s
+        ))
+    }, [])
+
     return (
         <ChatStateContext.Provider value={{
             messages, setMessages, activeAssistantId, traceRef, wasStreamingRef,
@@ -669,6 +700,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             useInternet, setUseInternet,
             stream, handleSend,
             sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
+            setMessageFeedback,
         }}>
             {children}
         </ChatStateContext.Provider>

@@ -1,12 +1,13 @@
 "use client"
 
-import {useState, useMemo} from "react"
+import {useState, useRef, useMemo} from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
 import {findAndReplace} from "mdast-util-find-and-replace"
 import {cn} from "@/lib/utils"
-import {Copy, Check} from "lucide-react"
+import {Copy, Check, ThumbsUp, ThumbsDown} from "lucide-react"
+import {motion, AnimatePresence} from "motion/react"
 import {SourcesPanel} from "@/components/chat/sources-panel"
 import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
@@ -230,6 +231,11 @@ interface ChatMessageProps {
     trace?: string[]
     onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
     isDark?: boolean
+    messageId?: string
+    traceId?: string | null
+    conversationId?: string | null
+    feedback?: { rating: "positive" | "negative"; comment?: string } | null
+    onFeedback?: (messageId: string, rating: "positive" | "negative", comment?: string) => void
 }
 
 // ─── ChatMessage ──────────────────────────────────────────────────────────────
@@ -246,8 +252,18 @@ export function ChatMessage({
     trace,
     onSourceClick,
     isDark = false,
+    messageId,
+    traceId,
+    conversationId,
+    feedback,
+    onFeedback,
 }: ChatMessageProps) {
     const [copied, setCopied] = useState(false)
+    const [commentOpen, setCommentOpen] = useState(false)
+    const [commentText, setCommentText] = useState("")
+    const [submitting, setSubmitting] = useState(false)
+    const [feedbackError, setFeedbackError] = useState<string | null>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     // Pre-collect cited sources for the References section
     const citedSources = useMemo(
@@ -263,6 +279,51 @@ export function ChatMessage({
             setCopied(true)
             setTimeout(() => setCopied(false), 1500)
         })
+    }
+
+    const postFeedback = async (rating: "positive" | "negative", comment?: string) => {
+        if (!messageId || !traceId || !conversationId) return
+        const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+        setSubmitting(true)
+        setFeedbackError(null)
+        try {
+            const res = await fetch(`${API}/api/feedback`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest"},
+                credentials: "include",
+                body: JSON.stringify({
+                    trace_id: traceId,
+                    message_id: messageId,
+                    conversation_id: conversationId,
+                    rating,
+                    ...(comment ? {comment} : {}),
+                }),
+            })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            onFeedback?.(messageId, rating, comment)
+            setCommentOpen(false)
+            setCommentText("")
+        } catch {
+            setFeedbackError("Couldn't save feedback. Try again.")
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    const handleThumbsUp = () => {
+        if (feedback?.rating === "positive") return
+        postFeedback("positive")
+    }
+
+    const handleThumbsDown = () => {
+        if (feedback?.rating === "negative") return
+        postFeedback("negative")   // submit bare negative rating immediately
+        setCommentOpen(true)
+        setTimeout(() => textareaRef.current?.focus(), 50)
+    }
+
+    const handleCommentSubmit = () => {
+        postFeedback("negative", commentText.trim() || undefined)
     }
 
     // ── User message ──────────────────────────────────────────────────────────
@@ -538,6 +599,160 @@ export function ChatMessage({
 
             {trace && trace.length > 0 && !isStreaming && content && (
                 <AgentTrace trace={trace} isDark={isDark} />
+            )}
+
+            {/* Feedback bar — only for completed assistant messages with a traceId */}
+            {role === "assistant" && !isStreaming && traceId && (
+                <div style={{marginTop: SPACE[2]}}>
+                    <div style={{display: "flex", alignItems: "center", gap: SPACE[2]}}>
+                        <button
+                            onClick={handleThumbsUp}
+                            disabled={submitting || feedback?.rating === "positive"}
+                            aria-label="Helpful"
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                width: 28, height: 28, borderRadius: RADIUS.md,
+                                border: `1px solid ${feedback?.rating === "positive"
+                                    ? isDark ? "rgba(201,168,76,0.45)" : "rgba(196,124,0,0.35)"
+                                    : isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                                background: feedback?.rating === "positive"
+                                    ? isDark ? "rgba(201,168,76,0.16)" : "rgba(196,124,0,0.10)"
+                                    : "transparent",
+                                color: feedback?.rating === "positive"
+                                    ? isDark ? COLOR.gold.base : "#7a4a00"
+                                    : feedback?.rating === "negative"
+                                        ? isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.18)"
+                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                cursor: feedback?.rating === "positive" ? "default" : "pointer",
+                                transition: "all 0.15s",
+                                padding: 0,
+                            }}
+                        >
+                            <ThumbsUp size={13} fill={feedback?.rating === "positive" ? "currentColor" : "none"} />
+                        </button>
+                        <button
+                            onClick={handleThumbsDown}
+                            disabled={submitting || feedback?.rating === "negative"}
+                            aria-label="Not helpful"
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                width: 28, height: 28, borderRadius: RADIUS.md,
+                                border: `1px solid ${feedback?.rating === "negative"
+                                    ? isDark ? "rgba(201,168,76,0.45)" : "rgba(196,124,0,0.35)"
+                                    : isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                                background: feedback?.rating === "negative"
+                                    ? isDark ? "rgba(201,168,76,0.16)" : "rgba(196,124,0,0.10)"
+                                    : "transparent",
+                                color: feedback?.rating === "negative"
+                                    ? isDark ? COLOR.gold.base : "#7a4a00"
+                                    : feedback?.rating === "positive"
+                                        ? isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.18)"
+                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                cursor: feedback?.rating === "negative" ? "default" : "pointer",
+                                transition: "all 0.15s",
+                                padding: 0,
+                            }}
+                        >
+                            <ThumbsDown size={13} fill={feedback?.rating === "negative" ? "currentColor" : "none"} />
+                        </button>
+                    </div>
+
+                    {/* Inline error for thumbs-up failures (commentOpen is false so the in-panel error is hidden) */}
+                    {!commentOpen && feedbackError && (
+                        <span style={{
+                            display: "block",
+                            marginTop: SPACE[1],
+                            fontSize: TYPE_SCALE.xs,
+                            color: isDark ? "rgba(255,120,100,0.85)" : "#b83228",
+                            fontFamily: FONT.sans,
+                        }}>
+                            {feedbackError}
+                        </span>
+                    )}
+
+                    <AnimatePresence>
+                        {commentOpen && (
+                            <motion.div
+                                initial={{height: 0, opacity: 0}}
+                                animate={{height: "auto", opacity: 1}}
+                                exit={{height: 0, opacity: 0}}
+                                transition={{duration: 0.2, ease: [0.32, 0.72, 0, 1]}}
+                                style={{overflow: "hidden"}}
+                            >
+                                <div style={{marginTop: SPACE[2], display: "flex", flexDirection: "column", gap: SPACE[2]}}>
+                                    <textarea
+                                        ref={textareaRef}
+                                        value={commentText}
+                                        onChange={e => setCommentText(e.target.value)}
+                                        maxLength={2000}
+                                        rows={3}
+                                        placeholder="What could be improved? (optional)"
+                                        style={{
+                                            width: "100%",
+                                            resize: "none",
+                                            fontFamily: FONT.sans,
+                                            fontSize: TYPE_SCALE.xs,
+                                            padding: `${SPACE[2]}px ${SPACE[3]}px`,
+                                            borderRadius: RADIUS.md,
+                                            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
+                                            background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.60)",
+                                            color: isDark ? "rgba(255,255,255,0.82)" : "#2a1806",
+                                            outline: "none",
+                                            lineHeight: 1.5,
+                                            boxSizing: "border-box",
+                                        }}
+                                    />
+                                    <div style={{display: "flex", alignItems: "center", gap: SPACE[2]}}>
+                                        <button
+                                            onClick={handleCommentSubmit}
+                                            disabled={submitting}
+                                            style={{
+                                                fontFamily: FONT.sans,
+                                                fontSize: TYPE_SCALE.xs,
+                                                fontWeight: 600,
+                                                padding: `${SPACE[1]}px ${SPACE[3]}px`,
+                                                borderRadius: RADIUS.md,
+                                                border: `1px solid ${isDark ? "rgba(201,168,76,0.35)" : "rgba(196,124,0,0.30)"}`,
+                                                background: isDark ? "rgba(201,168,76,0.14)" : "rgba(196,124,0,0.08)",
+                                                color: isDark ? COLOR.gold.base : "#7a4a00",
+                                                cursor: submitting ? "not-allowed" : "pointer",
+                                                opacity: submitting ? 0.6 : 1,
+                                                transition: "all 0.15s",
+                                            }}
+                                        >
+                                            {submitting ? "Sending…" : "Submit"}
+                                        </button>
+                                        <button
+                                            onClick={() => { setCommentOpen(false); setCommentText(""); setFeedbackError(null) }}
+                                            disabled={submitting}
+                                            style={{
+                                                fontFamily: FONT.sans,
+                                                fontSize: TYPE_SCALE.xs,
+                                                padding: `${SPACE[1]}px ${SPACE[2]}px`,
+                                                borderRadius: RADIUS.md,
+                                                border: "none",
+                                                background: "transparent",
+                                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            Cancel
+                                        </button>
+                                        {feedbackError && (
+                                            <span style={{
+                                                fontSize: TYPE_SCALE.xs,
+                                                color: isDark ? "rgba(255,120,100,0.85)" : "#b83228",
+                                                fontFamily: FONT.sans,
+                                            }}>
+                                                {feedbackError}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
             )}
         </div>
     )

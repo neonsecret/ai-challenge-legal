@@ -375,6 +375,7 @@ export default function ChatPage() {
         useInternet, setUseInternet,
         stream, handleSend,
         sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
+        setMessageFeedback,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
     const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, clearError} = stream
@@ -1530,6 +1531,11 @@ export default function ChatPage() {
                                     trace={m.trace}
                                     onSourceClick={handleSourceClick}
                                     isDark={isDark}
+                                    messageId={m.id}
+                                    traceId={m.traceId}
+                                    conversationId={currentSessionId}
+                                    feedback={m.feedback}
+                                    onFeedback={setMessageFeedback}
                                 />
                             </motion.div>
                             )
