@@ -104,3 +104,35 @@ async def send_password_reset_email(email: str, token: str) -> None:
         """,
         },
     )
+
+
+async def send_payment_action_required_email(email: str, invoice_url: str) -> None:
+    """Notify a user that 3D Secure authentication is required to complete their payment."""
+    _client()
+    resend.Emails.send(
+        {
+            "from": settings.email_from,
+            "to": email,
+            "subject": "Action required: complete payment for your Vitreon Legal subscription",
+            "html": f"""
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto">
+          <h2>Payment Authentication Required</h2>
+          <p>Your bank requires additional authentication (3D Secure) to process your
+             subscription payment.</p>
+          <p>Your access is preserved while you complete this step. Please click the
+             button below to authenticate and complete your payment.</p>
+          <p style="margin:32px 0">
+            <a href="{invoice_url}"
+               style="background:#000;color:#fff;padding:12px 28px;border-radius:6px;
+                      text-decoration:none;font-weight:600">
+              Complete Payment
+            </a>
+          </p>
+          <p style="color:#666;font-size:14px">
+            If you have already completed this step or did not expect this email,
+            please contact us at support@vitreon.app.
+          </p>
+        </div>
+        """,
+        },
+    )

@@ -282,6 +282,8 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
         await _on_payment_failed(data, db)
     elif etype == "invoice.paid":
         await _on_invoice_paid(data, db)
+    elif etype == "invoice.payment_action_required":
+        await _on_payment_action_required(data, db)
 
     return JSONResponse({"received": True})
 
@@ -726,6 +728,39 @@ async def _on_payment_failed(invoice: dict, db: AsyncSession) -> None:
             "Payment failed for user %s (invoice %s) — access preserved pending Stripe retry cycle",
             user.id,
             invoice.get("id"),
+        )
+
+
+async def _on_payment_action_required(invoice: dict, db: AsyncSession) -> None:
+    """Send a 3DS authentication email when Stripe requires payment action.
+
+    Fired for UK (and other SCA-region) users whose card requires 3D Secure
+    re-authentication. Access is preserved while the user completes the step —
+    do NOT revoke here. Email failure must not break webhook acknowledgement.
+    """
+    customer_id = invoice.get("customer")
+    result = await db.execute(select(User).where(User.stripe_customer_id == customer_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return
+
+    invoice_url = invoice.get("hosted_invoice_url")
+    if not invoice_url:
+        logger.warning(
+            "invoice.payment_action_required for user %s has no hosted_invoice_url — skipping email",
+            user.id,
+        )
+        return
+
+    try:
+        from neolex.auth.email_service import send_payment_action_required_email
+
+        await send_payment_action_required_email(user.email, invoice_url)
+        logger.info("Payment action required email sent to user %s", user.id)
+    except Exception:
+        logger.exception(
+            "Failed to send payment action required email to user %s — webhook ack unaffected",
+            user.id,
         )
 
 
