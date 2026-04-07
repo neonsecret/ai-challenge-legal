@@ -203,6 +203,7 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                     ConversationMessage.role,
                     ConversationMessage.content,
                     ConversationMessage.sources_json,
+                    ConversationMessage.trace_id,
                     ConversationMessage.created_at,
                 )
                 .where(
@@ -227,6 +228,8 @@ async def load_full_conversation(user_id: str, conversation_id: str) -> list[dic
                         entry["sources"] = []
                 else:
                     entry["sources"] = []
+                if row.role == "assistant" and row.trace_id:
+                    entry["trace_id"] = row.trace_id
                 messages.append(entry)
             return messages
     except Exception:
@@ -276,6 +279,7 @@ async def save_turn(
     question: str,
     answer: str,
     sources_json: str | None = None,
+    trace_id: str | None = None,
 ) -> None:
     """Append a Q&A pair to the user's conversation history.
 
@@ -303,6 +307,7 @@ async def save_turn(
                     role="assistant",
                     content=answer[:8000],
                     sources_json=sources_json,
+                    trace_id=trace_id,
                 ),
             )
             await session.commit()
