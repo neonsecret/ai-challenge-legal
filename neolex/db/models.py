@@ -48,6 +48,9 @@ class User(Base):
     daily_queries_used: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     daily_queries_reset_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
     max_corpora: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # True while Stripe is retrying a failed payment — access is preserved during the retry window.
+    # Cleared when the subscription recovers (active) or when the invoice is paid.
+    payment_warning: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))

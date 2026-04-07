@@ -509,6 +509,8 @@ async def billing_status(
             "corpora_used": corpora_used,
             "corpora_limit": corpora_limit,
             "corpora_over_limit": corpora_over_limit,
+            # Payment warning: True while Stripe is retrying a failed payment
+            "payment_warning": user.payment_warning,
             # Cancellation state
             "cancel_at_period_end": cancel_at_period_end,
             "current_period_end": current_period_end,
@@ -674,9 +676,11 @@ async def _on_subscription_changed(sub: dict, db: AsyncSession) -> None:
         plan = _plan_from_price(price_id) if price_id else user.subscription_status
         user.subscription_status = plan
         user.max_corpora = _max_corpora_for_plan(plan)
+        user.payment_warning = False  # Clear warning if subscription recovered
     elif stripe_status in ("past_due", "unpaid"):
-        user.subscription_status = "canceled"
-        user.max_corpora = 0
+        # Stripe retries for ~7 days before firing customer.subscription.deleted.
+        # Preserve access during the retry window — only flag the warning.
+        user.payment_warning = True
 
     # Update subscription record
     result2 = await db.execute(select(Subscription).where(Subscription.stripe_subscription_id == sub["id"]))
@@ -722,12 +726,17 @@ async def _on_invoice_paid(invoice: dict, db: AsyncSession) -> None:
     if not user:
         return
 
+    # Clear payment warning — invoice paid means the retry cycle succeeded.
+    if user.payment_warning:
+        user.payment_warning = False
+
     # Upsert check — prevent duplicate Invoice rows on webhook replay
     existing = (
         await db.execute(select(Invoice).where(Invoice.stripe_invoice_id == invoice["id"]))
     ).scalar_one_or_none()
     if existing:
-        return  # Already processed
+        await db.commit()  # Persist payment_warning clear even on duplicate invoice
+        return
 
     db.add(
         Invoice(
