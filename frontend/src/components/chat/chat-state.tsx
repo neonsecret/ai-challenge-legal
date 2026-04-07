@@ -499,7 +499,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                             // on backend-loaded messages — the feedback bar will remain hidden for
                             // those sessions, which is the correct fallback behaviour.
                             const msgs: Message[] = (data?.messages ?? []).map(
-                                (m: {role: string; content: string; sources?: Source[]; created_at: string; trace_id?: string | null}, i: number) => ({
+                                (m: {role: string; content: string; sources?: Source[]; created_at: string; trace_id?: string | null; feedback?: { rating: "positive" | "negative"; comment?: string } | null}, i: number) => ({
                                     id: `${m.role}-loaded-${i}`,
                                     role: m.role as "user" | "assistant",
                                     content: m.content,
@@ -507,6 +507,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                                         (s: Source) => s && typeof s.doc_id === "string" && Array.isArray(s.page_numbers)
                                     ),
                                     ...(m.role === "assistant" && m.trace_id != null ? {traceId: m.trace_id} : {}),
+                                    feedback: m.feedback ?? null,
                                 })
                             )
                             if (msgs.length > 0) {
