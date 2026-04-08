@@ -71,8 +71,8 @@ Luminous uses a **cool violet-blue-teal spectrum** as its primary palette — sh
 /* Dark mode text */
 --v3-text-primary:      rgba(255, 255, 255, 0.94);
 --v3-text-secondary:    rgba(255, 255, 255, 0.64);
---v3-text-tertiary:     rgba(255, 255, 255, 0.38);
---v3-text-quaternary:   rgba(255, 255, 255, 0.20);
+--v3-text-tertiary:     rgba(255, 255, 255, 0.50);  /* raised — WCAG AA ~4.6:1 on #07090F */
+--v3-text-quaternary:   rgba(255, 255, 255, 0.38);  /* DECORATION ONLY: never carry semantic content */
 --v3-text-accent:       #9D7FCC;   /* iris-tinted links / labels */
 
 /* Light mode text */
@@ -147,6 +147,7 @@ Glass in V3 is a **material**, not a filter effect. Each tier has a specific phy
 --v3-glass-surface-bg:        rgba(255, 255, 255, 0.60);
 --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.72);
 --v3-glass-surface-border:    rgba(255, 255, 255, 0.80);
+--v3-glass-surface-blur:      blur(20px) saturate(140%);
 --v3-glass-surface-shadow:    0 2px 12px rgba(7, 9, 30, 0.08),
                                inset 0 1px 0 rgba(255, 255, 255, 0.90);
 
@@ -191,6 +192,8 @@ The "light refraction on glass edges" effect uses a 1px top-edge highlight and o
 
 ## 3. Aurora / Mesh Gradient System
 
+> **Scope rule:** Aurora animations (`aurora-drift`), cursor ambient light, animated `iridescent-shift`, and floating aurora orbs are **Landing Page Only**. The research workspace (app shell) uses a **static frozen aurora background** — no peripheral motion while lawyers are reading. See "App Shell Variant" below.
+
 ### Background Mesh (Primary)
 The page background in dark mode is a multi-stop mesh gradient that slowly animates. Implemented as a fixed-position canvas or CSS `@keyframes` on a `::before` pseudo-element.
 
@@ -203,8 +206,9 @@ The page background in dark mode is a multi-stop mesh gradient that slowly anima
 --v3-aurora-stop-5: oklch(0.12 0.05 250);   /* deep space */
 ```
 
-**CSS Implementation:**
+**CSS Implementation** _(Landing Page Only — use `.aurora-bg` on `app/page.tsx` only)_:
 ```css
+/* DO NOT render on /search or /chat — workspace uses .aurora-bg-static below */
 .design-v3 .aurora-bg::before {
     content: '';
     position: fixed;
@@ -228,8 +232,27 @@ The page background in dark mode is a multi-stop mesh gradient that slowly anima
 }
 ```
 
-### Cursor-Responsive Ambient Light
-A radial glow that follows the cursor, implemented via CSS custom properties set from JavaScript:
+### App Shell Variant — Static _(Research Workspace)_
+Same gradient, no animation. Use `.aurora-bg-static` on `app/(workspace)/layout.tsx`:
+
+```css
+/* Safe for workspace — static, no peripheral motion */
+.design-v3 .aurora-bg-static::before {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.25 0.20 285 / 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.16 260 / 0.30) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.22 0.14 230 / 0.25) 0%, transparent 60%),
+                #07090F;
+    filter: blur(60px);
+    transform: translateZ(0);
+    /* No animation, no will-change */
+}
+```
+
+### Cursor-Responsive Ambient Light _(Landing Page Only)_
+Do not mount in the workspace layout. A radial glow that follows the cursor, implemented via CSS custom properties set from JavaScript:
 
 ```css
 .design-v3 .ambient-cursor {
@@ -260,7 +283,7 @@ useEffect(() => {
 ```
 
 ### Iridescent Accent Gradient
-For CTAs, active pills, and selected states. Shifts through the aurora spectrum:
+Static gradient for in-app use (buttons, active pills). The animated `iridescent-shift` keyframe is **Landing Page hero CTAs only** — app controls use the static `--v3-iridescent` form without animation, or the dedicated `--v3-btn-primary-bg` token.
 
 ```css
 --v3-iridescent: linear-gradient(
@@ -331,9 +354,9 @@ In light mode, the aurora is very subtle — barely visible tint behind frosted 
 ```
 
 ### Gradient Text (Signature V3 Effect)
-For headings and hero copy:
 
 ```css
+/* LANDING PAGE ONLY — animated gradient text for hero headings */
 .v3-text-gradient {
     background: var(--v3-iridescent);
     background-size: 200% 100%;
@@ -343,7 +366,7 @@ For headings and hero copy:
     animation: iridescent-shift 6s ease infinite;
 }
 
-/* Subtler version — fixed gradient, no animation */
+/* IN-APP SAFE — static gradient, no animation; use for app headings */
 .v3-text-aurora {
     background: linear-gradient(135deg, #9D7FCC 0%, #60A5FA 50%, #2DD4BF 100%);
     -webkit-background-clip: text;
@@ -559,7 +582,9 @@ Legal source cards get a distinctive treatment — glass with a colored top-edge
 .v3-source-card[data-corpus="au"]    { border-top-color: #FCD34D; }  /* gold */
 ```
 
-### 7.5 Aurora Orbs (Background Layer)
+### 7.5 Aurora Orbs _(Landing Page Only)_
+Floating gaussian blobs contributing to background depth. **Do not render in the workspace layout** — use `.aurora-bg-static` instead.
+
 Replaced V1/V2 "orbs" with gaussian blobs that contribute to the mesh gradient:
 
 ```css
@@ -601,7 +626,7 @@ Quick reference for component implementation:
 | Nav/Header | `v3-dark-surface/60%` | subtle bottom border | `blur(20px) saturate(140%)` | none |
 | Tooltip | `v3-glass-floating-bg` | `v3-glass-floating-border` | `blur(24px)` | sm shadow |
 | Input | `v3-glass-surface-bg` | `v3-glass-surface-border` focused: `v3-glass-iris-border` | none | iris glow on focus |
-| Button (primary) | iridescent gradient | none | none | iris glow |
+| Button (primary) | `--v3-btn-primary-bg` (static iris gradient) | none | none | iris glow |
 | Button (secondary) | `v3-glass-surface-bg` | `v3-glass-iris-border` | none | none |
 | Active nav item | `v3-glass-iris-bg` | left: `--v3-iris-bright` | none | iris backglow |
 

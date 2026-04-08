@@ -132,3 +132,21 @@ export const V3_BUTTON_PRESS = {
 export const V3_ICON_NUDGE = {
     whileHover: { rotate: 8, scale: 1.1, transition: V3_SPRING.bouncy },
 } as const;
+
+// ─── Global motion config ─────────────────────────────────────────────────────
+
+/**
+ * Place at the root of the V3 layout tree:
+ *
+ *   import { MotionConfig } from "motion/react";
+ *   import { V3_MOTION_CONFIG } from "@/lib/v3-motion";
+ *   ...
+ *   <MotionConfig {...V3_MOTION_CONFIG}>{children}</MotionConfig>
+ *
+ * `reducedMotion: "user"` makes Framer Motion respect the OS
+ * prefers-reduced-motion setting for ALL JS-driven spring animations,
+ * closing the gap that CSS @media (prefers-reduced-motion) cannot cover.
+ */
+export const V3_MOTION_CONFIG = {
+    reducedMotion: "user" as const,
+};
