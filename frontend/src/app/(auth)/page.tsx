@@ -1,7 +1,6 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {useRouter} from "next/navigation";
 import {useTheme} from "@/lib/theme";
 import {motion, AnimatePresence} from "motion/react";
 import {ArrowRight, FileSearch, Globe, ShieldCheck, Lock, Loader2, Sun, Moon} from "lucide-react";
@@ -75,7 +74,6 @@ const BENCHMARKS: BenchmarkData[] = [
 ];
 
 export default function LandingPage() {
-    const router = useRouter();
     const {resolvedTheme, setTheme} = useTheme();
     const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
@@ -1132,8 +1130,8 @@ export default function LandingPage() {
                                             lineHeight: 1.6,
                                             color: "rgba(46,31,8,0.75)",
                                             fontFamily: "Georgia, serif"
-                                        }}>"The minimum notice period is <strong>30 days</strong> for employees with
-                                            over 1 year of service, rising to <strong>90 days</strong> after 5 years."
+                                        }}>{"\u201c"}The minimum notice period is <strong>30 days</strong> for employees with
+                                            over 1 year of service, rising to <strong>90 days</strong> after 5 years.{"\u201d"}
                                         </p></motion.div>
                                     </div>}
                                 </div>

@@ -123,6 +123,7 @@ export function BottomNav() {
 
             {/* Theme toggle */}
             <button
+                type="button"
                 onClick={() => setTheme(isDark ? "light" : "dark")}
                 title={isDark ? "Switch to light mode" : "Switch to dark mode"}
                 style={{
