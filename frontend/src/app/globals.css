@@ -380,7 +380,10 @@ textarea::placeholder { color: #b29254; }
     /* Light mode text */
     --v3-text-primary:      #0D0F1A;
     --v3-text-secondary:    rgba(13, 15, 26, 0.64);
+    /* DECORATION ONLY: ~2.4:1 on #F0F2F8 — never use for semantic text content in light mode */
     --v3-text-tertiary:     rgba(13, 15, 26, 0.38);
+    /* DECORATION ONLY: < 2:1 — dividers, placeholder dots only */
+    --v3-text-quaternary:   rgba(13, 15, 26, 0.22);
     --v3-text-accent:       #5B40A0;
 
     /* Light mode glass */
@@ -784,6 +787,18 @@ textarea::placeholder { color: #b29254; }
     border-right: 1px solid var(--v3-glass-surface-border) !important;
 }
 
+/* ── V3 Focus rings — WCAG 2.4.7 / 2.4.11 ───────────────── */
+/* Iris-tinted keyboard focus ring for all interactive V3 elements */
+.design-v3 :focus-visible {
+    outline: 2px solid rgba(123, 94, 167, 0.80);
+    outline-offset: 2px;
+}
+
+/* Suppress pointer-driven focus rings — keyboard only */
+.design-v3 :focus:not(:focus-visible) {
+    outline: none;
+}
+
 /* ── V3 Reduced motion ────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
     .design-v3 * {
@@ -894,6 +909,21 @@ button:active:not(:disabled):not(.no-press-scale) {
     animation: item-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
     will-change: transform, opacity;
     transform: translateZ(0);
+}
+
+/* Reduced-motion: disable entrance animations — WCAG 2.3.3 */
+@media (prefers-reduced-motion: reduce) {
+    .animate-glass-in,
+    .animate-item-in {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none !important;
+    }
 }
 
 /* ============================================================

@@ -1,6 +1,8 @@
 import {AppBackground} from "@/components/app-background";
 import {BottomNav} from "@/components/bottom-nav";
 import {ChatStateProvider} from "@/components/chat/chat-state";
+import {MotionConfig} from "motion/react";
+import {V3_MOTION_CONFIG} from "@/lib/v3-motion";
 
 export default function AppLayout({
                                       children,
@@ -8,6 +10,7 @@ export default function AppLayout({
     children: React.ReactNode;
 }) {
     return (
+        <MotionConfig {...V3_MOTION_CONFIG}>
         <AppBackground>
             <ChatStateProvider>
                 {/* Main content */}
@@ -22,5 +25,6 @@ export default function AppLayout({
                 <BottomNav/>
             </ChatStateProvider>
         </AppBackground>
+        </MotionConfig>
     );
 }
