@@ -182,7 +182,7 @@ export default function LandingPage() {
                                     ) : (
                                         <>
                                             <a href="/login" className="hidden sm:inline text-sm font-medium transition-colors"
-                                               style={{color: isDarkV3 ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)"}}>
+                                               style={{color: isDarkV3 ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.75)"}}>
                                                 {t("landing.sign_in")}
                                             </a>
                                             <motion.a href="/login"

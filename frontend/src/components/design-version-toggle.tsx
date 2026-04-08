@@ -1,6 +1,7 @@
 "use client";
 
-import { motion, MotionConfig } from "motion/react";
+import { useRef } from "react";
+import { motion, MotionConfig, AnimatePresence } from "motion/react";
 import { useDesignVersion, type DesignVersion } from "@/lib/design-version";
 import { V3_SPRING } from "@/lib/v3-motion";
 
@@ -34,12 +35,12 @@ function isDarkSurface(variant: Variant): boolean {
 }
 
 /** Whether to use V2-style accents (indigo/slate) instead of V3 iris. */
-function useV2Accent(variant: Variant, version: DesignVersion): boolean {
+function isV2Accent(variant: Variant, version: DesignVersion): boolean {
     return variant === "light" || variant === "v2-light" || version === "v2";
 }
 
 function getTrackStyle(variant: Variant, version: DesignVersion): React.CSSProperties {
-    const v2 = useV2Accent(variant, version);
+    const v2 = isV2Accent(variant, version);
     const dark = isDarkSurface(variant);
 
     if (v2 && !dark) {
@@ -77,7 +78,7 @@ function getActivePillStyle(
     version: DesignVersion
 ): React.CSSProperties {
     // V2 option or V2-style context: indigo accent
-    if (optionValue === "v2" || useV2Accent(variant, version)) {
+    if (optionValue === "v2" || isV2Accent(variant, version)) {
         return {
             background: "rgba(79,70,229,0.12)",
             border: "0.5px solid rgba(99,102,241,0.32)",
@@ -98,6 +99,7 @@ export function DesignVersionToggle(
     { variant }: { variant?: "dark" | "light" | "v2-light" } = {}
 ) {
     const { version, setVersion } = useDesignVersion();
+    const buttonRefs = useRef<Map<DesignVersion, HTMLButtonElement | null>>(new Map());
 
     const dark = isDarkSurface(variant);
 
@@ -105,12 +107,17 @@ export function DesignVersionToggle(
         e: React.KeyboardEvent<HTMLButtonElement>,
         current: DesignVersion
     ) => {
+        let next: DesignVersion | null = null;
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {
             e.preventDefault();
-            setVersion(current === "v2" ? "v3" : "v2");
+            next = current === "v2" ? "v3" : "v2";
         } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
             e.preventDefault();
-            setVersion(current === "v3" ? "v2" : "v3");
+            next = current === "v3" ? "v2" : "v3";
+        }
+        if (next) {
+            setVersion(next);
+            buttonRefs.current.get(next)?.focus();
         }
     };
 
@@ -140,9 +147,11 @@ export function DesignVersionToggle(
                     return (
                         <button
                             key={value}
+                            ref={(el) => { buttonRefs.current.set(value, el); }}
                             role="tab"
                             aria-selected={isActive}
                             aria-label={`Switch to ${label} design`}
+                            tabIndex={isActive ? 0 : -1}
                             onClick={() => setVersion(value)}
                             onKeyDown={(e) => handleKeyDown(e, value)}
                             style={{
@@ -168,19 +177,22 @@ export function DesignVersionToggle(
                             }}
                         >
                             {/* Sliding active pill — spring-animated between options */}
-                            {isActive && (
-                                <motion.span
-                                    layoutId="design-toggle-pill"
-                                    transition={V3_SPRING.micro}
-                                    aria-hidden="true"
-                                    style={{
-                                        position: "absolute",
-                                        inset: 0,
-                                        borderRadius: 9999,
-                                        ...getActivePillStyle(value, variant, version),
-                                    }}
-                                />
-                            )}
+                            <AnimatePresence initial={false}>
+                                {isActive && (
+                                    <motion.span
+                                        key="design-toggle-pill"
+                                        layoutId="design-toggle-pill"
+                                        transition={V3_SPRING.micro}
+                                        aria-hidden="true"
+                                        style={{
+                                            position: "absolute",
+                                            inset: 0,
+                                            borderRadius: 9999,
+                                            ...getActivePillStyle(value, variant, version),
+                                        }}
+                                    />
+                                )}
+                            </AnimatePresence>
 
                             {/* Design signature swatch */}
                             <span

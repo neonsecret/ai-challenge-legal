@@ -1449,11 +1449,11 @@ button:active:not(:disabled):not(.no-press-scale) {
     transition: var(--v3-transition-border), var(--v3-transition-shadow);
 }
 
-.design-v3 input:focus,
-.design-v3 textarea:focus,
-.design-v3 select:focus {
+.design-v3 input:focus-visible,
+.design-v3 textarea:focus-visible,
+.design-v3 select:focus-visible {
     border-color: var(--v3-glass-iris-border) !important;
-    box-shadow: var(--v3-glass-iris-glow) !important;
+    box-shadow: 0 0 0 3px rgba(157, 127, 204, 0.40) !important;
     outline: none !important;
 }
 
