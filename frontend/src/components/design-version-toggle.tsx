@@ -148,6 +148,7 @@ export function DesignVersionToggle(
                         <button
                             key={value}
                             ref={(el) => { buttonRefs.current.set(value, el); }}
+                            type="button"
                             role="tab"
                             aria-selected={isActive}
                             aria-label={`Switch to ${label} design`}
