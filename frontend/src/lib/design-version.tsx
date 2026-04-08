@@ -3,6 +3,9 @@
 // Design version hook — toggles .design-v2 class on <html>.
 // Modeled on frontend/src/lib/theme.tsx.
 //
+// V1 (Classic) has been removed. V2 (Modern) is the only active design.
+// This provider is kept extensible for future V3 addition.
+//
 // No inline <script> needed — a brief flash on first load is acceptable
 // (design version is not SSR-critical).
 
@@ -19,7 +22,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type DesignVersion = "v1" | "v2";
+export type DesignVersion = "v2";
 
 interface DesignVersionContextValue {
     version: DesignVersion;
@@ -31,14 +34,15 @@ interface DesignVersionContextValue {
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY = "vitreon-design-version";
-const DEFAULT_VERSION: DesignVersion = "v1";
+const DEFAULT_VERSION: DesignVersion = "v2";
 
 const DesignVersionContext = createContext<DesignVersionContextValue | undefined>(undefined);
 
 function readStorage(): DesignVersion {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        return stored === "v2" ? "v2" : "v1";
+        // Migrate any stored V1 preference to V2
+        return stored === "v2" ? "v2" : DEFAULT_VERSION;
     } catch {
         return DEFAULT_VERSION;
     }
