@@ -3,6 +3,8 @@
 import {useTheme} from "@/lib/theme";
 import {useDesignVersion} from "@/lib/design-version";
 import {useEffect, useState} from "react";
+import {MotionConfig} from "motion/react";
+import {V3_MOTION_CONFIG} from "@/lib/v3-motion";
 
 export function AppBackground({children}: { children: React.ReactNode }) {
     const {resolvedTheme} = useTheme();
@@ -16,21 +18,24 @@ export function AppBackground({children}: { children: React.ReactNode }) {
     // V3: use aurora-bg-static (CSS-driven, no JS blobs)
     if (isV3) {
         return (
-            <div
-                className="aurora-bg-static flex h-full w-full relative"
-                style={{
-                    overflowX: "hidden",
-                    background: isDark ? "#07090F" : "#F0F2F8",
-                    transition: "background 0.4s ease",
-                }}
-            >
-                {children}
-            </div>
+            <MotionConfig {...V3_MOTION_CONFIG}>
+                <div
+                    className="aurora-bg-static flex h-full w-full relative"
+                    style={{
+                        overflowX: "hidden",
+                        background: isDark ? "#07090F" : "#F0F2F8",
+                        transition: "background 0.4s ease",
+                    }}
+                >
+                    {children}
+                </div>
+            </MotionConfig>
         );
     }
 
     // V2 / default: original blob background
     return (
+        <MotionConfig {...V3_MOTION_CONFIG}>
         <div
             className="flex h-full w-full relative"
             style={{
@@ -78,5 +83,6 @@ export function AppBackground({children}: { children: React.ReactNode }) {
 
             {children}
         </div>
+        </MotionConfig>
     );
 }

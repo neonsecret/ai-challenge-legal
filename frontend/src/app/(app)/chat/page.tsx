@@ -3,6 +3,7 @@
 import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, type ReactNode} from "react"
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
+import {V3_SPRING} from "@/lib/v3-motion"
 import {SquarePen, History, Trash2, BookOpen, Globe} from "lucide-react"
 import {useTheme} from "@/lib/theme"
 import {ChatInput} from "@/components/chat/chat-input"
@@ -1178,7 +1179,7 @@ export default function ChatPage() {
                             initial={{opacity: 0, height: 0}}
                             animate={{opacity: 1, height: "auto"}}
                             exit={{opacity: 0, height: 0}}
-                            transition={{duration: 0.2}}
+                            transition={{...V3_SPRING.standard, restDelta: 0.5}}
                             style={{overflow: "hidden", flexShrink: 0}}
                         >
                             <div style={{

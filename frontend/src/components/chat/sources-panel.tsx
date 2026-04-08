@@ -4,6 +4,7 @@ import {Source} from "@/components/chat/use-query-stream"
 import {Globe} from "lucide-react"
 import {motion} from "motion/react"
 import {COLOR, FONT, TYPE_SCALE, SPACE, TIMING, EASE, TEXT_DARK, TEXT_LIGHT, RADIUS} from "@/lib/design-tokens"
+import {V3_BUTTON_PRESS} from "@/lib/v3-motion"
 
 /** Cubic-bezier values from EASE.out as a tuple for motion/react */
 const MOTION_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1]
@@ -71,6 +72,7 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
                             initial={{opacity: 0, y: 4}}
                             animate={{opacity: 1, y: 0}}
                             transition={{duration: parseFloat(TIMING.fast), delay: i * 0.08, ease: MOTION_EASE_OUT}}
+                            {...V3_BUTTON_PRESS}
                             onClick={() => onSourceClick(source)}
                             title={title}
                             style={{

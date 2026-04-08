@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, MotionConfig } from "motion/react";
+import { motion, MotionConfig } from "motion/react";
 import { useDesignVersion, type DesignVersion } from "@/lib/design-version";
 import { V3_SPRING } from "@/lib/v3-motion";
 
@@ -117,7 +117,7 @@ export function DesignVersionToggle(
     return (
         <MotionConfig reducedMotion="user">
             <div
-                role="radiogroup"
+                role="tablist"
                 aria-label="Design version"
                 style={{
                     display: "inline-flex",
@@ -130,16 +130,18 @@ export function DesignVersionToggle(
             >
                 {OPTIONS.map(({ value, label, swatch }) => {
                     const isActive = version === value;
+                    // Luminous gets a faint aurora glow on its label when active
+                    const isLuminousActive = value === "v3" && isActive;
 
                     const textColor = dark
-                        ? isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.42)"
-                        : isActive ? "#0D0F1A" : "rgba(13,15,26,0.45)";
+                        ? isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.40)"
+                        : isActive ? "#0D0F1A" : "rgba(13,15,26,0.42)";
 
                     return (
                         <button
                             key={value}
-                            role="radio"
-                            aria-checked={isActive}
+                            role="tab"
+                            aria-selected={isActive}
                             aria-label={`Switch to ${label} design`}
                             onClick={() => setVersion(value)}
                             onKeyDown={(e) => handleKeyDown(e, value)}
@@ -148,7 +150,7 @@ export function DesignVersionToggle(
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 5,
-                                padding: "3px 8px 3px 7px",
+                                padding: "3px 9px 3px 7px",
                                 borderRadius: 9999,
                                 border: "none",
                                 cursor: "pointer",
@@ -165,7 +167,7 @@ export function DesignVersionToggle(
                                     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
                             }}
                         >
-                            {/* Sliding active pill — animates between options */}
+                            {/* Sliding active pill — spring-animated between options */}
                             {isActive && (
                                 <motion.span
                                     layoutId="design-toggle-pill"
@@ -190,33 +192,26 @@ export function DesignVersionToggle(
                                     borderRadius: 2,
                                     flexShrink: 0,
                                     background: swatch,
-                                    opacity: isActive ? 1 : 0.50,
+                                    opacity: isActive ? 1 : 0.45,
                                     transition: "opacity 0.12s ease",
                                     position: "relative",
                                     zIndex: 1,
                                 }}
                             />
 
-                            {/* Label — visible on active pill only */}
-                            <AnimatePresence initial={false}>
-                                {isActive && (
-                                    <motion.span
-                                        key={`label-${value}`}
-                                        initial={{ opacity: 0, width: 0 }}
-                                        animate={{ opacity: 1, width: "auto" }}
-                                        exit={{ opacity: 0, width: 0 }}
-                                        transition={V3_SPRING.micro}
-                                        style={{
-                                            overflow: "hidden",
-                                            display: "inline-block",
-                                            position: "relative",
-                                            zIndex: 1,
-                                        }}
-                                    >
-                                        {label}
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
+                            {/* Label — always visible; Luminous label glows when active */}
+                            <span
+                                style={{
+                                    position: "relative",
+                                    zIndex: 1,
+                                    transition: "text-shadow 0.3s ease",
+                                    textShadow: isLuminousActive
+                                        ? "0 0 12px var(--v3-aurora-glow, #60A5FA)"
+                                        : "none",
+                                }}
+                            >
+                                {label}
+                            </span>
                         </button>
                     );
                 })}

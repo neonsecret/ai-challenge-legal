@@ -15,7 +15,7 @@ import {useI18n} from "@/lib/i18n";
 import {DesignVersionToggle} from "@/components/design-version-toggle";
 import {useDesignVersion} from "@/lib/design-version";
 import {MotionConfig} from "motion/react";
-import {V3_MOTION_CONFIG, V3_FADE_UP, V3_LIST_VARIANT, V3_ITEM_VARIANT, V3_CARD_HOVER} from "@/lib/v3-motion";
+import {V3_MOTION_CONFIG, V3_FADE_UP, V3_LIST_VARIANT, V3_ITEM_VARIANT, V3_CARD_HOVER, V3_BUTTON_PRESS} from "@/lib/v3-motion";
 import {AuroraBackground} from "@/components/landing/aurora-background";
 
 /* ── shared warm glass constant ── */
@@ -185,15 +185,18 @@ export default function LandingPage() {
                                                style={{color: isDarkV3 ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)"}}>
                                                 {t("landing.sign_in")}
                                             </a>
-                                            <a href="/login"
+                                            <motion.a href="/login"
                                                className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full min-h-[44px]"
                                                style={{
                                                    background: "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)",
+                                                   backgroundSize: "300% 300%",
+                                                   animation: "iridescent-shift 6s ease infinite",
                                                    color: "#fff",
-                                                   boxShadow: "0 0 20px rgba(123,94,167,0.35)"
-                                               }}>
+                                                   boxShadow: "0 0 20px rgba(123,94,167,0.35)",
+                                               }}
+                                               {...V3_BUTTON_PRESS}>
                                                 {t("landing.get_started")}
-                                            </a>
+                                            </motion.a>
                                         </>
                                     )}
                                 </div>
