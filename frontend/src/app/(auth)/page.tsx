@@ -13,6 +13,10 @@ import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
 import {DesignVersionToggle} from "@/components/design-version-toggle";
+import {useDesignVersion} from "@/lib/design-version";
+import {MotionConfig} from "motion/react";
+import {V3_MOTION_CONFIG, V3_FADE_UP, V3_LIST_VARIANT, V3_ITEM_VARIANT, V3_CARD_HOVER} from "@/lib/v3-motion";
+import {AuroraBackground} from "@/components/landing/aurora-background";
 
 /* ── shared warm glass constant ── */
 const warmGlass = {
@@ -73,6 +77,7 @@ const BENCHMARKS: BenchmarkData[] = [
 export default function LandingPage() {
     const router = useRouter();
     const {resolvedTheme, setTheme} = useTheme();
+    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     const [loading, setLoading] = useState(true);
     const [activeStep, setActiveStep] = useState(0);
@@ -117,6 +122,205 @@ export default function LandingPage() {
             <div className="flex items-center justify-center min-h-screen" style={{background: "#0F1623"}}>
                 <Loader2 className="size-6 animate-spin" style={{color: "#C9A84C"}}/>
             </div>
+        );
+    }
+
+    /* ══════════════════════════════════════════════════════════
+       V3 "LUMINOUS" THEME — aurora glass layout
+    ══════════════════════════════════════════════════════════ */
+    if (designVersion === "v3") {
+        const isDarkV3 = resolvedTheme === "dark";
+        return (
+            <MotionConfig {...V3_MOTION_CONFIG}>
+                <div className={isDarkV3 ? "dark" : ""} style={{minHeight: "100vh", background: isDarkV3 ? "#07090F" : "#F0F2F8"}}>
+                    <AuroraBackground className="min-h-screen flex flex-col">
+                        {/* Nav */}
+                        <nav className="sticky top-0 z-50 w-full" style={{
+                            background: isDarkV3 ? "rgba(7,9,15,0.75)" : "rgba(240,242,248,0.80)",
+                            backdropFilter: "blur(20px) saturate(140%)",
+                            WebkitBackdropFilter: "blur(20px) saturate(140%)",
+                            borderBottom: isDarkV3 ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(123,94,167,0.12)"
+                        }}>
+                            <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="flex items-center justify-center size-7 rounded-lg" style={{
+                                        background: "rgba(123,94,167,0.12)",
+                                        border: "1px solid rgba(157,127,204,0.25)"
+                                    }}>
+                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                            <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#9D7FCC"
+                                                  strokeWidth="1.2" strokeLinejoin="round" fill="rgba(123,94,167,0.15)"/>
+                                        </svg>
+                                    </div>
+                                    <span className="hidden sm:inline font-heading text-lg font-bold tracking-tight"
+                                          style={{color: isDarkV3 ? "rgba(255,255,255,0.95)" : "#0D0F1A"}}>Vitreon Legal</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <LanguageToggle />
+                                    <button
+                                        onClick={() => setTheme(isDarkV3 ? "light" : "dark")}
+                                        style={{
+                                            display: "flex", alignItems: "center", justifyContent: "center",
+                                            minWidth: 44, minHeight: 44, borderRadius: 10,
+                                            border: "none", background: "transparent", cursor: "pointer",
+                                            color: "#9D7FCC", transition: "background 0.14s ease",
+                                        }}
+                                        aria-label="Toggle theme"
+                                    >
+                                        {isDarkV3 ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />}
+                                    </button>
+                                    <DesignVersionToggle />
+                                    {isAuthenticated ? (
+                                        <a href="/chat"
+                                           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
+                                           style={{
+                                               background: "rgba(123,94,167,0.12)", border: "1px solid rgba(157,127,204,0.25)",
+                                               color: "#9D7FCC"
+                                           }}>
+                                            {t("landing.go_to_chat")} <ArrowRight size={13}/>
+                                        </a>
+                                    ) : (
+                                        <>
+                                            <a href="/login" className="hidden sm:inline text-sm font-medium transition-colors"
+                                               style={{color: isDarkV3 ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)"}}>
+                                                {t("landing.sign_in")}
+                                            </a>
+                                            <a href="/login"
+                                               className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full min-h-[44px]"
+                                               style={{
+                                                   background: "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)",
+                                                   color: "#fff",
+                                                   boxShadow: "0 0 20px rgba(123,94,167,0.35)"
+                                               }}>
+                                                {t("landing.get_started")}
+                                            </a>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </nav>
+
+                        {/* Hero */}
+                        <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 sm:pt-12 pb-12 sm:pb-8">
+                            <motion.p variants={V3_FADE_UP} initial="hidden" animate="visible"
+                                      className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
+                                      style={{color: "#9D7FCC"}}>
+                                {t("landing.tag")}
+                            </motion.p>
+                            <motion.h1 variants={V3_FADE_UP} initial="hidden" animate="visible"
+                                       className="font-heading text-center font-bold mb-5 max-w-3xl v3-text-gradient"
+                                       style={{
+                                           fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
+                                           letterSpacing: "-0.03em",
+                                           lineHeight: 1.1,
+                                       }}>
+                                {t("landing.hero_title_prefix")}{" "}{t("landing.hero_title_highlight")}
+                            </motion.h1>
+                            <motion.p variants={V3_FADE_UP} initial="hidden" animate="visible"
+                                      className="text-base text-center mb-10 max-w-xl"
+                                      style={{
+                                          color: isDarkV3 ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)",
+                                          lineHeight: 1.6, whiteSpace: "pre-line"
+                                      }}>
+                                {t("landing.hero_subtitle")}
+                            </motion.p>
+                            <motion.div variants={V3_FADE_UP} initial="hidden" animate="visible"
+                                        className="w-full max-w-5xl">
+                                <div className="v3-glass-panel" style={{borderRadius: "var(--v3-radius-xl)"}}>
+                                    <DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
+                                </div>
+                            </motion.div>
+                        </div>
+
+                        {/* Scroll indicator */}
+                        <motion.div initial={{opacity: 0}} animate={{opacity: 1}} transition={{delay: 2, duration: 0.8}}
+                                    className="flex justify-center pb-8">
+                            <a href="#why" className="flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-widest"
+                               style={{color: isDarkV3 ? "rgba(255,255,255,0.25)" : "rgba(13,15,26,0.30)"}}>
+                                {t("landing.scroll_to_explore")}
+                                <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="animate-float-down">
+                                    <path d="M5 1v12M1 9l4 4 4-4" stroke="currentColor" strokeWidth="1.2"
+                                          strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                            </a>
+                        </motion.div>
+                    </AuroraBackground>
+
+                    {/* Sections */}
+                    {isCzech && <CzechCaselawSection/>}
+                    <div id="why"><ValuePillars/></div>
+                    <HowItWorks/>
+                    <TrustSection demoMode={false} initialApiKey=""/>
+
+                    {/* Benchmark section — V3 glass cards */}
+                    <section style={{
+                        padding: "80px 24px",
+                        background: isDarkV3 ? "rgba(13,17,32,0.95)" : "rgba(240,242,248,0.90)",
+                        position: "relative", overflow: "hidden"
+                    }}>
+                        <div className="max-w-5xl mx-auto" style={{position: "relative"}}>
+                            <motion.p variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
+                                      className="text-center text-[11px] uppercase tracking-[0.16em] font-semibold mb-2.5"
+                                      style={{color: "#9D7FCC"}}>
+                                {t("landing.bench_label")}
+                            </motion.p>
+                            <motion.h2 variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
+                                       className="font-heading text-center font-bold mb-2"
+                                       style={{
+                                           fontSize: "clamp(1.8rem,3vw,2.4rem)", letterSpacing: "-0.03em",
+                                           color: isDarkV3 ? "rgba(255,255,255,0.90)" : "#0D0F1A"
+                                       }}>
+                                {t("landing.bench_heading")}
+                            </motion.h2>
+                            <motion.p variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
+                                      className="text-center text-sm mb-10"
+                                      style={{color: isDarkV3 ? "rgba(255,255,255,0.38)" : "rgba(13,15,26,0.50)"}}>
+                                {t("landing.bench_subtitle")}
+                            </motion.p>
+                            <motion.div variants={V3_LIST_VARIANT} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-60px"}}
+                                        style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16}}>
+                                {BENCHMARKS.map((b) => (
+                                    <motion.div key={b.name} variants={V3_ITEM_VARIANT} {...V3_CARD_HOVER}>
+                                        <div className="v3-glass-panel" style={{padding: "20px 24px", height: "100%"}}>
+                                            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color: "#9D7FCC"}}>{b.name}</p>
+                                            <p className="text-xs mb-3" style={{color: isDarkV3 ? "rgba(255,255,255,0.45)" : "rgba(13,15,26,0.50)"}}>{b.description}</p>
+                                            <div className="flex items-end gap-3">
+                                                <span className="text-2xl font-bold" style={{color: isDarkV3 ? "rgba(255,255,255,0.90)" : "#0D0F1A"}}>{(b.ourScore * 100).toFixed(1)}%</span>
+                                                <span className="text-xs font-medium pb-1" style={{color: "#34D399"}}>{b.improvement}</span>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                        </div>
+                    </section>
+
+                    {/* Footer */}
+                    <footer className="py-8 px-6" style={{
+                        background: isDarkV3 ? "rgba(7,9,15,0.95)" : "rgba(240,242,248,0.95)",
+                        borderTop: isDarkV3 ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(123,94,167,0.12)"
+                    }}>
+                        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-center size-5 rounded" style={{background: "rgba(123,94,167,0.12)"}}>
+                                    <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                                        <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#9D7FCC" strokeWidth="1.2" strokeLinejoin="round"/>
+                                    </svg>
+                                </div>
+                                <span className="font-heading text-sm font-semibold"
+                                      style={{color: isDarkV3 ? "rgba(255,255,255,0.6)" : "rgba(13,15,26,0.60)"}}>Vitreon Legal</span>
+                            </div>
+                            <p className="text-[11px]" style={{color: isDarkV3 ? "rgba(255,255,255,0.28)" : "rgba(13,15,26,0.35)"}}>
+                                {new Date().getFullYear()} Vitreon Legal
+                                <span className="mx-2">·</span>
+                                <a href="/privacy" className="hover:opacity-70 transition-opacity">{t("landing.privacy")}</a>
+                                <span className="mx-2">·</span>
+                                <a href="/terms" className="hover:opacity-70 transition-opacity">{t("landing.terms")}</a>
+                            </p>
+                        </div>
+                    </footer>
+                </div>
+            </MotionConfig>
         );
     }
 
