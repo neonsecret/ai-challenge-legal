@@ -8,8 +8,6 @@ import {MessageSquare, FileText, Settings, CreditCard, Sun, Moon} from "lucide-r
 import {useIsMobile} from "@/hooks/use-mobile";
 import {useI18n} from "@/lib/i18n";
 import {LanguageToggle} from "@/components/language-toggle";
-import {useDesignVersion} from "@/lib/design-version";
-import {DesignVersionToggle} from "@/components/design-version-toggle";
 
 const navItemDefs = [
     {href: "/chat", labelKey: "nav.chat", icon: MessageSquare},
@@ -21,14 +19,12 @@ const navItemDefs = [
 export function BottomNav() {
     const pathname = usePathname();
     const {resolvedTheme, setTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     const isMobile = useIsMobile();
     const {t} = useI18n();
     useEffect(() => setMounted(true), []);
 
     const isDark = mounted && resolvedTheme === "dark";
-    const isV2Light = mounted && !isDark && designVersion === "v2";
 
     const pill = isDark ? {
         background: "rgba(15,22,35,0.80)",
@@ -38,8 +34,8 @@ export function BottomNav() {
             "0 8px 40px rgba(0,0,0,0.40)",
             "0 2px 6px rgba(0,0,0,0.30)",
         ].join(", "),
-    } : isV2Light ? {
-        // V2 light — cool grey-slate (matches sidebar V2 token --glass-bg-nav)
+    } : {
+        // Light — cool grey-slate (matches sidebar token --glass-bg-nav)
         background: "rgba(248,250,252,0.88)",
         border: "0.5px solid rgba(99,102,241,0.18)",
         boxShadow: [
@@ -49,23 +45,12 @@ export function BottomNav() {
             "0 4px 20px rgba(30,50,100,0.10)",
             "0 1px 3px rgba(30,50,100,0.06)",
         ].join(", "),
-    } : {
-        // V1 light — warm amber
-        background: "rgba(255,250,235,0.22)",
-        border: "0.5px solid rgba(255,255,255,0.42)",
-        boxShadow: [
-            "inset 0 1.5px 0 rgba(255,255,255,0.90)",
-            "inset 1px 0 0 rgba(255,255,255,0.35)",
-            "inset -1px 0 0 rgba(255,255,255,0.15)",
-            "0 4px 20px rgba(100,50,0,0.12)",
-            "0 1px 3px rgba(100,50,0,0.06)",
-        ].join(", "),
     };
 
-    const activeColor = isDark ? "#C9A84C" : isV2Light ? "#4F46E5" : "#5c2e08";
-    const inactiveColor = isDark ? "rgba(255,255,255,0.42)" : isV2Light ? "rgba(30,50,100,0.45)" : "rgba(46,31,8,0.48)";
-    const activeBg = isDark ? "rgba(201,168,76,0.16)" : isV2Light ? "rgba(99,102,241,0.12)" : "rgba(255,255,255,0.30)";
-    const activeBorder = isDark ? "0.5px solid rgba(201,168,76,0.30)" : isV2Light ? "0.5px solid rgba(99,102,241,0.22)" : "0.5px solid rgba(255,255,255,0.50)";
+    const activeColor = isDark ? "#C9A84C" : "#4F46E5";
+    const inactiveColor = isDark ? "rgba(255,255,255,0.42)" : "rgba(30,50,100,0.45)";
+    const activeBg = isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)";
+    const activeBorder = isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)";
 
     return (
         <div
@@ -103,7 +88,7 @@ export function BottomNav() {
                             textDecoration: "none",
                             transition: "all 0.14s ease",
                             background: isActive ? activeBg : "transparent",
-                            boxShadow: isActive && !isDark ? (isV2Light ? "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(30,50,100,0.08)" : "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(100,50,0,0.10)") : "none",
+                            boxShadow: isActive && !isDark ? "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(30,50,100,0.08)" : "none",
                             border: isActive ? activeBorder : "0.5px solid transparent",
                         }}
                         onMouseEnter={(e) => {
@@ -173,16 +158,6 @@ export function BottomNav() {
           {isDark ? t("theme_toggle.light") : t("theme_toggle.dark")}
         </span>
             </button>
-
-            {/* Design version toggle */}
-            <div style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                padding: isMobile ? "6px 6px" : "8px 8px",
-            }}>
-                <DesignVersionToggle variant={isDark ? "dark" : isV2Light ? "v2-light" : "light"} />
-            </div>
 
             {/* Language toggle */}
             <LanguageToggle />

@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/sidebar";
 import {useEffect, useState} from "react";
 import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
-import {DesignVersionToggle} from "@/components/design-version-toggle";
 
 const navItems = [
     {href: "/chat", label: "Chat", icon: MessageSquare},
@@ -24,7 +22,7 @@ const RECENT_QUERIES_KEY = "neolex_recent_queries";
 const MAX_RECENT = 5;
 
 // macOS Tahoe Liquid Glass sidebar — transparent enough to see through, distinct enough to read
-function makeLiquidGlass(isDark: boolean, isV2: boolean) {
+function makeLiquidGlass(isDark: boolean) {
     if (isDark) {
         return {
             background: "rgba(255,255,255,0.07)",
@@ -42,44 +40,26 @@ function makeLiquidGlass(isDark: boolean, isV2: boolean) {
             border: "0.5px solid rgba(255,255,255,0.14)",
         };
     }
-    if (isV2) {
-        // V2 light — cool grey-slate palette, subtler blur (matches .design-v2 sidebar tokens)
-        return {
-            background: "rgba(248, 250, 252, 0.88)",
-            backdropFilter: "blur(16px) saturate(130%) brightness(103%)",
-            WebkitBackdropFilter: "blur(16px) saturate(130%) brightness(103%)",
-            borderRadius: "18px",
-            boxShadow: [
-                "inset 0 1.5px 0 rgba(255,255,255,0.90)",
-                "inset 1px 0 0 rgba(255,255,255,0.60)",
-                "inset -1px 0 0 rgba(255,255,255,0.30)",
-                "inset 0 -1px 0 rgba(30,50,100,0.04)",
-                "0 8px 32px rgba(30,50,100,0.10)",
-                "0 1px 3px rgba(30,50,100,0.06)",
-            ].join(", "),
-            border: "0.5px solid rgba(99,102,241,0.18)",
-        };
-    }
-    // V1 light — warm amber
+    // Light — cool grey-slate palette, subtler blur (matches .design-v2 sidebar tokens)
     return {
-        background: "rgba(255, 250, 235, 0.22)",
-        backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-        WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        background: "rgba(248, 250, 252, 0.88)",
+        backdropFilter: "blur(16px) saturate(130%) brightness(103%)",
+        WebkitBackdropFilter: "blur(16px) saturate(130%) brightness(103%)",
         borderRadius: "18px",
         boxShadow: [
             "inset 0 1.5px 0 rgba(255,255,255,0.90)",
-            "inset 1px 0 0 rgba(255,255,255,0.45)",
-            "inset -1px 0 0 rgba(255,255,255,0.15)",
-            "inset 0 -1px 0 rgba(0,0,0,0.04)",
-            "0 8px 40px rgba(100,50,0,0.16)",
-            "0 1px 3px rgba(100,50,0,0.10)",
+            "inset 1px 0 0 rgba(255,255,255,0.60)",
+            "inset -1px 0 0 rgba(255,255,255,0.30)",
+            "inset 0 -1px 0 rgba(30,50,100,0.04)",
+            "0 8px 32px rgba(30,50,100,0.10)",
+            "0 1px 3px rgba(30,50,100,0.06)",
         ].join(", "),
-        border: "0.5px solid rgba(255,255,255,0.35)",
+        border: "0.5px solid rgba(99,102,241,0.18)",
     };
 }
 
 // Active item — glass pill inside glass sidebar
-function makeActiveItemStyle(isDark: boolean, isV2: boolean) {
+function makeActiveItemStyle(isDark: boolean) {
     if (isDark) {
         return {
             background: "rgba(201,168,76,0.14)",
@@ -87,19 +67,11 @@ function makeActiveItemStyle(isDark: boolean, isV2: boolean) {
             border: "0.5px solid rgba(201,168,76,0.28)",
         };
     }
-    if (isV2) {
-        // V2 light — indigo accent
-        return {
-            background: "rgba(99,102,241,0.10)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 3px rgba(30,50,100,0.08)",
-            border: "0.5px solid rgba(99,102,241,0.22)",
-        };
-    }
-    // V1 light — warm white
+    // Light — indigo accent
     return {
-        background: "rgba(255,255,255,0.20)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.70), 0 1px 3px rgba(100,50,0,0.10)",
-        border: "0.5px solid rgba(255,255,255,0.40)",
+        background: "rgba(99,102,241,0.10)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 3px rgba(30,50,100,0.08)",
+        border: "0.5px solid rgba(99,102,241,0.22)",
     };
 }
 
@@ -108,11 +80,9 @@ export function AppSidebar() {
     const router = useRouter();
     const [recentQueries, setRecentQueries] = useState<string[]>([]);
     const {resolvedTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === "dark";
-    const isV2 = mounted && designVersion === "v2";
 
     useEffect(() => {
         fetch(`/api/v1/demo/config`).catch(() => {
@@ -142,7 +112,7 @@ export function AppSidebar() {
     return (
         <Sidebar
             className="border-0"
-            style={makeLiquidGlass(isDark, isV2)}
+            style={makeLiquidGlass(isDark)}
         >
             {/* ── App name ── */}
             <SidebarHeader style={{padding: "16px 14px 12px"}}>
@@ -150,19 +120,17 @@ export function AppSidebar() {
                     {/* Glass icon pill */}
                     <div style={{
                         width: 28, height: 28, borderRadius: 9,
-                        background: isDark ? "rgba(201,168,76,0.14)" : isV2 ? "rgba(99,102,241,0.10)" : "rgba(255,255,255,0.18)",
+                        background: isDark ? "rgba(201,168,76,0.14)" : "rgba(99,102,241,0.10)",
                         boxShadow: isDark
                             ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 4px rgba(0,0,0,0.20)"
-                            : isV2
-                                ? "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(30,50,100,0.08)"
-                                : "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(100,50,0,0.12)",
-                        border: isDark ? "0.5px solid rgba(201,168,76,0.28)" : isV2 ? "0.5px solid rgba(99,102,241,0.22)" : "0.5px solid rgba(255,255,255,0.35)",
+                            : "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(30,50,100,0.08)",
+                        border: isDark ? "0.5px solid rgba(201,168,76,0.28)" : "0.5px solid rgba(99,102,241,0.22)",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                     }}>
                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                             <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z"
-                                  stroke={isDark ? "#C9A84C" : isV2 ? "rgba(79,70,229,0.75)" : "rgba(92,46,8,0.70)"} strokeWidth="1.3" strokeLinejoin="round"
-                                  fill={isDark ? "rgba(201,168,76,0.20)" : isV2 ? "rgba(99,102,241,0.15)" : "rgba(201,162,48,0.20)"}/>
+                                  stroke={isDark ? "#C9A84C" : "rgba(79,70,229,0.75)"} strokeWidth="1.3" strokeLinejoin="round"
+                                  fill={isDark ? "rgba(201,168,76,0.20)" : "rgba(99,102,241,0.15)"}/>
                         </svg>
                     </div>
                     <span style={{
@@ -196,7 +164,7 @@ export function AppSidebar() {
                                     textDecoration: "none",
                                     transition: "all 0.12s ease",
                                     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-                                    ...(isActive ? makeActiveItemStyle(isDark, isV2) : {}),
+                                    ...(isActive ? makeActiveItemStyle(isDark) : {}),
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
@@ -279,10 +247,6 @@ export function AppSidebar() {
                 padding: "8px",
                 borderTop: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.25)",
             }}>
-                {/* Design version toggle — Classic / Modern */}
-                <div style={{padding: "4px 10px 6px"}}>
-                    <DesignVersionToggle variant={isDark ? "dark" : isV2 ? "v2-light" : "light"} />
-                </div>
                 <button
                     onClick={handleLogout}
                     style={{

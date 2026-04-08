@@ -184,12 +184,11 @@ textarea::placeholder { color: #b29254; }
 /* ============================================================
    V2 DESIGN THEME — cooler SaaS palette, subtler glassmorphism
    Applied by adding `.design-v2` class to <html>.
-   Overrides V1 tokens; V1 is the default.
    ============================================================ */
 
 /* Light mode V2 tokens */
 .design-v2 {
-    /* Surfaces — cool grey/slate base (vs warm off-white V1) */
+    /* Surfaces — cool grey/slate base */
     --background: #F3F4F6;
     --foreground: #111827;
     --card: #FFFFFF;
@@ -197,7 +196,7 @@ textarea::placeholder { color: #b29254; }
     --popover: #FFFFFF;
     --popover-foreground: #111827;
 
-    /* Brand — modern blue (vs V1 deep navy #1B2B4B) */
+    /* Brand — modern blue */
     --primary: #1E40AF;
     --primary-foreground: #FFFFFF;
 
@@ -207,7 +206,7 @@ textarea::placeholder { color: #b29254; }
     --muted: #F1F5F9;
     --muted-foreground: #64748B;
 
-    /* Accent — indigo (vs V1 gold #C9A84C) */
+    /* Accent — indigo */
     --accent: #4F46E5;
     --accent-foreground: #FFFFFF;
 
@@ -261,7 +260,7 @@ textarea::placeholder { color: #b29254; }
 
 /* Dark mode V2 overrides */
 .design-v2.dark {
-    /* Surfaces — deep cool dark (vs V1 warm amber) */
+    /* Surfaces — deep cool dark */
     --background: #0D1117;
     --foreground: rgba(255, 255, 255, 0.90);
     --card: rgba(255, 255, 255, 0.04);
