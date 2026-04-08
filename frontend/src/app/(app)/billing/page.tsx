@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import {useTheme} from "@/lib/theme";
+import {useDesignVersion} from "@/lib/design-version";
+import {motion} from "motion/react";
+import {V3_CARD_HOVER, V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import { useI18n } from "@/lib/i18n";
 import {
   Crown,
@@ -56,6 +59,7 @@ interface PlanConfig {
 
 export default function BillingPage() {
   const { resolvedTheme } = useTheme();
+  const { version: designVersion } = useDesignVersion();
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
@@ -70,6 +74,7 @@ export default function BillingPage() {
   }, []);
 
   const isDark = mounted && resolvedTheme === "dark";
+  const isV3 = mounted && designVersion === "v3";
 
   useEffect(() => {
     async function fetchBilling() {
@@ -182,7 +187,10 @@ export default function BillingPage() {
 
   // -- Styles --
 
-  const glassCard: React.CSSProperties = {
+  const glassCard: React.CSSProperties = isV3 ? {
+    borderRadius: "16px",
+    overflow: "clip",
+  } : {
     background: isDark
       ? "rgba(255,255,255,0.06)"
       : "rgba(255,250,235,0.22)",
@@ -198,7 +206,13 @@ export default function BillingPage() {
     overflow: "clip",
   };
 
-  const goldGlassCard: React.CSSProperties = {
+  const glassCardClass = isV3 ? "v3-glass-panel" : "";
+
+  const goldGlassCard: React.CSSProperties = isV3 ? {
+    borderRadius: "16px",
+    overflow: "clip",
+    border: isDark ? "1px solid rgba(157,127,204,0.35)" : "1px solid rgba(123,94,167,0.25)",
+  } : {
     ...glassCard,
     border: isDark
       ? "1px solid rgba(201,168,76,0.35)"
@@ -236,17 +250,21 @@ export default function BillingPage() {
   const primaryButton = (
     isLoading: boolean
   ): React.CSSProperties => ({
-    background: isDark
-      ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
-      : "#5c2e08",
-    color: isDark ? "#0F1623" : "#fff8ee",
+    background: isV3
+      ? "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)"
+      : isDark
+        ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
+        : "#5c2e08",
+    color: isV3 ? "#fff" : (isDark ? "#0F1623" : "#fff8ee"),
     borderRadius: "10px",
     padding: "10px 22px",
     fontSize: "13px",
     fontWeight: 600,
     fontFamily: fontStack,
-    boxShadow: isDark
-      ? "0 2px 12px rgba(201,168,76,0.30)"
+    boxShadow: isV3
+      ? "0 0 20px rgba(123,94,167,0.35)"
+      : isDark
+        ? "0 2px 12px rgba(201,168,76,0.30)"
       : "0 2px 12px rgba(92,46,8,0.30)",
     border: "none",
     cursor: isLoading ? "wait" : "pointer",
@@ -557,9 +575,15 @@ export default function BillingPage() {
     };
 
     return (
-      <div style={glassCard}>
+      <motion.div
+        className={glassCardClass}
+        style={glassCard}
+        variants={isV3 ? V3_ITEM_VARIANT : undefined}
+        initial={isV3 ? "hidden" : undefined}
+        animate={isV3 ? "visible" : undefined}
+      >
         <div style={cardHeader}>
-          <h2 style={cardHeading}>{t("billing.current_plan")}</h2>
+          <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("billing.current_plan")}</h2>
         </div>
         <div style={cardBody}>
           {/* Plan name + badge */}
@@ -890,7 +914,7 @@ export default function BillingPage() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -1001,8 +1025,9 @@ export default function BillingPage() {
       interval === "monthly" ? plan.monthlyPrice : plan.biweeklyPrice;
 
     return (
-      <div
+      <motion.div
         key={plan.tier}
+        className={isV3 ? (isEnterprise ? "v3-glass-elevated" : "v3-glass-panel") : ""}
         style={{
           ...card,
           flex: "1 1 0",
@@ -1011,6 +1036,8 @@ export default function BillingPage() {
           flexDirection: "column",
           position: "relative",
         }}
+        variants={isV3 ? V3_ITEM_VARIANT : undefined}
+        {...(isV3 ? V3_CARD_HOVER : {})}
       >
         {/* Highlighted badge */}
         {plan.highlighted && !isCurrent && (
@@ -1190,7 +1217,7 @@ export default function BillingPage() {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
@@ -1400,13 +1427,12 @@ export default function BillingPage() {
               }}
             >
               <h2
+                className={isV3 ? "v3-text-aurora" : ""}
                 style={{
                   fontFamily: "var(--font-heading), Georgia, serif",
                   fontSize: "1.1rem",
                   fontWeight: 700,
-                  color: isDark
-                    ? "rgba(255,255,255,0.85)"
-                    : "#1e1208",
+                  color: isV3 ? undefined : (isDark ? "rgba(255,255,255,0.85)" : "#1e1208"),
                   margin: 0,
                 }}
               >
@@ -1416,7 +1442,10 @@ export default function BillingPage() {
             </div>
 
             {/* Plan cards — horizontal row, stacks on mobile */}
-            <div
+            <motion.div
+              variants={isV3 ? V3_LIST_VARIANT : undefined}
+              initial={isV3 ? "hidden" : undefined}
+              animate={isV3 ? "visible" : undefined}
               style={{
                 display: "flex",
                 gap: "14px",
@@ -1424,7 +1453,7 @@ export default function BillingPage() {
               }}
             >
               {plans.map((plan) => renderPlanCard(plan))}
-            </div>
+            </motion.div>
           </div>
 
           {/* 3. Important notes */}

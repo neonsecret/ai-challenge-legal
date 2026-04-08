@@ -5,6 +5,8 @@ import {Globe} from "lucide-react"
 import {motion} from "motion/react"
 import {COLOR, FONT, TYPE_SCALE, SPACE, TIMING, EASE, TEXT_DARK, TEXT_LIGHT, RADIUS} from "@/lib/design-tokens"
 import {V3_BUTTON_PRESS} from "@/lib/v3-motion"
+import {useDesignVersion} from "@/lib/design-version"
+import {useEffect, useState} from "react"
 
 /** Cubic-bezier values from EASE.out as a tuple for motion/react */
 const MOTION_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1]
@@ -12,6 +14,13 @@ const MOTION_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1]
 /** Check if a source is a web source (doc_id starts with "web:" or has a url field). */
 function isWebSource(source: Source): boolean {
     return source.doc_id.startsWith("web:") || !!source.url
+}
+
+/** Extract a corpus name from a doc_id for v3-source-card data attribute. */
+function getCorpus(doc_id: string): string {
+    if (doc_id.startsWith("web:")) return "web"
+    const parts = doc_id.split("/")
+    return parts[0] || "custom"
 }
 
 /** Extract the domain from a URL string. */
@@ -30,6 +39,11 @@ interface SourcesPanelProps {
 }
 
 export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPanelProps) {
+    const {version: designVersion} = useDesignVersion()
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => { setMounted(true) }, [])
+    const isV3 = mounted && designVersion === "v3"
+
     if (!sources || sources.length === 0) return null
 
     const chipBg = isDark ? COLOR.gold.tint : "rgba(120,70,0,0.08)"
@@ -69,6 +83,8 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
                     return (
                         <motion.button
                             key={`${source.doc_id}-${i}`}
+                            className={isV3 ? "v3-source-card" : ""}
+                            data-corpus={isV3 ? getCorpus(source.doc_id) : undefined}
                             initial={{opacity: 0, y: 4}}
                             animate={{opacity: 1, y: 0}}
                             transition={{duration: parseFloat(TIMING.fast), delay: i * 0.08, ease: MOTION_EASE_OUT}}
