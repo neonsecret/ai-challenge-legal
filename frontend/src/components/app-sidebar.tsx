@@ -79,12 +79,24 @@ function makeLiquidGlass(isDark: boolean, isV2: boolean) {
 }
 
 // Active item — glass pill inside glass sidebar
-function makeActiveItemStyle(isDark: boolean) {
-    return isDark ? {
-        background: "rgba(201,168,76,0.14)",
-        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.20)",
-        border: "0.5px solid rgba(201,168,76,0.28)",
-    } : {
+function makeActiveItemStyle(isDark: boolean, isV2: boolean) {
+    if (isDark) {
+        return {
+            background: "rgba(201,168,76,0.14)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.20)",
+            border: "0.5px solid rgba(201,168,76,0.28)",
+        };
+    }
+    if (isV2) {
+        // V2 light — indigo accent
+        return {
+            background: "rgba(99,102,241,0.10)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 3px rgba(30,50,100,0.08)",
+            border: "0.5px solid rgba(99,102,241,0.22)",
+        };
+    }
+    // V1 light — warm white
+    return {
         background: "rgba(255,255,255,0.20)",
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.70), 0 1px 3px rgba(100,50,0,0.10)",
         border: "0.5px solid rgba(255,255,255,0.40)",
@@ -138,15 +150,19 @@ export function AppSidebar() {
                     {/* Glass icon pill */}
                     <div style={{
                         width: 28, height: 28, borderRadius: 9,
-                        background: isDark ? "rgba(201,168,76,0.14)" : "rgba(255,255,255,0.18)",
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(100,50,0,0.12)",
-                        border: isDark ? "0.5px solid rgba(201,168,76,0.28)" : "0.5px solid rgba(255,255,255,0.35)",
+                        background: isDark ? "rgba(201,168,76,0.14)" : isV2 ? "rgba(99,102,241,0.10)" : "rgba(255,255,255,0.18)",
+                        boxShadow: isDark
+                            ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 4px rgba(0,0,0,0.20)"
+                            : isV2
+                                ? "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(30,50,100,0.08)"
+                                : "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(100,50,0,0.12)",
+                        border: isDark ? "0.5px solid rgba(201,168,76,0.28)" : isV2 ? "0.5px solid rgba(99,102,241,0.22)" : "0.5px solid rgba(255,255,255,0.35)",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                     }}>
                         <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                             <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z"
-                                  stroke={isDark ? "#C9A84C" : "rgba(92,46,8,0.70)"} strokeWidth="1.3" strokeLinejoin="round"
-                                  fill={isDark ? "rgba(201,168,76,0.20)" : "rgba(201,162,48,0.20)"}/>
+                                  stroke={isDark ? "#C9A84C" : isV2 ? "rgba(79,70,229,0.75)" : "rgba(92,46,8,0.70)"} strokeWidth="1.3" strokeLinejoin="round"
+                                  fill={isDark ? "rgba(201,168,76,0.20)" : isV2 ? "rgba(99,102,241,0.15)" : "rgba(201,162,48,0.20)"}/>
                         </svg>
                     </div>
                     <span style={{
@@ -180,7 +196,7 @@ export function AppSidebar() {
                                     textDecoration: "none",
                                     transition: "all 0.12s ease",
                                     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-                                    ...(isActive ? makeActiveItemStyle(isDark) : {}),
+                                    ...(isActive ? makeActiveItemStyle(isDark, isV2) : {}),
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
