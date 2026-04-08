@@ -259,7 +259,7 @@ export default function SettingsPage() {
                             <div style={{display: "flex", flexDirection: "column", gap: 16}}>
                                 <div style={{display: "flex", alignItems: "center", gap: 14}}>
                                     {user.avatar_url ? (
-                                        <img src={user.avatar_url} alt="" style={{
+                                        <img src={user.avatar_url} alt={user.name || user.email} style={{
                                             width: 44,
                                             height: 44,
                                             borderRadius: 12,
@@ -377,6 +377,7 @@ export default function SettingsPage() {
                                     <button
                                         key={opt.value}
                                         onClick={() => setTheme(opt.value)}
+                                        aria-pressed={theme === opt.value}
                                         style={themeButton(theme === opt.value)}
                                     >
                                         {opt.icon}

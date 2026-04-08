@@ -90,6 +90,7 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
                             transition={{duration: parseFloat(TIMING.fast), delay: i * 0.08, ease: MOTION_EASE_OUT}}
                             {...V3_BUTTON_PRESS}
                             onClick={() => onSourceClick(source)}
+                            aria-label={title}
                             title={title}
                             style={{
                                 display: "inline-flex", alignItems: "center", gap: `${SPACE["1"] + 2}px`,
