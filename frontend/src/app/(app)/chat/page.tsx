@@ -3,6 +3,8 @@
 import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, type ReactNode} from "react"
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
+import {V3_SPRING, V3_FADE_UP} from "@/lib/v3-motion"
+import {useDesignVersion} from "@/lib/design-version"
 import {SquarePen, History, Trash2, BookOpen, Globe} from "lucide-react"
 import {useTheme} from "@/lib/theme"
 import {ChatInput} from "@/components/chat/chat-input"
@@ -344,7 +346,19 @@ const PREVIEW_SCENARIOS_MAP: Record<string, DemoScenario[]> = {
     custom: CUSTOM_SCENARIOS,
 }
 
-function makeGlassPanel(isDark: boolean) {
+function makeGlassPanel(isDark: boolean, isV3 = false) {
+    if (isV3) {
+        return {
+            background: "var(--v3-glass-elevated-bg)",
+            backdropFilter: "var(--v3-glass-elevated-blur)",
+            WebkitBackdropFilter: "var(--v3-glass-elevated-blur)",
+            border: "1px solid var(--v3-glass-elevated-border)",
+            borderRadius: `${RADIUS['2xl']}px`,
+            boxShadow: "var(--v3-glass-elevated-shadow)",
+            willChange: "transform",
+            transform: "translateZ(0)",
+        };
+    }
     return isDark ? {
         background: GLASS.dark.bg,
         backdropFilter: GLASS.dark.blur,
@@ -397,9 +411,11 @@ export default function ChatPage() {
     const [availableCorpora, setAvailableCorpora] = useState<CorpusEntry[]>([])
     const [corporaLoading, setCorporaLoading] = useState(false)
     const {resolvedTheme} = useTheme()
+    const {version: designVersion} = useDesignVersion()
     const [mounted, setMounted] = useState(false)
     useEffect(() => setMounted(true), [])
     const isDark = mounted && resolvedTheme === "dark"
+    const isV3 = mounted && designVersion === "v3"
     const isMobile = useIsMobile()
     const documentIndex = useDocumentIndex(messages)
 
@@ -613,7 +629,7 @@ export default function ChatPage() {
                                 WebkitBackdropFilter: GLASS.dark.blurLight,
                                 boxShadow: isDark ? GLASS.dark.innerGlow : GLASS.light.innerGlow,
                                 border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
-                            } : makeGlassPanel(isDark)),
+                            } : makeGlassPanel(isDark, isV3)),
                         }}
                     >
                         {/* History header */}
@@ -793,7 +809,7 @@ export default function ChatPage() {
                 overflow: "hidden",
                 contain: "style",
                 transition: `all ${TIMING.slow} ${EASE.out}`,
-                ...makeGlassPanel(isDark),
+                ...makeGlassPanel(isDark, isV3),
             }}>
                 {/* Header */}
                 <div style={{
@@ -1178,7 +1194,7 @@ export default function ChatPage() {
                             initial={{opacity: 0, height: 0}}
                             animate={{opacity: 1, height: "auto"}}
                             exit={{opacity: 0, height: 0}}
-                            transition={{duration: 0.2}}
+                            transition={{...V3_SPRING.standard, restDelta: 0.5}}
                             style={{overflow: "hidden", flexShrink: 0}}
                         >
                             <div style={{
@@ -1508,16 +1524,17 @@ export default function ChatPage() {
                             <motion.div
                                 key={m.id}
                                 ref={isLastAssistant ? lastAssistantRef : undefined}
-                                initial={{opacity: 0, y: SPACE['3'], ...(isMobile ? {} : {scale: 0.98})}}
-                                animate={{opacity: 1, y: 0, ...(isMobile ? {} : {scale: 1})}}
-                                transition={isMobile
+                                variants={isV3 ? V3_FADE_UP : undefined}
+                                initial={isV3 ? "hidden" : {opacity: 0, y: SPACE['3'], ...(isMobile ? {} : {scale: 0.98})}}
+                                animate={isV3 ? "visible" : {opacity: 1, y: 0, ...(isMobile ? {} : {scale: 1})}}
+                                transition={isV3 ? undefined : (isMobile
                                     ? {duration: 0.2, ease: [0.32, 0.72, 0, 1]}
                                     : {
                                         type: "spring",
                                         damping: 25,
                                         stiffness: 200,
                                         delay: idx === messages.length - 1 ? 0.05 : 0,
-                                    }}
+                                    })}
                             >
                                 <ChatMessage
                                     role={m.role}
@@ -1651,7 +1668,7 @@ export default function ChatPage() {
                                 position: "relative",
                                 zIndex: 1,
                                 flexShrink: 0,
-                                ...makeGlassPanel(isDark),
+                                ...makeGlassPanel(isDark, isV3),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1766,7 +1783,7 @@ export default function ChatPage() {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
                                 flexShrink: 0,
-                                ...makeGlassPanel(isDark),
+                                ...makeGlassPanel(isDark, isV3),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1899,7 +1916,7 @@ export default function ChatPage() {
                                 boxShadow: isDark
                                     ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"
                                     : "0 -12px 48px rgba(100,50,0,0.15), inset 0 1.5px 0 rgba(255,255,255,0.85)",
-                            } : makeGlassPanel(isDark)),
+                            } : makeGlassPanel(isDark, isV3)),
                         }}
                     >
                         {/* Mobile drag handle */}

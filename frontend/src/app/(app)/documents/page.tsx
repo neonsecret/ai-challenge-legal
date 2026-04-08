@@ -2,6 +2,9 @@
 
 import {useEffect, useState, useCallback} from "react";
 import {useTheme} from "@/lib/theme";
+import {useDesignVersion} from "@/lib/design-version";
+import {motion} from "motion/react";
+import {V3_CARD_HOVER, V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import Link from "next/link";
 import {UploadZone} from "@/components/documents/upload-zone";
 import {FolderView} from "@/components/documents/folder-view";
@@ -14,6 +17,7 @@ import {useI18n} from "@/lib/i18n";
 
 export default function DocumentsPage() {
     const {resolvedTheme} = useTheme();
+    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     const {t} = useI18n();
     const {user} = useAuth();
@@ -23,6 +27,7 @@ export default function DocumentsPage() {
     }, []);
 
     const isDark = mounted && resolvedTheme === "dark";
+    const isV3 = mounted && designVersion === "v3";
     const isFreeTier = !user || user.subscription_status === "free" || user.max_corpora === 0;
 
     const {
@@ -52,7 +57,10 @@ export default function DocumentsPage() {
         fetchDocuments();
     }, [fetchDocuments]);
 
-    const glassCard: React.CSSProperties = {
+    const glassCard: React.CSSProperties = isV3 ? {
+        borderRadius: "16px",
+        overflow: "clip",
+    } : {
         background: isDark
             ? "rgba(255,255,255,0.06)"
             : "rgba(255,250,235,0.22)",
@@ -67,6 +75,8 @@ export default function DocumentsPage() {
             : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
         overflow: "clip",
     };
+
+    const glassCardClass = isV3 ? "v3-glass-panel" : "";
 
     const cardHeaderSep: React.CSSProperties = {
         borderBottom: isDark
@@ -133,14 +143,19 @@ export default function DocumentsPage() {
             <IndexInfoPanel/>
 
             {/* Section divider: Your Documents */}
-            <div>
+            <motion.div
+                variants={isV3 ? V3_LIST_VARIANT : undefined}
+                initial={isV3 ? "hidden" : undefined}
+                animate={isV3 ? "visible" : undefined}
+            >
                 <h2
+                    className={isV3 ? "v3-text-aurora" : ""}
                     style={{
                         fontSize: "11px",
                         fontWeight: 600,
                         textTransform: "uppercase" as const,
                         letterSpacing: "0.08em",
-                        color: isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)",
+                        color: isV3 ? undefined : (isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)"),
                         margin: "0 0 12px",
                         fontFamily: fontStack,
                     }}
@@ -150,7 +165,12 @@ export default function DocumentsPage() {
 
                 {/* Upload section — gated by plan */}
                 {isFreeTier ? (
-                    <div style={{...glassCard, marginBottom: "16px"}}>
+                    <motion.div
+                        variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                        className={glassCardClass}
+                        style={{...glassCard, marginBottom: "16px"}}
+                        {...(isV3 ? V3_CARD_HOVER : {})}
+                    >
                         <div style={{padding: "24px 20px", textAlign: "center"}}>
                             <div
                                 style={{
@@ -244,9 +264,14 @@ export default function DocumentsPage() {
                                 </svg>
                             </Link>
                         </div>
-                    </div>
+                    </motion.div>
                 ) : (
-                    <div style={{...glassCard, marginBottom: "16px"}}>
+                    <motion.div
+                        variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                        className={glassCardClass}
+                        style={{...glassCard, marginBottom: "16px"}}
+                        {...(isV3 ? V3_CARD_HOVER : {})}
+                    >
                         <div style={{...cardHeaderSep, padding: "16px 20px"}}>
                             <h3
                                 style={{
@@ -263,11 +288,16 @@ export default function DocumentsPage() {
                         <div style={{padding: "16px 20px"}}>
                             <UploadZone onUpload={handleUpload} uploadProgress={uploadProgress} zipResult={zipResult}/>
                         </div>
-                    </div>
+                    </motion.div>
                 )}
 
                 {/* Collections / folder view */}
-                <div style={glassCard}>
+                <motion.div
+                    variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                    className={glassCardClass}
+                    style={glassCard}
+                    {...(isV3 ? V3_CARD_HOVER : {})}
+                >
                     <div
                         style={{
                             ...cardHeaderSep,
@@ -322,18 +352,19 @@ export default function DocumentsPage() {
                             onRefresh={fetchDocuments}
                         />
                     </div>
-                </div>
-            </div>
+                </motion.div>
+            </motion.div>
 
             {/* Section divider: Legal Index Library */}
             <div>
                 <h2
+                    className={isV3 ? "v3-text-aurora" : ""}
                     style={{
                         fontSize: "11px",
                         fontWeight: 600,
                         textTransform: "uppercase" as const,
                         letterSpacing: "0.08em",
-                        color: isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)",
+                        color: isV3 ? undefined : (isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)"),
                         margin: "0 0 12px",
                         fontFamily: fontStack,
                     }}

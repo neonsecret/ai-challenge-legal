@@ -3,6 +3,9 @@
 import {useState, useEffect} from "react";
 import {Moon, Sun, Monitor, LogOut, User, Loader2, ChevronDown} from "lucide-react";
 import {useTheme} from "@/lib/theme";
+import {useDesignVersion} from "@/lib/design-version";
+import {motion} from "motion/react";
+import {V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import {useRouter} from "next/navigation";
 import {useI18n} from "@/lib/i18n";
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/design-tokens";
@@ -25,6 +28,7 @@ interface UserInfo {
 
 export default function SettingsPage() {
     const {theme, setTheme, resolvedTheme} = useTheme();
+    const {version: designVersion} = useDesignVersion();
     const router = useRouter();
     const {t} = useI18n();
     const [mounted, setMounted] = useState(false);
@@ -41,6 +45,7 @@ export default function SettingsPage() {
     }, []);
 
     const isDark = mounted && resolvedTheme === "dark";
+    const isV3 = mounted && designVersion === "v3";
 
     useEffect(() => {
         fetch(`${API}/auth/me`, {credentials: "include"})
@@ -97,7 +102,10 @@ export default function SettingsPage() {
         {value: "system", labelKey: "settings.system", icon: <Monitor size={16}/>},
     ];
 
-    const glassCard: React.CSSProperties = {
+    const glassCard: React.CSSProperties = isV3 ? {
+        borderRadius: "16px",
+        overflow: "clip",
+    } : {
         background: isDark
             ? "rgba(255,255,255,0.06)"
             : "rgba(255,250,235,0.22)",
@@ -112,6 +120,8 @@ export default function SettingsPage() {
             : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
         overflow: "clip",
     };
+
+    const glassCardClass = isV3 ? "v3-glass-elevated" : "";
 
     const cardHeader: React.CSSProperties = {
         padding: "16px 20px",
@@ -217,11 +227,20 @@ export default function SettingsPage() {
             </div>
 
             {/* Cards container */}
-            <div style={{display: "flex", flexDirection: "column", gap: "20px"}}>
+            <motion.div
+                variants={isV3 ? V3_LIST_VARIANT : undefined}
+                initial={isV3 ? "hidden" : undefined}
+                animate={isV3 ? "visible" : undefined}
+                style={{display: "flex", flexDirection: "column", gap: "20px"}}
+            >
                 {/* Account */}
-                <div style={glassCard}>
+                <motion.div
+                    variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                    className={glassCardClass}
+                    style={glassCard}
+                >
                     <div style={cardHeader}>
-                        <h2 style={cardHeading}>{t("settings.account")}</h2>
+                        <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("settings.account")}</h2>
                     </div>
                     <div style={cardBody}>
                         {userLoading ? (
@@ -240,7 +259,7 @@ export default function SettingsPage() {
                             <div style={{display: "flex", flexDirection: "column", gap: 16}}>
                                 <div style={{display: "flex", alignItems: "center", gap: 14}}>
                                     {user.avatar_url ? (
-                                        <img src={user.avatar_url} alt="" style={{
+                                        <img src={user.avatar_url} alt={user.name || user.email} style={{
                                             width: 44,
                                             height: 44,
                                             borderRadius: 12,
@@ -339,12 +358,16 @@ export default function SettingsPage() {
                             </div>
                         )}
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Appearance */}
-                <div style={glassCard}>
+                <motion.div
+                    variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                    className={glassCardClass}
+                    style={glassCard}
+                >
                     <div style={cardHeader}>
-                        <h2 style={cardHeading}>{t("settings.appearance")}</h2>
+                        <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("settings.appearance")}</h2>
                     </div>
                     <div style={cardBody}>
                         <div>
@@ -354,6 +377,7 @@ export default function SettingsPage() {
                                     <button
                                         key={opt.value}
                                         onClick={() => setTheme(opt.value)}
+                                        aria-pressed={theme === opt.value}
                                         style={themeButton(theme === opt.value)}
                                     >
                                         {opt.icon}
@@ -363,7 +387,7 @@ export default function SettingsPage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Delete account — collapsed by default, subtle link */}
                 {user && (
@@ -405,10 +429,10 @@ export default function SettingsPage() {
                                 <ChevronDown size={12}/>
                             </button>
                         ) : (
-                            <div style={{
-                                ...glassCard,
-                                width: "100%",
-                            }}>
+                            <div
+                                className={glassCardClass}
+                                style={{...glassCard, width: "100%"}}
+                            >
                                 <div style={cardBody}>
                                     <div style={{display: "flex", flexDirection: "column", gap: SPACE["4"]}}>
                                         <div>
@@ -454,6 +478,17 @@ export default function SettingsPage() {
                                                         : "#1e1208",
                                                     outline: "none",
                                                     boxSizing: "border-box",
+                                                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+                                                }}
+                                                onFocus={(e) => {
+                                                    if (isV3) {
+                                                        e.currentTarget.style.borderColor = isDark ? "rgba(157,127,204,0.50)" : "rgba(123,94,167,0.50)";
+                                                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(123,94,167,0.12)";
+                                                    }
+                                                }}
+                                                onBlur={(e) => {
+                                                    e.currentTarget.style.borderColor = "";
+                                                    e.currentTarget.style.boxShadow = "";
                                                 }}
                                             />
                                         </div>
@@ -561,7 +596,7 @@ export default function SettingsPage() {
                     </div>
                 )}
 
-            </div>
+            </motion.div>
         </div>
     );
 }

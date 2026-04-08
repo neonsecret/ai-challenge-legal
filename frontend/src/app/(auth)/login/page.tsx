@@ -5,6 +5,7 @@ import {useRouter, useSearchParams} from "next/navigation";
 import {useTheme} from "@/lib/theme";
 import {motion, AnimatePresence} from "motion/react";
 import {useAuth} from "@/lib/use-auth";
+import {useDesignVersion} from "@/lib/design-version";
 
 const fontStack =
     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
@@ -42,6 +43,7 @@ function LoginPageContent() {
     const {user, login, loginWithGoogle, register, error, clearError} =
         useAuth();
 
+    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     const [mode, setMode] = useState<Mode>("login");
     const [email, setEmail] = useState("");
@@ -68,9 +70,20 @@ function LoginPageContent() {
     }, [user, router]);
 
     const isDark = mounted && resolvedTheme === "dark";
+    const isV3 = mounted && designVersion === "v3";
 
     /* ── Shared glass styles (matching settings page exactly) ── */
-    const glassCard: React.CSSProperties = {
+    const glassCard: React.CSSProperties = isV3 ? {
+        background: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.78)",
+        backdropFilter: "blur(40px) saturate(160%) brightness(105%)",
+        WebkitBackdropFilter: "blur(40px) saturate(160%) brightness(105%)",
+        border: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(255,255,255,0.90)",
+        borderRadius: "16px",
+        boxShadow: isDark
+            ? "0 12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.10)"
+            : "0 8px 32px rgba(7,9,30,0.12), inset 0 1px 0 rgba(255,255,255,0.95)",
+        overflow: "clip",
+    } : {
         background: isDark
             ? "rgba(255,255,255,0.06)"
             : "rgba(255,250,235,0.22)",
@@ -115,18 +128,25 @@ function LoginPageContent() {
     };
 
     const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-        e.currentTarget.style.borderColor = isDark
-            ? "rgba(201,168,76,0.55)"
-            : "rgba(196,124,0,0.55)";
-        if (isDark) {
-            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.10)";
+        if (isV3) {
+            e.currentTarget.style.borderColor = isDark ? "rgba(157,127,204,0.50)" : "rgba(123,94,167,0.50)";
+            e.currentTarget.style.boxShadow = isDark
+                ? "0 0 0 3px rgba(123,94,167,0.15)"
+                : "0 0 0 3px rgba(123,94,167,0.10)";
+        } else {
+            e.currentTarget.style.borderColor = isDark
+                ? "rgba(201,168,76,0.55)"
+                : "rgba(196,124,0,0.55)";
+            if (isDark) {
+                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.10)";
+            }
         }
     };
 
     const handleInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-        e.currentTarget.style.borderColor = isDark
-            ? "rgba(255,255,255,0.14)"
-            : "rgba(255,255,255,0.50)";
+        e.currentTarget.style.borderColor = isV3
+            ? (isDark ? "rgba(255,255,255,0.14)" : "rgba(123,94,167,0.20)")
+            : isDark ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.50)";
         e.currentTarget.style.boxShadow = "none";
     };
 
@@ -159,11 +179,16 @@ function LoginPageContent() {
         setRegisterSuccess(false);
     };
 
-    const accentColor = isDark ? "#C9A84C" : "#5c2e08";
-    const mutedText = isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)";
+    const accentColor = isV3
+        ? (isDark ? "#9D7FCC" : "#7B5EA7")
+        : (isDark ? "#C9A84C" : "#5c2e08");
+    const mutedText = isV3
+        ? (isDark ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)")
+        : (isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)");
 
     return (
         <div
+            className={isV3 ? "aurora-bg-static" : ""}
             style={{
                 minHeight: "100vh",
                 display: "flex",
@@ -171,10 +196,11 @@ function LoginPageContent() {
                 justifyContent: "center",
                 padding: "24px 16px",
                 fontFamily: fontStack,
-                /* Background gradient matching the landing page */
-                background: isDark
-                    ? "linear-gradient(145deg, #0d1520 0%, #0f1b2e 50%, #0a1120 100%)"
-                    : "linear-gradient(145deg, #c8b080 0%, #d4be92 45%, #bca070 100%)",
+                background: isV3
+                    ? (isDark ? "#07090F" : "#F0F2F8")
+                    : isDark
+                        ? "linear-gradient(145deg, #0d1520 0%, #0f1b2e 50%, #0a1120 100%)"
+                        : "linear-gradient(145deg, #c8b080 0%, #d4be92 45%, #bca070 100%)",
                 position: "relative",
                 overflow: "hidden",
             }}
@@ -680,13 +706,17 @@ function LoginPageContent() {
                                 cursor: submitting ? "default" : "pointer",
                                 border: "none",
                                 transition: "all 0.15s ease",
-                                background: isDark
-                                    ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
-                                    : "#5c2e08",
-                                color: isDark ? "#0F1623" : "#fff8ee",
-                                boxShadow: isDark
-                                    ? "0 2px 12px rgba(201,168,76,0.30)"
-                                    : "0 2px 12px rgba(92,46,8,0.30)",
+                                background: isV3
+                                    ? "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)"
+                                    : isDark
+                                        ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
+                                        : "#5c2e08",
+                                color: isV3 ? "#fff" : isDark ? "#0F1623" : "#fff8ee",
+                                boxShadow: isV3
+                                    ? "0 0 20px rgba(123,94,167,0.35)"
+                                    : isDark
+                                        ? "0 2px 12px rgba(201,168,76,0.30)"
+                                        : "0 2px 12px rgba(92,46,8,0.30)",
                                 opacity: submitting ? 0.7 : 1,
                             }}
                         >

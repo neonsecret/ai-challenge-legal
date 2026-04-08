@@ -1,10 +1,9 @@
 "use client";
 
-// Design version hook — toggles .design-v2 class on <html>.
+// Design version hook — toggles .design-v2 or .design-v3 class on <html>.
 // Modeled on frontend/src/lib/theme.tsx.
 //
-// V1 (Classic) has been removed. V2 (Modern) is the only active design.
-// This provider is kept extensible for future V3 addition.
+// V1 (Classic) has been removed. V2 (Modern) and V3 (Luminous) are active.
 //
 // No inline <script> needed — a brief flash on first load is acceptable
 // (design version is not SSR-critical).
@@ -22,7 +21,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type DesignVersion = "v2";
+export type DesignVersion = "v2" | "v3";
 
 interface DesignVersionContextValue {
     version: DesignVersion;
@@ -41,8 +40,8 @@ const DesignVersionContext = createContext<DesignVersionContextValue | undefined
 function readStorage(): DesignVersion {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        // Migrate any stored V1 preference to V2
-        return stored === "v2" ? "v2" : DEFAULT_VERSION;
+        if (stored === "v2" || stored === "v3") return stored;
+        return DEFAULT_VERSION;
     } catch {
         return DEFAULT_VERSION;
     }
@@ -50,6 +49,7 @@ function readStorage(): DesignVersion {
 
 function applyVersion(version: DesignVersion) {
     document.documentElement.classList.toggle("design-v2", version === "v2");
+    document.documentElement.classList.toggle("design-v3", version === "v3");
 }
 
 // ---------------------------------------------------------------------------

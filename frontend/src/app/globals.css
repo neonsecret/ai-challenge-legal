@@ -354,6 +354,496 @@ textarea::placeholder { color: #b29254; }
 }
 
 /* ============================================================
+   V3 "LUMINOUS" DESIGN THEME — violet-blue-teal aurora palette
+   Applied by adding `.design-v3` class to <html>.
+   V2 is completely untouched — all V3 rules scoped to .design-v3.
+   ============================================================ */
+
+/* ── V3 Light mode tokens ─────────────────────────────────── */
+.design-v3 {
+    /* Brand palette — aurora spectrum */
+    --v3-iris:        #7B5EA7;
+    --v3-aurora:      #4F8FD4;
+    --v3-teal:        #2DD4BF;
+    --v3-rose:        #F472B6;
+    --v3-gold:        #FCD34D;
+    --v3-iris-bright: #9D7FCC;
+    --v3-aurora-glow: #60A5FA;
+
+    /* Light mode surfaces */
+    --v3-light-bg:          #F0F2F8;
+    --v3-light-surface:     rgba(255, 255, 255, 0.82);
+    --v3-light-elevated:    rgba(255, 255, 255, 0.92);
+    --v3-light-floating:    rgba(255, 255, 255, 0.97);
+    --v3-light-overlay:     rgba(7, 9, 30, 0.40);
+
+    /* Light mode text */
+    --v3-text-primary:      #0D0F1A;
+    --v3-text-secondary:    rgba(13, 15, 26, 0.64);
+    /* DECORATION ONLY: ~2.4:1 on #F0F2F8 — never use for semantic text content in light mode */
+    --v3-text-tertiary:     rgba(13, 15, 26, 0.38);
+    /* DECORATION ONLY: < 2:1 — dividers, placeholder dots only */
+    --v3-text-quaternary:   rgba(13, 15, 26, 0.22);
+    --v3-text-accent:       #5B40A0;
+
+    /* Light mode glass */
+    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.60);
+    --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.72);
+    --v3-glass-surface-border:    rgba(255, 255, 255, 0.80);
+    --v3-glass-surface-blur:      blur(20px) saturate(140%);
+    --v3-glass-surface-shadow:    0 2px 12px rgba(7, 9, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.90);
+
+    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.78);
+    --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.86);
+    --v3-glass-elevated-border:   rgba(255, 255, 255, 0.90);
+    --v3-glass-elevated-blur:     blur(40px) saturate(150%);
+    --v3-glass-elevated-shadow:   0 8px 32px rgba(7, 9, 30, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+
+    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.90);
+    --v3-glass-floating-border:   rgba(255, 255, 255, 0.98);
+    --v3-glass-floating-blur:     blur(60px) saturate(160%);
+    --v3-glass-floating-shadow:   0 16px 56px rgba(7, 9, 30, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1);
+
+    --v3-glass-iris-bg:           rgba(91, 64, 160, 0.06);
+    --v3-glass-iris-border:       rgba(91, 64, 160, 0.20);
+    --v3-glass-iris-glow:         0 0 24px rgba(91, 64, 160, 0.12);
+
+    /* Specular */
+    --v3-specular-top:    inset 0 1px 0 rgba(255, 255, 255, 0.80);
+    --v3-specular-full:   inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 -1px 0 rgba(7, 9, 30, 0.06);
+
+    /* Semantic colors */
+    --v3-success:   #34D399;
+    --v3-warning:   #FBBF24;
+    --v3-danger:    #F87171;
+    --v3-info:      #60A5FA;
+
+    /* Spacing */
+    --v3-space-xs:    4px;
+    --v3-space-sm:    8px;
+    --v3-space-md:    16px;
+    --v3-space-lg:    24px;
+    --v3-space-xl:    32px;
+    --v3-space-2xl:   48px;
+    --v3-space-3xl:   64px;
+    --v3-space-4xl:   96px;
+    --v3-section-pad-y: clamp(64px, 8vw, 120px);
+
+    /* Border radius */
+    --v3-radius-xs:   4px;
+    --v3-radius-sm:   8px;
+    --v3-radius-md:   12px;
+    --v3-radius-lg:   16px;
+    --v3-radius-xl:   20px;
+    --v3-radius-2xl:  28px;
+    --v3-radius-pill: 9999px;
+
+    /* CSS transition shorthands */
+    --v3-transition-color:       color 0.15s ease, background-color 0.15s ease;
+    --v3-transition-border:      border-color 0.15s ease;
+    --v3-transition-opacity:     opacity 0.15s ease;
+    --v3-transition-shadow:      box-shadow 0.20s ease;
+    --v3-transition-interactive: color 0.15s ease, background-color 0.15s ease,
+                                  border-color 0.15s ease, box-shadow 0.20s ease, opacity 0.15s ease;
+
+    /* Iridescent gradient */
+    --v3-iridescent: linear-gradient(
+        135deg,
+        oklch(0.55 0.25 285) 0%,
+        oklch(0.50 0.28 260) 35%,
+        oklch(0.55 0.22 195) 65%,
+        oklch(0.62 0.25 285) 100%
+    );
+
+    /* Button tokens */
+    --v3-btn-primary-bg: linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 50%, #2DD4BF 100%);
+    --v3-btn-primary-hover-bg: linear-gradient(135deg, #9D7FCC 0%, #60A5FA 50%, #2DD4BF 100%);
+
+    /* Override base Shadcn tokens for V3 light mode */
+    --background: #F0F2F8;
+    --foreground: #0D0F1A;
+    --card: rgba(255, 255, 255, 0.82);
+    --card-foreground: #0D0F1A;
+    --popover: rgba(255, 255, 255, 0.97);
+    --popover-foreground: #0D0F1A;
+    --primary: #7B5EA7;
+    --primary-foreground: #FFFFFF;
+    --secondary: rgba(123, 94, 167, 0.08);
+    --secondary-foreground: #5B40A0;
+    --muted: rgba(123, 94, 167, 0.05);
+    --muted-foreground: rgba(13, 15, 26, 0.55);
+    --accent: #7B5EA7;
+    --accent-foreground: #FFFFFF;
+    --border: rgba(123, 94, 167, 0.15);
+    --input: rgba(123, 94, 167, 0.10);
+    --ring: #7B5EA7;
+    --sidebar: rgba(255, 255, 255, 0.70);
+    --sidebar-foreground: #0D0F1A;
+    --sidebar-primary: #7B5EA7;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: rgba(123, 94, 167, 0.08);
+    --sidebar-accent-foreground: #5B40A0;
+    --sidebar-border: rgba(123, 94, 167, 0.12);
+    --sidebar-ring: #7B5EA7;
+    --radius: 0.75rem;
+}
+
+/* ── V3 Dark mode tokens ──────────────────────────────────── */
+.design-v3.dark {
+    /* Dark mode surfaces */
+    --v3-dark-bg:           #07090F;
+    --v3-dark-surface:      #0D1120;
+    --v3-dark-elevated:     #111827;
+    --v3-dark-floating:     #161F30;
+    --v3-dark-overlay:      rgba(7, 9, 15, 0.85);
+
+    /* Dark mode text */
+    --v3-text-primary:      rgba(255, 255, 255, 0.94);
+    --v3-text-secondary:    rgba(255, 255, 255, 0.64);
+    --v3-text-tertiary:     rgba(255, 255, 255, 0.50);
+    --v3-text-quaternary:   rgba(255, 255, 255, 0.38);
+    --v3-text-accent:       #9D7FCC;
+
+    /* Dark mode glass */
+    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.04);
+    --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.07);
+    --v3-glass-surface-border:    rgba(255, 255, 255, 0.08);
+    --v3-glass-surface-blur:      blur(20px) saturate(140%);
+    --v3-glass-surface-shadow:    0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.07);
+    --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.10);
+    --v3-glass-elevated-border:   rgba(255, 255, 255, 0.12);
+    --v3-glass-elevated-blur:     blur(40px) saturate(160%) brightness(105%);
+    --v3-glass-elevated-shadow:   0 12px 48px rgba(0, 0, 0, 0.50), 0 2px 8px rgba(0, 0, 0, 0.30),
+                                   inset 0 1px 0 rgba(255, 255, 255, 0.10);
+
+    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.10);
+    --v3-glass-floating-border:   rgba(255, 255, 255, 0.16);
+    --v3-glass-floating-blur:     blur(60px) saturate(180%) brightness(108%);
+    --v3-glass-floating-shadow:   0 24px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.40),
+                                   inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.20);
+
+    --v3-glass-iris-bg:           rgba(123, 94, 167, 0.12);
+    --v3-glass-iris-border:       rgba(157, 127, 204, 0.25);
+    --v3-glass-iris-glow:         0 0 24px rgba(123, 94, 167, 0.20);
+
+    --v3-specular-top:    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    --v3-specular-full:   inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.20),
+                           inset 1px 0 rgba(255, 255, 255, 0.06), inset -1px 0 rgba(0, 0, 0, 0.08);
+    --v3-specular-iris:   inset 0 1px 0 rgba(157, 127, 204, 0.30);
+
+    /* Override Shadcn base tokens for V3 dark */
+    --background: #07090F;
+    --foreground: rgba(255, 255, 255, 0.94);
+    --card: rgba(255, 255, 255, 0.04);
+    --card-foreground: rgba(255, 255, 255, 0.94);
+    --popover: #161F30;
+    --popover-foreground: rgba(255, 255, 255, 0.94);
+    --primary: #9D7FCC;
+    --primary-foreground: #07090F;
+    --secondary: rgba(123, 94, 167, 0.14);
+    --secondary-foreground: rgba(255, 255, 255, 0.85);
+    --muted: rgba(123, 94, 167, 0.08);
+    --muted-foreground: rgba(255, 255, 255, 0.50);
+    --accent: #9D7FCC;
+    --accent-foreground: #07090F;
+    --border: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.06);
+    --ring: #9D7FCC;
+    --sidebar: rgba(13, 17, 32, 0.85);
+    --sidebar-foreground: rgba(255, 255, 255, 0.80);
+    --sidebar-primary: #9D7FCC;
+    --sidebar-primary-foreground: #07090F;
+    --sidebar-accent: rgba(123, 94, 167, 0.14);
+    --sidebar-accent-foreground: rgba(255, 255, 255, 0.80);
+    --sidebar-border: rgba(255, 255, 255, 0.06);
+    --sidebar-ring: #9D7FCC;
+}
+
+/* ── V3 Aurora backgrounds ────────────────────────────────── */
+
+/* Animated aurora — landing page only */
+.design-v3 .aurora-bg::before {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.25 0.20 285 / 0.6) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.16 260 / 0.4) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.22 0.14 230 / 0.35) 0%, transparent 60%),
+                radial-gradient(ellipse 90% 70% at 30% 70%, oklch(0.15 0.08 300 / 0.3) 0%, transparent 65%),
+                #07090F;
+    animation: aurora-drift 30s ease-in-out infinite alternate;
+    filter: blur(60px);
+    transform: translateZ(0);
+    will-change: transform;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Light mode animated aurora */
+.design-v3:not(.dark) .aurora-bg::before {
+    background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.06 285 / 0.35) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.04 220 / 0.25) 0%, transparent 55%),
+                #F0F2F8;
+    filter: blur(80px);
+}
+
+/* Static aurora — workspace (no animation, lawyer-safe) */
+.design-v3 .aurora-bg-static::before {
+    content: '';
+    position: fixed;
+    inset: -50%;
+    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.25 0.20 285 / 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.16 260 / 0.30) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.22 0.14 230 / 0.25) 0%, transparent 60%),
+                #07090F;
+    filter: blur(60px);
+    transform: translateZ(0);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.design-v3:not(.dark) .aurora-bg-static::before {
+    background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.06 285 / 0.20) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.04 220 / 0.15) 0%, transparent 55%),
+                #F0F2F8;
+}
+
+/* Aurora cursor ambient */
+.design-v3 .ambient-cursor {
+    background: radial-gradient(
+        600px circle at var(--cursor-x, 50%) var(--cursor-y, 50%),
+        rgba(123, 94, 167, 0.08) 0%,
+        transparent 70%
+    );
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* ── V3 Keyframes ─────────────────────────────────────────── */
+@keyframes aurora-drift {
+    0%   { transform: translate(0, 0) scale(1.0) rotate(0deg) translateZ(0); }
+    33%  { transform: translate(2%, 1.5%) scale(1.03) rotate(0.5deg) translateZ(0); }
+    66%  { transform: translate(-1.5%, 2%) scale(0.98) rotate(-0.3deg) translateZ(0); }
+    100% { transform: translate(1%, -1%) scale(1.02) rotate(0.2deg) translateZ(0); }
+}
+
+@keyframes iridescent-shift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes v3-orb-float {
+    0%   { transform: translate(0, 0) translateZ(0); }
+    100% { transform: translate(30px, 20px) translateZ(0); }
+}
+
+/* ── V3 Typography signature effects ──────────────────────── */
+
+/* Animated gradient text — landing hero only */
+.design-v3 .v3-text-gradient {
+    background: var(--v3-iridescent);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: iridescent-shift 6s ease infinite;
+}
+
+/* Static gradient text — in-app safe */
+.design-v3 .v3-text-aurora {
+    background: linear-gradient(135deg, #9D7FCC 0%, #60A5FA 50%, #2DD4BF 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+/* ── V3 Glass panel signature ─────────────────────────────── */
+.design-v3 .v3-glass-panel {
+    background: var(--v3-glass-surface-bg);
+    backdrop-filter: var(--v3-glass-surface-blur);
+    -webkit-backdrop-filter: var(--v3-glass-surface-blur);
+    border: 1px solid var(--v3-glass-surface-border);
+    box-shadow: var(--v3-glass-surface-shadow);
+    border-radius: var(--v3-radius-md);
+    position: relative;
+}
+
+.design-v3 .v3-glass-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+        135deg,
+        rgba(157, 127, 204, 0.40) 0%,
+        rgba(96, 165, 250, 0.20) 33%,
+        rgba(45, 212, 191, 0.25) 66%,
+        rgba(157, 127, 204, 0.35) 100%
+    );
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.design-v3 .v3-glass-panel:hover::before {
+    opacity: 1;
+}
+
+.design-v3 .v3-glass-elevated {
+    background: var(--v3-glass-elevated-bg);
+    backdrop-filter: var(--v3-glass-elevated-blur);
+    -webkit-backdrop-filter: var(--v3-glass-elevated-blur);
+    border: 1px solid var(--v3-glass-elevated-border);
+    box-shadow: var(--v3-glass-elevated-shadow);
+    border-radius: var(--v3-radius-lg);
+}
+
+/* ── V3 Navigation active indicator ──────────────────────── */
+.design-v3 .v3-nav-active {
+    background: var(--v3-glass-iris-bg);
+    border-left: 2px solid var(--v3-iris-bright);
+    box-shadow: inset 0 0 20px rgba(123, 94, 167, 0.10), -2px 0 12px rgba(123, 94, 167, 0.20);
+}
+
+/* ── V3 Source cards — jurisdiction color encoding ────────── */
+.design-v3 .v3-source-card {
+    background: var(--v3-glass-surface-bg);
+    border: 1px solid var(--v3-glass-surface-border);
+    border-top: 1.5px solid transparent;
+    backdrop-filter: var(--v3-glass-surface-blur);
+    -webkit-backdrop-filter: var(--v3-glass-surface-blur);
+    border-radius: var(--v3-radius-md);
+    transition: var(--v3-transition-interactive);
+}
+
+.design-v3 .v3-source-card:hover {
+    background: var(--v3-glass-surface-bg-hover);
+}
+
+.design-v3 .v3-source-card[data-corpus="difc"]  { border-top-color: #60A5FA; }
+.design-v3 .v3-source-card[data-corpus="uk"]    { border-top-color: #A78BFA; }
+.design-v3 .v3-source-card[data-corpus="czech"] { border-top-color: #34D399; }
+.design-v3 .v3-source-card[data-corpus="au"]    { border-top-color: #FCD34D; }
+
+/* ── V3 Depth grid — landing page ────────────────────────── */
+.design-v3 .v3-depth-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(157, 127, 204, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(157, 127, 204, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 0%, transparent 70%);
+    transform: perspective(800px) rotateX(25deg) translateY(-20px);
+    transform-origin: center bottom;
+    pointer-events: none;
+}
+
+/* ── V3 Aurora orbs — landing page only ──────────────────── */
+.design-v3 .v3-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.35;
+    pointer-events: none;
+    animation: v3-orb-float var(--orb-duration, 25s) ease-in-out infinite alternate;
+    will-change: transform;
+}
+
+.design-v3 .v3-orb-1 {
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, oklch(0.40 0.22 285) 0%, transparent 70%);
+    top: -100px; left: -100px;
+    --orb-duration: 28s;
+}
+.design-v3 .v3-orb-2 {
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, oklch(0.35 0.18 220) 0%, transparent 70%);
+    top: 30%; right: -80px;
+    --orb-duration: 22s;
+}
+.design-v3 .v3-orb-3 {
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, oklch(0.38 0.20 195) 0%, transparent 70%);
+    bottom: -80px; left: 30%;
+    --orb-duration: 32s;
+}
+
+/* ── V3 Sidebar glass ─────────────────────────────────────── */
+.design-v3 [data-slot="sidebar"] {
+    backdrop-filter: blur(24px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+    background: var(--sidebar) !important;
+    border-right: 1px solid var(--v3-glass-surface-border) !important;
+}
+
+/* ── V3 Focus rings — WCAG 2.4.7 / 2.4.11 ───────────────── */
+/* Iris-tinted keyboard focus ring for all interactive V3 elements */
+.design-v3 :focus-visible {
+    outline: 2px solid rgba(123, 94, 167, 0.80);
+    outline-offset: 2px;
+}
+
+/* Suppress pointer-driven focus rings — keyboard only */
+.design-v3 :focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ── V3 Reduced motion ────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+    .design-v3 * {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+    }
+    .design-v3 .aurora-bg::before {
+        animation: none !important;
+    }
+    .design-v3 .v3-orb {
+        animation: none !important;
+    }
+    .design-v3 .v3-text-gradient {
+        animation: none !important;
+    }
+}
+
+/* ── V3 Mobile degradation ────────────────────────────────── */
+@media (max-width: 768px) {
+    .design-v3 .aurora-bg::before,
+    .design-v3 .aurora-bg-static::before {
+        filter: blur(40px);
+    }
+
+    .design-v3 .v3-glass-panel {
+        backdrop-filter: blur(12px) saturate(130%);
+        -webkit-backdrop-filter: blur(12px) saturate(130%);
+    }
+
+    .design-v3 .v3-glass-elevated {
+        backdrop-filter: blur(20px) saturate(140%);
+        -webkit-backdrop-filter: blur(20px) saturate(140%);
+    }
+
+    .design-v3 .v3-orb-2,
+    .design-v3 .v3-orb-3 {
+        display: none;
+    }
+
+    .design-v3 .v3-orb-1 {
+        opacity: 0.20;
+    }
+}
+
+/* ============================================================
    THEME SWITCHING — smooth transition when dark/light toggles
    ============================================================ */
 html {
@@ -419,6 +909,21 @@ button:active:not(:disabled):not(.no-press-scale) {
     animation: item-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
     will-change: transform, opacity;
     transform: translateZ(0);
+}
+
+/* Reduced-motion: disable entrance animations — WCAG 2.3.3 */
+@media (prefers-reduced-motion: reduce) {
+    .animate-glass-in,
+    .animate-item-in {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+        animation: none !important;
+    }
 }
 
 /* ============================================================
@@ -883,4 +1388,138 @@ button:active:not(:disabled):not(.no-press-scale) {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* ============================================================
+   V3 WORKSPACE OVERRIDES
+   Cascade onto existing class names in workspace pages
+   when .design-v3 is active on <html>.
+   ============================================================ */
+
+/* Bottom nav pill — V3 glass treatment */
+.design-v3 .bottom-nav-pill {
+    background: var(--v3-glass-elevated-bg) !important;
+    border: 1px solid var(--v3-glass-elevated-border) !important;
+    backdrop-filter: var(--v3-glass-elevated-blur) !important;
+    -webkit-backdrop-filter: var(--v3-glass-elevated-blur) !important;
+    box-shadow: var(--v3-glass-elevated-shadow) !important;
+}
+
+/* Animate glass-in entry — unchanged keyframe, but honor V3 tokens */
+.design-v3 .animate-glass-in {
+    animation: glass-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Existing glass utilities get V3 overrides */
+.design-v3 .glass-sm {
+    background: var(--v3-glass-surface-bg) !important;
+    backdrop-filter: var(--v3-glass-surface-blur) !important;
+    -webkit-backdrop-filter: var(--v3-glass-surface-blur) !important;
+    border-color: var(--v3-glass-surface-border) !important;
+    box-shadow: var(--v3-glass-surface-shadow) !important;
+}
+
+.design-v3 .glass-md {
+    background: var(--v3-glass-surface-bg) !important;
+    backdrop-filter: var(--v3-glass-surface-blur) !important;
+    -webkit-backdrop-filter: var(--v3-glass-surface-blur) !important;
+    border-color: var(--v3-glass-surface-border) !important;
+    box-shadow: var(--v3-glass-surface-shadow) !important;
+}
+
+.design-v3 .glass-lg {
+    background: var(--v3-glass-elevated-bg) !important;
+    backdrop-filter: var(--v3-glass-elevated-blur) !important;
+    -webkit-backdrop-filter: var(--v3-glass-elevated-blur) !important;
+    border-color: var(--v3-glass-elevated-border) !important;
+    box-shadow: var(--v3-glass-elevated-shadow) !important;
+}
+
+.design-v3 .glass-heavy {
+    background: var(--v3-glass-floating-bg) !important;
+    backdrop-filter: var(--v3-glass-floating-blur) !important;
+    -webkit-backdrop-filter: var(--v3-glass-floating-blur) !important;
+    border-color: var(--v3-glass-floating-border) !important;
+    box-shadow: var(--v3-glass-floating-shadow) !important;
+}
+
+/* Auth page glass card — centered login/register card on aurora-bg-static */
+.design-v3 .auth-glass-card {
+    background: var(--v3-glass-elevated-bg);
+    backdrop-filter: var(--v3-glass-elevated-blur);
+    -webkit-backdrop-filter: var(--v3-glass-elevated-blur);
+    border: 1px solid var(--v3-glass-elevated-border);
+    box-shadow: var(--v3-glass-elevated-shadow);
+    border-radius: var(--v3-radius-lg);
+}
+
+/* Documents card grid — hover lift */
+.design-v3 .doc-card {
+    background: var(--v3-glass-surface-bg);
+    backdrop-filter: var(--v3-glass-surface-blur);
+    -webkit-backdrop-filter: var(--v3-glass-surface-blur);
+    border: 1px solid var(--v3-glass-surface-border);
+    box-shadow: var(--v3-glass-surface-shadow);
+    border-radius: var(--v3-radius-md);
+    transition: var(--v3-transition-interactive), transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.design-v3 .doc-card:hover {
+    background: var(--v3-glass-surface-bg-hover);
+    transform: translateY(-3px);
+    box-shadow: var(--v3-glass-elevated-shadow);
+}
+
+/* Settings / Billing form elements */
+.design-v3 input,
+.design-v3 textarea,
+.design-v3 select {
+    background: var(--v3-glass-surface-bg) !important;
+    border-color: var(--v3-glass-surface-border) !important;
+    transition: var(--v3-transition-border), var(--v3-transition-shadow);
+}
+
+.design-v3 input:focus-visible,
+.design-v3 textarea:focus-visible,
+.design-v3 select:focus-visible {
+    border-color: var(--v3-glass-iris-border) !important;
+    box-shadow: 0 0 0 3px rgba(157, 127, 204, 0.40) !important;
+    outline: none !important;
+}
+
+/* Primary button — luminous iris gradient */
+.design-v3 button[data-variant="primary"],
+.design-v3 .btn-v3-primary {
+    background: var(--v3-btn-primary-bg) !important;
+    border: none !important;
+    color: #fff !important;
+    box-shadow: 0 0 20px rgba(123, 94, 167, 0.30) !important;
+    transition: var(--v3-transition-interactive), transform 0.12s ease !important;
+}
+
+.design-v3 button[data-variant="primary"]:hover,
+.design-v3 .btn-v3-primary:hover {
+    background: var(--v3-btn-primary-hover-bg) !important;
+    box-shadow: 0 0 32px rgba(123, 94, 167, 0.45) !important;
+    transform: scale(1.02);
+}
+
+/* Shimmer text gets V3 iris palette */
+.design-v3 .shimmer-text {
+    background: linear-gradient(90deg, #7B5EA7 0%, #9D7FCC 40%, #4F8FD4 60%, #7B5EA7 80%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+}
+
+/* Auth page wrapper — aurora static backdrop */
+.design-v3 .auth-page-wrapper {
+    background: var(--v3-dark-bg);
+    position: relative;
+}
+
+.design-v3:not(.dark) .auth-page-wrapper {
+    background: var(--v3-light-bg);
 }
