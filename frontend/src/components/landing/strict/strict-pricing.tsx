@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, MotionConfig } from "motion/react";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -210,11 +211,16 @@ function PricingCard({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function StrictPricing() {
+  const isMobile = useIsMobile();
+
   return (
     <MotionConfig reducedMotion="user">
       <section
         className="mx-auto"
-        style={{ maxWidth: "880px", padding: "40px 32px 48px" }}
+        style={{
+          maxWidth: "880px",
+          padding: isMobile ? "32px 0 40px" : "40px 32px 48px",
+        }}
       >
         {/* Section header */}
         <motion.div
@@ -223,6 +229,7 @@ export function StrictPricing() {
           viewport={{ once: true, amount: 0.15 }}
           variants={V3_FADE_UP}
           className="text-center mb-8"
+          style={{ padding: isMobile ? "0 16px" : undefined }}
         >
           <p
             className="uppercase tracking-[1.5px] mb-3"
@@ -236,7 +243,7 @@ export function StrictPricing() {
           <h2
             className="font-serif font-normal"
             style={{
-              fontSize: "22px",
+              fontSize: isMobile ? "18px" : "22px",
               color: "var(--strict-text-primary)",
             }}
           >
@@ -244,28 +251,102 @@ export function StrictPricing() {
           </h2>
         </motion.div>
 
-        {/* Cards row */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.1 }}
-          variants={{
-            hidden: { opacity: 0 },
-            visible: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.08,
-                delayChildren: 0.05,
+        {isMobile ? (
+          /* Mobile: horizontal scroll carousel with snap */
+          <>
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.1 }}
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+                },
+              }}
+              style={{
+                display: "flex",
+                gap: "12px",
+                overflowX: "auto",
+                scrollSnapType: "x mandatory",
+                WebkitOverflowScrolling: "touch",
+                paddingLeft: "16px",
+                paddingRight: "16px",
+                paddingBottom: "8px",
+                /* Hide scrollbar but keep scrolling */
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+              }}
+            >
+              {PLANS.map((plan, index) => (
+                <div
+                  key={plan.name}
+                  style={{
+                    scrollSnapAlign: "center",
+                    flexShrink: 0,
+                    /* Show ~10px of next card to hint scrollability */
+                    width: "calc(75vw - 16px)",
+                    maxWidth: "240px",
+                    minWidth: "200px",
+                  }}
+                >
+                  <PricingCard plan={plan} index={index} />
+                </div>
+              ))}
+            </motion.div>
+
+            {/* Scroll indicator dots */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "6px",
+                marginTop: "16px",
+              }}
+            >
+              {PLANS.map((plan) => (
+                <div
+                  key={plan.name}
+                  style={{
+                    width: plan.featured ? "16px" : "6px",
+                    height: "6px",
+                    borderRadius: "3px",
+                    background: plan.featured
+                      ? "rgba(201,168,76,0.5)"
+                      : "rgba(201,168,76,0.2)",
+                    transition: "width 0.2s ease",
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Edge-fade hint shadows */}
+            <style>{`
+              .strict-pricing-scroll::-webkit-scrollbar { display: none; }
+            `}</style>
+          </>
+        ) : (
+          /* Desktop: flex row */
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.1 }}
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.08, delayChildren: 0.05 },
               },
-            },
-          }}
-          className="flex"
-          style={{ gap: "14px" }}
-        >
-          {PLANS.map((plan, index) => (
-            <PricingCard key={plan.name} plan={plan} index={index} />
-          ))}
-        </motion.div>
+            }}
+            className="flex"
+            style={{ gap: "14px" }}
+          >
+            {PLANS.map((plan, index) => (
+              <PricingCard key={plan.name} plan={plan} index={index} />
+            ))}
+          </motion.div>
+        )}
       </section>
     </MotionConfig>
   );

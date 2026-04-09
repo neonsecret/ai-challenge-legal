@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
 import { STRICT_TYPEWRITER, STRICT_HIW } from "@/lib/strict-tokens";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -484,6 +485,7 @@ function HiwVisualPanel({ activeStep }: { activeStep: number }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function StrictHowItWorks() {
+  const isMobile = useIsMobile();
   const [activeStep, setActiveStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -567,7 +569,11 @@ export function StrictHowItWorks() {
 
       <section
         ref={sectionRef}
-        style={{ padding: "56px 32px", maxWidth: "880px", margin: "0 auto" }}
+        style={{
+          padding: isMobile ? "40px 16px" : "56px 32px",
+          maxWidth: "880px",
+          margin: "0 auto",
+        }}
       >
         {/* Label */}
         <motion.p
@@ -595,7 +601,7 @@ export function StrictHowItWorks() {
           viewport={{ once: true, amount: 0.3 }}
           className="font-serif font-normal"
           style={{
-            fontSize: "22px",
+            fontSize: isMobile ? "18px" : "22px",
             color: "var(--strict-text-primary)",
             opacity: 0.75,
             textAlign: "center",
@@ -605,7 +611,7 @@ export function StrictHowItWorks() {
           See it in action
         </motion.h2>
 
-        {/* Layout: steps + visual panel */}
+        {/* Layout: mobile = visual on top + step dots below; desktop = steps left + visual right */}
         <motion.div
           variants={V3_FADE_UP}
           initial="hidden"
@@ -613,35 +619,123 @@ export function StrictHowItWorks() {
           viewport={{ once: true, amount: 0.2 }}
           style={{
             display: "flex",
-            gap: "24px",
+            flexDirection: isMobile ? "column" : "row",
+            gap: isMobile ? "20px" : "24px",
             alignItems: "stretch",
           }}
         >
-          {/* Left: step list */}
-          <div
-            style={{
-              width: "280px",
-              flexShrink: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-            }}
-          >
-            {STEPS.map((step, idx) => (
-              <StepItem
-                key={step.num}
-                num={step.num}
-                title={step.title}
-                sub={step.sub}
-                active={activeStep === idx}
-                index={idx}
-                onClick={() => handleStepClick(idx)}
-              />
-            ))}
-          </div>
+          {/* Visual panel — top on mobile, right on desktop */}
+          {isMobile && <HiwVisualPanel activeStep={activeStep} />}
 
-          {/* Right: animated visual panel */}
-          <HiwVisualPanel activeStep={activeStep} />
+          {/* Step list — full width on mobile (horizontal tabs), fixed width on desktop */}
+          {isMobile ? (
+            /* Mobile: horizontal step selector tabs */
+            <div
+              style={{
+                display: "flex",
+                gap: "8px",
+              }}
+            >
+              {STEPS.map((step, idx) => (
+                <button
+                  key={step.num}
+                  type="button"
+                  onClick={() => handleStepClick(idx)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 8px",
+                    borderRadius: "10px",
+                    cursor: "pointer",
+                    border: `1px solid ${activeStep === idx ? "var(--strict-gold-border)" : "transparent"}`,
+                    background: activeStep === idx ? "var(--strict-glass-bg)" : "transparent",
+                    textAlign: "center",
+                    transition: "background 0.3s ease, border-color 0.3s ease",
+                    minHeight: "44px",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Progress bar at bottom of tab */}
+                  {activeStep === idx && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        height: "2px",
+                        background: "rgba(201,168,76,0.06)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        key={`progress-mob-${idx}-${activeStep}`}
+                        style={{
+                          height: "2px",
+                          background: "rgba(201,168,76,0.3)",
+                          width: "0%",
+                          animation: `hiwScanFill ${STRICT_HIW.stepDuration}ms linear forwards`,
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div
+                    style={{
+                      color:
+                        activeStep === idx
+                          ? "rgba(201,168,76,0.6)"
+                          : "rgba(201,168,76,0.25)",
+                      fontSize: "9px",
+                      letterSpacing: "0.5px",
+                      marginBottom: "3px",
+                    }}
+                  >
+                    {step.num}
+                  </div>
+                  <div
+                    style={{
+                      color:
+                        activeStep === idx
+                          ? "rgba(230,235,245,0.8)"
+                          : "rgba(230,235,245,0.4)",
+                      fontSize: "10px",
+                      fontWeight: 500,
+                      lineHeight: 1.3,
+                      transition: "color 0.3s ease",
+                    }}
+                  >
+                    {step.title}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            /* Desktop: vertical step list on left */
+            <div
+              style={{
+                width: "280px",
+                flexShrink: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+              }}
+            >
+              {STEPS.map((step, idx) => (
+                <StepItem
+                  key={step.num}
+                  num={step.num}
+                  title={step.title}
+                  sub={step.sub}
+                  active={activeStep === idx}
+                  index={idx}
+                  onClick={() => handleStepClick(idx)}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Visual panel — right on desktop */}
+          {!isMobile && <HiwVisualPanel activeStep={activeStep} />}
         </motion.div>
       </section>
     </>

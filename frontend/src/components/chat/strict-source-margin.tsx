@@ -13,19 +13,27 @@ interface StrictSourceMarginProps {
     sources: StrictSourceMarginSource[]
     onSourceClick?: (id: string) => void
     visible?: boolean
+    /** When true, renders inline (no fixed width/border) for the mobile bottom panel */
+    mobile?: boolean
 }
 
-export function StrictSourceMargin({ sources, onSourceClick, visible = false }: StrictSourceMarginProps) {
+export function StrictSourceMargin({ sources, onSourceClick, visible = false, mobile = false }: StrictSourceMarginProps) {
     return (
         <div
-            style={{
-                width: 160,
-                flexShrink: 0,
-                background: "var(--strict-glass-recessed)",
-                borderLeft: "1px solid var(--strict-gold-border)",
-                padding: "18px 12px",
-                overflowY: "auto",
-            }}
+            style={
+                mobile
+                    ? {
+                          padding: "12px 14px 14px",
+                      }
+                    : {
+                          width: 160,
+                          flexShrink: 0,
+                          background: "var(--strict-glass-recessed)",
+                          borderLeft: "1px solid var(--strict-gold-border)",
+                          padding: "18px 12px",
+                          overflowY: "auto",
+                      }
+            }
         >
             <p
                 style={{
@@ -55,11 +63,16 @@ export function StrictSourceMargin({ sources, onSourceClick, visible = false }: 
                 sources.map((src, idx) => (
                     <div key={src.id}>
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.95, x: 12 }}
+                            initial={mobile
+                                ? { opacity: 0, scale: 0.95, y: 8 }
+                                : { opacity: 0, scale: 0.95, x: 12 }
+                            }
                             animate={
                                 visible
-                                    ? { opacity: 1, scale: 1, x: 0 }
-                                    : { opacity: 0, scale: 0.95, x: 12 }
+                                    ? { opacity: 1, scale: 1, x: 0, y: 0 }
+                                    : mobile
+                                        ? { opacity: 0, scale: 0.95, y: 8 }
+                                        : { opacity: 0, scale: 0.95, x: 12 }
                             }
                             transition={{
                                 ...V3_SPRING.standard,

@@ -1,6 +1,7 @@
 "use client"
 
-import { type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
     StrictSourceMargin,
     type StrictSourceMarginSource,
@@ -16,8 +17,12 @@ interface StrictLayoutProps {
 /**
  * Full Glass Scholar layout wrapper.
  *
- * One glass pane containing:
+ * Desktop:
  *   [Sidebar Rail 44px] | [Reading Area flex-1] | [Source Margin 160px]
+ *
+ * Mobile:
+ *   [Reading Area full-width]
+ *   [Collapsible Sources panel at bottom]
  *
  * This is a pure layout wrapper — no chat logic lives here.
  */
@@ -27,6 +32,9 @@ export function StrictLayout({
     onSourceClick,
     sourcesVisible = false,
 }: StrictLayoutProps) {
+    const isMobile = useIsMobile()
+    const [sourcesExpanded, setSourcesExpanded] = useState(false)
+
     return (
         <div
             style={{
@@ -39,58 +47,61 @@ export function StrictLayout({
                 backdropFilter: "var(--strict-glass-blur)",
                 WebkitBackdropFilter: "var(--strict-glass-blur)",
                 border: "1px solid var(--strict-glass-border)",
-                borderRadius: 16,
+                borderRadius: isMobile ? 12 : 16,
                 boxShadow: "var(--strict-glass-shadow)",
+                flexDirection: isMobile ? "column" : "row",
             }}
         >
-            {/* Sidebar rail — 44px */}
-            <div
-                style={{
-                    width: 44,
-                    flexShrink: 0,
-                    background: "var(--strict-glass-recessed)",
-                    borderRight: "1px solid var(--strict-gold-border)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    paddingTop: 14,
-                    gap: 10,
-                }}
-            >
-                {/* Logo circle */}
+            {/* Sidebar rail — desktop only */}
+            {!isMobile && (
                 <div
                     style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: "50%",
-                        border: "1px solid var(--strict-gold-border-active)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 8,
-                        color: "var(--strict-source-label)",
+                        width: 44,
                         flexShrink: 0,
+                        background: "var(--strict-glass-recessed)",
+                        borderRight: "1px solid var(--strict-gold-border)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        paddingTop: 14,
+                        gap: 10,
                     }}
                 >
-                    V
-                </div>
-
-                {/* Icon placeholders */}
-                {[0, 1, 2].map((i) => (
+                    {/* Logo circle */}
                     <div
-                        key={i}
                         style={{
-                            width: 16,
-                            height: 16,
-                            borderRadius: 4,
-                            background: "rgba(255,255,255,0.04)",
+                            width: 22,
+                            height: 22,
+                            borderRadius: "50%",
+                            border: "1px solid var(--strict-gold-border-active)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 8,
+                            color: "var(--strict-source-label)",
                             flexShrink: 0,
                         }}
-                    />
-                ))}
-            </div>
+                    >
+                        V
+                    </div>
 
-            {/* Reading area — flex-1 */}
+                    {/* Icon placeholders */}
+                    {[0, 1, 2].map((i) => (
+                        <div
+                            key={i}
+                            style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: 4,
+                                background: "rgba(255,255,255,0.04)",
+                                flexShrink: 0,
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* Reading area */}
             <div
                 style={{
                     flex: 1,
@@ -104,12 +115,82 @@ export function StrictLayout({
                 {children}
             </div>
 
-            {/* Source margin */}
-            <StrictSourceMargin
-                sources={sources}
-                onSourceClick={onSourceClick}
-                visible={sourcesVisible}
-            />
+            {/* Source margin — desktop: right column; mobile: collapsible bottom panel */}
+            {isMobile ? (
+                sources.length > 0 && sourcesVisible ? (
+                    <div
+                        style={{
+                            borderTop: "1px solid var(--strict-gold-border)",
+                            flexShrink: 0,
+                        }}
+                    >
+                        {/* Toggle header */}
+                        <button
+                            type="button"
+                            onClick={() => setSourcesExpanded((v) => !v)}
+                            style={{
+                                width: "100%",
+                                padding: "10px 14px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                background: "var(--strict-glass-recessed)",
+                                border: "none",
+                                cursor: "pointer",
+                                minHeight: "44px",
+                            }}
+                        >
+                            <span
+                                style={{
+                                    color: "var(--strict-source-label)",
+                                    fontSize: 8,
+                                    letterSpacing: "0.5px",
+                                    textTransform: "uppercase",
+                                }}
+                            >
+                                SOURCES ({sources.length})
+                            </span>
+                            <span
+                                style={{
+                                    color: "var(--strict-gold-text)",
+                                    fontSize: 10,
+                                    opacity: 0.5,
+                                    transition: "transform 0.2s ease",
+                                    transform: sourcesExpanded
+                                        ? "rotate(180deg)"
+                                        : "rotate(0deg)",
+                                }}
+                            >
+                                ▾
+                            </span>
+                        </button>
+
+                        {/* Expandable content */}
+                        <div
+                            style={{
+                                background: "var(--strict-glass-recessed)",
+                                overflow: "hidden",
+                                maxHeight: sourcesExpanded ? "280px" : "0",
+                                transition: "max-height 0.35s ease",
+                                overflowY: sourcesExpanded ? "auto" : "hidden",
+                            }}
+                        >
+                            <StrictSourceMargin
+                                sources={sources}
+                                onSourceClick={onSourceClick}
+                                visible={sourcesVisible && sourcesExpanded}
+                                mobile
+                            />
+                        </div>
+                    </div>
+                ) : null
+            ) : (
+                <StrictSourceMargin
+                    sources={sources}
+                    onSourceClick={onSourceClick}
+                    visible={sourcesVisible}
+                />
+            )}
         </div>
     )
 }

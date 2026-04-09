@@ -14,7 +14,11 @@ export function StrictLanding() {
     <MotionConfig reducedMotion="user">
       <div
         className="min-h-screen overflow-x-hidden"
-        style={{ background: "var(--strict-bg-html)" }}
+        style={{
+          background: "var(--strict-bg-html)",
+          /* Prevent horizontal overflow on all viewports */
+          maxWidth: "100vw",
+        }}
       >
         <StrictMeshBlobs />
         <StrictNav />

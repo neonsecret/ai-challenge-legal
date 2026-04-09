@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { STRICT_TYPEWRITER, STRICT_SOURCES } from "@/lib/strict-tokens";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─── Static content constants ─────────────────────────────────────────────────
 
@@ -66,6 +67,8 @@ function nextChunk(src: string, pos: number): { chunk: string; next: number } {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StrictPreview() {
+  const isMobile = useIsMobile();
+
   // Intersection visibility
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
@@ -74,6 +77,7 @@ export function StrictPreview() {
   const [questionVisible, setQuestionVisible] = useState(false);
   const [typingDone, setTypingDone] = useState(false);
   const [sourcesVisible, setSourcesVisible] = useState(false);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
 
   // Typewriter state
   const bufferRef = useRef("");
@@ -137,13 +141,19 @@ export function StrictPreview() {
   useEffect(() => {
     if (typingDone) {
       setSourcesVisible(true);
+      // Auto-expand sources on mobile when they appear
+      if (isMobile) setSourcesExpanded(true);
     }
-  }, [typingDone]);
+  }, [typingDone, isMobile]);
 
   return (
     <section
       ref={sectionRef}
-      className="px-8 py-14 mx-auto max-w-[880px]"
+      className="mx-auto"
+      style={{
+        padding: isMobile ? "40px 16px" : "56px 32px",
+        maxWidth: "880px",
+      }}
     >
       {/* Section header */}
       <p
@@ -161,7 +171,7 @@ export function StrictPreview() {
         className="text-center mb-8"
         style={{
           fontFamily: "Georgia, serif",
-          fontSize: 22,
+          fontSize: isMobile ? 18 : 22,
           fontWeight: "normal",
           color: "var(--strict-text-primary)",
           opacity: 0.75,
@@ -179,71 +189,75 @@ export function StrictPreview() {
           background: "var(--strict-glass-bg)",
           backdropFilter: "var(--strict-glass-blur)",
           border: "1px solid var(--strict-glass-border)",
-          borderRadius: 16,
+          borderRadius: isMobile ? 12 : 16,
           boxShadow: "var(--strict-glass-shadow)",
           display: "flex",
+          flexDirection: isMobile ? "column" : "row",
           overflow: "hidden",
-          minHeight: 320,
+          minHeight: isMobile ? "auto" : 320,
         }}
       >
-        {/* Sidebar rail — 44px */}
-        <div
-          style={{
-            width: 44,
-            background: "var(--strict-glass-recessed)",
-            borderRight: "1px solid var(--strict-gold-border)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            paddingTop: 14,
-            gap: 10,
-            flexShrink: 0,
-          }}
-        >
-          {/* Logo circle */}
+        {/* Sidebar rail — desktop only */}
+        {!isMobile && (
           <div
             style={{
-              width: 22,
-              height: 22,
-              borderRadius: "50%",
-              border: "1px solid var(--strict-gold-border-active)",
+              width: 44,
+              background: "var(--strict-glass-recessed)",
+              borderRight: "1px solid var(--strict-gold-border)",
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: 8,
-              color: "var(--strict-gold-text)",
+              paddingTop: 14,
+              gap: 10,
+              flexShrink: 0,
             }}
           >
-            V
-          </div>
-          {/* Icon placeholders */}
-          {[0, 1, 2].map((i) => (
+            {/* Logo circle */}
             <div
-              key={i}
               style={{
-                width: 16,
-                height: 16,
-                borderRadius: 4,
-                background: "var(--strict-glass-bg)",
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                border: "1px solid var(--strict-gold-border-active)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 8,
+                color: "var(--strict-gold-text)",
               }}
-            />
-          ))}
-        </div>
+            >
+              V
+            </div>
+            {/* Icon placeholders */}
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 4,
+                  background: "var(--strict-glass-bg)",
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Reading area — flex-1 */}
         <div
           style={{
             flex: 1,
-            padding: "18px 22px",
+            padding: isMobile ? "16px 14px" : "18px 22px",
             display: "flex",
             flexDirection: "column",
+            minWidth: 0,
           }}
         >
           {/* Step 2 — question fades in */}
           <p
             style={{
               fontFamily: "Georgia, serif",
-              fontSize: 12,
+              fontSize: isMobile ? 11 : 12,
               fontStyle: "italic",
               color: "var(--strict-text-question)",
               marginBottom: 14,
@@ -262,7 +276,7 @@ export function StrictPreview() {
             dangerouslySetInnerHTML={{ __html: bufferRef.current }}
             style={{
               fontFamily: "Georgia, serif",
-              fontSize: 12.5,
+              fontSize: isMobile ? 12 : 12.5,
               color: "var(--strict-text-body)",
               lineHeight: 1.8,
               letterSpacing: "0.01em",
@@ -302,78 +316,189 @@ export function StrictPreview() {
           </div>
         </div>
 
-        {/* Source margin — 160px */}
-        <div
-          style={{
-            width: 160,
-            background: "var(--strict-glass-recessed)",
-            borderLeft: "1px solid var(--strict-gold-border)",
-            padding: "18px 12px",
-            flexShrink: 0,
-          }}
-        >
-          <p
+        {/* Source margin — desktop: right column; mobile: collapsible section below */}
+        {isMobile ? (
+          <div
             style={{
-              color: "var(--strict-gold-text)",
-              fontSize: 8,
-              letterSpacing: "0.5px",
-              textTransform: "uppercase",
-              marginBottom: 12,
-              opacity: 0.6,
+              borderTop: "1px solid var(--strict-gold-border)",
             }}
           >
-            SOURCES
-          </p>
-
-          {/* Step 4 — sources reveal as staggered glass tiles */}
-          {SOURCES.map((src, idx) => (
-            <div key={idx}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, x: 12 }}
-                animate={
-                  sourcesVisible
-                    ? { opacity: 1, scale: 1, x: 0 }
-                    : { opacity: 0, scale: 0.95, x: 12 }
-                }
-                transition={{
-                  ...V3_SPRING.standard,
-                  delay: sourcesVisible ? idx * (STRICT_SOURCES.stagger / 1000) : 0,
+            {/* Collapsible toggle */}
+            <button
+              type="button"
+              onClick={() => setSourcesExpanded((v) => !v)}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                background: "var(--strict-glass-recessed)",
+                border: "none",
+                cursor: "pointer",
+                minHeight: "44px",
+              }}
+            >
+              <span
+                style={{
+                  color: "var(--strict-gold-text)",
+                  fontSize: 8,
+                  letterSpacing: "0.5px",
+                  textTransform: "uppercase",
+                  opacity: 0.6,
                 }}
               >
-                <p
-                  style={{
-                    color: "var(--strict-gold-text)",
-                    fontSize: 9,
-                    marginBottom: 2,
-                    opacity: 0.6,
-                  }}
-                >
-                  {idx + 1}
-                </p>
-                <p
-                  style={{
-                    color: "var(--strict-source-text)",
-                    fontSize: 9,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {src}
-                </p>
-              </motion.div>
+                SOURCES ({SOURCES.length})
+              </span>
+              <span
+                style={{
+                  color: "var(--strict-gold-text)",
+                  fontSize: 10,
+                  opacity: 0.5,
+                  transition: "transform 0.2s ease",
+                  transform: sourcesExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              >
+                ▾
+              </span>
+            </button>
 
-              {/* Gold gradient fade separator (not after last item) */}
-              {idx < SOURCES.length - 1 && (
-                <div
-                  style={{
-                    height: 1,
-                    background: "var(--strict-gold-sep)",
-                    margin: "10px 0",
-                  }}
-                />
-              )}
+            {/* Expandable source list */}
+            <div
+              style={{
+                background: "var(--strict-glass-recessed)",
+                overflow: "hidden",
+                maxHeight: sourcesExpanded ? "400px" : "0",
+                transition: "max-height 0.35s ease",
+                padding: sourcesExpanded ? "12px 14px 14px" : "0 14px",
+              }}
+            >
+              {SOURCES.map((src, idx) => (
+                <div key={idx}>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
+                    animate={
+                      sourcesVisible && sourcesExpanded
+                        ? { opacity: 1, scale: 1, y: 0 }
+                        : { opacity: 0, scale: 0.95, y: 8 }
+                    }
+                    transition={{
+                      ...V3_SPRING.standard,
+                      delay:
+                        sourcesVisible && sourcesExpanded
+                          ? idx * (STRICT_SOURCES.stagger / 1000)
+                          : 0,
+                    }}
+                  >
+                    <p
+                      style={{
+                        color: "var(--strict-gold-text)",
+                        fontSize: 9,
+                        marginBottom: 2,
+                        opacity: 0.6,
+                      }}
+                    >
+                      {idx + 1}
+                    </p>
+                    <p
+                      style={{
+                        color: "var(--strict-source-text)",
+                        fontSize: 10,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {src}
+                    </p>
+                  </motion.div>
+                  {idx < SOURCES.length - 1 && (
+                    <div
+                      style={{
+                        height: 1,
+                        background: "var(--strict-gold-sep)",
+                        margin: "10px 0",
+                      }}
+                    />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          /* Desktop source margin */
+          <div
+            style={{
+              width: 160,
+              background: "var(--strict-glass-recessed)",
+              borderLeft: "1px solid var(--strict-gold-border)",
+              padding: "18px 12px",
+              flexShrink: 0,
+            }}
+          >
+            <p
+              style={{
+                color: "var(--strict-gold-text)",
+                fontSize: 8,
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                marginBottom: 12,
+                opacity: 0.6,
+              }}
+            >
+              SOURCES
+            </p>
+
+            {/* Step 4 — sources reveal as staggered glass tiles */}
+            {SOURCES.map((src, idx) => (
+              <div key={idx}>
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, x: 12 }}
+                  animate={
+                    sourcesVisible
+                      ? { opacity: 1, scale: 1, x: 0 }
+                      : { opacity: 0, scale: 0.95, x: 12 }
+                  }
+                  transition={{
+                    ...V3_SPRING.standard,
+                    delay: sourcesVisible
+                      ? idx * (STRICT_SOURCES.stagger / 1000)
+                      : 0,
+                  }}
+                >
+                  <p
+                    style={{
+                      color: "var(--strict-gold-text)",
+                      fontSize: 9,
+                      marginBottom: 2,
+                      opacity: 0.6,
+                    }}
+                  >
+                    {idx + 1}
+                  </p>
+                  <p
+                    style={{
+                      color: "var(--strict-source-text)",
+                      fontSize: 9,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {src}
+                  </p>
+                </motion.div>
+
+                {/* Gold gradient fade separator (not after last item) */}
+                {idx < SOURCES.length - 1 && (
+                  <div
+                    style={{
+                      height: 1,
+                      background: "var(--strict-gold-sep)",
+                      margin: "10px 0",
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </motion.div>
     </section>
   );

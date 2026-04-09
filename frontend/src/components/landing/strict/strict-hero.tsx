@@ -9,6 +9,7 @@ import {
   STRICT_BADGE_PULSE,
   STRICT_GLOW_PULSE,
 } from "@/lib/strict-tokens";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -34,21 +35,35 @@ const goldGradientText: React.CSSProperties = {
 function JurisdictionPills() {
   const [hovered, setHovered] = useState<string | null>(null);
   return (
-    <div className="flex items-center gap-[10px] mb-5">
+    <div className="flex items-center flex-wrap gap-[8px] mb-5">
       {JURISDICTIONS.map((jur, i) => (
-        <span key={jur} className="flex items-center gap-[10px]">
+        <span key={jur} className="flex items-center gap-[8px]">
           <span
             onMouseEnter={() => setHovered(jur)}
             onMouseLeave={() => setHovered(null)}
             className="text-[10px] tracking-[0.5px] cursor-default transition-all duration-200"
-            style={hovered === jur
-              ? { color: "var(--strict-gold-text)", background: "var(--strict-gold-badge-bg)", border: "1px solid var(--strict-gold-border)", borderRadius: "5px", padding: "1px 6px", opacity: 1 }
-              : { color: "var(--strict-gold-text)", opacity: 0.7 }}
+            style={
+              hovered === jur
+                ? {
+                    color: "var(--strict-gold-text)",
+                    background: "var(--strict-gold-badge-bg)",
+                    border: "1px solid var(--strict-gold-border)",
+                    borderRadius: "5px",
+                    padding: "1px 6px",
+                    opacity: 1,
+                  }
+                : { color: "var(--strict-gold-text)", opacity: 0.7 }
+            }
           >
             {jur}
           </span>
           {i < JURISDICTIONS.length - 1 && (
-            <span className="text-[10px] select-none" style={{ color: "var(--strict-gold-text)", opacity: 0.15 }}>·</span>
+            <span
+              className="text-[10px] select-none"
+              style={{ color: "var(--strict-gold-text)", opacity: 0.15 }}
+            >
+              ·
+            </span>
           )}
         </span>
       ))}
@@ -77,7 +92,13 @@ function CtaButton() {
         opacity: hovered ? 1 : 0.8,
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
         boxShadow: hovered ? "0 2px 8px rgba(201,168,76,0.08)" : "none",
-        transition: "transform 0.2s ease, border-bottom-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease",
+        transition:
+          "transform 0.2s ease, border-bottom-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease",
+        /* 44px min tap target for mobile */
+        minHeight: "44px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       Start Researching
@@ -99,7 +120,7 @@ const StatBadge = ({ text }: { text: string }) => (
     style={{
       background: "var(--strict-gold-badge-bg)",
       border: "1px solid var(--strict-gold-badge-border)",
-      color: "var(--strict-gold-badge-text)",
+      color: "var(--strict-badge-text)",
       borderRadius: "4px",
       padding: "1px 6px",
       animation: `strictBadgePulse ${STRICT_BADGE_PULSE}s ease-in-out infinite`,
@@ -111,25 +132,50 @@ const StatBadge = ({ text }: { text: string }) => (
 
 // ─── Normal stat row ──────────────────────────────────────────────────────────
 
-function StatRow({ value, label, badge, detail, index }: {
-  value: string; label: string; badge: string | null; detail: string; index: number;
+function StatRow({
+  value,
+  label,
+  badge,
+  detail,
+  index,
+}: {
+  value: string;
+  label: string;
+  badge: string | null;
+  detail: string;
+  index: number;
 }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ ...V3_SPRING.gentle, delay: 0.3 + index * (STRICT_HERO_STAGGER / 1000) }}
+      transition={{
+        ...V3_SPRING.gentle,
+        delay: 0.3 + index * (STRICT_HERO_STAGGER / 1000),
+      }}
     >
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="font-serif leading-none" style={{ fontSize: "24px", color: "var(--strict-text-primary)", opacity: 0.82 }}>
+        <span
+          className="font-serif leading-none"
+          style={{
+            fontSize: "24px",
+            color: "var(--strict-text-primary)",
+            opacity: 0.82,
+          }}
+        >
           {value}
         </span>
-        <span className="text-[10px] leading-snug" style={{ color: "var(--strict-text-secondary)", opacity: 0.35 }}>
+        <span
+          className="text-[10px] leading-snug"
+          style={{ color: "var(--strict-text-secondary)", opacity: 0.35 }}
+        >
           {label}
         </span>
         {badge && <StatBadge text={badge} />}
       </div>
-      <p className="text-[9px] mt-0.5" style={{ color: "var(--strict-text-dim)" }}>{detail}</p>
+      <p className="text-[9px] mt-0.5" style={{ color: "var(--strict-text-dim)" }}>
+        {detail}
+      </p>
     </motion.div>
   );
 }
@@ -169,14 +215,21 @@ function CitationStat() {
       className="relative"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ ...V3_SPRING.gentle, delay: 0.3 + 3 * (STRICT_HERO_STAGGER / 1000) }}
+      transition={{
+        ...V3_SPRING.gentle,
+        delay: 0.3 + 3 * (STRICT_HERO_STAGGER / 1000),
+      }}
     >
       {/* Gold radial glow */}
       <div
         className="absolute pointer-events-none"
         style={{
-          top: "-4px", left: "-8px", width: "60px", height: "36px",
-          background: "radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%)",
+          top: "-4px",
+          left: "-8px",
+          width: "60px",
+          height: "36px",
+          background:
+            "radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%)",
           borderRadius: "50%",
           opacity: glowVisible ? 1 : 0,
           transition: "opacity 1s ease",
@@ -188,12 +241,17 @@ function CitationStat() {
           style={{
             fontSize: "28px",
             ...goldGradientText,
-            animation: pulsing ? `strictGlowPulse ${STRICT_GLOW_PULSE}s ease-in-out infinite` : undefined,
+            animation: pulsing
+              ? `strictGlowPulse ${STRICT_GLOW_PULSE}s ease-in-out infinite`
+              : undefined,
           }}
         >
           {count}%
         </span>
-        <span className="text-[10px] leading-snug" style={{ color: "var(--strict-text-secondary)", opacity: 0.35 }}>
+        <span
+          className="text-[10px] leading-snug"
+          style={{ color: "var(--strict-text-secondary)", opacity: 0.35 }}
+        >
           Citation accuracy
         </span>
       </div>
@@ -204,9 +262,48 @@ function CitationStat() {
   );
 }
 
+// ─── Stats block (shared between desktop right column and mobile bottom) ──────
+
+function StatsBlock() {
+  return (
+    <div className="flex flex-col gap-4">
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ ...V3_SPRING.gentle, delay: 0.2 }}
+        className="uppercase tracking-[1px]"
+        style={{
+          fontSize: "8px",
+          color: "var(--strict-source-label)",
+          marginBottom: "4px",
+        }}
+      >
+        Benchmark Performance
+      </motion.p>
+
+      {STATS.map((stat, i) => (
+        <div key={stat.value} className="flex flex-col gap-4">
+          <StatRow
+            value={stat.value}
+            label={stat.label}
+            badge={stat.badge ?? null}
+            detail={stat.detail}
+            index={i}
+          />
+          <StatSep />
+        </div>
+      ))}
+
+      <CitationStat />
+    </div>
+  );
+}
+
 // ─── Hero slab (main export) ──────────────────────────────────────────────────
 
 export function StrictHero() {
+  const isMobile = useIsMobile();
+
   return (
     <MotionConfig reducedMotion="user">
       <style>{`
@@ -214,33 +311,42 @@ export function StrictHero() {
         @keyframes strictGlowPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.2)} }
       `}</style>
 
-      <section className="mx-auto" style={{ maxWidth: "880px", padding: "40px 32px 48px" }}>
+      <section
+        className="mx-auto"
+        style={{ maxWidth: "880px", padding: isMobile ? "24px 16px 32px" : "40px 32px 48px" }}
+      >
         {/* Living Glass Slab */}
         <motion.div
           initial={{ opacity: 0, y: 20, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="flex gap-7"
           style={{
             background: "var(--strict-glass-bg)",
             backdropFilter: "var(--strict-glass-blur)",
             border: "1px solid var(--strict-glass-border)",
-            borderRadius: "18px",
-            padding: "32px",
+            borderRadius: isMobile ? "12px" : "18px",
+            padding: isMobile ? "20px 16px" : "32px",
             boxShadow: "var(--strict-glass-shadow)",
+            display: "flex",
+            flexDirection: isMobile ? "column" : "row",
+            gap: isMobile ? "0" : "28px",
             alignItems: "flex-start",
           }}
         >
-          {/* Left: hero text */}
-          <div className="flex-1 flex flex-col">
+          {/* Hero text */}
+          <div className="flex flex-col" style={{ flex: 1 }}>
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ ...V3_SPRING.gentle, delay: 0.1 }}
               className="font-serif font-normal leading-[1.2] mb-2.5"
-              style={{ fontSize: "32px", color: "var(--strict-text-primary)" }}
+              style={{
+                fontSize: isMobile ? "24px" : "32px",
+                color: "var(--strict-text-primary)",
+              }}
             >
-              Legal Research,<br />
+              Legal Research,
+              <br />
               <span style={goldGradientText}>Reimagined</span>
             </motion.h1>
 
@@ -273,29 +379,33 @@ export function StrictHero() {
             </motion.div>
           </div>
 
-          {/* Divider */}
-          <div style={{ width: "1px", background: "var(--strict-gold-border)", alignSelf: "stretch" }} />
+          {/* Divider — horizontal on mobile, vertical on desktop */}
+          <div
+            style={
+              isMobile
+                ? {
+                    height: "1px",
+                    background: "var(--strict-gold-sep)",
+                    margin: "20px 0",
+                    width: "100%",
+                  }
+                : {
+                    width: "1px",
+                    background: "var(--strict-gold-border)",
+                    alignSelf: "stretch",
+                  }
+            }
+          />
 
-          {/* Right: benchmark stats */}
-          <div className="flex flex-col gap-4" style={{ width: "260px", flexShrink: 0 }}>
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...V3_SPRING.gentle, delay: 0.2 }}
-              className="uppercase tracking-[1px]"
-              style={{ fontSize: "8px", color: "var(--strict-source-label)", marginBottom: "4px" }}
-            >
-              Benchmark Performance
-            </motion.p>
-
-            {STATS.map((stat, i) => (
-              <div key={stat.value} className="flex flex-col gap-4">
-                <StatRow value={stat.value} label={stat.label} badge={stat.badge ?? null} detail={stat.detail} index={i} />
-                <StatSep />
-              </div>
-            ))}
-
-            <CitationStat />
+          {/* Stats */}
+          <div
+            style={
+              isMobile
+                ? { width: "100%" }
+                : { width: "260px", flexShrink: 0 }
+            }
+          >
+            <StatsBlock />
           </div>
         </motion.div>
       </section>
