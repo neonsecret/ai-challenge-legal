@@ -1,9 +1,9 @@
 "use client";
 
-// Design version hook — toggles .design-v2 or .design-v3 class on <html>.
+// Design version hook — toggles .design-neon or .design-strict class on <html>.
 // Modeled on frontend/src/lib/theme.tsx.
 //
-// V1 (Classic) has been removed. V2 (Modern) and V3 (Luminous) are active.
+// V1 (Classic) has been removed. Neon (formerly V2/Modern) and Strict (formerly V3/Luminous) are active.
 //
 // No inline <script> needed — a brief flash on first load is acceptable
 // (design version is not SSR-critical).
@@ -21,7 +21,7 @@ import {
 // Types
 // ---------------------------------------------------------------------------
 
-export type DesignVersion = "v2" | "v3";
+export type DesignVersion = "neon" | "strict";
 
 interface DesignVersionContextValue {
     version: DesignVersion;
@@ -33,14 +33,14 @@ interface DesignVersionContextValue {
 // ---------------------------------------------------------------------------
 
 const STORAGE_KEY = "vitreon-design-version";
-const DEFAULT_VERSION: DesignVersion = "v2";
+const DEFAULT_VERSION: DesignVersion = "neon";
 
 const DesignVersionContext = createContext<DesignVersionContextValue | undefined>(undefined);
 
 function readStorage(): DesignVersion {
     try {
         const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored === "v2" || stored === "v3") return stored;
+        if (stored === "neon" || stored === "strict") return stored;
         return DEFAULT_VERSION;
     } catch {
         return DEFAULT_VERSION;
@@ -48,8 +48,8 @@ function readStorage(): DesignVersion {
 }
 
 function applyVersion(version: DesignVersion) {
-    document.documentElement.classList.toggle("design-v2", version === "v2");
-    document.documentElement.classList.toggle("design-v3", version === "v3");
+    document.documentElement.classList.toggle("design-neon", version === "neon");
+    document.documentElement.classList.toggle("design-strict", version === "strict");
 }
 
 // ---------------------------------------------------------------------------

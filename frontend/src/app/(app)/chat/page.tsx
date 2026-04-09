@@ -129,7 +129,7 @@ export default function ChatPage() {
     const [mounted, setMounted] = useState(false)
     useEffect(() => setMounted(true), [])
     const isDark = mounted && resolvedTheme === "dark"
-    const isV3 = mounted && designVersion === "v3"
+    const isV3 = mounted && designVersion === "strict"
     const isMobile = useIsMobile()
     const documentIndex = useDocumentIndex(messages)
 

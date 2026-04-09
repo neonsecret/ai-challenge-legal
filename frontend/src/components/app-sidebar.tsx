@@ -40,7 +40,7 @@ function makeLiquidGlass(isDark: boolean) {
             border: "0.5px solid rgba(255,255,255,0.14)",
         };
     }
-    // Light — cool grey-slate palette, subtler blur (matches .design-v2 sidebar tokens)
+    // Light — cool grey-slate palette, subtler blur (matches .design-neon sidebar tokens)
     return {
         background: "rgba(248, 250, 252, 0.88)",
         backdropFilter: "blur(16px) saturate(130%) brightness(103%)",

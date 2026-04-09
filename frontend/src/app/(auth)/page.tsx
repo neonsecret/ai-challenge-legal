@@ -107,10 +107,10 @@ export default function LandingPage() {
     const isDark = !mounted || resolvedTheme === "dark";
 
     if (!mounted || loading) {
-        const skeletonBg = designVersion === "v3"
+        const skeletonBg = designVersion === "strict"
             ? (isDark ? "#000000" : "#F0F2F8")
             : (isDark ? "#0F1623" : "#e8d4b8");
-        const skeletonSpinner = designVersion === "v3"
+        const skeletonSpinner = designVersion === "strict"
             ? (isDark ? "#9D7FCC" : "#9D7FCC")
             : (isDark ? "#C9A84C" : "#7a4a00");
         return (
@@ -123,11 +123,11 @@ export default function LandingPage() {
     /* ══════════════════════════════════════════════════════════
        V3 "LUMINOUS" THEME — aurora glass layout
     ══════════════════════════════════════════════════════════ */
-    if (designVersion === "v3") {
+    if (designVersion === "strict") {
         const isDarkV3 = resolvedTheme === "dark";
         return (
             <MotionConfig {...V3_MOTION_CONFIG}>
-                <div className={isDarkV3 ? "dark design-v3" : "design-v3"} style={{minHeight: "100vh", background: isDarkV3 ? "#000000" : "var(--v3-light-bg)"}}>
+                <div className={isDarkV3 ? "dark design-strict" : "design-strict"} style={{minHeight: "100vh", background: isDarkV3 ? "#000000" : "var(--v3-light-bg)"}}>
                     <AuroraBackground className="min-h-screen flex flex-col">
                         {/* Nav */}
                         <nav className="sticky top-0 z-50 w-full" style={{
@@ -329,7 +329,7 @@ export default function LandingPage() {
     ══════════════════════════════════════════════════════════ */
     if (isDark) {
         return (
-            <div className="dark landing-sections design-v2">
+            <div className="dark landing-sections design-neon">
                 <section className="hero-aurora relative min-h-screen flex flex-col overflow-hidden"
                          style={{color: "rgba(255,255,255,0.9)"}}>
                     <nav className="sticky top-0 z-50 w-full" style={{
@@ -571,7 +571,7 @@ export default function LandingPage() {
        LIGHT THEME — warm Arrakis amber
     ══════════════════════════════════════════════════════════ */
     return (
-        <div className="design-v2" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
+        <div className="design-neon" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
 
             {/* ── HERO ── */}
             <section style={{

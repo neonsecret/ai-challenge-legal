@@ -21,7 +21,7 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
     const {version} = useDesignVersion()
     useEffect(() => setMounted(true), [])
     const isDark = mounted && resolvedTheme === "dark"
-    const isGlassmorphic = mounted && version === "v3" && isDark
+    const isGlassmorphic = mounted && version === "strict" && isDark
     const {t} = useI18n()
 
     useEffect(() => {

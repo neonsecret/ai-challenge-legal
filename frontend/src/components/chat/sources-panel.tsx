@@ -43,7 +43,7 @@ export function SourcesPanel({sources, onSourceClick}: SourcesPanelProps) {
     const {version: designVersion} = useDesignVersion()
     const [mounted, setMounted] = useState(false)
     useEffect(() => { setMounted(true) }, [])
-    const isV3 = mounted && designVersion === "v3"
+    const isV3 = mounted && designVersion === "strict"
 
     if (!sources || sources.length === 0) return null
 

@@ -254,7 +254,7 @@ export function ChatMessage({
     const {version: designVersion} = useDesignVersion()
     const [v3Mounted, setV3Mounted] = useState(false)
     useEffect(() => { setV3Mounted(true) }, [])
-    const isV3 = v3Mounted && designVersion === "v3"
+    const isV3 = v3Mounted && designVersion === "strict"
 
     const [copied, setCopied] = useState(false)
     const [commentOpen, setCommentOpen] = useState(false)

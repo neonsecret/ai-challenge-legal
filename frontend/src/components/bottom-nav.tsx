@@ -27,7 +27,7 @@ export function BottomNav() {
     useEffect(() => setMounted(true), []);
 
     const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "v3";
+    const isV3 = mounted && designVersion === "strict";
 
     const pill = (isV3 && isDark) ? {
         // V3 dark: structural glass tier

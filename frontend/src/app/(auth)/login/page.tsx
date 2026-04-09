@@ -70,7 +70,7 @@ function LoginPageContent() {
     }, [user, router]);
 
     const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "v3";
+    const isV3 = mounted && designVersion === "strict";
 
     /* ── Shared glass styles ── */
     const glassCard: React.CSSProperties = isV3 ? {

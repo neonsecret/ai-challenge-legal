@@ -14,14 +14,14 @@ const OPTIONS: Array<{
     swatch: string;
 }> = [
     {
-        value: "v2",
-        label: "Modern",
+        value: "neon",
+        label: "Neon",
         swatch: "linear-gradient(135deg, #1E40AF 0%, #4F46E5 100%)",
     },
     {
-        value: "v3",
-        label: "Luminous",
-        swatch: "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 55%, #2DD4BF 100%)",
+        value: "strict",
+        label: "Strict",
+        swatch: "linear-gradient(135deg, rgba(201,168,76,0.3), rgba(201,168,76,0.1))",
     },
 ];
 
@@ -34,9 +34,9 @@ function isDarkSurface(variant: Variant): boolean {
     return variant === "dark" || variant === undefined;
 }
 
-/** Whether to use V2-style accents (indigo/slate) instead of V3 iris. */
+/** Whether to use Neon-style accents (indigo/slate) instead of Strict gold. */
 function isV2Accent(variant: Variant, version: DesignVersion): boolean {
-    return variant === "light" || variant === "v2-light" || version === "v2";
+    return variant === "light" || variant === "v2-light" || version === "neon";
 }
 
 function getTrackStyle(variant: Variant, version: DesignVersion): React.CSSProperties {
@@ -53,11 +53,11 @@ function getTrackStyle(variant: Variant, version: DesignVersion): React.CSSPrope
         };
     }
 
-    if (version === "v3") {
-        // V3: glass surface, iris-tinted border
+    if (version === "strict") {
+        // Strict: glass surface, gold-tinted border
         return {
             background: "rgba(255,255,255,0.10)",
-            border: "0.5px solid rgba(123,94,167,0.24)",
+            border: "0.5px solid rgba(201,168,76,0.24)",
             backdropFilter: "blur(16px) saturate(140%)",
             WebkitBackdropFilter: "blur(16px) saturate(140%)",
         };
@@ -77,19 +77,19 @@ function getActivePillStyle(
     variant: Variant,
     version: DesignVersion
 ): React.CSSProperties {
-    // V2 option or V2-style context: indigo accent
-    if (optionValue === "v2" || isV2Accent(variant, version)) {
+    // Neon option or Neon-style context: indigo accent
+    if (optionValue === "neon" || isV2Accent(variant, version)) {
         return {
             background: "rgba(79,70,229,0.12)",
             border: "0.5px solid rgba(99,102,241,0.32)",
             boxShadow: "0 1px 4px rgba(79,70,229,0.10)",
         };
     }
-    // V3 option in V3 context: iris accent
+    // Strict option in Strict context: gold accent
     return {
-        background: "rgba(123,94,167,0.18)",
-        border: "0.5px solid rgba(123,94,167,0.38)",
-        boxShadow: "0 0 10px rgba(123,94,167,0.16)",
+        background: "rgba(201,168,76,0.15)",
+        border: "0.5px solid rgba(201,168,76,0.25)",
+        boxShadow: "0 0 10px rgba(201,168,76,0.12)",
     };
 }
 
@@ -110,10 +110,10 @@ export function DesignVersionToggle(
         let next: DesignVersion | null = null;
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {
             e.preventDefault();
-            next = current === "v2" ? "v3" : "v2";
+            next = current === "neon" ? "strict" : "neon";
         } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
             e.preventDefault();
-            next = current === "v3" ? "v2" : "v3";
+            next = current === "strict" ? "neon" : "strict";
         }
         if (next) {
             setVersion(next);
@@ -138,7 +138,7 @@ export function DesignVersionToggle(
                 {OPTIONS.map(({ value, label, swatch }) => {
                     const isActive = version === value;
                     // Luminous gets a faint aurora glow on its label when active
-                    const isLuminousActive = value === "v3" && isActive;
+                    const isLuminousActive = value === "strict" && isActive;
 
                     const textColor = dark
                         ? isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.40)"

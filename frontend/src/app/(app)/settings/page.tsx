@@ -47,7 +47,7 @@ export default function SettingsPage() {
 
     // isDark is only retained for passing variant to DesignVersionToggle
     const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "v3";
+    const isV3 = mounted && designVersion === "strict";
 
     useEffect(() => {
         fetch(`${API}/auth/me`, {credentials: "include"})

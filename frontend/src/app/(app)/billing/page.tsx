@@ -74,7 +74,7 @@ export default function BillingPage() {
   }, []);
 
   const isDark = mounted && resolvedTheme === "dark";
-  const isV3 = mounted && designVersion === "v3";
+  const isV3 = mounted && designVersion === "strict";
 
   useEffect(() => {
     async function fetchBilling() {

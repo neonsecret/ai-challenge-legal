@@ -27,7 +27,7 @@ export default function DocumentsPage() {
     }, []);
 
     const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "v3";
+    const isV3 = mounted && designVersion === "strict";
     const isFreeTier = !user || user.subscription_status === "free" || user.max_corpora === 0;
 
     const {

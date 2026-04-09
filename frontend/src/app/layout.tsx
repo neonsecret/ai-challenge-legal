@@ -42,7 +42,7 @@ export default function RootLayout({
             <script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'||!t)&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}`}} />
             {/* Inline design-version script — prevents FOUC for saved design version.
                 Must run before paint so CSS tokens load correctly on first frame. */}
-            <script dangerouslySetInnerHTML={{__html: `try{var dv=localStorage.getItem('vitreon-design-version');if(dv==='v2'){document.documentElement.classList.add('design-v2')}else if(dv==='v3'){document.documentElement.classList.add('design-v3')}}catch(e){}`}} />
+            <script dangerouslySetInnerHTML={{__html: `try{var dv=localStorage.getItem('vitreon-design-version');if(dv==='neon'){document.documentElement.classList.add('design-neon')}else if(dv==='strict'){document.documentElement.classList.add('design-strict')}else{document.documentElement.classList.add('design-neon')}}catch(e){document.documentElement.classList.add('design-neon')}`}} />
         </head>
         <body className="h-full bg-background text-foreground">
         <ThemeProvider>
