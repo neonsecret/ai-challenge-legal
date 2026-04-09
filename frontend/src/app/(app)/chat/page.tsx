@@ -9,6 +9,8 @@ import {SquarePen, History, Trash2, BookOpen, Globe} from "lucide-react"
 import {useTheme} from "@/lib/theme"
 import {ChatInput} from "@/components/chat/chat-input"
 import {ChatMessage, type Source} from "@/components/chat/chat-message"
+import {StrictLayout} from "@/components/chat/strict-layout"
+import {type StrictSourceMarginSource} from "@/components/chat/strict-source-margin"
 import {useChatState} from "@/components/chat/chat-state"
 import {EmptyState, getPresetQuestions} from "@/components/chat/empty-state"
 import {GroundingView} from "@/components/grounding/grounding-view"
@@ -66,17 +68,46 @@ const FOLLOWUP_SUGGESTIONS = [
 
 // Sessions are managed by ChatStateProvider via localStorage
 
+/**
+ * Conditional layout wrapper: renders StrictLayout (glass pane + sidebar rail +
+ * source margin) in Strict dark mode; otherwise renders children directly.
+ */
+function StrictChatWrapper({
+    active,
+    sources,
+    onSourceClick,
+    sourcesVisible,
+    children,
+}: {
+    active: boolean
+    sources: import("@/components/chat/strict-source-margin").StrictSourceMarginSource[]
+    onSourceClick?: (id: string) => void
+    sourcesVisible: boolean
+    children: ReactNode
+}) {
+    if (active) {
+        return (
+            <StrictLayout
+                sources={sources}
+                onSourceClick={onSourceClick}
+                sourcesVisible={sourcesVisible}
+            >
+                {children}
+            </StrictLayout>
+        )
+    }
+    return <>{children}</>
+}
 
 function makeGlassPanel(isV3 = false) {
     if (isV3) {
         return {
-            background: "var(--gm-structural-bg, var(--v3-glass-elevated-bg))",
-            backdropFilter: "var(--gm-structural-blur, var(--v3-glass-elevated-blur))",
-            WebkitBackdropFilter: "var(--gm-structural-blur, var(--v3-glass-elevated-blur))",
-            border: "1px solid var(--gm-structural-border, var(--v3-glass-elevated-border))",
-            // V3 glassmorphism: 16px (was 28px)
+            background: "var(--strict-glass-bg)",
+            backdropFilter: "var(--strict-glass-blur)",
+            WebkitBackdropFilter: "var(--strict-glass-blur)",
+            border: "1px solid var(--strict-glass-border)",
             borderRadius: "16px",
-            boxShadow: "var(--gm-structural-shadow, var(--v3-glass-elevated-shadow))",
+            boxShadow: "var(--strict-glass-shadow)",
             overflow: "hidden",
             willChange: "transform",
             transform: "translateZ(0)",
@@ -310,6 +341,19 @@ export default function ChatPage() {
     const lastAssistant = messages.at(-1)
     const showFollowUps = !isStreaming && lastAssistant?.role === "assistant" && lastAssistant.content
 
+    // Derive Strict source margin entries from the most recent assistant message sources
+    const strictMarginSources: StrictSourceMarginSource[] = (() => {
+        const recentSources = lastAssistant?.sources ?? (isStreaming ? sources : [])
+        return recentSources.slice(0, 8).map((s, i) => ({
+            id: s.doc_id ?? `src-${i}`,
+            label: s.title ?? s.doc_id ?? `Source ${i + 1}`,
+            detail: s.page_numbers?.length
+                ? `p. ${s.page_numbers[0]}`
+                : s.case_number ?? "",
+        }))
+    })()
+    const strictSourcesVisible = isV3 && strictMarginSources.length > 0 && !isStreaming
+
     return (
         <div className="p-2 sm:p-4" style={{
             height: "100%",
@@ -510,7 +554,7 @@ export default function ChatPage() {
             </AnimatePresence>
 
             {/* ── Chat panel ── */}
-            <div className={`animate-glass-in${isV3 ? " v3-glass-elevated" : ""}`} style={{
+            <div className="animate-glass-in" style={{
                 flex: (drawerOpen && drawerData.sources.length > 0) || showPreview
                     ? layoutMode === "chat" ? 2 : layoutMode === "source" ? 1 : 1
                     : 1,
@@ -522,8 +566,23 @@ export default function ChatPage() {
                 overflow: "hidden",
                 contain: "style",
                 transition: `all ${TIMING.slow} ${EASE.out}`,
-                ...makeGlassPanel(isV3),
+                ...(isV3 && !isMobile ? {} : makeGlassPanel(false)),
             }}>
+            <StrictChatWrapper
+                active={isV3 && !isMobile}
+                sources={strictMarginSources}
+                onSourceClick={(id) => {
+                    const recentSources = lastAssistant?.sources ?? sources
+                    const src = recentSources.find(s => s.doc_id === id)
+                    if (src) handleSourceClick(
+                        lastAssistant?.content ?? "",
+                        recentSources,
+                        src.doc_id,
+                        src.page_numbers?.[0]
+                    )
+                }}
+                sourcesVisible={strictSourcesVisible}
+            >
                 {/* Header */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
@@ -1349,6 +1408,7 @@ export default function ChatPage() {
                         For research purposes only. Not legal advice.
                     </p>
                 </div>
+            </StrictChatWrapper>
             </div>
 
             {/* ── Document preview panel — same flex:1, slides in alongside chat ── */}

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sidebar";
 import {useEffect, useState} from "react";
 import {useTheme} from "@/lib/theme";
+import {useDesignVersion} from "@/lib/design-version";
 
 const navItems = [
     {href: "/chat", label: "Chat", icon: MessageSquare},
@@ -22,7 +23,17 @@ const RECENT_QUERIES_KEY = "neolex_recent_queries";
 const MAX_RECENT = 5;
 
 // macOS Tahoe Liquid Glass sidebar — transparent enough to see through, distinct enough to read
-function makeLiquidGlass(isDark: boolean) {
+function makeLiquidGlass(isDark: boolean, isStrict: boolean) {
+    if (isDark && isStrict) {
+        return {
+            background: "var(--strict-glass-recessed)",
+            backdropFilter: "var(--strict-glass-blur)",
+            WebkitBackdropFilter: "var(--strict-glass-blur)",
+            borderRadius: "18px",
+            border: "1px solid var(--strict-glass-border)",
+            boxShadow: "none",
+        };
+    }
     if (isDark) {
         return {
             background: "rgba(255,255,255,0.07)",
@@ -59,7 +70,15 @@ function makeLiquidGlass(isDark: boolean) {
 }
 
 // Active item — glass pill inside glass sidebar
-function makeActiveItemStyle(isDark: boolean) {
+function makeActiveItemStyle(isDark: boolean, isStrict: boolean) {
+    if (isDark && isStrict) {
+        return {
+            background: "var(--strict-gold-badge-bg)",
+            boxShadow: "none",
+            border: "1px solid var(--strict-gold-border-active)",
+            color: "var(--strict-gold-text)",
+        };
+    }
     if (isDark) {
         return {
             background: "rgba(201,168,76,0.14)",
@@ -80,9 +99,11 @@ export function AppSidebar() {
     const router = useRouter();
     const [recentQueries, setRecentQueries] = useState<string[]>([]);
     const {resolvedTheme} = useTheme();
+    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
     const isDark = mounted && resolvedTheme === "dark";
+    const isStrict = mounted && designVersion === "strict" && isDark;
 
     useEffect(() => {
         fetch(`/api/v1/demo/config`).catch(() => {
@@ -112,7 +133,7 @@ export function AppSidebar() {
     return (
         <Sidebar
             className="border-0"
-            style={makeLiquidGlass(isDark)}
+            style={makeLiquidGlass(isDark, isStrict)}
         >
             {/* ── App name ── */}
             <SidebarHeader style={{padding: "16px 14px 12px"}}>
@@ -164,7 +185,7 @@ export function AppSidebar() {
                                     textDecoration: "none",
                                     transition: "all 0.12s ease",
                                     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-                                    ...(isActive ? makeActiveItemStyle(isDark) : {}),
+                                    ...(isActive ? makeActiveItemStyle(isDark, isStrict) : {}),
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
