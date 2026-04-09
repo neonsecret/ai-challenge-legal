@@ -130,14 +130,15 @@ const V3_DARK_PROSE = [
 const STRICT_DARK_PROSE = [
     "prose prose-sm max-w-none prose-invert",
     "prose-p:text-[var(--strict-text-body)] prose-p:my-2",
-    "prose-headings:text-[var(--strict-text-primary)] prose-headings:font-normal",
+    // headings: Georgia serif, no font-family override from Tailwind (inline style handles it)
+    "prose-headings:text-[var(--strict-text-primary)] prose-headings:font-normal prose-headings:font-serif",
     "prose-strong:text-[var(--strict-text-primary)] prose-strong:font-semibold",
     "prose-a:text-[var(--strict-citation)] prose-a:no-underline hover:prose-a:underline",
     "prose-code:bg-[var(--strict-code-bg)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-[var(--strict-text-body)]",
     "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-[var(--strict-text-body)]",
     "prose-table:text-[var(--strict-text-secondary)] prose-th:text-left prose-th:text-[11px] prose-th:py-1.5 prose-th:px-2 prose-th:border-b prose-th:border-[var(--strict-table-border)]",
     "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[var(--strict-hr-border)]",
-    "prose-hr:border-[var(--strict-code-bg)] prose-hr:my-3",
+    "prose-hr:border-[var(--strict-gold-border)] prose-hr:my-3",
     "prose-blockquote:border-l-[var(--strict-gold-base)] prose-blockquote:text-[var(--strict-text-secondary)] prose-blockquote:bg-[var(--strict-blockquote-bg)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
@@ -608,10 +609,20 @@ export function ChatMessage({
                                     }}
                                     components={{
                                         h2: ({node: _node, children, ...props}) => (
-                                            <h2 {...props} style={{fontSize: TYPE_SCALE.lg, fontFamily: FONT.sans}}>{children}</h2>
+                                            <h2 {...props} style={{
+                                                fontSize: TYPE_SCALE.lg,
+                                                fontFamily: isStrict ? "Georgia, serif" : FONT.sans,
+                                                color: isStrict ? "var(--strict-text-primary)" : undefined,
+                                                fontWeight: isStrict ? "normal" : undefined,
+                                            }}>{children}</h2>
                                         ),
                                         h3: ({node: _node, children, ...props}) => (
-                                            <h3 {...props} style={{fontSize: TYPE_SCALE.md, fontFamily: FONT.sans}}>{children}</h3>
+                                            <h3 {...props} style={{
+                                                fontSize: TYPE_SCALE.md,
+                                                fontFamily: isStrict ? "Georgia, serif" : FONT.sans,
+                                                color: isStrict ? "var(--strict-text-primary)" : undefined,
+                                                fontWeight: isStrict ? "normal" : undefined,
+                                            }}>{children}</h3>
                                         ),
                                         strong: ({node: _node, children, ...props}) => (
                                             <strong {...props}>{children}</strong>
@@ -719,12 +730,12 @@ export function ChatMessage({
 
             {confidence != null && !isStreaming && (
                 <div style={{marginTop: SPACE[2]}} className="animate-fade-in-up">
-                    <ConfidenceBadge confidence={confidence} isDark={isDark}/>
+                    <ConfidenceBadge confidence={confidence} isDark={isDark} isStrict={isStrict}/>
                 </div>
             )}
 
             {trace && trace.length > 0 && !isStreaming && content && (
-                <AgentTrace trace={trace} isDark={isDark} />
+                <AgentTrace trace={trace} isDark={isDark} isStrict={isStrict} />
             )}
 
             {/* Feedback bar */}

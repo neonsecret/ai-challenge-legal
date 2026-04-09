@@ -19,6 +19,7 @@ import type {LucideIcon} from "lucide-react"
 interface AgentTraceProps {
     trace: string[]
     isDark?: boolean
+    isStrict?: boolean
 }
 
 // ─── Icon + color mapping ────────────────────────────────────────────────────
@@ -60,10 +61,12 @@ function TraceNode({
     step,
     index,
     isDark,
+    isStrict,
 }: {
     step: string
     index: number
     isDark: boolean
+    isStrict: boolean
 }) {
     const {icon: Icon, glow} = getStepStyle(step)
 
@@ -93,21 +96,25 @@ function TraceNode({
                     alignItems: "center",
                     justifyContent: "center",
                     flexShrink: 0,
-                    background: isDark
-                        ? "rgba(255,255,255,0.06)"
-                        : "rgba(255,252,242,0.55)",
+                    background: isStrict
+                        ? "var(--strict-gold-badge-bg)"
+                        : isDark
+                            ? "rgba(255,255,255,0.06)"
+                            : "rgba(255,252,242,0.55)",
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",
-                    border: isDark
-                        ? `0.5px solid rgba(255,255,255,0.12)`
-                        : `0.5px solid rgba(255,255,255,0.50)`,
-                    boxShadow: `0 0 8px ${glow}33`,
+                    border: isStrict
+                        ? "0.5px solid var(--strict-gold-border-active)"
+                        : isDark
+                            ? `0.5px solid rgba(255,255,255,0.12)`
+                            : `0.5px solid rgba(255,255,255,0.50)`,
+                    boxShadow: isStrict ? undefined : `0 0 8px ${glow}33`,
                 }}
             >
                 <Icon
                     size={11}
                     strokeWidth={2}
-                    style={{color: glow}}
+                    style={{color: isStrict ? "var(--strict-gold-text)" : glow}}
                 />
             </div>
 
@@ -117,9 +124,11 @@ function TraceNode({
                     fontSize: 12,
                     lineHeight: 1.5,
                     fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-                    color: isDark
-                        ? "rgba(255,255,255,0.52)"
-                        : "rgba(46,31,8,0.55)",
+                    color: isStrict
+                        ? "var(--strict-text-secondary)"
+                        : isDark
+                            ? "rgba(255,255,255,0.52)"
+                            : "rgba(46,31,8,0.55)",
                     paddingTop: 2,
                 }}
             >
@@ -131,7 +140,7 @@ function TraceNode({
 
 // ─── AgentTrace ──────────────────────────────────────────────────────────────
 
-export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
+export function AgentTrace({trace, isDark = false, isStrict = false}: AgentTraceProps) {
     const [expanded, setExpanded] = useState(false)
 
     if (!trace || trace.length === 0) return null
@@ -156,12 +165,14 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                     alignItems: "center",
                     gap: 4,
                     fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.08em",
+                    fontWeight: isStrict ? 400 : 600,
+                    letterSpacing: isStrict ? "0.05em" : "0.08em",
                     textTransform: "uppercase",
-                    color: isDark
-                        ? "rgba(255,255,255,0.32)"
-                        : "rgba(46,31,8,0.36)",
+                    color: isStrict
+                        ? "var(--strict-text-dim)"
+                        : isDark
+                            ? "rgba(255,255,255,0.32)"
+                            : "rgba(46,31,8,0.36)",
                     background: "none",
                     border: "none",
                     cursor: "pointer",
@@ -174,6 +185,7 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                     size={10}
                     strokeWidth={2.5}
                     style={{
+                        color: isStrict ? "var(--strict-gold-text)" : undefined,
                         transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
                         transition: "transform 0.15s",
                     }}
@@ -197,9 +209,11 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                         top: 22,
                         bottom: 8,
                         width: 1,
-                        background: isDark
-                            ? "rgba(255,255,255,0.10)"
-                            : "rgba(196,124,0,0.14)",
+                        background: isStrict
+                            ? "var(--strict-gold-border)"
+                            : isDark
+                                ? "rgba(255,255,255,0.10)"
+                                : "rgba(196,124,0,0.14)",
                     }}
                 />
 
@@ -211,6 +225,7 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                                 step={trace[0]}
                                 index={0}
                                 isDark={isDark}
+                                isStrict={isStrict}
                             />
 
                             {/* Collapsed separator */}
@@ -232,9 +247,11 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                                     <span
                                         style={{
                                             fontSize: 10,
-                                            color: isDark
-                                                ? "rgba(255,255,255,0.22)"
-                                                : "rgba(46,31,8,0.25)",
+                                            color: isStrict
+                                                ? "var(--strict-text-dim)"
+                                                : isDark
+                                                    ? "rgba(255,255,255,0.22)"
+                                                    : "rgba(46,31,8,0.25)",
                                         }}
                                     >
                                         ...
@@ -244,9 +261,11 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                                     style={{
                                         fontSize: 11,
                                         fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
-                                        color: isDark
-                                            ? "rgba(255,255,255,0.28)"
-                                            : "rgba(46,31,8,0.30)",
+                                        color: isStrict
+                                            ? "var(--strict-text-secondary)"
+                                            : isDark
+                                                ? "rgba(255,255,255,0.28)"
+                                                : "rgba(46,31,8,0.30)",
                                         fontStyle: "italic",
                                         paddingTop: 1,
                                     }}
@@ -260,6 +279,7 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                                 step={trace[trace.length - 1]}
                                 index={1}
                                 isDark={isDark}
+                                isStrict={isStrict}
                             />
                         </>
                     ) : (
@@ -269,6 +289,7 @@ export function AgentTrace({trace, isDark = false}: AgentTraceProps) {
                                 step={step}
                                 index={i}
                                 isDark={isDark}
+                                isStrict={isStrict}
                             />
                         ))
                     )}

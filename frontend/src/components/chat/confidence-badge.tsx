@@ -48,11 +48,36 @@ interface ConfidenceBadgeProps {
     confidence: number | string
     className?: string
     isDark?: boolean
+    isStrict?: boolean
 }
 
-export function ConfidenceBadge({confidence, className, isDark = false}: ConfidenceBadgeProps) {
+export function ConfidenceBadge({confidence, className, isDark = false, isStrict = false}: ConfidenceBadgeProps) {
     const level = getConfidenceLevel(confidence)
     const conf = CONFIDENCE_CONFIG[level]
+
+    // Strict mode: gold badge for all confidence levels — matches the Full Glass Scholar design
+    if (isStrict) {
+        return (
+            <div
+                className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] shrink-0",
+                    className
+                )}
+                style={{
+                    background: "var(--strict-gold-badge-bg)",
+                    border: "1px solid var(--strict-gold-badge-border)",
+                    color: "var(--strict-gold-text)",
+                    fontFamily: "system-ui, -apple-system, sans-serif",
+                    letterSpacing: "0.04em",
+                    fontWeight: 400,
+                }}
+            >
+                <conf.Icon className="size-3" style={{color: "var(--strict-gold-text)"}}/>
+                {conf.label}
+            </div>
+        )
+    }
+
     const theme = isDark ? conf.dark : conf.light
     return (
         <div

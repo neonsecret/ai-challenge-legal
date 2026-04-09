@@ -106,6 +106,7 @@ interface EmptyStateProps {
     onPreviewQuestion: (index: number | null) => void
     previewIndex: number | null
     isDark?: boolean
+    isStrict?: boolean
     jurisdiction?: Jurisdiction
 }
 
@@ -114,11 +115,95 @@ export function EmptyState({
                                onPreviewQuestion,
                                previewIndex,
                                isDark = false,
+                               isStrict = false,
                                jurisdiction = "difc"
                            }: EmptyStateProps) {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const {t} = useI18n()
     const questions = getPresetQuestions(jurisdiction)
+
+    // Strict: gold glass pills with serif text
+    if (isStrict) {
+        return (
+            <div style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                padding: "40px 4px 90px",
+                textAlign: "center",
+            }}>
+                <h2 style={{
+                    fontFamily: "Georgia, serif",
+                    fontSize: "1.3rem",
+                    fontWeight: "normal",
+                    color: "var(--strict-text-primary)",
+                    letterSpacing: "0.01em",
+                    margin: "0 0 24px",
+                    opacity: 0.75,
+                }}>
+                    {t("chat.what_can_i_help")}
+                </h2>
+
+                <div style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "8px",
+                    width: "100%",
+                    maxWidth: "520px",
+                }} className="px-2 sm:px-0">
+                    {questions.map((q, i) => {
+                        const isHovered = hoveredIndex === i
+                        const isOpen = previewIndex === i
+                        const active = isOpen || isHovered
+
+                        return (
+                            <button
+                                key={`${jurisdiction}-${i}`}
+                                onClick={() => onPreviewQuestion(isOpen ? null : i)}
+                                onMouseEnter={() => setHoveredIndex(i)}
+                                onMouseLeave={() => setHoveredIndex(null)}
+                                style={{
+                                    width: "100%",
+                                    textAlign: "left",
+                                    padding: "12px 16px",
+                                    borderRadius: "10px",
+                                    background: active
+                                        ? "var(--strict-gold-badge-bg)"
+                                        : "var(--strict-glass-bg)",
+                                    border: active
+                                        ? "1px solid var(--strict-gold-border-active)"
+                                        : "1px solid var(--strict-gold-border)",
+                                    cursor: "pointer",
+                                    transition: "all 0.16s ease",
+                                }}
+                            >
+                                <p style={{
+                                    fontSize: "12.5px",
+                                    lineHeight: 1.6,
+                                    color: "var(--strict-text-secondary)",
+                                    margin: 0,
+                                    fontFamily: "Georgia, serif",
+                                    fontStyle: "italic",
+                                    transition: "color 0.16s ease",
+                                }}>
+                                    {q.before}
+                                    <span style={{
+                                        color: "var(--strict-gold-text)",
+                                        textDecoration: active ? "underline" : "none",
+                                        textUnderlineOffset: "2px",
+                                        fontStyle: "normal",
+                                    }}>
+                                        {q.law}
+                                    </span>
+                                    {q.after}
+                                </p>
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
+        )
+    }
 
     const headingColor = isDark ? "rgba(255,255,255,0.90)" : "#1a0e04"
     const lawColor = isDark ? "#C9A84C" : "#c47c00"

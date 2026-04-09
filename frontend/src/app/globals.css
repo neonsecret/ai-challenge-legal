@@ -711,6 +711,19 @@ textarea::placeholder { color: #b29254; }
   --strict-drawer-header-bg: rgba(20,22,30,0.05);
   --strict-label-size: 9px;
   --strict-label-tracking: 1.5px;
+  /* Chat chrome — header border, button styles, follow-up pills, input footer */
+  --strict-header-border: rgba(180,150,60, 0.1);
+  --strict-btn-bg: rgba(20,22,30, 0.04);
+  --strict-btn-border: rgba(180,150,60, 0.12);
+  --strict-btn-text: rgba(20,22,30, 0.45);
+  --strict-btn-border-hover: rgba(180,150,60, 0.22);
+  --strict-pill-active-bg: rgba(180,150,60, 0.08);
+  --strict-pill-active-border: rgba(180,150,60, 0.22);
+  --strict-internet-active-bg: rgba(180,150,60, 0.07);
+  --strict-internet-active-border: rgba(180,150,60, 0.18);
+  --strict-footer-border: rgba(180,150,60, 0.10);
+  --strict-footer-bg: transparent;
+  --strict-page-bg: linear-gradient(160deg, #E2E4EA, #D8DAE2);
   --dt-glass-bg: var(--strict-glass-bg);
   --dt-glass-border: var(--strict-glass-border);
   --dt-glass-blur: var(--strict-glass-blur);
@@ -794,6 +807,19 @@ textarea::placeholder { color: #b29254; }
   --strict-drawer-header-bg: rgba(0,0,0,0.2);
   --strict-label-size: 9px;
   --strict-label-tracking: 1.5px;
+  /* Chat chrome — header border, button styles, follow-up pills, input footer */
+  --strict-header-border: rgba(201,168,76, 0.08);
+  --strict-btn-bg: rgba(255,255,255, 0.03);
+  --strict-btn-border: rgba(201,168,76, 0.08);
+  --strict-btn-text: rgba(200,210,230, 0.42);
+  --strict-btn-border-hover: rgba(201,168,76, 0.18);
+  --strict-pill-active-bg: rgba(201,168,76, 0.08);
+  --strict-pill-active-border: rgba(201,168,76, 0.18);
+  --strict-internet-active-bg: rgba(201,168,76, 0.06);
+  --strict-internet-active-border: rgba(201,168,76, 0.15);
+  --strict-footer-border: rgba(201,168,76, 0.08);
+  --strict-footer-bg: transparent;
+  --strict-page-bg: linear-gradient(170deg, #0E1118, #0B0E16, #0D0A12);
   --dt-glass-bg: var(--strict-glass-bg);
   --dt-glass-border: var(--strict-glass-border);
   --dt-glass-blur: var(--strict-glass-blur);
