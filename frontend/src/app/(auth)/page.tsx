@@ -17,15 +17,6 @@ import {MotionConfig} from "motion/react";
 import {V3_MOTION_CONFIG, V3_FADE_UP, V3_LIST_VARIANT, V3_ITEM_VARIANT, V3_CARD_HOVER, V3_BUTTON_PRESS} from "@/lib/v3-motion";
 import {AuroraBackground} from "@/components/landing/aurora-background";
 
-/* ── shared warm glass constant ── */
-const warmGlass = {
-    background: "rgba(255,250,235,0.22)",
-    backdropFilter: "blur(32px) saturate(180%) brightness(105%)",
-    WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(105%)",
-    border: "0.5px solid rgba(255,255,255,0.45)",
-    boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
-} as const;
-
 const LIGHT_PILLAR_ICONS = [ShieldCheck, FileSearch, ShieldCheck] as const;
 
 const LIGHT_STEP_NUMBERS = ["01", "02", "03"] as const;
@@ -116,9 +107,15 @@ export default function LandingPage() {
     const isDark = !mounted || resolvedTheme === "dark";
 
     if (!mounted || loading) {
+        const skeletonBg = designVersion === "v3"
+            ? (isDark ? "#07090F" : "#F0F2F8")
+            : (isDark ? "#0F1623" : "#e8d4b8");
+        const skeletonSpinner = designVersion === "v3"
+            ? (isDark ? "#9D7FCC" : "#9D7FCC")
+            : (isDark ? "#C9A84C" : "#7a4a00");
         return (
-            <div className="flex items-center justify-center min-h-screen" style={{background: "#0F1623"}}>
-                <Loader2 className="size-6 animate-spin" style={{color: "#C9A84C"}}/>
+            <div className="flex items-center justify-center min-h-screen" style={{background: skeletonBg}}>
+                <Loader2 className="size-6 animate-spin" style={{color: skeletonSpinner}}/>
             </div>
         );
     }
@@ -220,7 +217,7 @@ export default function LandingPage() {
                             <motion.p variants={V3_FADE_UP} initial="hidden" animate="visible"
                                       className="text-base text-center mb-10 max-w-xl"
                                       style={{
-                                          color: isDarkV3 ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)",
+                                          color: isDarkV3 ? "rgba(255,255,255,0.64)" : "rgba(13,15,26,0.64)",
                                           lineHeight: 1.6, whiteSpace: "pre-line"
                                       }}>
                                 {t("landing.hero_subtitle")}
@@ -275,7 +272,7 @@ export default function LandingPage() {
                             </motion.h2>
                             <motion.p variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
                                       className="text-center text-sm mb-10"
-                                      style={{color: isDarkV3 ? "rgba(255,255,255,0.38)" : "rgba(13,15,26,0.50)"}}>
+                                      style={{color: isDarkV3 ? "rgba(255,255,255,0.64)" : "rgba(13,15,26,0.64)"}}>
                                 {t("landing.bench_subtitle")}
                             </motion.p>
                             <motion.div variants={V3_LIST_VARIANT} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-60px"}}
@@ -432,7 +429,7 @@ export default function LandingPage() {
                         <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
                                   transition={{duration: 0.5, delay: 0.28}}
                                   className="text-base text-center mb-10 max-w-xl"
-                                  style={{color: "rgba(255,255,255,0.48)", lineHeight: 1.6, whiteSpace: "pre-line"}}>
+                                  style={{color: "rgba(255,255,255,0.70)", lineHeight: 1.6, whiteSpace: "pre-line"}}>
                             {t("landing.hero_subtitle")}
                         </motion.p>
                         <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}}
@@ -521,7 +518,7 @@ export default function LandingPage() {
                         <motion.p initial={{opacity: 0}} whileInView={{opacity: 1}}
                                   viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.14}}
                                   className="text-center text-sm mb-10"
-                                  style={{color: "rgba(255,255,255,0.38)"}}>
+                                  style={{color: "rgba(255,255,255,0.65)"}}>
                             {t("landing.bench_subtitle")}
                         </motion.p>
                         <div style={{
@@ -1485,6 +1482,15 @@ function DarkBenchmarkCard({benchmark}: { benchmark: BenchmarkData }) {
         </div>
     );
 }
+
+/* ── warm glass style — V2 light theme only ── */
+const warmGlass = {
+    background: "rgba(255,250,235,0.22)",
+    backdropFilter: "blur(32px) saturate(180%) brightness(105%)",
+    WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(105%)",
+    border: "0.5px solid rgba(255,255,255,0.45)",
+    boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
+} as const;
 
 function LightBenchmarkCard({benchmark}: { benchmark: BenchmarkData }) {
     const ourPct = benchmark.ourScore * 100;
