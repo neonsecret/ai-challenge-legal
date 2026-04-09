@@ -879,7 +879,7 @@ async def run_agent_turn(
     )
 
     if on_status:
-        on_status("agent:thinking")
+        on_status("agent:understanding")
 
     messages: list[BaseMessage] = _convert_history(conversation_history)
     messages.append(HumanMessage(content=question))
@@ -925,7 +925,7 @@ async def run_agent_turn(
             current_reason_has_tool_calls = False
             current_reason_tokens.clear()
             if on_status:
-                on_status("agent:thinking")
+                on_status("agent:reasoning")
             logger.info("[agent] reason node #%d starting", reason_count)
 
         if kind == "on_chain_end" and name == "reason":
