@@ -1160,6 +1160,12 @@ textarea::placeholder { color: #b29254; }
         inset -2px 0 10px 10px rgba(67, 67, 67, 0.15),
         inset 0 0 2px 1px rgba(222, 222, 222, 0.22);
 
+    /* Structural aliases used by makeGlassPanel() in chat/page.tsx */
+    --gm-structural-bg: var(--gm-surface-0);
+    --gm-structural-blur: blur(10px);
+    --gm-structural-border: var(--gm-border-outer);
+    --gm-structural-shadow: var(--gm-shadow-structural);
+
     /* Override --v3-glass-* so V3 components auto-inherit GM look */
     --v3-glass-surface-bg:        var(--gm-surface-1);
     --v3-glass-surface-bg-hover:  var(--gm-surface-2);

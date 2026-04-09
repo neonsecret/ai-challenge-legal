@@ -226,13 +226,6 @@ export default function LandingPage() {
                                         className="w-full max-w-5xl">
                                 <div className="v3-glass-panel" style={{
                                     borderRadius: "var(--v3-radius-xl)",
-                                    ...(isDarkV3 ? {
-                                        background: "rgba(9,9,9,0.73)",
-                                        backdropFilter: "blur(10px)",
-                                        WebkitBackdropFilter: "blur(10px)",
-                                        border: "1px solid rgba(222,222,222,0.22)",
-                                        boxShadow: "0 10px 14px 4px rgba(0,0,0,0.23), 0 10px 19px 1px rgba(0,0,0,0.27), inset -2px 0 10px 10px rgba(67,67,67,0.15), inset 0 0 2px 1px rgba(222,222,222,0.22)",
-                                    } : {})
                                 }}>
                                     <DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
                                 </div>

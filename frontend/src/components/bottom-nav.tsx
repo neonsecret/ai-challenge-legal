@@ -31,14 +31,9 @@ export function BottomNav() {
 
     const pill = (isV3 && isDark) ? {
         // V3 dark: structural glass tier
-        background: "rgba(9, 9, 9, 0.73)",
-        border: "1px solid rgba(222, 222, 222, 0.22)",
-        boxShadow: [
-            "0 10px 14px 4px rgba(0, 0, 0, 0.23)",
-            "0 10px 19px 1px rgba(0, 0, 0, 0.27)",
-            "inset -2px 0 10px 10px rgba(67, 67, 67, 0.15)",
-            "inset 0 0 2px 1px rgba(222, 222, 222, 0.22)",
-        ].join(", "),
+        background: "var(--gm-surface-0)",
+        border: "1px solid var(--gm-border-outer)",
+        boxShadow: "var(--gm-shadow-structural)",
     } : isDark ? {
         background: "rgba(15,22,35,0.80)",
         border: "0.5px solid rgba(255,255,255,0.12)",

@@ -527,7 +527,7 @@ export default function ChatPage() {
                 {/* Header */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                    borderBottom: isV3 ? "1px solid rgba(222,222,222,0.08)" : "0.5px solid var(--dt-glass-border-subtle)",
+                    borderBottom: isV3 ? "1px solid var(--dt-glass-border-subtle)" : "0.5px solid var(--dt-glass-border-subtle)",
                     display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
                     background: isV3 ? "linear-gradient(180deg, rgba(0,0,0,0.60) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                     overflow: "visible", position: "relative", zIndex: 10,
