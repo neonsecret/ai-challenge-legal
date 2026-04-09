@@ -251,7 +251,7 @@ export default function BillingPage() {
     isLoading: boolean
   ): React.CSSProperties => ({
     background: isV3
-      ? "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)"
+      ? "var(--v3-btn-primary-bg)"
       : isDark
         ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
         : "#5c2e08",
