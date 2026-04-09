@@ -866,16 +866,31 @@ textarea::placeholder { color: #b29254; }
    ============================================================ */
 
 /* ── Pill-shaped buttons ─────────────────────────────────── */
-/* Shadcn Button (data-slot="button") → xl radius (20px) */
+/* Full pill (9999px) — clearly distinct from V2 rounded-md */
 .design-v3 [data-slot="button"] {
-    border-radius: var(--v3-radius-xl) !important;
+    border-radius: var(--v3-radius-pill) !important;
 }
 
-/* ── Rounded inputs / textareas ─────────────────────────── */
+/* ── Pill-shaped single-line inputs & search bar ─────────── */
+/* Full pill for inputs. Textareas stay at 2xl (28px) — pill looks bad
+   on multi-line content. */
 .design-v3 [data-slot="input"],
-.design-v3 input:not([type="checkbox"]):not([type="radio"]),
+.design-v3 input:not([type="checkbox"]):not([type="radio"]) {
+    border-radius: var(--v3-radius-pill) !important;
+}
+
 .design-v3 textarea {
-    border-radius: var(--v3-radius-lg) !important;
+    border-radius: var(--v3-radius-2xl) !important;
+}
+
+/* ── Pill-shaped badges and tag chips ───────────────────── */
+.design-v3 [data-slot="badge"] {
+    border-radius: var(--v3-radius-pill) !important;
+}
+
+/* Source chips in SourcesPanel — ensure pill, matches inline RADIUS.full */
+.design-v3 .v3-source-card {
+    border-radius: var(--v3-radius-pill) !important;
 }
 
 /* ── Larger card padding utility ────────────────────────── */
@@ -884,11 +899,53 @@ textarea::placeholder { color: #b29254; }
     padding: var(--v3-space-xl);
 }
 
+/* Slightly larger padding on all three glass tiers in V3 */
+.design-v3 .v3-glass-panel {
+    padding: var(--v3-space-lg);
+}
+
+.design-v3 .v3-glass-elevated {
+    padding: var(--v3-space-lg);
+}
+
+/* ── More breathing room between list items ─────────────── */
+/* Applies to source chips list, search result lists in V3 */
+.design-v3 .v3-item-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v3-space-md);
+}
+
+.design-v3 .v3-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--v3-space-sm);
+}
+
 /* ── Section whitespace ─────────────────────────────────── */
 /* Adds 32px top margin between direct children — use on section wrappers */
 .design-v3 .v3-section-gap > * + * {
     margin-top: var(--v3-space-xl);
 }
+
+/* ── 1px specular inset highlight on glass cards (dark mode) ── */
+/* Ensures the top-edge catch-light is always present on surface-tier cards.
+   Stacks on top of --v3-glass-surface-shadow (which includes a dimmer 0.06
+   variant). Dark mode only — light mode glass panels use natural highlight. */
+.design-v3.dark .v3-glass-panel {
+    box-shadow: var(--v3-glass-surface-shadow), var(--v3-specular-top);
+}
+
+.design-v3.dark .v3-glass-elevated {
+    box-shadow: var(--v3-glass-elevated-shadow), var(--v3-specular-top);
+}
+
+/* ── Typography scale — slightly larger headings in V3 ───── */
+/* Lawyers need information density, so we scale proportionally (em-based),
+   not with fixed px jumps. Only headings inside .design-v3 grow. */
+.design-v3 h1 { font-size: 1.10em; }
+.design-v3 h2 { font-size: 1.08em; }
+.design-v3 h3 { font-size: 1.06em; }
 
 /* ── Light mode aurora orb colors ───────────────────────── */
 /* Dark orb gradients are invisible on #F0F2F8 — use lighter violet/teal */
