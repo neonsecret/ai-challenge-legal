@@ -13,14 +13,14 @@ import {useChatState} from "@/components/chat/chat-state"
 import {EmptyState, getPresetQuestions} from "@/components/chat/empty-state"
 import {GroundingView} from "@/components/grounding/grounding-view"
 import {FakePdf} from "@/components/landing/fake-pdf"
-import type {DemoScenario} from "@/components/landing/demo-panel"
 import {useJurisdiction} from "@/lib/use-jurisdiction"
-import {JURISDICTIONS, JURISDICTION_ORDER, jurisdictionToCorpus, type Jurisdiction} from "@/lib/jurisdictions"
+import {JURISDICTIONS, jurisdictionToCorpus, type Jurisdiction} from "@/lib/jurisdictions"
 import {useIsMobile} from "@/hooks/use-mobile"
 import {useDocumentIndex} from "@/components/chat/use-document-index"
 import {DocumentIndex} from "@/components/chat/document-index"
 import {X} from "lucide-react"
-import {FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE, TEXT_DARK, TEXT_LIGHT} from "@/lib/design-tokens"
+import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
+import {PREVIEW_SCENARIOS_MAP} from "./scenarios"
 
 interface CorpusEntry {
     name: string
@@ -66,287 +66,8 @@ const FOLLOWUP_SUGGESTIONS = [
 
 // Sessions are managed by ChatStateProvider via localStorage
 
-// Scenarios for the side-panel document viewer, keyed by jurisdiction
-const DIFC_SCENARIOS: DemoScenario[] = [
-    {
-        jurisdiction: "DIFC",
-        question: "What is the limitation period under DIFC Law No. 5 of 2005?",
-        answer: "",
-        pdfTitle: "DIFC Limitation Law No. 5 of 2005",
-        pdfArticleHeader: "Article 4 — General Limitation Period",
-        pdfClauses: [
-            {
-                id: "4(1)",
-                text: "An action founded on contract shall not be brought after the end of six years beginning with the date on which the cause of action accrued."
-            },
-            {
-                id: "4(2)",
-                text: "An action in tort shall not be brought after three years beginning with the date on which the claimant first had knowledge of all relevant facts."
-            },
-            {
-                id: "4(3)",
-                text: "Knowledge includes facts which a claimant might reasonably be expected to acquire from observable facts or from expert advice."
-            },
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "DIFC Law No. 5 of 2005 · Art. 4 · p.12",
-        pageBadge: "Page 12",
-    },
-    {
-        jurisdiction: "DIFC",
-        question: "What are the grounds for termination under DIFC Employment Law?",
-        answer: "",
-        pdfTitle: "DIFC Employment Law No. 2 of 2019",
-        pdfArticleHeader: "Article 59 — Termination by Employer",
-        pdfClauses: [
-            {
-                id: "59(1)",
-                text: "An employer may terminate without notice where the employee has committed a fundamental breach of the employment contract."
-            },
-            {
-                id: "59(2)",
-                text: "An employer may terminate for cause by providing written notice of not less than the minimum notice period, setting out the grounds."
-            },
-            {
-                id: "59(3)",
-                text: "Termination shall not be on grounds related to pregnancy, maternity leave, or the exercise of any statutory right."
-            },
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "DIFC Employment Law · Art. 59 · p.31",
-        pageBadge: "Page 31",
-    },
-]
 
-const CZ_SCENARIOS: DemoScenario[] = [
-    {
-        jurisdiction: "Czech Republic",
-        question: "Může zaměstnavatel dát výpověď zaměstnanci z důvodu nadbytečnosti, pokud pracovní místo fakticky zrušeno nebylo?",
-        answer: "",
-        pdfTitle: "Zákoník práce (262/2006 Sb.)",
-        pdfArticleHeader: "§ 52 písm. c)",
-        pdfClauses: [],
-        highlightRange: [0, 0],
-        sourceBadge: "Zákoník práce · § 52(c) + NS judikatura",
-        pageBadge: "",
-        sources: [
-            {
-                title: "Zákoník práce (262/2006 Sb.)",
-                articleHeader: "§ 52 písm. c) — Nadbytečnost",
-                clauses: [
-                    {
-                        id: "§52(c)",
-                        text: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení, o snížení stavu zaměstnanců nebo o jiných organizačních změnách."
-                    },
-                ],
-                highlightRange: [0, 0],
-                badge: "Zákoník práce · § 52 písm. c)",
-                pageBadge: "§ 52",
-                type: "statute",
-            },
-            {
-                title: "21 Cdo 4117/2012 · Nejvyšší soud",
-                articleHeader: "Právní věta — Nadbytečnost",
-                clauses: [
-                    {
-                        id: "NS",
-                        text: "Organizační změna musí být skutečná — výpověď je neplatná, bylo-li rozhodnutí o zrušení pracovního místa pouze formální a zaměstnanec byl vzápětí nahrazen jinou osobou na totožné pozici."
-                    },
-                ],
-                highlightRange: [0, 0],
-                badge: "21 Cdo 4117/2012 · kat. A · judikatura",
-                pageBadge: "NS",
-                type: "court_decision",
-            },
-        ],
-    },
-    {
-        jurisdiction: "Czech Republic",
-        question: "Může podnikatel požadovat ochranu jako slabší smluvní strana vůči jinému podnikateli při nepřiměřeně vysokých úrocích ze zápůjčky?",
-        answer: "",
-        pdfTitle: "Občanský zákoník (89/2012 Sb.)",
-        pdfArticleHeader: "§ 1796",
-        pdfClauses: [],
-        highlightRange: [0, 0],
-        sourceBadge: "Občanský zákoník · § 1796 + NS judikatura",
-        pageBadge: "",
-        sources: [
-            {
-                title: "Občanský zákoník (89/2012 Sb.)",
-                articleHeader: "§ 1796 — Lichva",
-                clauses: [
-                    {
-                        id: "§1796",
-                        text: "Neplatná je smlouva, ke které bylo použito tísně, nezkušenosti, rozumové slabosti nebo rozrušení druhé strany a sjednaná protiplnění jsou ke vzájemnému plnění v hrubém nepoměru."
-                    },
-                ],
-                highlightRange: [0, 0],
-                badge: "Občanský zákoník · § 1796",
-                pageBadge: "§ 1796",
-                type: "statute",
-            },
-            {
-                title: "23 ICdo 56/2019 · Nejvyšší soud",
-                articleHeader: "Právní věta — Lichva mezi podnikateli",
-                clauses: [
-                    {
-                        id: "NS",
-                        text: "I fyzická osoba podnikatel může být spotřebitelem mimo rámec své podnikatelské činnosti. Sjednání úroku mnohonásobně převyšujícího obvyklou míru může naplnit znaky lichvy i mezi podnikateli."
-                    },
-                ],
-                highlightRange: [0, 0],
-                badge: "23 ICdo 56/2019 · kat. A · judikatura",
-                pageBadge: "NS",
-                type: "court_decision",
-            },
-        ],
-    },
-]
-
-const CUSTOM_SCENARIOS: DemoScenario[] = [
-    {
-        jurisdiction: "Custom",
-        question: "Summarize the key provisions in my uploaded documents",
-        answer: "",
-        pdfTitle: "Your Uploaded Document",
-        pdfArticleHeader: "Section 1 — Key Provisions",
-        pdfClauses: [
-            {id: "1.1", text: "Upload your contracts, agreements, or legal documents to get AI-powered analysis with source citations."},
-            {id: "1.2", text: "Vitreon Legal will search through your documents, identify relevant clauses, and provide grounded answers."},
-            {id: "1.3", text: "All analysis is performed privately — your documents are never shared or used for training."},
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "Your Documents",
-        pageBadge: "",
-    },
-    {
-        jurisdiction: "Custom",
-        question: "What obligations does this agreement impose on the parties?",
-        answer: "",
-        pdfTitle: "Your Uploaded Document",
-        pdfArticleHeader: "Article 5 — Obligations of the Parties",
-        pdfClauses: [
-            {id: "5.1", text: "Each party shall perform its obligations under this Agreement in good faith and in accordance with applicable law."},
-            {id: "5.2", text: "The Service Provider shall deliver all work product in accordance with the specifications set out in Schedule A."},
-            {id: "5.3", text: "The Client shall provide timely feedback and all necessary information to enable performance of the Services."},
-        ],
-        highlightRange: [1, 2],
-        sourceBadge: "Your Documents",
-        pageBadge: "",
-    },
-]
-
-const UK_SCENARIOS: DemoScenario[] = [
-    {
-        jurisdiction: "United Kingdom",
-        question: "What are the statutory duties of a director under the Companies Act 2006?",
-        answer: "",
-        pdfTitle: "Companies Act 2006",
-        pdfArticleHeader: "Section 172 — Duty to promote the success of the company",
-        pdfClauses: [
-            {
-                id: "172(1)",
-                text: "A director of a company must act in the way he considers, in good faith, would be most likely to promote the success of the company for the benefit of its members as a whole."
-            },
-            {
-                id: "172(1)(a)",
-                text: "In doing so, he must have regard to the likely consequences of any decision in the long term."
-            },
-            {
-                id: "172(1)(b)",
-                text: "The interests of the company's employees, the impact on the community and the environment, and the desirability of maintaining a reputation for high standards of business conduct."
-            },
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "Companies Act 2006 · s.172 · p.329",
-        pageBadge: "Page 329",
-    },
-    {
-        jurisdiction: "United Kingdom",
-        question: "What constitutes unfair dismissal under the Employment Rights Act 1996?",
-        answer: "",
-        pdfTitle: "Employment Rights Act 1996",
-        pdfArticleHeader: "Section 98 — General right not to be unfairly dismissed",
-        pdfClauses: [
-            {
-                id: "98(1)",
-                text: "In determining whether the dismissal of an employee is fair or unfair, it is for the employer to show the reason for the dismissal."
-            },
-            {
-                id: "98(2)",
-                text: "A reason falls within this subsection if it relates to the capability or qualifications of the employee, the conduct of the employee, or that the employee was redundant."
-            },
-            {
-                id: "98(4)",
-                text: "The determination of whether the dismissal is fair or unfair shall depend on whether the employer acted reasonably in treating it as a sufficient reason."
-            },
-        ],
-        highlightRange: [0, 2],
-        sourceBadge: "Employment Rights Act 1996 · s.98 · p.432",
-        pageBadge: "Page 432",
-    },
-]
-
-const AU_SCENARIOS: DemoScenario[] = [
-    {
-        jurisdiction: "Australia",
-        question: "What is the insolvent trading duty under the Corporations Act 2001?",
-        answer: "",
-        pdfTitle: "Corporations Act 2001",
-        pdfArticleHeader: "Section 588G — Director's duty to prevent insolvent trading",
-        pdfClauses: [
-            {
-                id: "588G(1)",
-                text: "This section applies if a company incurs a debt at a time when the company is insolvent, or becomes insolvent by incurring that debt."
-            },
-            {
-                id: "588G(2)",
-                text: "The director contravenes this section if the director was aware that there were grounds for suspecting the company was insolvent, or a reasonable person would have been so aware."
-            },
-            {
-                id: "588G(3)",
-                text: "A person who contravenes this section commits an offence punishable by imprisonment for up to 5 years or 200 penalty units."
-            },
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "Corporations Act 2001 · s.588G · p.5290",
-        pageBadge: "Page 5290",
-    },
-    {
-        jurisdiction: "Australia",
-        question: "What constitutes unconscionable conduct under Australian Consumer Law?",
-        answer: "",
-        pdfTitle: "Competition and Consumer Act 2010 — Schedule 2",
-        pdfArticleHeader: "Section 21 — Unconscionable conduct in connection with goods or services",
-        pdfClauses: [
-            {
-                id: "21(1)",
-                text: "A person must not, in trade or commerce, in connection with the supply or acquisition of goods or services, engage in conduct that is, in all the circumstances, unconscionable."
-            },
-            {
-                id: "21(4)(a)",
-                text: "The court may have regard to the relative bargaining strengths of the parties and whether any conditions were reasonably necessary for the protection of legitimate interests."
-            },
-            {
-                id: "21(4)(b)",
-                text: "Whether the consumer was able to understand any documents relating to the supply or acquisition of the goods or services."
-            },
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "ACL Schedule 2 · s.21 · p.2396",
-        pageBadge: "Page 2396",
-    },
-]
-
-const PREVIEW_SCENARIOS_MAP: Record<string, DemoScenario[]> = {
-    difc: DIFC_SCENARIOS,
-    cz: CZ_SCENARIOS,
-    uk: UK_SCENARIOS,
-    au: AU_SCENARIOS,
-    custom: CUSTOM_SCENARIOS,
-}
-
-function makeGlassPanel(isDark: boolean, isV3 = false) {
+function makeGlassPanel(isV3 = false) {
     if (isV3) {
         return {
             background: "var(--v3-glass-elevated-bg)",
@@ -360,22 +81,13 @@ function makeGlassPanel(isDark: boolean, isV3 = false) {
             transform: "translateZ(0)",
         };
     }
-    return isDark ? {
-        background: GLASS.dark.bg,
-        backdropFilter: GLASS.dark.blur,
-        WebkitBackdropFilter: GLASS.dark.blur,
-        border: `0.5px solid ${GLASS.dark.border}`,
-        borderRadius: `${RADIUS['2xl']}px`,
-        boxShadow: `${GLASS.dark.innerGlow}, ${GLASS.dark.shadow}`,
-        willChange: "transform",
-        transform: "translateZ(0)",
-    } : {
-        background: "rgba(255,252,242,0.18)",
-        backdropFilter: GLASS.light.blur,
-        WebkitBackdropFilter: GLASS.light.blur,
-        border: `0.5px solid ${GLASS.light.border}`,
-        borderRadius: `${RADIUS['2xl']}px`,
-        boxShadow: `${GLASS.light.innerGlow}, inset 1px 0 0 rgba(255,255,255,0.30), 0 16px 48px rgba(100,50,0,0.12)`,
+    return {
+        background: "var(--dt-glass-bg)",
+        backdropFilter: "var(--dt-glass-blur)",
+        WebkitBackdropFilter: "var(--dt-glass-blur)",
+        border: "0.5px solid var(--dt-glass-border)",
+        borderRadius: "24px",
+        boxShadow: "var(--dt-glass-inner-glow), var(--dt-glass-shadow)",
         willChange: "transform",
         transform: "translateZ(0)",
     };
@@ -626,27 +338,27 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: 0,
                                 willChange: "transform",
-                                background: isDark ? "rgba(15,22,35,0.95)" : "rgba(255,250,235,0.95)",
-                                backdropFilter: GLASS.dark.blurLight,
-                                WebkitBackdropFilter: GLASS.dark.blurLight,
-                                boxShadow: isDark ? GLASS.dark.innerGlow : GLASS.light.innerGlow,
-                                border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
-                            } : makeGlassPanel(isDark, isV3)),
+                                background: "var(--dt-overlay-bg)",
+                                backdropFilter: "var(--dt-glass-blur-light)",
+                                WebkitBackdropFilter: "var(--dt-glass-blur-light)",
+                                boxShadow: "var(--dt-glass-inner-glow)",
+                                border: "0.5px solid var(--dt-panel-border-color)",
+                            } : makeGlassPanel(isV3)),
                         }}
                     >
                         {/* History header */}
                         <div style={{
                             padding: `${SPACE['4']}px ${SPACE['4']}px`,
                             paddingTop: isMobile ? `max(${SPACE['4']}px, env(safe-area-inset-top))` : SPACE['4'],
-                            borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                            background: "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
                   fontSize: TYPE_SCALE.xs, fontWeight: 700, textTransform: "uppercase",
                   letterSpacing: "0.12em",
-                  color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.tertiary,
+                  color: "var(--dt-text-quaternary)",
                   fontFamily: FONT.sans,
               }}>Chats</span>
                             <div style={{display: "flex", alignItems: "center", gap: SPACE['2']}}>
@@ -656,9 +368,9 @@ export default function ChatPage() {
                             }} title="New chat" style={{
                                 display: "flex", alignItems: "center", gap: SPACE['1'],
                                 padding: `${SPACE['1']}px ${SPACE['2']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.xs, fontWeight: 500,
-                                background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
-                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                background: "var(--dt-glass-bg)",
+                                border: "0.5px solid var(--dt-glass-border)",
+                                color: "var(--dt-text-tertiary)",
                                 cursor: "pointer", transition: `all ${TIMING.instant}`,
                                 fontFamily: FONT.sans,
                             }}>
@@ -672,10 +384,10 @@ export default function ChatPage() {
                                     style={{
                                         display: "flex", alignItems: "center", justifyContent: "center",
                                         width: 28, height: 28, borderRadius: RADIUS.md,
-                                        background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                        border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
+                                        background: "var(--dt-glass-bg)",
+                                        border: "0.5px solid var(--dt-glass-border)",
                                         cursor: "pointer",
-                                        color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        color: "var(--dt-text-tertiary)",
                                     }}
                                 >
                                     <X size={14} strokeWidth={2}/>
@@ -688,7 +400,7 @@ export default function ChatPage() {
                             {sessions.length === 0 ? (
                                 <p style={{
                                     fontSize: TYPE_SCALE.sm, textAlign: "center", padding: `${SPACE['6']}px ${SPACE['3']}px`,
-                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                    color: "var(--dt-text-quaternary)",
                                     fontFamily: FONT.sans,
                                 }}>No chats yet</p>
                             ) : (
@@ -707,13 +419,13 @@ export default function ChatPage() {
                                                     padding: `${SPACE['2']}px ${SPACE['8']}px ${SPACE['2']}px ${SPACE['3']}px`, borderRadius: RADIUS.lg,
                                                     fontSize: TYPE_SCALE.sm,
                                                     color: isActive
-                                                        ? isDark ? TEXT_DARK.primary : TEXT_LIGHT.primary
-                                                        : isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                                                        ? "var(--dt-text-primary)"
+                                                        : "var(--dt-text-secondary)",
                                                     background: isActive
-                                                        ? isDark ? COLOR.gold.tint : "rgba(255,255,255,0.38)"
+                                                        ? "var(--dt-active-item-bg)"
                                                         : "transparent",
                                                     border: isActive
-                                                        ? isDark ? `0.5px solid ${COLOR.gold.border}` : `0.5px solid ${GLASS.light.border}`
+                                                        ? "0.5px solid var(--dt-accent-border-color)"
                                                         : "0.5px solid transparent",
                                                     cursor: "pointer",
                                                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -723,12 +435,10 @@ export default function ChatPage() {
                                                 }}
                                                 onMouseEnter={e => {
                                                     if (!isActive) {
-                                                        e.currentTarget.style.background = isDark ? GLASS.dark.bg : "rgba(255,255,255,0.28)"
-                                                        e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : GLASS.light.borderSubtle
-                                                        e.currentTarget.style.boxShadow = isDark
-                                                            ? `${GLASS.dark.innerGlow}, 0 2px 8px rgba(0,0,0,0.15)`
-                                                            : `${GLASS.light.innerGlow}, 0 2px 8px rgba(100,50,0,0.08)`
-                                                        e.currentTarget.style.backdropFilter = GLASS.dark.blurLight
+                                                        e.currentTarget.style.background = "var(--dt-glass-bg)"
+                                                        e.currentTarget.style.borderColor = "var(--dt-glass-border-subtle)"
+                                                        e.currentTarget.style.boxShadow = "var(--dt-glass-inner-glow), 0 2px 8px rgba(0,0,0,0.15)"
+                                                        e.currentTarget.style.backdropFilter = "var(--dt-glass-blur-light)"
                                                     }
                                                 }}
                                                 onMouseLeave={e => {
@@ -769,22 +479,22 @@ export default function ChatPage() {
                                                     width: 22,
                                                     height: 22,
                                                     borderRadius: RADIUS.sm,
-                                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                                    background: "var(--dt-glass-bg)",
+                                                    border: "0.5px solid var(--dt-glass-border)",
                                                     cursor: "pointer",
-                                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                    color: "var(--dt-text-quaternary)",
                                                     transition: `opacity ${TIMING.instant}, background ${TIMING.instant}, color ${TIMING.instant}`,
                                                     padding: 0,
                                                     zIndex: 1,
                                                     flexShrink: 0,
                                                 }}
                                                 onMouseEnter={e => {
-                                                    e.currentTarget.style.background = isDark ? "rgba(255,80,60,0.18)" : "rgba(200,50,30,0.12)"
-                                                    e.currentTarget.style.color = isDark ? "rgba(255,120,100,0.90)" : "rgba(180,40,20,0.80)"
+                                                    e.currentTarget.style.background = "var(--dt-error-bg-interactive)"
+                                                    e.currentTarget.style.color = "var(--dt-error-text-hover)"
                                                 }}
                                                 onMouseLeave={e => {
-                                                    e.currentTarget.style.background = isDark ? GLASS.dark.bg : GLASS.light.bgSubtle
-                                                    e.currentTarget.style.color = isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary
+                                                    e.currentTarget.style.background = "var(--dt-glass-bg)"
+                                                    e.currentTarget.style.color = "var(--dt-text-quaternary)"
                                                 }}
                                             >
                                                 <Trash2 size={11} strokeWidth={1.8}/>
@@ -811,30 +521,30 @@ export default function ChatPage() {
                 overflow: "hidden",
                 contain: "style",
                 transition: `all ${TIMING.slow} ${EASE.out}`,
-                ...makeGlassPanel(isDark, isV3),
+                ...makeGlassPanel(isV3),
             }}>
                 {/* Header */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                    borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                    borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                     display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
-                    background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                    background: "var(--dt-glass-bg-subtle)",
                     overflow: "visible", position: "relative", zIndex: 10,
                 }}>
                     <div style={{
                         width: isMobile ? 26 : 30, height: isMobile ? 26 : 30, borderRadius: isMobile ? RADIUS.md : RADIUS.lg,
-                        background: isDark ? COLOR.gold.tint : "rgba(196,124,0,0.18)",
-                        border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.38)",
+                        background: "var(--dt-accent-tint)",
+                        border: "0.5px solid var(--dt-accent-border-color)",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65)",
                     }}>
             <span style={{
-                fontSize: isMobile ? TYPE_SCALE.sm : TYPE_SCALE.md, fontWeight: 700, color: isDark ? COLOR.gold.base : "#7a4a00", lineHeight: 1,
+                fontSize: isMobile ? TYPE_SCALE.sm : TYPE_SCALE.md, fontWeight: 700, color: "var(--dt-accent-color)", lineHeight: 1,
                 fontFamily: FONT.brand
             }}>N</span>
                     </div>
                     {!isMobile && <span style={{
-                        fontWeight: 700, fontSize: TYPE_SCALE.md, color: isDark ? TEXT_DARK.primary : TEXT_LIGHT.primary,
+                        fontWeight: 700, fontSize: TYPE_SCALE.md, color: "var(--dt-text-primary)",
                         fontFamily: FONT.brand, letterSpacing: "-0.04em"
                     }}>
             Vitreon Legal
@@ -943,15 +653,15 @@ export default function ChatPage() {
                                     onContextMenu={(e) => e.preventDefault()}
                                     onMouseEnter={(e) => {
                                         if (!isActive && isEnabled) {
-                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.24)"
-                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
+                                            e.currentTarget.style.background = "var(--dt-pill-bg-hover)"
+                                            e.currentTarget.style.borderColor = "var(--dt-glass-border)"
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.transform = "scale(1)"
                                         if (!isActive && isEnabled) {
-                                            e.currentTarget.style.background = isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)"
-                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
+                                            e.currentTarget.style.background = "var(--dt-pill-bg)"
+                                            e.currentTarget.style.borderColor = "var(--dt-glass-border)"
                                         }
                                     }}
                                     style={{
@@ -961,14 +671,14 @@ export default function ChatPage() {
                                         cursor: isEnabled ? "pointer" : "not-allowed",
                                         opacity: isEnabled ? 1 : 0.38,
                                         background: isActive
-                                            ? COLOR.gold.solid
-                                            : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)",
+                                            ? "var(--dt-color-gold-solid)"
+                                            : "var(--dt-pill-bg)",
                                         border: isActive
-                                            ? `0.5px solid ${COLOR.gold.border}`
-                                            : isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                            ? "0.5px solid var(--dt-color-gold-border)"
+                                            : "0.5px solid var(--dt-glass-border)",
                                         color: isActive
-                                            ? TEXT_DARK.primary
-                                            : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                            ? "var(--dt-text-primary)"
+                                            : "var(--dt-text-tertiary)",
                                         fontFamily: FONT.sans,
                                         transition: `all ${TIMING.fast} ${EASE.spring}`,
                                         whiteSpace: "nowrap",
@@ -986,7 +696,7 @@ export default function ChatPage() {
                         {currentCorpora.length > 0 && (
                             <span style={{
                                 fontSize: TYPE_SCALE.xs,
-                                color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                color: "var(--dt-text-quaternary)",
                                 whiteSpace: "nowrap",
                                 flexShrink: 0,
                                 fontFamily: FONT.sans,
@@ -1004,14 +714,14 @@ export default function ChatPage() {
                                 fontSize: TYPE_SCALE.xs, fontWeight: useInternet ? 700 : 500, lineHeight: 1,
                                 fontFamily: FONT.sans,
                                 background: useInternet
-                                    ? isDark ? COLOR.teal.tint : "rgba(0,128,128,0.10)"
-                                    : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)",
+                                    ? "var(--dt-teal-tint)"
+                                    : "var(--dt-pill-bg)",
                                 border: useInternet
-                                    ? isDark ? `0.5px solid ${COLOR.teal.border}` : "0.5px solid rgba(0,128,128,0.25)"
-                                    : isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                                    ? "0.5px solid var(--dt-teal-border-color)"
+                                    : "0.5px solid var(--dt-glass-border)",
                                 color: useInternet
-                                    ? isDark ? COLOR.teal.base : "#0d7377"
-                                    : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    ? "var(--dt-teal-on-surface)"
+                                    : "var(--dt-text-tertiary)",
                                 cursor: "pointer",
                                 transition: `all ${TIMING.fast} ${EASE.spring}`,
                                 userSelect: "none",
@@ -1032,14 +742,14 @@ export default function ChatPage() {
                             display: "flex", alignItems: "center", gap: SPACE['1'],
                             padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.sm, fontWeight: 500,
                             background: historyOpen
-                                ? isDark ? COLOR.gold.tint : "rgba(196,124,0,0.12)"
-                                : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
+                                ? "var(--dt-accent-tint-subtle)"
+                                : "var(--dt-button-bg)",
                             border: historyOpen
-                                ? isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.28)"
-                                : isDark ? `0.5px solid ${GLASS.dark.border}` : "0.5px solid rgba(255,255,255,0.42)",
+                                ? "0.5px solid var(--dt-accent-border-color)"
+                                : "0.5px solid var(--dt-button-border-color)",
                             color: historyOpen
-                                ? isDark ? COLOR.gold.base : "#7a4a00"
-                                : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                ? "var(--dt-accent-color)"
+                                : "var(--dt-text-tertiary)",
                             cursor: "pointer", transition: `all ${TIMING.instant}`,
                             fontFamily: FONT.sans,
                         }}
@@ -1058,14 +768,14 @@ export default function ChatPage() {
                                 padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.sm, fontWeight: 500,
                                 position: "relative",
                                 background: indexOpen
-                                    ? isDark ? COLOR.gold.tint : "rgba(196,124,0,0.12)"
-                                    : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
+                                    ? "var(--dt-accent-tint-subtle)"
+                                    : "var(--dt-button-bg)",
                                 border: indexOpen
-                                    ? isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.28)"
-                                    : isDark ? `0.5px solid ${GLASS.dark.border}` : "0.5px solid rgba(255,255,255,0.42)",
+                                    ? "0.5px solid var(--dt-accent-border-color)"
+                                    : "0.5px solid var(--dt-button-border-color)",
                                 color: indexOpen
-                                    ? isDark ? COLOR.gold.base : "#7a4a00"
-                                    : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    ? "var(--dt-accent-color)"
+                                    : "var(--dt-text-tertiary)",
                                 cursor: "pointer", transition: `all ${TIMING.instant}`,
                                 fontFamily: FONT.sans,
                             }}
@@ -1077,8 +787,8 @@ export default function ChatPage() {
                                 minWidth: SPACE['4'], height: SPACE['4'], borderRadius: RADIUS.md,
                                 padding: `0 ${SPACE['1']}px`,
                                 fontSize: TYPE_SCALE.xs, fontWeight: 700,
-                                background: isDark ? COLOR.gold.glow : "rgba(196,124,0,0.16)",
-                                color: isDark ? COLOR.gold.base : "#7a4a00",
+                                background: "var(--dt-accent-glow)",
+                                color: "var(--dt-accent-color)",
                             }}>
                                 {documentIndex.length}
                             </span>
@@ -1094,19 +804,19 @@ export default function ChatPage() {
                             style={{
                                 display: "flex", alignItems: "center", gap: SPACE['1'],
                                 padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md, fontSize: TYPE_SCALE.sm, fontWeight: 500,
-                                background: isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
-                                border: isDark ? `0.5px solid ${GLASS.dark.border}` : "0.5px solid rgba(255,255,255,0.42)",
-                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                background: "var(--dt-button-bg)",
+                                border: "0.5px solid var(--dt-button-border-color)",
+                                color: "var(--dt-text-tertiary)",
                                 cursor: "pointer", transition: `all ${TIMING.instant}`,
                                 fontFamily: FONT.sans,
                             }}
                             onMouseEnter={e => {
-                                e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.28)";
-                                e.currentTarget.style.color = isDark ? TEXT_DARK.primary : TEXT_LIGHT.secondary
+                                e.currentTarget.style.background = "var(--dt-button-bg-hover)";
+                                e.currentTarget.style.color = "var(--dt-text-primary)"
                             }}
                             onMouseLeave={e => {
-                                e.currentTarget.style.background = isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)";
-                                e.currentTarget.style.color = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+                                e.currentTarget.style.background = "var(--dt-button-bg)";
+                                e.currentTarget.style.color = "var(--dt-text-tertiary)"
                             }}
                         >
                             <SquarePen size={TYPE_SCALE.sm} strokeWidth={1.8}/>
@@ -1119,13 +829,13 @@ export default function ChatPage() {
                 {corpusWarning && (
                     <div style={{
                         padding: `${SPACE['3']}px ${SPACE['5']}px`,
-                        background: isDark ? COLOR.gold.tint : "rgba(196,124,0,0.08)",
-                        border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.25)",
+                        background: "var(--dt-accent-tint-subtle)",
+                        border: "0.5px solid var(--dt-accent-border-color)",
                         borderRadius: 0,
-                        borderBottom: isDark ? `0.5px solid ${COLOR.gold.glow}` : "0.5px solid rgba(196,124,0,0.18)",
+                        borderBottom: "0.5px solid var(--dt-accent-glow)",
                         display: "flex", alignItems: "center", gap: SPACE['3'], flexWrap: "wrap",
                         fontSize: TYPE_SCALE.sm,
-                        color: isDark ? TEXT_DARK.primary : TEXT_LIGHT.secondary,
+                        color: "var(--dt-text-primary)",
                         fontFamily: FONT.sans,
                         flexShrink: 0,
                     }}>
@@ -1146,9 +856,9 @@ export default function ChatPage() {
                                     fontSize: TYPE_SCALE.xs, fontWeight: 600,
                                     padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md,
                                     cursor: "pointer",
-                                    background: isDark ? COLOR.gold.glow : "rgba(196,124,0,0.16)",
-                                    border: isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.35)",
-                                    color: isDark ? COLOR.gold.base : "#7a4a00",
+                                    background: "var(--dt-accent-glow)",
+                                    border: "0.5px solid var(--dt-accent-border-color)",
+                                    color: "var(--dt-accent-color)",
                                     fontFamily: FONT.sans,
                                     transition: `all ${TIMING.instant}`,
                                 }}
@@ -1161,9 +871,9 @@ export default function ChatPage() {
                                     fontSize: TYPE_SCALE.xs, fontWeight: 500,
                                     padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md,
                                     cursor: "pointer",
-                                    background: isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
-                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
-                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    background: "var(--dt-button-bg)",
+                                    border: "0.5px solid var(--dt-glass-border-subtle)",
+                                    color: "var(--dt-text-tertiary)",
                                     fontFamily: FONT.sans,
                                     transition: `all ${TIMING.instant}`,
                                 }}
@@ -1201,10 +911,10 @@ export default function ChatPage() {
                         >
                             <div style={{
                                 padding: `${SPACE['3']}px ${SPACE['5']}px`,
-                                background: isDark ? "rgba(255,80,60,0.10)" : "rgba(180,40,20,0.07)",
-                                borderBottom: isDark ? "0.5px solid rgba(255,80,60,0.25)" : "0.5px solid rgba(180,40,20,0.20)",
+                                background: "var(--dt-error-bg-subtle)",
+                                borderBottom: "0.5px solid var(--dt-error-border-subtle)",
                                 fontSize: TYPE_SCALE.sm,
-                                color: isDark ? "rgba(255,140,122,0.90)" : "#7a2010",
+                                color: "var(--dt-error-text)",
                                 fontFamily: FONT.sans,
                                 display: "flex", alignItems: "center", gap: SPACE['2'],
                             }}>
@@ -1218,9 +928,9 @@ export default function ChatPage() {
                                         fontSize: TYPE_SCALE.xs, fontWeight: 600,
                                         padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.md,
                                         cursor: "pointer", marginLeft: "auto", whiteSpace: "nowrap",
-                                        background: isDark ? "rgba(255,80,60,0.18)" : "rgba(180,40,20,0.12)",
-                                        border: isDark ? "0.5px solid rgba(255,80,60,0.35)" : "0.5px solid rgba(180,40,20,0.25)",
-                                        color: isDark ? "rgba(255,140,122,0.90)" : "#7a2010",
+                                        background: "var(--dt-error-bg-interactive)",
+                                        border: "0.5px solid var(--dt-error-border-active)",
+                                        color: "var(--dt-error-text)",
                                         fontFamily: FONT.sans,
                                         transition: `all ${TIMING.instant}`,
                                     }}
@@ -1236,7 +946,7 @@ export default function ChatPage() {
                 {(jurisdiction === "uk" || jurisdiction === "au") && lawPaneOpen && availableLaws.length > 0 && (
                     <div style={{
                         padding: isMobile ? `${SPACE['1']}px ${SPACE['3']}px` : `${SPACE['1']}px ${SPACE['6']}px`,
-                        borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.bgSubtle}`,
+                        borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                         display: "flex",
                         alignItems: "center",
                         gap: isMobile ? 3 : SPACE['1'],
@@ -1244,12 +954,12 @@ export default function ChatPage() {
                         flexShrink: 0,
                         scrollbarWidth: "none",
                         WebkitOverflowScrolling: "touch",
-                        background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                        background: "var(--dt-glass-bg-subtle)",
                     }}>
                         <span style={{
                             fontSize: TYPE_SCALE.xs, fontWeight: 600, textTransform: "uppercase",
                             letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0,
-                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                            color: "var(--dt-text-quaternary)",
                             fontFamily: FONT.sans,
                         }}>
                             {selectedLaws.length === availableLaws.length ? "All" : `${selectedLaws.length}/${availableLaws.length}`}
@@ -1306,27 +1016,27 @@ export default function ChatPage() {
                                         cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                                         userSelect: "none", WebkitUserSelect: "none",
                                         background: isActive
-                                            ? COLOR.gold.solid
-                                            : isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)",
+                                            ? "var(--dt-color-gold-solid)"
+                                            : "var(--dt-pill-bg-subtle)",
                                         border: isActive
-                                            ? `0.5px solid ${COLOR.gold.border}`
-                                            : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.28)",
+                                            ? "0.5px solid var(--dt-color-gold-border)"
+                                            : "0.5px solid var(--dt-pill-border-color)",
                                         color: isActive
-                                            ? TEXT_DARK.primary
-                                            : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                            ? "var(--dt-text-primary)"
+                                            : "var(--dt-text-tertiary)",
                                         fontFamily: FONT.sans,
                                         transition: `all ${TIMING.fast} ${EASE.spring}`,
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!isActive) {
-                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgSubtle
-                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
+                                            e.currentTarget.style.background = "var(--dt-glass-bg-hover)"
+                                            e.currentTarget.style.borderColor = "var(--dt-glass-border)"
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isActive) {
-                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)"
-                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : "rgba(255,255,255,0.28)"
+                                            e.currentTarget.style.background = "var(--dt-pill-bg-subtle)"
+                                            e.currentTarget.style.borderColor = "var(--dt-pill-border-color)"
                                         }
                                     }}
                                 >
@@ -1343,9 +1053,9 @@ export default function ChatPage() {
                                     padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.sm,
                                     cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                                     userSelect: "none", WebkitUserSelect: "none",
-                                    background: isDark ? GLASS.dark.bg : "rgba(255,255,255,0.14)",
-                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.borderSubtle}`,
-                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    background: "var(--dt-pill-bg)",
+                                    border: "0.5px solid var(--dt-glass-border)",
+                                    color: "var(--dt-text-tertiary)",
                                     fontFamily: FONT.sans,
                                     transition: `all ${TIMING.instant}`,
                                 }}
@@ -1360,7 +1070,7 @@ export default function ChatPage() {
                 {jurisdiction === "custom" && (
                     <div style={{
                         padding: isMobile ? `${SPACE['2']}px ${SPACE['3']}px` : `${SPACE['2']}px ${SPACE['6']}px`,
-                        borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.bgSubtle}`,
+                        borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                         display: "flex",
                         alignItems: "center",
                         gap: SPACE['2'],
@@ -1368,12 +1078,12 @@ export default function ChatPage() {
                         flexShrink: 0,
                         scrollbarWidth: "none",
                         WebkitOverflowScrolling: "touch",
-                        background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                        background: "var(--dt-glass-bg-subtle)",
                     }}>
                         <span style={{
                             fontSize: TYPE_SCALE.xs, fontWeight: 600, textTransform: "uppercase",
                             letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0,
-                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                            color: "var(--dt-text-quaternary)",
                             fontFamily: FONT.sans,
                         }}>
                             Collections
@@ -1381,7 +1091,7 @@ export default function ChatPage() {
                         {corporaLoading ? (
                             <span style={{
                                 fontSize: TYPE_SCALE.sm,
-                                color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                color: "var(--dt-text-quaternary)",
                                 fontFamily: FONT.sans,
                                 whiteSpace: "nowrap",
                             }}>
@@ -1403,14 +1113,14 @@ export default function ChatPage() {
                                     cursor: "pointer" as const, whiteSpace: "nowrap" as const, flexShrink: 0,
                                     userSelect: "none" as const, WebkitUserSelect: "none" as const,
                                     background: active
-                                        ? COLOR.gold.solid
-                                        : isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)",
+                                        ? "var(--dt-color-gold-solid)"
+                                        : "var(--dt-pill-bg-subtle)",
                                     border: active
-                                        ? `0.5px solid ${COLOR.gold.border}`
-                                        : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.28)",
+                                        ? "0.5px solid var(--dt-color-gold-border)"
+                                        : "0.5px solid var(--dt-pill-border-color)",
                                     color: active
-                                        ? TEXT_DARK.primary
-                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        ? "var(--dt-text-primary)"
+                                        : "var(--dt-text-tertiary)",
                                     fontFamily: FONT.sans,
                                     transition: `all ${TIMING.fast} ${EASE.spring}`,
                                 })
@@ -1418,14 +1128,14 @@ export default function ChatPage() {
                                 const hoverHandlers = (active: boolean) => ({
                                     onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
                                         if (!active) {
-                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgSubtle
-                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
+                                            e.currentTarget.style.background = "var(--dt-glass-bg-hover)"
+                                            e.currentTarget.style.borderColor = "var(--dt-glass-border)"
                                         }
                                     },
                                     onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
                                         if (!active) {
-                                            e.currentTarget.style.background = isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)"
-                                            e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : "rgba(255,255,255,0.28)"
+                                            e.currentTarget.style.background = "var(--dt-pill-bg-subtle)"
+                                            e.currentTarget.style.borderColor = "var(--dt-pill-border-color)"
                                         }
                                     },
                                 })
@@ -1485,19 +1195,19 @@ export default function ChatPage() {
                                     padding: `${SPACE['1']}px ${SPACE['3']}px`, borderRadius: RADIUS.sm,
                                     cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                                     userSelect: "none", WebkitUserSelect: "none",
-                                    background: isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)",
-                                    border: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.28)",
-                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    background: "var(--dt-pill-bg-subtle)",
+                                    border: "0.5px solid var(--dt-pill-border-color)",
+                                    color: "var(--dt-text-tertiary)",
                                     fontFamily: FONT.sans,
                                     transition: `all ${TIMING.fast} ${EASE.spring}`,
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : GLASS.light.bgSubtle
-                                    e.currentTarget.style.borderColor = isDark ? GLASS.dark.border : GLASS.light.borderSubtle
+                                    e.currentTarget.style.background = "var(--dt-glass-bg-hover)"
+                                    e.currentTarget.style.borderColor = "var(--dt-glass-border)"
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = isDark ? GLASS.dark.bgSubtle : "rgba(255,255,255,0.12)"
-                                    e.currentTarget.style.borderColor = isDark ? GLASS.dark.borderSubtle : "rgba(255,255,255,0.28)"
+                                    e.currentTarget.style.background = "var(--dt-pill-bg-subtle)"
+                                    e.currentTarget.style.borderColor = "var(--dt-pill-border-color)"
                                 }}
                             >
                                 Upload documents to get started
@@ -1568,19 +1278,19 @@ export default function ChatPage() {
                                     <button key={suggestion} onClick={() => onSend(suggestion)} style={{
                                         flexShrink: 0, fontSize: TYPE_SCALE.xs, padding: `${SPACE['2']}px ${SPACE['4']}px`,
                                         borderRadius: RADIUS.full, cursor: "pointer",
-                                        background: isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.28)",
-                                        border: isDark ? `1px solid ${GLASS.dark.border}` : `1px solid ${GLASS.light.border}`,
-                                        color: isDark ? TEXT_DARK.secondary : "#5a3a08",
+                                        background: "var(--dt-button-bg-hover)",
+                                        border: "1px solid var(--dt-glass-border)",
+                                        color: "var(--dt-text-secondary-accent)",
                                         transition: `all ${TIMING.fast}`,
                                         fontFamily: FONT.sans,
                                     }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = isDark ? COLOR.gold.tint : "rgba(233,196,106,0.28)"
-                                                e.currentTarget.style.color = isDark ? COLOR.gold.base : "#7a3800"
+                                                e.currentTarget.style.background = "var(--dt-accent-tint-hover)"
+                                                e.currentTarget.style.color = "var(--dt-accent-color-hover)"
                                             }}
                                             onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = isDark ? GLASS.dark.bgHover : "rgba(255,255,255,0.28)"
-                                                e.currentTarget.style.color = isDark ? TEXT_DARK.secondary : "#5a3a08"
+                                                e.currentTarget.style.background = "var(--dt-button-bg-hover)"
+                                                e.currentTarget.style.color = "var(--dt-text-secondary-accent)"
                                             }}
                                     >
                                         {suggestion}
@@ -1594,9 +1304,9 @@ export default function ChatPage() {
                         <div style={{
                             fontSize: TYPE_SCALE.sm, textAlign: "center", marginTop: SPACE['2'], marginBottom: SPACE['4'],
                             borderRadius: RADIUS.lg, padding: `${SPACE['3']}px ${SPACE['4']}px`,
-                            color: isDark ? "#ff8c7a" : "#8b3520",
-                            background: isDark ? "rgba(255,100,80,0.10)" : "rgba(139,53,32,0.10)",
-                            border: isDark ? "1px solid rgba(255,100,80,0.22)" : "1px solid rgba(139,53,32,0.22)",
+                            color: "var(--dt-error-color)",
+                            background: "var(--dt-error-bg)",
+                            border: "1px solid var(--dt-error-border-color)",
                             display: "flex", alignItems: "center", justifyContent: "center", gap: SPACE['3'],
                             flexWrap: "wrap",
                         }}>
@@ -1608,9 +1318,9 @@ export default function ChatPage() {
                                 style={{
                                     fontSize: TYPE_SCALE.sm, fontWeight: 600, padding: `${SPACE['1']}px ${SPACE['3']}px`,
                                     borderRadius: RADIUS.md, cursor: "pointer",
-                                    background: isDark ? "rgba(255,100,80,0.20)" : "rgba(139,53,32,0.14)",
-                                    border: isDark ? "1px solid rgba(255,100,80,0.40)" : "1px solid rgba(139,53,32,0.35)",
-                                    color: isDark ? "#ff8c7a" : "#8b3520",
+                                    background: "var(--dt-error-bg-hover)",
+                                    border: "1px solid var(--dt-error-border-strong)",
+                                    color: "var(--dt-error-color)",
                                     fontFamily: FONT.sans,
                                 }}
                             >
@@ -1623,13 +1333,13 @@ export default function ChatPage() {
                 {/* Input */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px ${SPACE['5']}px` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
-                    borderTop: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                    flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                    borderTop: "0.5px solid var(--dt-glass-border)",
+                    flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
                 }}>
                     <ChatInput onSend={onSend} disabled={isStreaming} onFocusRef={inputFocusRef}/>
                     <p style={{
                         fontSize: TYPE_SCALE.xs,
-                        color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                        color: "var(--dt-text-quaternary)",
                         fontFamily: FONT.sans,
                         margin: `${SPACE['2']}px 0 0`,
                         textAlign: "center",
@@ -1659,19 +1369,17 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
-                                background: isDark ? "rgba(13,21,32,0.95)" : "rgba(255,252,242,0.95)",
-                                backdropFilter: GLASS.dark.blurLight,
-                                WebkitBackdropFilter: GLASS.dark.blurLight,
-                                border: isDark ? "0.5px solid rgba(255,255,255,0.18)" : "0.5px solid rgba(255,255,255,0.55)",
-                                boxShadow: isDark
-                                    ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"
-                                    : "0 -12px 48px rgba(100,50,0,0.15), inset 0 1.5px 0 rgba(255,255,255,0.85)",
+                                background: "var(--dt-panel-overlay-bg)",
+                                backdropFilter: "var(--dt-glass-blur-light)",
+                                WebkitBackdropFilter: "var(--dt-glass-blur-light)",
+                                border: "0.5px solid var(--dt-panel-border-color)",
+                                boxShadow: "var(--dt-panel-shadow)",
                             } : {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
                                 zIndex: 1,
                                 flexShrink: 0,
-                                ...makeGlassPanel(isDark, isV3),
+                                ...makeGlassPanel(isV3),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1685,20 +1393,20 @@ export default function ChatPage() {
                             <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
                                 <div style={{
                                     width: 36, height: SPACE['1'], borderRadius: 2,
-                                    background: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                    background: "var(--dt-text-quaternary)",
                                 }}/>
                             </div>
                         )}
                         {/* Panel header */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                            borderBottom: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
+                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                            flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
                   fontSize: TYPE_SCALE.sm, fontWeight: 600,
-                  color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                  color: "var(--dt-text-tertiary)",
                   fontFamily: FONT.sans,
                   textTransform: "uppercase", letterSpacing: "0.10em"
               }}>
@@ -1707,11 +1415,11 @@ export default function ChatPage() {
                             <button
                                 onClick={() => setPreviewIndex(null)}
                                 style={{
-                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
+                                    background: "var(--dt-glass-bg)",
+                                    border: "0.5px solid var(--dt-glass-border)",
                                     cursor: "pointer",
                                     padding: isMobile ? SPACE['2'] : SPACE['1'],
-                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    color: "var(--dt-text-tertiary)",
                                     borderRadius: RADIUS.md,
                                     display: "flex"
                                 }}
@@ -1733,8 +1441,8 @@ export default function ChatPage() {
                         {/* Ask button */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['5']}px 80px` : `${SPACE['3']}px ${SPACE['5']}px ${SPACE['4']}px`,
-                            borderTop: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                            flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                            borderTop: "0.5px solid var(--dt-glass-border)",
+                            flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
                         }}>
                             <button
                                 onClick={() => onSend(presetQuestions[previewIndex!].full)}
@@ -1776,18 +1484,16 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
-                                background: isDark ? "rgba(13,21,32,0.95)" : "rgba(255,252,242,0.95)",
-                                backdropFilter: GLASS.dark.blurLight,
-                                WebkitBackdropFilter: GLASS.dark.blurLight,
-                                border: isDark ? "0.5px solid rgba(255,255,255,0.18)" : "0.5px solid rgba(255,255,255,0.55)",
-                                boxShadow: isDark
-                                    ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"
-                                    : "0 -12px 48px rgba(100,50,0,0.15), inset 0 1.5px 0 rgba(255,255,255,0.85)",
+                                background: "var(--dt-panel-overlay-bg)",
+                                backdropFilter: "var(--dt-glass-blur-light)",
+                                WebkitBackdropFilter: "var(--dt-glass-blur-light)",
+                                border: "0.5px solid var(--dt-panel-border-color)",
+                                boxShadow: "var(--dt-panel-shadow)",
                             } : {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
                                 flexShrink: 0,
-                                ...makeGlassPanel(isDark, isV3),
+                                ...makeGlassPanel(isV3),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1801,21 +1507,21 @@ export default function ChatPage() {
                             <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
                                 <div style={{
                                     width: 36, height: SPACE['1'], borderRadius: 2,
-                                    background: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                    background: "var(--dt-text-quaternary)",
                                 }}/>
                             </div>
                         )}
                         {/* Panel header */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                            borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0, background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                            flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
                   fontSize: TYPE_SCALE.sm, fontWeight: 700, textTransform: "uppercase",
                   letterSpacing: "0.12em",
-                  color: isDark ? COLOR.gold.base : "#7a4a00",
+                  color: "var(--dt-accent-color)",
                   fontFamily: FONT.sans,
               }}>
                 Source Grounding
@@ -1831,11 +1537,11 @@ export default function ChatPage() {
                                             display: "flex", alignItems: "center", gap: 1,
                                             padding: `3px ${SPACE['1']}px`, borderRadius: RADIUS.sm,
                                             background: layoutMode === mode
-                                                ? isDark ? COLOR.gold.tint : "rgba(196,124,0,0.14)"
-                                                : isDark ? GLASS.dark.bg : "rgba(255,255,255,0.18)",
+                                                ? "var(--dt-accent-tint)"
+                                                : "var(--dt-button-bg)",
                                             border: layoutMode === mode
-                                                ? isDark ? `0.5px solid ${COLOR.gold.border}` : "0.5px solid rgba(196,124,0,0.30)"
-                                                : isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : "0.5px solid rgba(255,255,255,0.40)",
+                                                ? "0.5px solid var(--dt-accent-border-color)"
+                                                : "0.5px solid var(--dt-glass-border-subtle)",
                                             cursor: "pointer",
                                             transition: `all ${TIMING.instant}`,
                                         }}
@@ -1846,8 +1552,8 @@ export default function ChatPage() {
                                             width: mode === "chat" ? 10 : mode === "split" ? 7 : SPACE['1'],
                                             height: 10, borderRadius: 1.5,
                                             background: layoutMode === mode
-                                                ? isDark ? COLOR.gold.solid : "rgba(196,124,0,0.55)"
-                                                : isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                ? "var(--dt-color-gold-solid)"
+                                                : "var(--dt-text-quaternary)",
                                             transition: `all ${TIMING.instant}`,
                                         }}/>
                                         {/* Right rectangle (sources) */}
@@ -1856,8 +1562,8 @@ export default function ChatPage() {
                                             width: mode === "chat" ? SPACE['1'] : mode === "split" ? 7 : 10,
                                             height: 10, borderRadius: 1.5,
                                             background: layoutMode === mode
-                                                ? isDark ? COLOR.gold.solid : "rgba(196,124,0,0.55)"
-                                                : isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                                ? "var(--dt-color-gold-solid)"
+                                                : "var(--dt-text-quaternary)",
                                             transition: `all ${TIMING.instant}`,
                                         }}/>
                                     </button>
@@ -1868,10 +1574,10 @@ export default function ChatPage() {
                                         display: "flex", alignItems: "center", justifyContent: "center",
                                         width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
                                         borderRadius: RADIUS.md, marginLeft: SPACE['1'],
-                                        background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                        border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
+                                        background: "var(--dt-glass-bg)",
+                                        border: "0.5px solid var(--dt-glass-border)",
                                         cursor: "pointer",
-                                        color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        color: "var(--dt-text-tertiary)",
                                     }}
                                 >
                                     <X size={isMobile ? 16 : 14} strokeWidth={2}/>
@@ -1914,14 +1620,12 @@ export default function ChatPage() {
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
-                                background: isDark ? "rgba(13,21,32,0.95)" : "rgba(255,252,242,0.95)",
-                                backdropFilter: GLASS.dark.blurLight,
-                                WebkitBackdropFilter: GLASS.dark.blurLight,
-                                border: isDark ? "0.5px solid rgba(255,255,255,0.18)" : "0.5px solid rgba(255,255,255,0.55)",
-                                boxShadow: isDark
-                                    ? "0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08)"
-                                    : "0 -12px 48px rgba(100,50,0,0.15), inset 0 1.5px 0 rgba(255,255,255,0.85)",
-                            } : makeGlassPanel(isDark, isV3)),
+                                background: "var(--dt-panel-overlay-bg)",
+                                backdropFilter: "var(--dt-glass-blur-light)",
+                                WebkitBackdropFilter: "var(--dt-glass-blur-light)",
+                                border: "0.5px solid var(--dt-panel-border-color)",
+                                boxShadow: "var(--dt-panel-shadow)",
+                            } : makeGlassPanel(isV3)),
                         }}
                     >
                         {/* Mobile drag handle */}
@@ -1929,22 +1633,22 @@ export default function ChatPage() {
                             <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
                                 <div style={{
                                     width: 36, height: SPACE['1'], borderRadius: 2,
-                                    background: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                    background: "var(--dt-text-quaternary)",
                                 }}/>
                             </div>
                         )}
                         {/* Panel header */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['4']}px`,
-                            borderBottom: isDark ? `0.5px solid ${GLASS.dark.borderSubtle}` : `0.5px solid ${GLASS.light.borderSubtle}`,
+                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                            background: "var(--dt-glass-bg-subtle)",
                         }}>
                             <span style={{
                                 fontSize: TYPE_SCALE.xs, fontWeight: 700, textTransform: "uppercase",
                                 letterSpacing: "0.12em",
-                                color: isDark ? COLOR.gold.base : "#7a4a00",
+                                color: "var(--dt-accent-color)",
                                 fontFamily: FONT.sans,
                             }}>
                                 Sources ({documentIndex.length})
@@ -1955,10 +1659,10 @@ export default function ChatPage() {
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
                                     borderRadius: RADIUS.md,
-                                    background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                    border: isDark ? `0.5px solid ${GLASS.dark.border}` : `0.5px solid ${GLASS.light.border}`,
+                                    background: "var(--dt-glass-bg)",
+                                    border: "0.5px solid var(--dt-glass-border)",
                                     cursor: "pointer",
-                                    color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    color: "var(--dt-text-tertiary)",
                                 }}
                             >
                                 <X size={isMobile ? 16 : 14} strokeWidth={2}/>

@@ -3,7 +3,7 @@
 import {useEffect, useRef, useState, useCallback} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {Sparkles, Search, Globe, BookMarked, PenLine, Wifi, Loader2} from "lucide-react"
-import {STEP_COLOR, TIMING, FONT, TYPE_SCALE, SPACE, GLASS, TEXT_DARK, TEXT_LIGHT, RADIUS} from "@/lib/design-tokens"
+import {STEP_COLOR, TIMING, FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
 import type {Progress} from "./use-query-stream"
 
 /** Cubic-bezier values from EASE.out as a tuple for motion/react */
@@ -22,6 +22,7 @@ interface StreamingStatusProps {
     status?: string | null
     progress?: Progress | null
     thinkingPreview?: string | null
+    /** @deprecated Theme is now handled via CSS variables */
     isDark?: boolean
 }
 
@@ -68,7 +69,7 @@ function formatElapsed(seconds: number): string {
 
 const DOT_CYCLE = [".", "..", "..."] as const
 
-export function StreamingStatus({status, progress, thinkingPreview, isDark = false}: StreamingStatusProps) {
+export function StreamingStatus({status, progress, thinkingPreview}: StreamingStatusProps) {
     const label = status ?? "Thinking\u2026"
     const [pastSteps, setPastSteps] = useState<StepEntry[]>([])
     const prevLabel = useRef(label)
@@ -127,14 +128,10 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
 
     const showElapsed = elapsed >= Math.ceil(ELAPSED_SHOW_THRESHOLD / 1000)
     const displayLabel = stripTrailingDots(label) + DOT_CYCLE[dotIndex]
-
-    const textColor = isDark ? TEXT_DARK.primary : TEXT_LIGHT.primary
-    const dimTextColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-    const elapsedColor = isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary
-    const glass = isDark ? GLASS.dark : GLASS.light
     const dotSize = SPACE["1"] + 2 // 6px filled circle
 
     // Glow animation: generate a CSS-compatible color with 30% opacity for the shadow
+    // STEP_COLOR values are hardcoded hex so string concatenation for hex opacity works.
     const glowColor = iconColor + "4D" // 4D hex ≈ 30% opacity
 
     return (
@@ -143,10 +140,10 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
             style={{
                 gap: SPACE["1"],
                 padding: `${SPACE["2"] + 2}px ${SPACE["3"] + 2}px`,
-                background: glass.bg,
-                border: `1px solid ${glass.border}`,
-                backdropFilter: glass.blurLight,
-                WebkitBackdropFilter: glass.blurLight,
+                background: "var(--dt-glass-bg)",
+                border: "1px solid var(--dt-glass-border)",
+                backdropFilter: "var(--dt-glass-blur-light)",
+                WebkitBackdropFilter: "var(--dt-glass-blur-light)",
                 minWidth: 180,
                 width: "auto",
                 maxWidth: 340,
@@ -178,7 +175,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                     <span style={{
                         fontSize: TYPE_SCALE.xs,
                         fontFamily: FONT.sans,
-                        color: dimTextColor,
+                        color: "var(--dt-text-tertiary)",
                         whiteSpace: "nowrap",
                     }}>
                         {step.label}
@@ -187,8 +184,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
             ))}
 
             {/* Current step */}
-            <div className="flex items-center" style={{gap: SPACE["2"]}}
-                        >
+            <div className="flex items-center" style={{gap: SPACE["2"]}}>
                 <div style={{
                     width: 18,
                     height: 18,
@@ -218,7 +214,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                 </div>
                 <span style={{
                     fontSize: TYPE_SCALE.sm,
-                    color: textColor,
+                    color: "var(--dt-text-primary)",
                     fontFamily: FONT.sans,
                     fontWeight: 500,
                     whiteSpace: "nowrap",
@@ -236,7 +232,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                             transition={{duration: parseFloat(TIMING.medium), ease: MOTION_EASE_OUT}}
                             style={{
                                 fontSize: TYPE_SCALE.xs,
-                                color: elapsedColor,
+                                color: "var(--dt-text-quaternary)",
                                 fontFamily: FONT.mono,
                                 fontWeight: 400,
                                 whiteSpace: "nowrap",
@@ -249,9 +245,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                 </AnimatePresence>
             </div>
 
-            {/* Progress bar — uses opacity + translateY instead of height: "auto"
-               which is unreliable in motion/react v12 and can cause the bar to
-               render with zero height while the counter text overflows visibly. */}
+            {/* Progress bar */}
             <AnimatePresence>
                 {progress && progress.total > 0 && (
                     <motion.div
@@ -271,7 +265,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                         <div style={{
                             width: "100%",
                             height: 4,
-                            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                            background: "var(--dt-progress-track-bg)",
                             borderRadius: RADIUS.full,
                             overflow: "hidden",
                         }}>
@@ -291,7 +285,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                         <span style={{
                             fontSize: TYPE_SCALE.xs,
                             fontFamily: FONT.mono,
-                            color: dimTextColor,
+                            color: "var(--dt-text-tertiary)",
                             whiteSpace: "nowrap",
                         }}>
                             {progress.current}/{progress.total}
@@ -317,7 +311,7 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
                             fontSize: TYPE_SCALE.xs,
                             fontFamily: FONT.sans,
                             fontStyle: "italic",
-                            color: dimTextColor,
+                            color: "var(--dt-text-tertiary)",
                             lineHeight: 1.4,
                             maxWidth: 320,
                             overflow: "hidden",

@@ -12,10 +12,7 @@ import {SourcesPanel} from "@/components/chat/sources-panel"
 import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
 import {AgentTrace} from "@/components/chat/agent-trace"
-import {
-    FONT, TYPE_SCALE, SPACE, COLOR, TEXT_DARK, TEXT_LIGHT,
-    ANSWER_CARD, RADIUS,
-} from "@/lib/design-tokens"
+import {FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
 
 export type {Source} from "@/components/chat/use-query-stream"
 type Source = import("@/components/chat/use-query-stream").Source
@@ -30,12 +27,6 @@ const DOC_REF_PATTERN = /\[DOC-(\d+)\]/g
 
 // ─── Remark plugin ────────────────────────────────────────────────────────────
 
-/**
- * Remark plugin: replaces [DOC-N] and [[source:ID:PAGE]] patterns found in
- * MDAST text nodes with custom `citationRef` nodes. These pass through to the
- * HAST stage (via `remarkRehypeOptions.passThrough`) where the rehype plugin
- * converts them to renderable `<citationbutton>` elements.
- */
 function remarkInlineCitations() {
     return (tree: import("mdast").Root) => {
         findAndReplace(tree, [
@@ -59,11 +50,6 @@ function remarkInlineCitations() {
 
 // ─── Rehype plugin ────────────────────────────────────────────────────────────
 
-/**
- * Rehype plugin: converts `citationRef` nodes that passed through from MDAST
- * into standard HAST `element` nodes with `tagName: "citationbutton"`.
- * React-markdown then renders these via the `components.citationbutton` entry.
- */
 function rehypeInlineCitations() {
     return (tree: import("hast").Root) => {
         visit(tree, "citationRef", (node: import("hast").Node, index, parent) => {
@@ -142,11 +128,9 @@ interface CitedEntry {
     page?: number
 }
 
-/** Pre-scan answer content for citation markers, return ordered cited sources. */
 function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
     const cited = new Map<number, CitedEntry>()
 
-    // [DOC-N] references (agent pipeline)
     for (const m of content.matchAll(/\[DOC-(\d+)\]/g)) {
         const n = parseInt(m[1], 10)
         const idx = n - 1
@@ -160,7 +144,6 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
         }
     }
 
-    // [[source:ID:PAGE]] references (deterministic pipeline)
     for (const m of content.matchAll(/\[\[source:([^:\]]+):(\d+)\]\]/g)) {
         const docId = m[1]
         const page = parseInt(m[2], 10)
@@ -185,7 +168,7 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
 
 // ─── Footnote style ──────────────────────────────────────────────────────────
 
-function footnoteStyle(resolvable: boolean, isDark: boolean): React.CSSProperties {
+function footnoteStyle(resolvable: boolean): React.CSSProperties {
     return {
         display: "inline-flex",
         alignItems: "center",
@@ -194,16 +177,9 @@ function footnoteStyle(resolvable: boolean, isDark: boolean): React.CSSPropertie
         lineHeight: 1,
         fontWeight: 700,
         fontFamily: FONT.sans,
-        color: resolvable
-            ? isDark ? COLOR.gold.base : "#7a4a00"
-            : isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
-        background: resolvable
-            ? isDark ? "rgba(201,168,76,0.14)" : "rgba(196,124,0,0.10)"
-            : isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)",
-        border: `0.5px solid ${resolvable
-            ? isDark ? "rgba(201,168,76,0.30)" : "rgba(196,124,0,0.25)"
-            : isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.08)"
-        }`,
+        color: resolvable ? "var(--dt-citation-resolvable-color)" : "var(--dt-text-quaternary)",
+        background: resolvable ? "var(--dt-citation-resolvable-tint)" : "var(--dt-citation-default-tint)",
+        border: `0.5px solid ${resolvable ? "var(--dt-citation-resolvable-border)" : "var(--dt-citation-default-border)"}`,
         borderRadius: RADIUS.sm,
         padding: `0 ${SPACE[1]}px`,
         minWidth: SPACE[4],
@@ -213,7 +189,7 @@ function footnoteStyle(resolvable: boolean, isDark: boolean): React.CSSPropertie
         position: "relative",
         top: -1,
         margin: "0 1px",
-        transition: `background 0.15s, border-color 0.15s, color 0.15s`,
+        transition: "background 0.15s, border-color 0.15s, color 0.15s",
     }
 }
 
@@ -230,6 +206,7 @@ interface ChatMessageProps {
     streamingThinkingPreview?: string | null
     trace?: string[]
     onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
+    /** isDark is retained for prose class selection and child components not yet migrated */
     isDark?: boolean
     messageId?: string
     traceId?: string | null
@@ -265,7 +242,6 @@ export function ChatMessage({
     const [feedbackError, setFeedbackError] = useState<string | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-    // Pre-collect cited sources for the References section
     const citedSources = useMemo(
         () => (content && sources.length > 0 && !isStreaming)
             ? collectCitedSources(content, sources)
@@ -334,8 +310,8 @@ export function ChatMessage({
             <div className="mb-5 animate-fade-in-up" style={{display: "flex", justifyContent: "flex-end"}}>
                 <div style={{
                     maxWidth: "72%",
-                    background: isDark ? "rgba(201,168,76,0.16)" : "rgba(180,120,10,0.22)",
-                    border: isDark ? "1px solid rgba(201,168,76,0.28)" : "1px solid rgba(160,100,5,0.38)",
+                    background: "var(--dt-confidence-bg)",
+                    border: "1px solid var(--dt-confidence-border)",
                     borderRadius: "16px 16px 4px 16px",
                     padding: "10px 14px",
                     backdropFilter: "blur(16px)",
@@ -343,7 +319,7 @@ export function ChatMessage({
                 }}>
                     <p style={{
                         fontSize: "13px", margin: 0, lineHeight: 1.6,
-                        color: isDark ? "rgba(255,255,255,0.88)" : "#2a1806",
+                        color: "var(--dt-confidence-text)",
                         fontWeight: 500,
                     }}>
                         {content}
@@ -356,8 +332,8 @@ export function ChatMessage({
     // ── Assistant message ─────────────────────────────────────────────────────
 
     const answerCardStyle: React.CSSProperties = {
-        background: isDark ? ANSWER_CARD.dark.bg : ANSWER_CARD.light.bg,
-        border: `0.5px solid ${isDark ? ANSWER_CARD.dark.border : ANSWER_CARD.light.border}`,
+        background: "var(--dt-answer-bg)",
+        border: "0.5px solid var(--dt-answer-border)",
         borderRadius: RADIUS.xl,
         fontFamily: FONT.sans,
     }
@@ -366,15 +342,11 @@ export function ChatMessage({
         fontSize: 10,
         textTransform: "uppercase" as const,
         letterSpacing: "0.14em",
-        color: isDark ? TEXT_DARK.tertiary : "#7a5a20",
+        color: "var(--dt-vote-text)",
         margin: `0 0 ${SPACE[2]}px`,
         fontWeight: 600,
     }
 
-    /**
-     * Custom React component for `citationbutton` elements.
-     * Renders superscript footnote numbers. Hidden while streaming.
-     */
     function CitationButtonComponent({
         citationkind,
         docid,
@@ -390,16 +362,12 @@ export function ChatMessage({
 
         const hoverHandlers = {
             onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-                e.currentTarget.style.background = isDark
-                    ? "rgba(201,168,76,0.28)"
-                    : "rgba(196,124,0,0.20)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.50)"
-                    : "rgba(196,124,0,0.40)"
-                e.currentTarget.style.color = isDark ? COLOR.gold.base : "#5c2e08"
+                e.currentTarget.style.background = "var(--dt-accent-highlight)"
+                e.currentTarget.style.borderColor = "var(--dt-accent-border-strong)"
+                e.currentTarget.style.color = "var(--dt-accent-color)"
             },
             onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-                const style = footnoteStyle(true, isDark)
+                const style = footnoteStyle(true)
                 e.currentTarget.style.background = style.background as string
                 e.currentTarget.style.borderColor = ""
                 e.currentTarget.style.color = style.color as string
@@ -426,7 +394,7 @@ export function ChatMessage({
                         ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={footnoteStyle(resolvable, isDark)}
+                    style={footnoteStyle(resolvable)}
                     {...(resolvable ? hoverHandlers : {})}
                 >
                     {footnoteNum}
@@ -435,7 +403,7 @@ export function ChatMessage({
         }
 
         if (citationkind === "docref") {
-            const sourceIdx = (refindex ?? 0) - 1  // DOC-N is 1-indexed
+            const sourceIdx = (refindex ?? 0) - 1
             const matchedSource = sources[sourceIdx]
             const resolvable = !!matchedSource
             const pageNum = matchedSource?.page_numbers[0]
@@ -449,7 +417,7 @@ export function ChatMessage({
                         ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={footnoteStyle(resolvable, isDark)}
+                    style={footnoteStyle(resolvable)}
                     {...(resolvable ? hoverHandlers : {})}
                 >
                     {refindex ?? 0}
@@ -468,9 +436,9 @@ export function ChatMessage({
             <div style={answerCardStyle}>
                 <div style={{padding: SPACE[4]}}>
                     {content === "__polling_pipeline_status__" ? (
-                        <StreamingStatus status="Processing..." isDark={isDark}/>
+                        <StreamingStatus status="Processing..."/>
                     ) : content?.startsWith("__pipeline_status:") ? (
-                        <StreamingStatus status={content.slice("__pipeline_status:".length)} isDark={isDark}/>
+                        <StreamingStatus status={content.slice("__pipeline_status:".length)}/>
                     ) : content ? (() => {
                         return (
                         <div className="group relative">
@@ -511,11 +479,11 @@ export function ChatMessage({
                                     "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                                 )}
                                 style={{
-                                    background: isDark ? "rgba(255,255,255,0.10)" : "rgba(255,240,215,0.30)",
-                                    border: isDark ? "1px solid rgba(255,255,255,0.14)" : "1px solid rgba(255,255,255,0.40)",
+                                    background: "var(--dt-code-bg)",
+                                    border: "1px solid var(--dt-code-border)",
                                     backdropFilter: "blur(8px)",
                                     WebkitBackdropFilter: "blur(8px)",
-                                    color: copied ? "#3576ae" : isDark ? "rgba(255,255,255,0.55)" : "#7a5a20",
+                                    color: copied ? "var(--dt-color-blue-base)" : "var(--dt-code-copy-color)",
                                 }}
                                 aria-label="Copy answer"
                             >
@@ -524,12 +492,12 @@ export function ChatMessage({
                         </div>
                         )
                     })() : isStreaming ? (
-                        <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview} isDark={isDark}/>
+                        <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview}/>
                     ) : (
                         <p style={{
                             fontSize: TYPE_SCALE.sm,
                             fontStyle: "italic",
-                            color: isDark ? TEXT_DARK.tertiary : "#7a5a20",
+                            color: "var(--dt-vote-text)",
                             margin: 0,
                         }}>
                             No response
@@ -541,8 +509,8 @@ export function ChatMessage({
                 {citedSources.length > 0 && (
                     <div style={{
                         padding: `${SPACE[3]}px ${SPACE[4]}px ${SPACE[4]}px`,
-                        borderTop: `1px solid ${isDark ? ANSWER_CARD.dark.border : ANSWER_CARD.light.border}`,
-                        background: isDark ? ANSWER_CARD.dark.footnoteBg : ANSWER_CARD.light.footnoteBg,
+                        borderTop: "1px solid var(--dt-answer-border)",
+                        background: "var(--dt-answer-footnote-bg)",
                         borderRadius: `0 0 ${RADIUS.xl}px ${RADIUS.xl}px`,
                     }}>
                         <div style={{display: "flex", flexDirection: "column", gap: SPACE[1]}}>
@@ -558,7 +526,7 @@ export function ChatMessage({
                                     style={{
                                         display: "block",
                                         fontSize: TYPE_SCALE.xs,
-                                        color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        color: "var(--dt-text-tertiary)",
                                         fontFamily: FONT.sans,
                                         background: "none",
                                         border: "none",
@@ -568,10 +536,10 @@ export function ChatMessage({
                                         lineHeight: 1.5,
                                     }}
                                     onMouseEnter={(e) => {
-                                        e.currentTarget.style.color = COLOR.gold.base
+                                        e.currentTarget.style.color = "var(--dt-accent-color)"
                                     }}
                                     onMouseLeave={(e) => {
-                                        e.currentTarget.style.color = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
+                                        e.currentTarget.style.color = "var(--dt-text-tertiary)"
                                     }}
                                 >
                                     {toSuperscript(entry.footnoteNum)} {entry.title}{entry.page ? ` (p. ${entry.page})` : ""}
@@ -588,7 +556,6 @@ export function ChatMessage({
                     <SourcesPanel
                         sources={sources}
                         onSourceClick={(source) => onSourceClick?.(content ?? "", sources, source.doc_id, source.page_numbers[0])}
-                        isDark={isDark}
                     />
                 </div>
             )}
@@ -603,7 +570,7 @@ export function ChatMessage({
                 <AgentTrace trace={trace} isDark={isDark} />
             )}
 
-            {/* Feedback bar — only for completed assistant messages with a traceId */}
+            {/* Feedback bar */}
             {role === "assistant" && !isStreaming && traceId && (
                 <div style={{marginTop: SPACE[2]}}>
                     <div style={{display: "flex", alignItems: "center", gap: SPACE[2]}}>
@@ -615,16 +582,16 @@ export function ChatMessage({
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 width: 28, height: 28, borderRadius: RADIUS.md,
                                 border: `1px solid ${feedback?.rating === "positive"
-                                    ? isDark ? "rgba(201,168,76,0.45)" : "rgba(196,124,0,0.35)"
-                                    : isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                                    ? "var(--dt-accent-highlight)"
+                                    : "var(--dt-divider-border)"}`,
                                 background: feedback?.rating === "positive"
-                                    ? isDark ? "rgba(201,168,76,0.16)" : "rgba(196,124,0,0.10)"
+                                    ? "var(--dt-citation-resolvable-tint)"
                                     : "transparent",
                                 color: feedback?.rating === "positive"
-                                    ? isDark ? COLOR.gold.base : "#7a4a00"
+                                    ? "var(--dt-accent-color)"
                                     : feedback?.rating === "negative"
-                                        ? isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.18)"
-                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        ? "var(--dt-text-quaternary)"
+                                        : "var(--dt-text-tertiary)",
                                 cursor: feedback?.rating === "positive" ? "default" : "pointer",
                                 transition: "all 0.15s",
                                 padding: 0,
@@ -640,16 +607,16 @@ export function ChatMessage({
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 width: 28, height: 28, borderRadius: RADIUS.md,
                                 border: `1px solid ${feedback?.rating === "negative"
-                                    ? isDark ? "rgba(201,168,76,0.45)" : "rgba(196,124,0,0.35)"
-                                    : isDark ? "rgba(255,255,255,0.10)" : "rgba(0,0,0,0.10)"}`,
+                                    ? "var(--dt-accent-highlight)"
+                                    : "var(--dt-divider-border)"}`,
                                 background: feedback?.rating === "negative"
-                                    ? isDark ? "rgba(201,168,76,0.16)" : "rgba(196,124,0,0.10)"
+                                    ? "var(--dt-citation-resolvable-tint)"
                                     : "transparent",
                                 color: feedback?.rating === "negative"
-                                    ? isDark ? COLOR.gold.base : "#7a4a00"
+                                    ? "var(--dt-accent-color)"
                                     : feedback?.rating === "positive"
-                                        ? isDark ? "rgba(255,255,255,0.20)" : "rgba(0,0,0,0.18)"
-                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        ? "var(--dt-text-quaternary)"
+                                        : "var(--dt-text-tertiary)",
                                 cursor: feedback?.rating === "negative" ? "default" : "pointer",
                                 transition: "all 0.15s",
                                 padding: 0,
@@ -659,27 +626,23 @@ export function ChatMessage({
                         </button>
                     </div>
 
-                    {/* Inline error for thumbs-up failures (commentOpen is false so the in-panel error is hidden) */}
                     {!commentOpen && feedbackError && (
                         <span style={{
                             display: "block",
                             marginTop: SPACE[1],
                             fontSize: TYPE_SCALE.xs,
-                            color: isDark ? "rgba(255,120,100,0.85)" : "#b83228",
+                            color: "var(--dt-error-text)",
                             fontFamily: FONT.sans,
                         }}>
                             {feedbackError}
                         </span>
                     )}
 
-                    {/* Submitted comment — shown when a conversation is reloaded with persisted
-                        negative feedback that includes a comment, or after a live submission
-                        once the comment panel has closed. */}
                     {feedback?.rating === "negative" && feedback.comment && !commentOpen && (
                         <p style={{
                             margin: `${SPACE[1]}px 0 0`,
                             fontSize: TYPE_SCALE.xs,
-                            color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            color: "var(--dt-text-tertiary)",
                             fontFamily: FONT.sans,
                             lineHeight: 1.5,
                             fontStyle: "italic",
@@ -714,9 +677,9 @@ export function ChatMessage({
                                             fontSize: TYPE_SCALE.xs,
                                             padding: `${SPACE[2]}px ${SPACE[3]}px`,
                                             borderRadius: RADIUS.md,
-                                            border: `1px solid ${isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`,
-                                            background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.60)",
-                                            color: isDark ? "rgba(255,255,255,0.82)" : "#2a1806",
+                                            border: "1px solid var(--dt-divider-border)",
+                                            background: "var(--dt-glass-bg-subtle)",
+                                            color: "var(--dt-text-strong)",
                                             outline: "none",
                                             lineHeight: 1.5,
                                             boxSizing: "border-box",
@@ -732,9 +695,9 @@ export function ChatMessage({
                                                 fontWeight: 600,
                                                 padding: `${SPACE[1]}px ${SPACE[3]}px`,
                                                 borderRadius: RADIUS.md,
-                                                border: `1px solid ${isDark ? "rgba(201,168,76,0.35)" : "rgba(196,124,0,0.30)"}`,
-                                                background: isDark ? "rgba(201,168,76,0.14)" : "rgba(196,124,0,0.08)",
-                                                color: isDark ? COLOR.gold.base : "#7a4a00",
+                                                border: "1px solid var(--dt-accent-border-strong)",
+                                                background: "var(--dt-accent-tint-subtle)",
+                                                color: "var(--dt-accent-color)",
                                                 cursor: submitting ? "not-allowed" : "pointer",
                                                 opacity: submitting ? 0.6 : 1,
                                                 transition: "all 0.15s",
@@ -756,7 +719,7 @@ export function ChatMessage({
                                                 borderRadius: RADIUS.md,
                                                 border: "none",
                                                 background: "transparent",
-                                                color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                                color: "var(--dt-text-tertiary)",
                                                 cursor: "pointer",
                                             }}
                                         >
@@ -765,7 +728,7 @@ export function ChatMessage({
                                         {feedbackError && (
                                             <span style={{
                                                 fontSize: TYPE_SCALE.xs,
-                                                color: isDark ? "rgba(255,120,100,0.85)" : "#b83228",
+                                                color: "var(--dt-error-text)",
                                                 fontFamily: FONT.sans,
                                             }}>
                                                 {feedbackError}

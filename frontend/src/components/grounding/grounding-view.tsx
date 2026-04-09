@@ -2,1234 +2,20 @@
 
 import {useState, useCallback, useEffect, useRef, useMemo} from "react"
 import {motion, AnimatePresence} from "motion/react"
-import {PdfViewer} from "./pdf-viewer"
-import {cn, toSafeString, toSafeStringOrNull, toSafeNumber} from "@/lib/utils"
-import {Copy, Check, Globe, ExternalLink, ChevronDown, ChevronUp} from "lucide-react"
+import {Copy, Check, Globe} from "lucide-react"
+import {cn, toSafeStringOrNull, toSafeNumber} from "@/lib/utils"
+import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {
-    FONT, TYPE_SCALE, SPACE, COLOR, GLASS, RADIUS, TIMING, EASE,
-    TEXT_DARK, TEXT_LIGHT,
-} from "@/lib/design-tokens"
-
-interface SourceRef {
-    doc_id: string
-    page_numbers: number[]
-    text?: string | null
-    url?: string | null
-    title?: string | null
-    chunk_id?: string | null
-    source_type?: "statute" | "court_decision" | null
-    case_number?: string | null
-    decision_date?: string | null
-    court?: string | null
-    category?: string | null
-    ecli?: string | null
-    legal_thesis?: string | null
-}
-
-/**
- * Strip the SAC context prefix that the indexer prepends to stored chunk text.
- * Format: "[DOCUMENT: summary | context]\n\nraw body" or "[doc_id] breadcrumb\n\nbody"
- * We want only the raw body for PDF text layer matching.
- */
-function stripChunkPrefix(text: string | null | undefined): string | undefined {
-    if (!text) return undefined
-    // Match [ANYTHING] optionally followed by text on the same line, then newlines
-    let stripped = text.replace(/^\[[^\]]*\][^\n]*\n+/, "").trim()
-    // Also strip continuation breadcrumb lines (e.g. "Preamble (continued)")
-    stripped = stripped.replace(/^[^\n]*\(continued\)\s*\n+/i, "").trim()
-    return stripped || undefined
-}
-
-/** Remove overlapping text between consecutive chunks.
- *  Chunks use 200-char overlap for retrieval; when displayed together the overlap duplicates text. */
-function deduplicateChunkTexts(texts: string[]): string[] {
-    if (texts.length <= 1) return texts
-    const result = [texts[0]]
-    for (let i = 1; i < texts.length; i++) {
-        const prev = texts[i - 1]
-        const curr = texts[i]
-        // Find longest suffix of prev that matches a prefix of curr
-        let overlap = 0
-        const maxCheck = Math.min(400, prev.length, curr.length)
-        for (let size = maxCheck; size >= 20; size--) {
-            if (prev.endsWith(curr.slice(0, size))) {
-                overlap = size
-                break
-            }
-        }
-        result.push(overlap > 0 ? curr.slice(overlap).trim() : curr)
-    }
-    return result
-}
-
-/** Check if a URL has a safe protocol (http/https only — blocks javascript: etc). */
-function isSafeUrl(raw: string): boolean {
-    try { return ["https:", "http:"].includes(new URL(raw).protocol) }
-    catch { return false }
-}
-
-/** Check if a source is a web source (doc_id starts with "web:" or has a url field). */
-function isWebSource(source: SourceRef): boolean {
-    return source.doc_id.startsWith("web:") || !!source.url
-}
-
-/** PDF availability is determined by the backend's chunk-context API (pdf_available field),
- *  not by doc_id format. TextSourceViewer handles the PDF upgrade when available. */
-
-/** Extract the domain from a URL string. */
-function getDomain(url: string): string {
-    try {
-        return new URL(url).hostname
-    } catch {
-        return url.slice(0, 40)
-    }
-}
-
-function isCourtDecision(source: SourceRef): boolean {
-    return source.source_type === "court_decision"
-}
-
-/** Format ISO date string "2023-06-15" → "15. 6. 2023" (Czech convention). */
-function formatCzechDate(iso: string | null | undefined): string | null {
-    if (!iso) return null
-    const parts = iso.split("-")
-    if (parts.length !== 3) return iso
-    return `${parseInt(parts[2])}. ${parseInt(parts[1])}. ${parts[0]}`
-}
-
-/** Navigation/boilerplate lines to strip from raw judgment text.
- *  Matches lines that consist entirely of common nav items. */
-const NAV_BOILERPLATE_RE = /^\s*(DIFC Courts?|Home|About|FAQs?|Careers?|Contact|Login|Sign [Ii]n|Newsroom|News|Media|Press|Subscribe|Newsletter|Search|Menu|Skip to (?:content|main)|Cookie|Privacy|Terms|Accessibility|Sitemap|Follow us|Share|Print|Back to top|Copyright|All [Rr]ights [Rr]eserved|\u00a9.*$|Toggle navigation|Close)\s*$/i
-
-/** Maximum character count before truncation in the source panel */
-const TEXT_TRUNCATE_LIMIT = 2000
-
-/** Strip navigation boilerplate, insert paragraph breaks, and clean up raw judgment text.
- *  DIFC judgment TXT files are scraped webpage text — one continuous blob
- *  with navigation menus, breadcrumbs, and no paragraph breaks. */
-function cleanJudgmentText(raw: string): string {
-    let text = raw
-    // Strip everything before the first case-like heading (e.g. "Claim No:", "IN THE COURT").
-    // Patterns require start-of-line + specific structure to avoid matching normal words
-    // like "before" in statute text (e.g. "before the commencement of this section").
-    const caseStart = text.search(/(?:^Claim No[.:]|^IN THE\s+(?:COURT|MATTER)|^BETWEEN\s*\n|^BEFORE\s*[:;]|^Hearing\s*:|^Judgment\s*:)/im)
-    if (caseStart > 100) text = text.slice(caseStart)
-
-    // Insert paragraph breaks before numbered paragraphs (1. 2. 3. etc.)
-    text = text.replace(/([.!?"'])\s*(\d{1,3}\.\s+[A-Z])/g, "$1\n\n$2")
-    // Insert breaks before common legal section headers
-    text = text.replace(/((?:IT IS HEREBY ORDERED|JUDGMENT OF|Background|Parties|The Claimant|The Defendant|Conclusion|Analysis|Discussion|Issues?|Decision|Orders?)\s*(?:that)?:?)/gi, "\n\n$1")
-    // Insert breaks before ALLCAPS headings (3+ consecutive caps words)
-    text = text.replace(/([.!?])\s*([A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})*)/g, "$1\n\n$2")
-
-    // Now filter lines
-    return text
-        .split("\n")
-        .filter((line) => !NAV_BOILERPLATE_RE.test(line))
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim()
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
-
-/** Web content preview component — fetches and displays extracted text from a URL. */
-function WebContentPreview({source, answer, isDark, isMobile}: {
-    source: SourceRef
-    answer: string
-    isDark: boolean
-    isMobile: boolean
-}) {
-    const [content, setContent] = useState<string | null>(null)
-    const [fetchedTitle, setFetchedTitle] = useState<string | null>(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-
-    const url = source.url || source.doc_id.replace(/^web:/, "")
-    const displayTitle = source.title || fetchedTitle || getDomain(url)
-    const domain = getDomain(url)
-    const snippet = source.text || ""
-
-    useEffect(() => {
-        let cancelled = false
-        setLoading(true)
-        setError(null)
-        setContent(null)
-
-        fetch(`${API_BASE}/api/v1/proxy/web-content?url=${encodeURIComponent(url)}`, {
-            credentials: "include",
-        })
-            .then(async (res) => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                return res.json()
-            })
-            .then((data) => {
-                if (cancelled) return
-                setContent(data.content || "")
-                if (data.title) setFetchedTitle(data.title)
-                setLoading(false)
-            })
-            .catch(() => {
-                if (cancelled) return
-                setError("Could not load page content")
-                setLoading(false)
-            })
-
-        return () => { cancelled = true }
-    }, [url])
-
-    // Highlight the snippet within the full content
-    const renderContentWithHighlight = useCallback((fullText: string, snippetText: string) => {
-        if (!snippetText || snippetText.length < 10) {
-            return <span>{fullText}</span>
-        }
-        // Build a whitespace-flexible regex from the snippet prefix to find it in original text
-        const searchPrefix = snippetText.slice(0, 60).replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")
-        const re = new RegExp(searchPrefix, "i")
-        const match = fullText.match(re)
-        if (!match || match.index === undefined) {
-            return <span>{fullText}</span>
-        }
-
-        // Use a second regex for the full snippet to get accurate highlight length in original text
-        const fullPattern = snippetText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+")
-        const fullRe = new RegExp(fullPattern, "i")
-        const fullMatch = fullText.match(fullRe)
-        const highlightLen = fullMatch ? fullMatch[0].length : match[0].length
-
-        const idx = match.index
-        const before = fullText.slice(0, idx)
-        const highlighted = fullText.slice(idx, idx + highlightLen)
-        const after = fullText.slice(idx + highlightLen)
-
-        return (
-            <>
-                <span>{before}</span>
-                <mark style={{
-                    background: COLOR.gold.tint,
-                    borderBottom: `2px solid ${COLOR.gold.border}`,
-                    borderRadius: RADIUS.xs,
-                    padding: `1px ${SPACE['1']}px`,
-                    color: "inherit",
-                }}>{highlighted}</mark>
-                <span>{after}</span>
-            </>
-        )
-    }, [])
-
-    const accentColor = COLOR.gold.base
-    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-    const textColor = isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary
-
-    return (
-        <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
-            border: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-            backdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
-            WebkitBackdropFilter: isDark ? GLASS.dark.blurLight : GLASS.light.blurLight,
-            boxShadow: isDark
-                ? `${GLASS.dark.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.20)`
-                : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
-        }}>
-            {/* Header: favicon + title + domain */}
-            <div style={{display: "flex", alignItems: "center", gap: SPACE['3'], marginBottom: SPACE['3']}}>
-                <img
-                    src={`https://icons.duckduckgo.com/ip3/${domain}.ico`}
-                    alt=""
-                    width={SPACE['5']}
-                    height={SPACE['5']}
-                    style={{borderRadius: RADIUS.xs, flexShrink: 0}}
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }}
-                />
-                <div style={{minWidth: 0, flex: 1}}>
-                    <p style={{
-                        fontSize: TYPE_SCALE.sm,
-                        fontWeight: 600,
-                        fontFamily: FONT.sans,
-                        color: textColor,
-                        margin: 0,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                    }}>{displayTitle}</p>
-                    <p style={{
-                        fontSize: TYPE_SCALE.xs,
-                        fontFamily: FONT.sans,
-                        color: mutedColor,
-                        margin: `${SPACE['1']}px 0 0`,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                    }}>{domain}</p>
-                </div>
-            </div>
-
-            {/* Open original link */}
-            <a
-                href={isSafeUrl(url) ? url : "#"}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: SPACE['1'],
-                    fontSize: TYPE_SCALE.xs,
-                    fontWeight: 500,
-                    fontFamily: FONT.sans,
-                    color: accentColor,
-                    textDecoration: "none",
-                    marginBottom: SPACE['4'],
-                    padding: `${SPACE['1']}px ${SPACE['3']}px`,
-                    borderRadius: RADIUS.sm,
-                    background: COLOR.gold.tint,
-                    border: `0.5px solid ${COLOR.gold.border}`,
-                    transition: `all ${TIMING.instant} ${EASE.out}`,
-                }}
-                onMouseEnter={(e) => {
-                    e.currentTarget.style.background = COLOR.gold.glow
-                }}
-                onMouseLeave={(e) => {
-                    e.currentTarget.style.background = COLOR.gold.tint
-                }}
-            >
-                <ExternalLink size={SPACE['3']} />
-                Open original page
-            </a>
-
-            {/* Snippet preview (always shown) */}
-            {snippet && (
-                <div style={{
-                    marginBottom: SPACE['4'],
-                    padding: SPACE['3'],
-                    borderRadius: RADIUS.md,
-                    background: COLOR.gold.tint,
-                    borderLeft: `3px solid ${accentColor}`,
-                }}>
-                    <p style={{
-                        fontSize: TYPE_SCALE.xs,
-                        fontWeight: 700,
-                        textTransform: "uppercase" as const,
-                        letterSpacing: "0.10em",
-                        fontFamily: FONT.sans,
-                        color: accentColor,
-                        margin: `0 0 ${SPACE['2']}px`,
-                    }}>Search snippet</p>
-                    <p style={{
-                        fontSize: TYPE_SCALE.xs,
-                        lineHeight: 1.65,
-                        color: textColor,
-                        fontFamily: FONT.brand,
-                        margin: 0,
-                    }}>{snippet}</p>
-                </div>
-            )}
-
-            {/* Full page content */}
-            {loading ? (
-                <div style={{display: "flex", flexDirection: "column", gap: SPACE['2']}}>
-                    {[1, 2, 3, 4, 5].map((i) => (
-                        <div key={i} style={{
-                            height: SPACE['4'],
-                            borderRadius: RADIUS.xs,
-                            width: `${60 + ((i * 17) % 35)}%`,
-                            background: isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                            animation: "pulse 1.5s ease-in-out infinite",
-                        }} />
-                    ))}
-                    <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }`}</style>
-                </div>
-            ) : error ? (
-                <p style={{fontSize: TYPE_SCALE.xs, color: mutedColor, fontStyle: "italic"}}>{error}</p>
-            ) : content ? (
-                <div>
-                    <p style={{
-                        fontSize: TYPE_SCALE.xs,
-                        fontWeight: 700,
-                        textTransform: "uppercase" as const,
-                        letterSpacing: "0.10em",
-                        fontFamily: FONT.sans,
-                        color: mutedColor,
-                        margin: `0 0 ${SPACE['2']}px`,
-                    }}>Page content</p>
-                    <div style={{
-                        fontSize: TYPE_SCALE.sm,
-                        lineHeight: 1.7,
-                        color: textColor,
-                        fontFamily: FONT.sans,
-                    }}>
-                        {content.split(/\n{2,}/).filter(Boolean).map((para, pi) => (
-                            <p key={pi} style={{margin: `0 0 ${SPACE['3']}px`}}>
-                                {renderContentWithHighlight(para.replace(/\n/g, " ").trim(), snippet)}
-                            </p>
-                        ))}
-                    </div>
-                </div>
-            ) : (
-                <p style={{fontSize: TYPE_SCALE.xs, color: mutedColor, fontStyle: "italic"}}>No content could be extracted from this page.</p>
-            )}
-        </div>
-    )
-}
-
-/** PDF viewer with automatic fallback to text viewer when PDF is not found (404). */
-function PdfViewerWithFallback({source, page, answer, isDark, isMobile, onPageClick}: {
-    source: SourceRef
-    page: number
-    answer: string
-    isDark: boolean
-    isMobile: boolean
-    onPageClick: (page: number) => void
-}) {
-    const [pdfFailed, setPdfFailed] = useState(false)
-
-    if (pdfFailed) {
-        return <TextSourceViewer source={source} page={page} answer={answer} isDark={isDark} isMobile={isMobile} onPageClick={onPageClick} pdfFailed />
-    }
-
-    return (
-        <PdfViewer
-            key={source.doc_id}
-            docId={source.doc_id}
-            page={page}
-            className="h-full"
-            highlightText={stripChunkPrefix(source.text) ?? undefined}
-            onError={() => setPdfFailed(true)}
-        />
-    )
-}
-
-// ── Chunk context API types ───────────────────────────────────────────────────
-
-interface ChunkContextItem {
-    chunk_id: string
-    page: number
-    text: string
-    is_target: boolean
-}
-
-interface ChunkContextResult {
-    doc_id: string
-    corpus: string
-    pdf_available: boolean
-    chunks: ChunkContextItem[]
-}
-
-// ── Helper sub-component: renders a single chunk's text body ─────────────────
-
-function ChunkBody({
-    text,
-    isTarget,
-    expanded,
-    onExpandToggle,
-    isDark,
-    onPageClick,
-}: {
-    text: string
-    isTarget: boolean
-    expanded: boolean
-    onExpandToggle: () => void
-    isDark: boolean
-    onPageClick: (page: number) => void
-}) {
-    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
-    const safeText = toSafeString(text)
-    const stripped = stripChunkPrefix(safeText) ?? safeText
-    const cleanedBody = useMemo(() => cleanJudgmentText(stripped), [stripped])
-    const needsTruncation = isTarget && cleanedBody.length > TEXT_TRUNCATE_LIMIT
-    const displayBody = isTarget && needsTruncation && !expanded
-        ? cleanedBody.slice(0, TEXT_TRUNCATE_LIMIT)
-        : cleanedBody
-
-    const paragraphs = useMemo(
-        () => displayBody.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean),
-        [displayBody],
-    )
-
-    return (
-        <>
-            <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: SPACE["3"],
-                opacity: isTarget ? 1 : 0.45,
-            }}>
-                {paragraphs.map((para, pi) => (
-                    <p
-                        key={pi}
-                        style={{
-                            fontSize: TYPE_SCALE.sm,
-                            lineHeight: 1.7,
-                            color: textColor,
-                            fontFamily: FONT.sans,
-                            margin: 0,
-                            wordBreak: "break-word",
-                            ...(isTarget ? {
-                                background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.06)",
-                                borderLeft: `3px solid ${isDark ? "rgba(201,168,76,0.55)" : "rgba(196,124,0,0.45)"}`,
-                                paddingLeft: SPACE["2"],
-                                paddingTop: 6,
-                                paddingBottom: 6,
-                                borderRadius: `0 ${RADIUS.xs}px ${RADIUS.xs}px 0`,
-                            } : {}),
-                        }}
-                    >
-                        <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick} />
-                    </p>
-                ))}
-            </div>
-            {needsTruncation && (
-                <button
-                    onClick={onExpandToggle}
-                    style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: SPACE["1"],
-                        marginTop: SPACE["3"],
-                        padding: `${SPACE["1"]}px ${SPACE["3"]}px`,
-                        fontSize: TYPE_SCALE.xs,
-                        fontWeight: 500,
-                        fontFamily: FONT.sans,
-                        color: COLOR.gold.base,
-                        background: COLOR.gold.tint,
-                        border: `0.5px solid ${COLOR.gold.border}`,
-                        borderRadius: RADIUS.sm,
-                        cursor: "pointer",
-                        transition: `all ${TIMING.instant} ${EASE.out}`,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
-                >
-                    {expanded ? (
-                        <><ChevronUp size={SPACE["3"]} />Show less</>
-                    ) : (
-                        <><ChevronDown size={SPACE["3"]} />Show more ({Math.round(cleanedBody.length / 1000)}k chars)</>
-                    )}
-                </button>
-            )}
-        </>
-    )
-}
-
-// ── Context view: needle-in-haystack rendering when chunk_id is available ────
-
-function ContextChunkView({
-    source,
-    context,
-    isDark,
-    isMobile,
-    onPageClick,
-}: {
-    source: SourceRef
-    context: ChunkContextResult
-    isDark: boolean
-    isMobile: boolean
-    onPageClick: (page: number) => void
-}) {
-    const [expanded, setExpanded] = useState(false)
-    const scrollContainerRef = useRef<HTMLDivElement>(null)
-    const targetRef = useRef<HTMLDivElement>(null)
-
-    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
-    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-
-    // Parse header from the target chunk's raw text for the law name/breadcrumb
-    const targetChunk = context.chunks.find((c) => c.is_target)
-    const headerRaw = toSafeString(targetChunk?.text ?? source.text ?? "")
-    const headerMatch = headerRaw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
-    const lawName = headerMatch?.[1] ?? ""
-    const breadcrumb = headerMatch?.[2]?.trim() ?? ""
-
-    const targetIdx = context.chunks.findIndex((c) => c.is_target)
-    const hasPrecedingContext = targetIdx > 0
-
-    // Deduplicate overlapping text between consecutive chunks (200-char retrieval overlap)
-    const dedupedTexts = useMemo(() => {
-        const stripped = context.chunks.map(c => stripChunkPrefix(c.text) ?? c.text)
-        return deduplicateChunkTexts(stripped)
-    }, [context.chunks])
-
-    // Scroll to the target chunk after mount
-    useEffect(() => {
-        const t = setTimeout(() => {
-            const container = scrollContainerRef.current
-            const el = targetRef.current
-            if (!container || !el) return
-            const relTop = el.getBoundingClientRect().top
-                - container.getBoundingClientRect().top
-                + container.scrollTop
-            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
-        }, 200)
-        return () => clearTimeout(t)
-    }, [source.chunk_id])
-
-    return (
-        <div
-            ref={scrollContainerRef}
-            className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")}
-            style={{
-                background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
-                border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                boxShadow: isDark
-                    ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE["1"]}px ${SPACE["6"]}px rgba(0,0,0,0.30)`
-                    : `${GLASS.light.innerGlow}, 0 ${SPACE["1"]}px ${SPACE["6"]}px rgba(100,50,0,0.08)`,
-            }}
-        >
-            {/* Header: law name + breadcrumb from target chunk */}
-            {(lawName || breadcrumb) && (
-                <div style={{marginBottom: SPACE["3"]}}>
-                    {lawName && (
-                        <p style={{
-                            fontSize: TYPE_SCALE.xs,
-                            fontWeight: 700,
-                            textTransform: "uppercase" as const,
-                            letterSpacing: "0.10em",
-                            color: isDark ? COLOR.gold.solid : COLOR.gold.base,
-                            margin: `0 0 ${SPACE["1"]}px`,
-                            fontFamily: FONT.sans,
-                        }}>{lawName.replace(/_/g, " ")}</p>
-                    )}
-                    {breadcrumb && (
-                        <p style={{
-                            fontSize: TYPE_SCALE.xs,
-                            color: mutedColor,
-                            margin: 0,
-                            fontFamily: FONT.sans,
-                        }}>{breadcrumb}</p>
-                    )}
-                </div>
-            )}
-
-            {/* Jump to cited passage button — only when there is preceding context */}
-            {hasPrecedingContext && (
-                <div style={{marginBottom: SPACE["3"]}}>
-                    <button
-                        onClick={() => {
-                            const container = scrollContainerRef.current
-                            const el = targetRef.current
-                            if (!container || !el) return
-                            const relTop = el.getBoundingClientRect().top
-                                - container.getBoundingClientRect().top
-                                + container.scrollTop
-                            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
-                        }}
-                        style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: SPACE["1"],
-                            padding: `3px ${SPACE["2"]}px`,
-                            borderRadius: RADIUS.sm,
-                            background: COLOR.gold.tint,
-                            border: `0.5px solid ${COLOR.gold.border}`,
-                            fontSize: TYPE_SCALE.xs,
-                            fontWeight: 600,
-                            color: COLOR.gold.base,
-                            cursor: "pointer",
-                            fontFamily: FONT.sans,
-                            transition: `background ${TIMING.fast}`,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
-                    >
-                        ↓ Jump to cited passage
-                    </button>
-                </div>
-            )}
-
-            {/* Context label above non-target preceding chunks */}
-            {hasPrecedingContext && (
-                <p style={{
-                    fontSize: TYPE_SCALE.xs,
-                    fontWeight: 600,
-                    textTransform: "uppercase" as const,
-                    letterSpacing: "0.09em",
-                    color: mutedColor,
-                    margin: `0 0 ${SPACE["2"]}px`,
-                    fontFamily: FONT.sans,
-                }}>Surrounding context</p>
-            )}
-
-            {/* Render all chunks in order, visually separating context from target */}
-            <div style={{display: "flex", flexDirection: "column", gap: SPACE["4"]}}>
-                {context.chunks.map((chunk, ci) => {
-                    const isTarget = chunk.is_target
-                    const showDivider = isTarget && ci > 0
-
-                    return (
-                        <div
-                            key={chunk.chunk_id}
-                            ref={isTarget ? targetRef : undefined}
-                        >
-                            {/* Visual divider between context and target chunk */}
-                            {showDivider && (
-                                <div style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: SPACE["2"],
-                                    marginBottom: SPACE["4"],
-                                }}>
-                                    <div style={{
-                                        flex: 1,
-                                        height: 1,
-                                        background: isDark
-                                            ? "rgba(201,168,76,0.25)"
-                                            : "rgba(196,124,0,0.20)",
-                                    }} />
-                                    <span style={{
-                                        fontSize: TYPE_SCALE.xs,
-                                        fontWeight: 600,
-                                        color: isDark ? COLOR.gold.solid : COLOR.gold.base,
-                                        fontFamily: FONT.sans,
-                                        whiteSpace: "nowrap",
-                                        textTransform: "uppercase" as const,
-                                        letterSpacing: "0.09em",
-                                    }}>Cited passage</span>
-                                    <div style={{
-                                        flex: 1,
-                                        height: 1,
-                                        background: isDark
-                                            ? "rgba(201,168,76,0.25)"
-                                            : "rgba(196,124,0,0.20)",
-                                    }} />
-                                </div>
-                            )}
-
-                            {/* Page indicator for each chunk */}
-                            <p style={{
-                                fontSize: TYPE_SCALE.xs,
-                                color: mutedColor,
-                                fontFamily: FONT.sans,
-                                margin: `0 0 ${SPACE["2"]}px`,
-                                opacity: isTarget ? 1 : 0.45,
-                            }}>
-                                <span
-                                    style={{
-                                        cursor: "pointer",
-                                        textDecoration: "underline",
-                                        textDecorationStyle: "dotted",
-                                        textUnderlineOffset: "2px",
-                                        textDecorationColor: mutedColor,
-                                    }}
-                                    onClick={() => onPageClick(chunk.page)}
-                                >
-                                    p. {chunk.page}
-                                </span>
-                            </p>
-
-                            <ChunkBody
-                                text={dedupedTexts[ci]}
-                                isTarget={isTarget}
-                                expanded={expanded}
-                                onExpandToggle={() => setExpanded((v) => !v)}
-                                isDark={isDark}
-                                onPageClick={onPageClick}
-                            />
-                        </div>
-                    )
-                })}
-            </div>
-
-            {/* Trailing context label after the target chunk when there are following chunks */}
-            {targetIdx !== -1 && targetIdx < context.chunks.length - 1 && (
-                <p style={{
-                    fontSize: TYPE_SCALE.xs,
-                    fontWeight: 600,
-                    textTransform: "uppercase" as const,
-                    letterSpacing: "0.09em",
-                    color: mutedColor,
-                    margin: `${SPACE["2"]}px 0 0`,
-                    fontFamily: FONT.sans,
-                    opacity: 0.65,
-                }}>Surrounding context (continued)</p>
-            )}
-        </div>
-    )
-}
-
-/** Text-only source viewer — cleans, truncates, and formats raw judgment text.
- *  When source.chunk_id is available, fetches surrounding context from the backend
- *  and renders a needle-in-haystack view with dimmed surrounding chunks. */
-function TextSourceViewer({source, page, answer, isDark, isMobile, onPageClick, pdfFailed = false}: {
-    source: SourceRef
-    page: number
-    answer: string
-    isDark: boolean
-    isMobile: boolean
-    onPageClick: (page: number) => void
-    /** Set when this viewer is rendered as a fallback after PDF 404 — prevents re-entering PdfViewerWithFallback. */
-    pdfFailed?: boolean
-}) {
-    const [chunkContext, setChunkContext] = useState<ChunkContextResult | null>(null)
-
-    // Fetch surrounding chunk context when chunk_id is available.
-    // Falls back to current single-chunk display while in-flight or on error.
-    useEffect(() => {
-        if (!source.chunk_id) {
-            setChunkContext(null)
-            return
-        }
-        let cancelled = false
-        setChunkContext(null)
-        fetch(
-            `${API_BASE}/api/v1/documents/chunk-context/${encodeURIComponent(source.chunk_id)}?window=1`,
-            {credentials: "include"},
-        )
-            .then(async (res) => {
-                if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                return res.json() as Promise<ChunkContextResult>
-            })
-            .then((data) => {
-                if (!cancelled) {
-                    // Coerce chunk fields — prevents React #300 from non-string API values
-                    const coerced = data.chunks
-                        ? data.chunks.map((c: ChunkContextItem) => ({
-                            ...c,
-                            text: toSafeString(c.text),
-                            chunk_id: toSafeString(c.chunk_id),
-                            page: toSafeNumber(c.page),
-                            is_target: !!c.is_target,
-                        }))
-                        : data.chunks
-                    setChunkContext({...data, chunks: coerced})
-                }
-            })
-            .catch(() => {
-                // Silently fall back to single-chunk view
-            })
-
-        return () => { cancelled = true }
-    }, [source.chunk_id])
-
-    // Use the retrieved chunk text directly. Never fall back to the AI answer —
-    // that would show the LLM's own output as if it were the source document.
-    const raw = source.text ?? ""
-
-    // Court decisions are always text-only (no PDF, no chunk context).
-    // Render with the dedicated component that shows case metadata header.
-    if (isCourtDecision(source) && raw.trim()) {
-        return (
-            <CourtDecisionTextViewer
-                source={source}
-                isDark={isDark}
-                isMobile={isMobile}
-                onPageClick={onPageClick}
-            />
-        )
-    }
-
-    // When there is no source text (e.g. PDF-only corpus without chunk text),
-    // show a graceful fallback rather than rendering nothing or the AI answer.
-    if (!raw.trim()) {
-        const mutedColorFallback = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-        return (
-            <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-                background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
-                border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-            }}>
-                <p style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: mutedColorFallback, fontFamily: FONT.sans}}>
-                    Source text not available for this document.
-                </p>
-            </div>
-        )
-    }
-
-    // Backend confirms a PDF exists for this document — render PDF viewer with text fallback.
-    // Skip if we're already a fallback from a failed PDF load (prevents infinite loop).
-    if (chunkContext?.pdf_available && !pdfFailed) {
-        return (
-            <PdfViewerWithFallback
-                source={source}
-                page={page}
-                answer={answer}
-                isDark={isDark}
-                isMobile={isMobile}
-                onPageClick={onPageClick}
-            />
-        )
-    }
-
-    // Once the context API call resolves, render the needle-in-haystack view
-    if (chunkContext) {
-        return (
-            <ContextChunkView
-                source={source}
-                context={chunkContext}
-                isDark={isDark}
-                isMobile={isMobile}
-                onPageClick={onPageClick}
-            />
-        )
-    }
-
-    // Single-chunk fallback — rendered as its own component to isolate hooks
-    return (
-        <SingleChunkView
-            source={source}
-            raw={raw}
-            answer={answer}
-            isDark={isDark}
-            isMobile={isMobile}
-            onPageClick={onPageClick}
-        />
-    )
-}
-
-/** Single-chunk fallback view — used while context is loading or when chunk_id is absent.
- *  Extracted as a separate component so its hooks are isolated from TextSourceViewer's
- *  conditional returns (which would otherwise violate the Rules of Hooks). */
-function SingleChunkView({source, raw, answer, isDark, isMobile, onPageClick}: {
-    source: SourceRef
-    raw: string
-    answer: string
-    isDark: boolean
-    isMobile: boolean
-    onPageClick: (page: number) => void
-}) {
-    const [expanded, setExpanded] = useState(false)
-
-    // When `source.text` is present it IS the retrieved chunk — the entire chunk
-    // is relevant. Skip trigram scoring against the AI answer in that case and
-    // treat all paragraphs as cited so the user sees the full cited passage highlighted.
-    const isChunkMode = source.text != null
-
-    const headerMatch = raw.match(/^\[([^\]]+)\]\s*([^\n]*)\n?([\s\S]*)$/)
-    const lawName = headerMatch?.[1] ?? ""
-    const breadcrumb = headerMatch?.[2]?.trim() ?? ""
-    const body = headerMatch?.[3] ?? raw
-
-    const cleanedBody = useMemo(() => cleanJudgmentText(body), [body])
-    const needsTruncation = cleanedBody.length > TEXT_TRUNCATE_LIMIT
-    const displayBody = expanded || !needsTruncation
-        ? cleanedBody
-        : cleanedBody.slice(0, TEXT_TRUNCATE_LIMIT)
-
-    const paragraphs = useMemo(() => {
-        return displayBody
-            .split(/\n{2,}/)
-            .map((p) => p.trim())
-            .filter(Boolean)
-    }, [displayBody])
-
-    const fullParagraphs = useMemo(() => {
-        return cleanedBody
-            .split(/\n{2,}/)
-            .map((p) => p.trim())
-            .filter(Boolean)
-    }, [cleanedBody])
-
-    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
-    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-
-    const scrollContainerRef = useRef<HTMLDivElement>(null)
-    const firstCitedRef = useRef<HTMLParagraphElement>(null)
-
-    const fullCitationScores = useMemo(
-        () => fullParagraphs.map(p => paragraphCitationScore(p, answer)),
-        [fullParagraphs, answer]
-    )
-    const firstCitedIdxFull = fullCitationScores.findIndex(s => s >= CITATION_SCORE_THRESHOLD)
-
-    useEffect(() => {
-        if (!expanded && needsTruncation && firstCitedIdxFull >= paragraphs.length) {
-            setExpanded(true)
-        }
-    }, [firstCitedIdxFull, paragraphs.length, needsTruncation, expanded])
-
-    const firstCitedIdx = firstCitedIdxFull !== -1 && firstCitedIdxFull < paragraphs.length
-        ? firstCitedIdxFull
-        : -1
-
-    useEffect(() => {
-        const t = setTimeout(() => {
-            const container = scrollContainerRef.current
-            const el = firstCitedRef.current
-            if (!container || !el) return
-            const relTop = el.getBoundingClientRect().top
-                - container.getBoundingClientRect().top
-                + container.scrollTop
-            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
-        }, 200)
-        return () => clearTimeout(t)
-    }, [source.doc_id, firstCitedIdx])
-
-    return (
-        <div ref={scrollContainerRef} className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
-            border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            boxShadow: isDark
-                ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`
-                : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
-        }}>
-            {/* Header: law name + breadcrumb */}
-            {(lawName || breadcrumb) && (
-                <div style={{marginBottom: SPACE['3']}}>
-                    {lawName && (
-                        <p style={{
-                            fontSize: TYPE_SCALE.xs,
-                            fontWeight: 700,
-                            textTransform: "uppercase" as const,
-                            letterSpacing: "0.10em",
-                            color: isDark ? COLOR.gold.solid : COLOR.gold.base,
-                            margin: `0 0 ${SPACE['1']}px`,
-                            fontFamily: FONT.sans,
-                        }}>{lawName.replace(/_/g, " ")}</p>
-                    )}
-                    {breadcrumb && (
-                        <p style={{
-                            fontSize: TYPE_SCALE.xs,
-                            color: mutedColor,
-                            margin: 0,
-                            fontFamily: FONT.sans,
-                        }}>{breadcrumb}</p>
-                    )}
-                </div>
-            )}
-
-            {/* Jump to cited passage — shown when citation scoring found a match */}
-            {firstCitedIdx >= 0 && (
-                <div style={{marginBottom: SPACE["3"]}}>
-                    <button
-                        onClick={() => {
-                            const container = scrollContainerRef.current
-                            const el = firstCitedRef.current
-                            if (!container || !el) return
-                            const relTop = el.getBoundingClientRect().top
-                                - container.getBoundingClientRect().top
-                                + container.scrollTop
-                            container.scrollTo({top: Math.max(0, relTop - SPACE["5"]), behavior: "smooth"})
-                        }}
-                        style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: SPACE["1"],
-                            padding: `3px ${SPACE["2"]}px`,
-                            borderRadius: RADIUS.sm,
-                            background: COLOR.gold.tint,
-                            border: `0.5px solid ${COLOR.gold.border}`,
-                            fontSize: TYPE_SCALE.xs,
-                            fontWeight: 600,
-                            color: COLOR.gold.base,
-                            cursor: "pointer",
-                            fontFamily: FONT.sans,
-                            transition: `background ${TIMING.fast}`,
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
-                    >
-                        ↓ Jump to cited passage
-                    </button>
-                </div>
-            )}
-
-            {/* Body text — paragraph-split with citation scoring + legal term highlighting */}
-            <div style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: SPACE["3"],
-            }}>
-                {paragraphs.map((para, pi) => {
-                    // In chunk mode every paragraph is part of the retrieved chunk and is
-                    // therefore fully relevant — no need to score against the AI answer.
-                    const isCited = isChunkMode || fullCitationScores[pi] >= CITATION_SCORE_THRESHOLD
-                    return (
-                        <p
-                            key={pi}
-                            ref={pi === firstCitedIdx ? firstCitedRef : undefined}
-                            style={{
-                                fontSize: TYPE_SCALE.sm,
-                                lineHeight: 1.7,
-                                color: textColor,
-                                fontFamily: FONT.sans,
-                                margin: 0,
-                                wordBreak: "break-word",
-                                ...(isCited ? {
-                                    background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.06)",
-                                    borderLeft: `3px solid ${isDark ? "rgba(201,168,76,0.55)" : "rgba(196,124,0,0.45)"}`,
-                                    paddingLeft: SPACE["2"],
-                                    paddingTop: 6,
-                                    paddingBottom: 6,
-                                    borderRadius: `0 ${RADIUS.xs}px ${RADIUS.xs}px 0`,
-                                } : {})
-                            }}
-                        >
-                            <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick}/>
-                        </p>
-                    )
-                })}
-            </div>
-
-            {/* Truncation: "Show more" / "Show less" toggle */}
-            {needsTruncation && (
-                <button
-                    onClick={() => setExpanded((v) => !v)}
-                    style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: SPACE['1'],
-                        marginTop: SPACE['3'],
-                        padding: `${SPACE['1']}px ${SPACE['3']}px`,
-                        fontSize: TYPE_SCALE.xs,
-                        fontWeight: 500,
-                        fontFamily: FONT.sans,
-                        color: COLOR.gold.base,
-                        background: COLOR.gold.tint,
-                        border: `0.5px solid ${COLOR.gold.border}`,
-                        borderRadius: RADIUS.sm,
-                        cursor: "pointer",
-                        transition: `all ${TIMING.instant} ${EASE.out}`,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
-                >
-                    {expanded ? (
-                        <>
-                            <ChevronUp size={SPACE['3']} />
-                            Show less
-                        </>
-                    ) : (
-                        <>
-                            <ChevronDown size={SPACE['3']} />
-                            Show more ({Math.round(cleanedBody.length / 1000)}k chars)
-                        </>
-                    )}
-                </button>
-            )}
-        </div>
-    )
-}
-
-/** Text viewer for Czech Supreme Court decisions.
- *  Shows case metadata header (case number, court, date, category badge) followed
- *  by the decision text with interactive highlights, same as statute sources. */
-function CourtDecisionTextViewer({source, isDark, isMobile, onPageClick}: {
-    source: SourceRef
-    isDark: boolean
-    isMobile: boolean
-    onPageClick: (page: number) => void
-}) {
-    const [expanded, setExpanded] = useState(false)
-
-    const textColor = isDark ? "rgba(255,255,255,0.82)" : TEXT_LIGHT.primary
-    const mutedColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-    const isLandmark = source.category === "A"
-    const caseLabel = toSafeStringOrNull(source.case_number) ?? source.doc_id
-    const formattedDate = formatCzechDate(source.decision_date)
-    const subtitle = [toSafeStringOrNull(source.court), formattedDate].filter(Boolean).join(" | ")
-
-    const raw = source.text ?? ""
-    const body = raw.trim()
-    const needsTruncation = body.length > TEXT_TRUNCATE_LIMIT
-    const displayBody = expanded || !needsTruncation ? body : body.slice(0, TEXT_TRUNCATE_LIMIT)
-    const paragraphs = useMemo(
-        () => displayBody.split(/\n{2,}/).map(p => p.trim()).filter(Boolean),
-        [displayBody],
-    )
-
-    return (
-        <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: isDark ? "rgba(10,14,22,0.88)" : "rgba(255,255,255,0.75)",
-            border: `0.5px solid ${isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)"}`,
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            boxShadow: isDark
-                ? `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`
-                : `${GLASS.light.innerGlow}, 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
-        }}>
-            {/* Case metadata header */}
-            <div style={{marginBottom: SPACE['4']}}>
-                <div style={{display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: SPACE['2'], marginBottom: SPACE['1']}}>
-                    <p style={{
-                        fontSize: TYPE_SCALE.sm,
-                        fontWeight: 700,
-                        fontFamily: FONT.sans,
-                        color: textColor,
-                        margin: 0,
-                        wordBreak: "break-word",
-                    }}>{caseLabel}</p>
-                    {source.category && (
-                        <span style={{
-                            fontSize: TYPE_SCALE.xs,
-                            fontWeight: 700,
-                            fontFamily: FONT.sans,
-                            padding: `1px ${SPACE['2']}px`,
-                            borderRadius: RADIUS.xs,
-                            background: isLandmark ? COLOR.gold.tint : isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
-                            border: `0.5px solid ${isLandmark ? COLOR.gold.border : isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                            color: isLandmark ? COLOR.gold.base : mutedColor,
-                            flexShrink: 0,
-                        }}>{source.category}</span>
-                    )}
-                </div>
-                {subtitle && (
-                    <p style={{
-                        fontSize: TYPE_SCALE.xs,
-                        fontFamily: FONT.sans,
-                        color: mutedColor,
-                        margin: 0,
-                    }}>{subtitle}</p>
-                )}
-            </div>
-
-            <div style={{
-                height: "0.5px",
-                background: isDark ? GLASS.dark.borderSubtle : GLASS.light.borderSubtle,
-                marginBottom: SPACE['4'],
-            }} />
-
-            {/* Decision text — all paragraphs highlighted (entire text is the cited source) */}
-            <div style={{display: "flex", flexDirection: "column", gap: SPACE['3']}}>
-                {paragraphs.map((para, pi) => (
-                    <p key={pi} style={{
-                        fontSize: TYPE_SCALE.sm,
-                        lineHeight: 1.7,
-                        color: textColor,
-                        fontFamily: FONT.sans,
-                        margin: 0,
-                        wordBreak: "break-word",
-                        background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.06)",
-                        borderLeft: `3px solid ${isDark ? "rgba(201,168,76,0.55)" : "rgba(196,124,0,0.45)"}`,
-                        paddingLeft: SPACE['2'],
-                        paddingTop: 6,
-                        paddingBottom: 6,
-                        borderRadius: `0 ${RADIUS.xs}px ${RADIUS.xs}px 0`,
-                    }}>
-                        <HighlightedLegalText text={para} isDark={isDark} onPageClick={onPageClick} />
-                    </p>
-                ))}
-            </div>
-
-            {needsTruncation && (
-                <button
-                    onClick={() => setExpanded(v => !v)}
-                    style={{
-                        display: "inline-flex", alignItems: "center", gap: SPACE['1'],
-                        marginTop: SPACE['3'], padding: `${SPACE['1']}px ${SPACE['3']}px`,
-                        fontSize: TYPE_SCALE.xs, fontWeight: 500, fontFamily: FONT.sans,
-                        color: COLOR.gold.base, background: COLOR.gold.tint,
-                        border: `0.5px solid ${COLOR.gold.border}`, borderRadius: RADIUS.sm,
-                        cursor: "pointer", transition: `all ${TIMING.instant} ${EASE.out}`,
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = COLOR.gold.glow }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = COLOR.gold.tint }}
-                >
-                    {expanded ? (
-                        <><ChevronUp size={SPACE['3']} />Show less</>
-                    ) : (
-                        <><ChevronDown size={SPACE['3']} />Show more ({Math.round(body.length / 1000)}k chars)</>
-                    )}
-                </button>
-            )}
-        </div>
-    )
-}
+    SourceRef,
+    isWebSource,
+    isCourtDecision,
+    getDomain,
+    formatCzechDate,
+} from "./grounding-utils"
+import {WebContentPreview} from "./web-content-preview"
+import {TextSourceViewer} from "./source-viewers"
+
+export type {SourceRef}
 
 interface GroundingViewProps {
     answer: string
@@ -1240,102 +26,6 @@ interface GroundingViewProps {
     focusPage?: number
     /** Incremented on every citation click — forces the focus effect to fire even when focusDocId/focusPage are unchanged */
     focusSeq?: number
-}
-
-// ── Legal term highlighting in grounding text ──
-const LEGAL_HIGHLIGHT_RE =
-    /\b((?:Article|Section|Art\.|Sec\.)\s+\d+(?:\(\d+\))?(?:\([a-z]\))?)\b|\b((?:Page|p\.)\s*\d+(?:\s*[-–]\s*\d+)?)\b|\b(pp\.\s*\d+\s*[-–]\s*\d+)\b|\b((?:DIFC|UAE|UK|EU)\s+(?:Law|Act|Code)\s+No\.\s*\d+(?:\s+of\s+\d{4})?)\b|\b((?:[A-Z][a-z]+\s+){1,4}(?:Law|Act|Code|Decree|Regulation|Directive|Statute)(?:\s+No\.\s*\d+)?)\b|§\s*\d+[a-z]?(?:\s+odst\.\s*\d+)?(?:\s+písm\.\s*[a-z]\))?/g
-
-type SegmentKind = "text" | "article" | "page" | "law"
-
-interface Segment {
-    kind: SegmentKind
-    text: string
-}
-
-function tokenizeLegalText(text: string): Segment[] {
-    const segments: Segment[] = []
-    let lastIndex = 0
-    LEGAL_HIGHLIGHT_RE.lastIndex = 0
-    let match: RegExpExecArray | null
-    while ((match = LEGAL_HIGHLIGHT_RE.exec(text)) !== null) {
-        if (match.index > lastIndex) {
-            segments.push({kind: "text", text: text.slice(lastIndex, match.index)})
-        }
-        const kind: SegmentKind = match[1] ? "article" : match[2] || match[3] ? "page" : (match[4] || match[5]) ? "law" : "article"
-        segments.push({kind, text: match[0]})
-        lastIndex = match.index + match[0].length
-    }
-    if (lastIndex < text.length) {
-        segments.push({kind: "text", text: text.slice(lastIndex)})
-    }
-    return segments
-}
-
-function HighlightedLegalText({text: rawText, isDark, onPageClick}: {
-    text: string
-    isDark: boolean
-    onPageClick?: (page: number) => void
-}) {
-    const text = toSafeString(rawText)
-    const segments = tokenizeLegalText(text)
-    if (segments.length <= 1 && segments[0]?.kind === "text") return <>{text}</>
-
-    return (
-        <>
-            {segments.map((seg, i) => {
-                if (seg.kind === "text") return <span key={i}>{seg.text}</span>
-
-                if (seg.kind === "page" && onPageClick) {
-                    const pageNum = parseInt(seg.text.match(/\d+/)?.[0] ?? "", 10)
-                    return (
-                        <span
-                            key={i}
-                            onClick={() => !isNaN(pageNum) && onPageClick(pageNum)}
-                            style={{
-                                color: COLOR.gold.base,
-                                fontWeight: 600,
-                                cursor: "pointer",
-                                textDecoration: "underline",
-                                textDecorationStyle: "dotted",
-                                textUnderlineOffset: "2px",
-                                textDecorationColor: COLOR.gold.border,
-                            }}
-                        >
-              {seg.text}
-            </span>
-                    )
-                }
-
-                return (
-                    <span key={i} style={{color: COLOR.gold.base, fontWeight: 600}}>
-            {seg.text}
-          </span>
-                )
-            })}
-        </>
-    )
-}
-
-// ── Citation scoring ──────────────────────────────────────────────────────────
-
-const CITATION_SCORE_THRESHOLD = 0.12
-
-/** Score how relevant a source paragraph is to the answer using 3-gram overlap.
- *  Returns [0, 1]; higher means more trigrams from the paragraph appear verbatim
- *  in the answer text. Used to highlight paragraphs the AI drew from. */
-function paragraphCitationScore(para: string, answer: string): number {
-    const normalize = (s: string) =>
-        s.replace(/[^a-z0-9\s]/gi, " ").replace(/\s+/g, " ").toLowerCase().trim()
-    const normPara = normalize(para)
-    const normAnswer = normalize(answer)
-    const words = normPara.split(" ").filter(w => w.length > 3)
-    if (words.length < 4) return 0
-    let matches = 0
-    for (let i = 0; i <= words.length - 3; i++) {
-        if (normAnswer.includes(words.slice(i, i + 3).join(" "))) matches++
-    }
-    return matches / Math.max(1, words.length - 2)
 }
 
 function resolveSource(
@@ -1468,7 +158,6 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
                                 key={activeSource.url || activeSource.doc_id}
                                 source={activeSource}
                                 answer={answer}
-                                isDark={isDark}
                                 isMobile={isMobile}
                             />
                         ) : (
@@ -1476,7 +165,6 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
                                 source={activeSource}
                                 page={activePage}
                                 answer={answer}
-                                isDark={isDark}
                                 isMobile={isMobile}
                                 onPageClick={handlePageFromText}
                             />
@@ -1490,7 +178,7 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
                         exit={{opacity: 0}}
                         transition={crossfade}
                         className="flex h-full items-center justify-center text-sm"
-                        style={{color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary}}
+                        style={{color: "var(--dt-text-tertiary)"}}
                     >
                         No source selected
                     </motion.div>
@@ -1511,7 +199,7 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
             paddingBottom: isMobile ? `max(${SPACE['2']}px, env(safe-area-inset-bottom))` : SPACE['2'],
             minHeight: 0,
             maxHeight: 124,
-            borderTop: `0.5px solid ${isDark ? GLASS.dark.borderSubtle : GLASS.light.borderSubtle}`,
+            borderTop: `0.5px solid var(--dt-glass-border-subtle)`,
             scrollbarWidth: "none",
             WebkitOverflowScrolling: "touch",
         }}>
@@ -1522,7 +210,6 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
                     isActive={activeSource === source}
                     activePage={activeSource === source ? activePage : null}
                     onPageClick={(page) => handleSourceClick(source, page)}
-                    isDark={isDark}
                     compact
                 />
             ))}
@@ -1549,13 +236,12 @@ interface SourceCitationCardProps {
 }
 
 function SourceCitationCard({
-                                source,
-                                isActive,
-                                activePage,
-                                onPageClick,
-                                isDark = false,
-                                compact = false,
-                            }: SourceCitationCardProps) {
+    source,
+    isActive,
+    activePage,
+    onPageClick,
+    compact = false,
+}: SourceCitationCardProps) {
     const [copied, setCopied] = useState(false)
     const isWeb = isWebSource(source)
 
@@ -1591,11 +277,11 @@ function SourceCitationCard({
                     width: 140,
                     padding: `${SPACE['1']}px ${SPACE['2']}px`,
                     background: isActive
-                        ? COLOR.gold.tint
-                        : isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                        ? "var(--dt-color-gold-tint)"
+                        : "var(--dt-glass-bg-subtle)",
                     border: `0.5px solid ${isActive
-                        ? COLOR.gold.border
-                        : isDark ? GLASS.dark.borderSubtle : GLASS.light.border}`,
+                        ? "var(--dt-color-gold-border)"
+                        : "var(--dt-glass-border-subtle)"}`,
                     backdropFilter: "blur(8px)",
                     WebkitBackdropFilter: "blur(8px)",
                     cursor: "pointer",
@@ -1606,14 +292,14 @@ function SourceCitationCard({
                     <>
                         <div style={{display: "flex", alignItems: "center", gap: SPACE['1'], marginBottom: SPACE['1']}}>
                             <Globe size={10} style={{
-                                color: COLOR.gold.base,
+                                color: "var(--dt-color-gold-base)",
                                 flexShrink: 0,
                             }} />
                             <p className="truncate" title={source.title || ""} style={{
                                 fontSize: TYPE_SCALE.xs,
                                 fontWeight: 500,
                                 fontFamily: FONT.sans,
-                                color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                                color: "var(--dt-text-secondary)",
                                 margin: 0,
                             }}>
                                 {displayId.length > 18 ? displayId.slice(0, 18) + "\u2026" : displayId}
@@ -1622,7 +308,7 @@ function SourceCitationCard({
                         <p className="truncate" style={{
                             fontSize: TYPE_SCALE.xs,
                             fontFamily: FONT.sans,
-                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                            color: "var(--dt-text-quaternary)",
                             margin: 0,
                         }}>{webDomain}</p>
                     </>
@@ -1632,7 +318,7 @@ function SourceCitationCard({
                             fontSize: TYPE_SCALE.xs,
                             fontWeight: 600,
                             fontFamily: FONT.sans,
-                            color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                            color: "var(--dt-text-secondary)",
                             margin: `0 0 ${SPACE['1']}px`,
                         }}>
                             {(source.case_number ?? source.doc_id).length > 18
@@ -1643,16 +329,16 @@ function SourceCitationCard({
                             {source.decision_date && (
                                 <span style={{
                                     fontSize: TYPE_SCALE.xs, fontFamily: FONT.sans,
-                                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                                    color: "var(--dt-text-quaternary)",
                                 }}>{source.decision_date.slice(0, 4)}</span>
                             )}
                             {source.category && (
                                 <span style={{
                                     fontSize: TYPE_SCALE.xs, fontWeight: 700, fontFamily: FONT.sans,
                                     padding: `0 ${SPACE['1']}px`, borderRadius: RADIUS.xs,
-                                    background: source.category === "A" ? COLOR.gold.tint : isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
-                                    border: `0.5px solid ${source.category === "A" ? COLOR.gold.border : isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                                    color: source.category === "A" ? COLOR.gold.base : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                    background: source.category === "A" ? "var(--dt-color-gold-tint)" : "var(--dt-glass-bg-subtle)",
+                                    border: `0.5px solid ${source.category === "A" ? "var(--dt-color-gold-border)" : "var(--dt-glass-border-subtle)"}`,
+                                    color: source.category === "A" ? "var(--dt-color-gold-base)" : "var(--dt-text-tertiary)",
                                 }}>{source.category}</span>
                             )}
                         </div>
@@ -1662,7 +348,7 @@ function SourceCitationCard({
                         <p className="truncate" title={source.doc_id} style={{
                             fontFamily: FONT.mono,
                             fontSize: TYPE_SCALE.xs,
-                            color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            color: "var(--dt-text-tertiary)",
                             marginBottom: SPACE['1'],
                         }}>
                             {displayId}
@@ -1679,14 +365,14 @@ function SourceCitationCard({
                                             height: 18, padding: `0 ${SPACE['1']}px`,
                                             borderRadius: RADIUS.xs, fontSize: TYPE_SCALE.xs, fontWeight: 500,
                                             background: isActivePage
-                                                ? COLOR.gold.glow
-                                                : isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                                ? "var(--dt-color-gold-glow)"
+                                                : "var(--dt-glass-bg-subtle)",
                                             border: `0.5px solid ${isActivePage
-                                                ? COLOR.gold.border
-                                                : isDark ? GLASS.dark.border : GLASS.light.border}`,
+                                                ? "var(--dt-color-gold-border)"
+                                                : "var(--dt-glass-border)"}`,
                                             color: isActivePage
-                                                ? COLOR.gold.base
-                                                : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                                ? "var(--dt-color-gold-base)"
+                                                : "var(--dt-text-tertiary)",
                                             cursor: "pointer",
                                             transition: `all ${TIMING.instant} ${EASE.out}`,
                                         }}
@@ -1708,11 +394,11 @@ function SourceCitationCard({
             onClick={() => onPageClick(firstPage)}
             style={{
                 background: isActive
-                    ? COLOR.gold.tint
-                    : isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
+                    ? "var(--dt-color-gold-tint)"
+                    : "var(--dt-glass-bg-subtle)",
                 border: `0.5px solid ${isActive
-                    ? COLOR.gold.border
-                    : isDark ? GLASS.dark.borderSubtle : GLASS.light.border}`,
+                    ? "var(--dt-color-gold-border)"
+                    : "var(--dt-glass-border-subtle)"}`,
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
                 cursor: "pointer",
@@ -1723,7 +409,7 @@ function SourceCitationCard({
                 {isCourtDecision(source) ? (
                     <div style={{display: "flex", alignItems: "center", justifyContent: "space-between", minWidth: 0, flex: 1, gap: SPACE['2']}}>
                         <p className="text-xs truncate" title={source.case_number ?? source.doc_id} style={{
-                            color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                            color: "var(--dt-text-secondary)",
                             fontWeight: 700,
                             fontFamily: FONT.sans,
                         }}>
@@ -1733,21 +419,21 @@ function SourceCitationCard({
                             <span style={{
                                 fontSize: TYPE_SCALE.xs, fontWeight: 700, fontFamily: FONT.sans,
                                 padding: `1px ${SPACE['2']}px`, borderRadius: RADIUS.xs, flexShrink: 0,
-                                background: source.category === "A" ? COLOR.gold.tint : isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
-                                border: `0.5px solid ${source.category === "A" ? COLOR.gold.border : isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                                color: source.category === "A" ? COLOR.gold.base : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                background: source.category === "A" ? "var(--dt-color-gold-tint)" : "var(--dt-glass-bg-subtle)",
+                                border: `0.5px solid ${source.category === "A" ? "var(--dt-color-gold-border)" : "var(--dt-glass-border-subtle)"}`,
+                                color: source.category === "A" ? "var(--dt-color-gold-base)" : "var(--dt-text-tertiary)",
                             }}>{source.category}</span>
                         )}
                     </div>
                 ) : isWeb ? (
                     <div style={{display: "flex", alignItems: "center", gap: SPACE['2'], minWidth: 0, flex: 1}}>
                         <Globe size={TYPE_SCALE.sm} style={{
-                            color: COLOR.gold.base,
+                            color: "var(--dt-color-gold-base)",
                             flexShrink: 0,
                         }} />
                         <p className="text-xs truncate" title={source.title || source.url || ""}
                            style={{
-                               color: isDark ? TEXT_DARK.secondary : TEXT_LIGHT.secondary,
+                               color: "var(--dt-text-secondary)",
                                fontWeight: 500,
                                fontFamily: FONT.sans,
                            }}
@@ -1758,7 +444,7 @@ function SourceCitationCard({
                 ) : (
                     <p className="text-xs truncate" title={source.doc_id}
                        style={{
-                           color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                           color: "var(--dt-text-tertiary)",
                            fontFamily: FONT.mono,
                        }}
                     >
@@ -1769,9 +455,9 @@ function SourceCitationCard({
                     onClick={handleCopySource}
                     className="rounded p-1 opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 shrink-0 ml-2"
                     style={{
-                        background: isDark ? GLASS.dark.bgSubtle : GLASS.light.bgSubtle,
-                        border: `0.5px solid ${isDark ? GLASS.dark.border : GLASS.light.borderSubtle}`,
-                        color: copied ? COLOR.blue.base : isDark ? TEXT_DARK.tertiary : COLOR.gold.base,
+                        background: "var(--dt-glass-bg-subtle)",
+                        border: `0.5px solid var(--dt-glass-border-subtle)`,
+                        color: copied ? "var(--dt-color-blue-base)" : "var(--dt-accent-color)",
                         transition: `all ${TIMING.instant} ${EASE.out}`,
                     }}
                     aria-label={isCourtDecision(source) ? "Copy case reference" : isWeb ? "Copy URL" : "Copy source reference"}
@@ -1784,7 +470,7 @@ function SourceCitationCard({
                     {(source.court || source.decision_date) && (
                         <p style={{
                             fontSize: TYPE_SCALE.xs, fontFamily: FONT.sans,
-                            color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                            color: "var(--dt-text-quaternary)",
                             margin: `0 0 ${SPACE['1']}px`,
                         }}>
                             {[source.court, formatCzechDate(source.decision_date)].filter(Boolean).join(" | ")}
@@ -1793,7 +479,7 @@ function SourceCitationCard({
                     {source.legal_thesis && (
                         <p style={{
                             fontSize: TYPE_SCALE.xs, fontFamily: FONT.sans, fontStyle: "italic",
-                            color: isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                            color: "var(--dt-text-tertiary)",
                             margin: 0,
                             overflow: "hidden",
                             display: "-webkit-box",
@@ -1810,7 +496,7 @@ function SourceCitationCard({
                 <p className="truncate" style={{
                     fontSize: TYPE_SCALE.xs,
                     fontFamily: FONT.sans,
-                    color: isDark ? TEXT_DARK.quaternary : TEXT_LIGHT.quaternary,
+                    color: "var(--dt-text-quaternary)",
                     margin: 0,
                 }}>{getDomain(source.url || source.doc_id.replace(/^web:/, ""))}</p>
             ) : (
@@ -1828,14 +514,14 @@ function SourceCitationCard({
                                     borderRadius: RADIUS.xs,
                                     fontSize: TYPE_SCALE.xs,
                                     background: isActivePage
-                                        ? COLOR.gold.glow
-                                        : isDark ? GLASS.dark.bg : GLASS.light.bgSubtle,
+                                        ? "var(--dt-color-gold-glow)"
+                                        : "var(--dt-glass-bg-subtle)",
                                     border: `0.5px solid ${isActivePage
-                                        ? COLOR.gold.border
-                                        : isDark ? GLASS.dark.border : GLASS.light.border}`,
+                                        ? "var(--dt-color-gold-border)"
+                                        : "var(--dt-glass-border)"}`,
                                     color: isActivePage
-                                        ? COLOR.gold.base
-                                        : isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary,
+                                        ? "var(--dt-color-gold-base)"
+                                        : "var(--dt-text-tertiary)",
                                     cursor: "pointer",
                                     transition: `all ${TIMING.instant} ${EASE.out}`,
                                 }}

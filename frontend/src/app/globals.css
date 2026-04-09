@@ -135,76 +135,136 @@ textarea::placeholder { color: #b29254; }
     --orb-navy-color: oklch(0.30 0.12 240);
     --aurora-base: #060C16;
 
-    /* ── Design Token Bridge Variables ────────────────────────────
-       Referenced by design-tokens.ts via var(). V2 values here as
-       defaults; V3 overrides live in .design-v3 / .design-v3.dark.
+    /* ── Design Token CSS Variables ──────────────────────────────
+       Unified theme-responsive tokens. :root = light defaults.
+       .dark overrides below. V3 overrides in .design-v3 scopes.
        ──────────────────────────────────────────────────────────── */
 
-    /* GLASS dark */
-    --dt-glass-dark-bg: rgba(255,255,255,0.07);
-    --dt-glass-dark-bg-subtle: rgba(255,255,255,0.04);
-    --dt-glass-dark-bg-hover: rgba(255,255,255,0.12);
-    --dt-glass-dark-border: rgba(255,255,255,0.14);
-    --dt-glass-dark-border-subtle: rgba(255,255,255,0.08);
-    --dt-glass-dark-blur: blur(40px) saturate(180%) brightness(108%);
-    --dt-glass-dark-blur-light: blur(16px) saturate(160%);
-    --dt-glass-dark-inner-glow: inset 0 1px 0 rgba(255,255,255,0.10);
-    --dt-glass-dark-shadow: 0 20px 60px rgba(0,0,0,0.40);
+    /* Glass surface (light defaults) */
+    --dt-glass-bg: rgba(255,255,255,0.45);
+    --dt-glass-bg-subtle: rgba(255,255,255,0.22);
+    --dt-glass-bg-hover: rgba(255,255,255,0.55);
+    --dt-glass-border: rgba(255,255,255,0.55);
+    --dt-glass-border-subtle: rgba(255,255,255,0.35);
+    --dt-glass-blur: blur(40px) saturate(180%) brightness(108%);
+    --dt-glass-blur-light: blur(16px) saturate(160%);
+    --dt-glass-inner-glow: inset 0 1.5px 0 rgba(255,255,255,0.80);
+    --dt-glass-shadow: 0 20px 60px rgba(100,50,0,0.08);
 
-    /* GLASS light */
-    --dt-glass-light-bg: rgba(255,255,255,0.45);
-    --dt-glass-light-bg-subtle: rgba(255,255,255,0.22);
-    --dt-glass-light-bg-hover: rgba(255,255,255,0.55);
-    --dt-glass-light-border: rgba(255,255,255,0.55);
-    --dt-glass-light-border-subtle: rgba(255,255,255,0.35);
-    --dt-glass-light-blur: blur(40px) saturate(180%) brightness(108%);
-    --dt-glass-light-blur-light: blur(16px) saturate(160%);
-    --dt-glass-light-inner-glow: inset 0 1.5px 0 rgba(255,255,255,0.80);
-    --dt-glass-light-shadow: 0 20px 60px rgba(100,50,0,0.08);
+    /* Text (light defaults) */
+    --dt-text-primary: #1a0e04;
+    --dt-text-secondary: #2e1f08;
+    --dt-text-tertiary: rgba(46,31,8,0.55);
+    --dt-text-quaternary: rgba(46,31,8,0.25);
+    --dt-text-strong: #1a0e04;
 
-    /* TEXT dark */
-    --dt-text-dark-primary: rgba(255,255,255,0.92);
-    --dt-text-dark-secondary: rgba(255,255,255,0.72);
-    --dt-text-dark-tertiary: rgba(255,255,255,0.45);
-    --dt-text-dark-quaternary: rgba(255,255,255,0.25);
-
-    /* TEXT light */
-    --dt-text-light-primary: #1a0e04;
-    --dt-text-light-secondary: #2e1f08;
-    --dt-text-light-tertiary: rgba(46,31,8,0.55);
-    --dt-text-light-quaternary: rgba(46,31,8,0.25);
-
-    /* COLOR gold */
+    /* COLOR palette (same in light/dark V2, overridden by V3) */
     --dt-color-gold-base: #C9A84C;
     --dt-color-gold-light: #d4a843;
     --dt-color-gold-solid: rgba(201,168,76,0.75);
     --dt-color-gold-tint: rgba(201,168,76,0.14);
     --dt-color-gold-border: rgba(201,168,76,0.40);
     --dt-color-gold-glow: rgba(201,168,76,0.25);
-
-    /* COLOR teal */
     --dt-color-teal-base: #38B2AC;
     --dt-color-teal-tint: rgba(56,178,172,0.14);
     --dt-color-teal-border: rgba(56,178,172,0.35);
-
-    /* COLOR bronze */
     --dt-color-bronze-base: #d4956b;
     --dt-color-bronze-tint: rgba(212,149,107,0.14);
-
-    /* COLOR blue */
     --dt-color-blue-base: #3576ae;
     --dt-color-blue-tint: rgba(53,118,174,0.18);
     --dt-color-blue-border: rgba(53,118,174,0.38);
 
-    /* ANSWER_CARD dark */
-    --dt-answer-dark-bg: rgba(255,255,255,0.05);
-    --dt-answer-dark-border: rgba(255,255,255,0.10);
-    --dt-answer-dark-footnote-bg: rgba(255,255,255,0.03);
+    /* Answer card (light defaults) */
+    --dt-answer-bg: rgba(255,255,255,0.50);
+    --dt-answer-border: rgba(255,255,255,0.60);
+    --dt-answer-footnote-bg: rgba(245,240,230,0.40);
 
-    /* ANSWER_CARD light */
-    --dt-answer-light-bg: rgba(255,255,255,0.50);
-    --dt-answer-light-border: rgba(255,255,255,0.60);
-    --dt-answer-light-footnote-bg: rgba(245,240,230,0.40);
+    /* ── Semantic UI tokens (light defaults) ──────────────────── */
+
+    /* Accent on surface — gold adapted for light bg readability */
+    --dt-accent-color: #7a4a00;
+    --dt-accent-color-hover: #7a3800;
+    --dt-accent-tint: rgba(196,124,0,0.12);
+    --dt-accent-tint-subtle: rgba(196,124,0,0.08);
+    --dt-accent-tint-strong: rgba(196,124,0,0.18);
+    --dt-accent-tint-hover: rgba(233,196,106,0.28);
+    --dt-accent-tint-faint: rgba(196,124,0,0.06);
+    --dt-accent-glow: rgba(196,124,0,0.16);
+    --dt-accent-border-color: rgba(196,124,0,0.28);
+    --dt-accent-border-strong: rgba(196,124,0,0.35);
+    --dt-accent-border-subtle: rgba(196,124,0,0.25);
+    --dt-accent-highlight: rgba(196,124,0,0.45);
+    --dt-accent-highlight-strong: rgba(196,124,0,0.55);
+    --dt-accent-solid: rgba(196,124,0,0.55);
+    --dt-active-item-bg: rgba(255,255,255,0.38);
+
+    /* Button/pill glass (lower opacity than full glass panel on light bg) */
+    --dt-button-bg: rgba(255,255,255,0.18);
+    --dt-button-bg-hover: rgba(255,255,255,0.28);
+    --dt-button-border-color: rgba(255,255,255,0.42);
+    --dt-pill-bg: rgba(255,255,255,0.14);
+    --dt-pill-bg-subtle: rgba(255,255,255,0.12);
+    --dt-pill-bg-hover: rgba(255,255,255,0.24);
+    --dt-pill-border-color: rgba(255,255,255,0.28);
+
+    /* Teal on light surface */
+    --dt-teal-tint: rgba(0,128,128,0.10);
+    --dt-teal-on-surface: #0d7377;
+    --dt-teal-border-color: rgba(0,128,128,0.25);
+
+    /* Error states (light) */
+    --dt-error-color: #8b3520;
+    --dt-error-text: #7a2010;
+    --dt-error-text-hover: rgba(180,40,20,0.80);
+    --dt-error-bg: rgba(139,53,32,0.10);
+    --dt-error-bg-hover: rgba(139,53,32,0.14);
+    --dt-error-bg-subtle: rgba(180,40,20,0.07);
+    --dt-error-bg-interactive: rgba(200,50,30,0.12);
+    --dt-error-border-color: rgba(139,53,32,0.22);
+    --dt-error-border-strong: rgba(139,53,32,0.35);
+    --dt-error-border-subtle: rgba(180,40,20,0.20);
+    --dt-error-border-active: rgba(180,40,20,0.25);
+
+    /* Content viewer card (document readers) */
+    --dt-content-card-bg: rgba(255,255,255,0.75);
+    --dt-content-card-border: rgba(0,0,0,0.06);
+    --dt-content-card-shadow: 0 2px 8px rgba(100,50,0,0.06), inset 0 1px 0 rgba(255,255,255,0.60);
+    --dt-progress-track-bg: rgba(0,0,0,0.06);
+    --dt-divider-bg: rgba(0,0,0,0.06);
+    --dt-divider-border: rgba(0,0,0,0.08);
+
+    /* Source chip */
+    --dt-chip-bg: rgba(120,70,0,0.08);
+    --dt-chip-border: rgba(120,70,0,0.15);
+    --dt-chip-hover-bg: rgba(120,70,0,0.14);
+    --dt-chip-hover-border: rgba(120,70,0,0.35);
+
+    /* Citation/footnote */
+    --dt-citation-resolvable-color: #7a4a00;
+    --dt-citation-resolvable-tint: rgba(196,124,0,0.10);
+    --dt-citation-resolvable-border: rgba(196,124,0,0.25);
+    --dt-citation-default-tint: rgba(0,0,0,0.04);
+    --dt-citation-default-border: rgba(0,0,0,0.08);
+
+    /* Confidence badge */
+    --dt-confidence-bg: rgba(180,120,10,0.22);
+    --dt-confidence-border: rgba(160,100,5,0.38);
+    --dt-confidence-text: #2a1806;
+
+    /* Code block */
+    --dt-code-bg: rgba(255,240,215,0.30);
+    --dt-code-border: rgba(255,255,255,0.40);
+    --dt-code-copy-color: #7a5a20;
+
+    /* Vote/feedback buttons */
+    --dt-vote-text: #7a5a20;
+    --dt-text-secondary-accent: #5a3a08;
+
+    /* Mobile overlay/panel backgrounds */
+    --dt-overlay-bg: rgba(255,250,235,0.95);
+    --dt-panel-overlay-bg: rgba(255,252,242,0.95);
+    --dt-panel-border-color: rgba(255,255,255,0.55);
+    --dt-panel-shadow: 0 -12px 48px rgba(100,50,0,0.15), inset 0 1.5px 0 rgba(255,255,255,0.85);
 }
 
 /* ============================================================
@@ -250,6 +310,116 @@ textarea::placeholder { color: #b29254; }
     --glass-bg-heavy: rgba(255, 255, 255, 0.10);
     --glass-bg-gold: rgba(201, 168, 76, 0.08);
     --glass-border-gold: rgba(201, 168, 76, 0.28);
+
+    /* ── Design token dark overrides ─────────────────────────── */
+
+    /* Glass surface */
+    --dt-glass-bg: rgba(255,255,255,0.07);
+    --dt-glass-bg-subtle: rgba(255,255,255,0.04);
+    --dt-glass-bg-hover: rgba(255,255,255,0.12);
+    --dt-glass-border: rgba(255,255,255,0.14);
+    --dt-glass-border-subtle: rgba(255,255,255,0.08);
+    --dt-glass-blur: blur(40px) saturate(180%) brightness(108%);
+    --dt-glass-blur-light: blur(16px) saturate(160%);
+    --dt-glass-inner-glow: inset 0 1px 0 rgba(255,255,255,0.10);
+    --dt-glass-shadow: 0 20px 60px rgba(0,0,0,0.40);
+
+    /* Text */
+    --dt-text-primary: rgba(255,255,255,0.92);
+    --dt-text-secondary: rgba(255,255,255,0.72);
+    --dt-text-tertiary: rgba(255,255,255,0.45);
+    --dt-text-quaternary: rgba(255,255,255,0.25);
+    --dt-text-strong: rgba(255,255,255,0.82);
+
+    /* Answer card */
+    --dt-answer-bg: rgba(255,255,255,0.05);
+    --dt-answer-border: rgba(255,255,255,0.10);
+    --dt-answer-footnote-bg: rgba(255,255,255,0.03);
+
+    /* Accent → gold in dark */
+    --dt-accent-color: #C9A84C;
+    --dt-accent-color-hover: #C9A84C;
+    --dt-accent-tint: rgba(201,168,76,0.14);
+    --dt-accent-tint-subtle: rgba(201,168,76,0.14);
+    --dt-accent-tint-strong: rgba(201,168,76,0.14);
+    --dt-accent-tint-hover: rgba(201,168,76,0.14);
+    --dt-accent-tint-faint: rgba(201,168,76,0.08);
+    --dt-accent-glow: rgba(201,168,76,0.25);
+    --dt-accent-border-color: rgba(201,168,76,0.40);
+    --dt-accent-border-strong: rgba(201,168,76,0.40);
+    --dt-accent-border-subtle: rgba(201,168,76,0.40);
+    --dt-accent-highlight: rgba(201,168,76,0.45);
+    --dt-accent-highlight-strong: rgba(201,168,76,0.55);
+    --dt-accent-solid: rgba(201,168,76,0.75);
+    --dt-active-item-bg: rgba(201,168,76,0.14);
+
+    /* Button/pill glass → same as glass in dark */
+    --dt-button-bg: rgba(255,255,255,0.07);
+    --dt-button-bg-hover: rgba(255,255,255,0.12);
+    --dt-button-border-color: rgba(255,255,255,0.14);
+    --dt-pill-bg: rgba(255,255,255,0.07);
+    --dt-pill-bg-subtle: rgba(255,255,255,0.04);
+    --dt-pill-bg-hover: rgba(255,255,255,0.12);
+    --dt-pill-border-color: rgba(255,255,255,0.08);
+
+    /* Teal on dark surface */
+    --dt-teal-tint: rgba(56,178,172,0.14);
+    --dt-teal-on-surface: #38B2AC;
+    --dt-teal-border-color: rgba(56,178,172,0.35);
+
+    /* Error states (dark) */
+    --dt-error-color: #ff8c7a;
+    --dt-error-text: rgba(255,140,122,0.90);
+    --dt-error-text-hover: rgba(255,120,100,0.90);
+    --dt-error-bg: rgba(255,100,80,0.10);
+    --dt-error-bg-hover: rgba(255,100,80,0.20);
+    --dt-error-bg-subtle: rgba(255,80,60,0.10);
+    --dt-error-bg-interactive: rgba(255,80,60,0.18);
+    --dt-error-border-color: rgba(255,100,80,0.22);
+    --dt-error-border-strong: rgba(255,100,80,0.40);
+    --dt-error-border-subtle: rgba(255,80,60,0.25);
+    --dt-error-border-active: rgba(255,80,60,0.35);
+
+    /* Content viewer card */
+    --dt-content-card-bg: rgba(10,14,22,0.88);
+    --dt-content-card-border: rgba(255,255,255,0.08);
+    --dt-content-card-shadow: 0 2px 8px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06);
+    --dt-progress-track-bg: rgba(255,255,255,0.08);
+    --dt-divider-bg: rgba(255,255,255,0.08);
+    --dt-divider-border: rgba(255,255,255,0.10);
+
+    /* Source chip */
+    --dt-chip-bg: rgba(201,168,76,0.14);
+    --dt-chip-border: rgba(201,168,76,0.40);
+    --dt-chip-hover-bg: rgba(201,168,76,0.22);
+    --dt-chip-hover-border: rgba(201,168,76,0.45);
+
+    /* Citation/footnote */
+    --dt-citation-resolvable-color: #C9A84C;
+    --dt-citation-resolvable-tint: rgba(201,168,76,0.14);
+    --dt-citation-resolvable-border: rgba(201,168,76,0.30);
+    --dt-citation-default-tint: rgba(255,255,255,0.06);
+    --dt-citation-default-border: rgba(255,255,255,0.10);
+
+    /* Confidence badge */
+    --dt-confidence-bg: rgba(201,168,76,0.16);
+    --dt-confidence-border: rgba(201,168,76,0.28);
+    --dt-confidence-text: rgba(255,255,255,0.88);
+
+    /* Code block */
+    --dt-code-bg: rgba(255,255,255,0.10);
+    --dt-code-border: rgba(255,255,255,0.14);
+    --dt-code-copy-color: rgba(255,255,255,0.55);
+
+    /* Vote/feedback */
+    --dt-vote-text: rgba(255,255,255,0.45);
+    --dt-text-secondary-accent: rgba(255,255,255,0.72);
+
+    /* Mobile overlay/panel backgrounds */
+    --dt-overlay-bg: rgba(15,22,35,0.95);
+    --dt-panel-overlay-bg: rgba(13,21,32,0.95);
+    --dt-panel-border-color: rgba(255,255,255,0.18);
+    --dt-panel-shadow: 0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 /* ============================================================
@@ -561,49 +731,110 @@ textarea::placeholder { color: #b29254; }
 
     /* ── Design token V3 light overrides ─────────────────────── */
 
-    /* GLASS light → V3 light glass */
-    --dt-glass-light-bg: var(--v3-glass-surface-bg);
-    --dt-glass-light-bg-subtle: rgba(255,255,255,0.40);
-    --dt-glass-light-bg-hover: var(--v3-glass-surface-bg-hover);
-    --dt-glass-light-border: var(--v3-glass-surface-border);
-    --dt-glass-light-border-subtle: rgba(123,94,167,0.10);
-    --dt-glass-light-blur: var(--v3-glass-surface-blur);
-    --dt-glass-light-blur-light: blur(12px) saturate(150%);
-    --dt-glass-light-inner-glow: var(--v3-specular-top);
-    --dt-glass-light-shadow: var(--v3-glass-surface-shadow);
+    /* Glass → V3 elevated glass (main panels) */
+    --dt-glass-bg: var(--v3-glass-elevated-bg);
+    --dt-glass-bg-subtle: rgba(255,255,255,0.40);
+    --dt-glass-bg-hover: var(--v3-glass-elevated-bg-hover);
+    --dt-glass-border: var(--v3-glass-elevated-border);
+    --dt-glass-border-subtle: rgba(123,94,167,0.10);
+    --dt-glass-blur: var(--v3-glass-elevated-blur);
+    --dt-glass-blur-light: blur(12px) saturate(150%);
+    --dt-glass-inner-glow: var(--v3-specular-top);
+    --dt-glass-shadow: var(--v3-glass-elevated-shadow);
 
-    /* TEXT light → V3 light text */
-    --dt-text-light-primary: var(--v3-text-primary);
-    --dt-text-light-secondary: var(--v3-text-secondary);
-    --dt-text-light-tertiary: var(--v3-text-tertiary);
-    --dt-text-light-quaternary: var(--v3-text-quaternary);
+    /* Text → V3 light text */
+    --dt-text-primary: var(--v3-text-primary);
+    --dt-text-secondary: var(--v3-text-secondary);
+    --dt-text-tertiary: var(--v3-text-tertiary);
+    --dt-text-quaternary: var(--v3-text-quaternary);
+    --dt-text-strong: var(--v3-text-primary);
 
-    /* COLOR gold → V3 iris */
+    /* COLOR → V3 iris palette */
     --dt-color-gold-base: var(--v3-iris);
     --dt-color-gold-light: var(--v3-iris-bright);
     --dt-color-gold-solid: rgba(91,64,160,0.75);
     --dt-color-gold-tint: var(--v3-glass-iris-bg);
     --dt-color-gold-border: var(--v3-glass-iris-border);
     --dt-color-gold-glow: rgba(91,64,160,0.15);
-
-    /* COLOR teal → V3 teal */
     --dt-color-teal-base: var(--v3-teal);
     --dt-color-teal-tint: rgba(13,148,136,0.12);
     --dt-color-teal-border: rgba(13,148,136,0.30);
-
-    /* COLOR bronze → V3 rose */
     --dt-color-bronze-base: var(--v3-rose);
     --dt-color-bronze-tint: rgba(244,114,182,0.12);
-
-    /* COLOR blue → V3 aurora */
     --dt-color-blue-base: var(--v3-aurora);
     --dt-color-blue-tint: rgba(29,111,184,0.16);
     --dt-color-blue-border: rgba(29,111,184,0.35);
 
-    /* ANSWER_CARD light → V3 glass */
-    --dt-answer-light-bg: var(--v3-glass-surface-bg);
-    --dt-answer-light-border: var(--v3-glass-surface-border);
-    --dt-answer-light-footnote-bg: rgba(236,238,247,0.40);
+    /* Answer card → V3 glass */
+    --dt-answer-bg: var(--v3-glass-surface-bg);
+    --dt-answer-border: var(--v3-glass-surface-border);
+    --dt-answer-footnote-bg: rgba(236,238,247,0.40);
+
+    /* Semantic accent → V3 iris */
+    --dt-accent-color: var(--v3-iris);
+    --dt-accent-color-hover: var(--v3-iris-bright);
+    --dt-accent-tint: var(--v3-glass-iris-bg);
+    --dt-accent-tint-subtle: rgba(91,64,160,0.04);
+    --dt-accent-tint-strong: rgba(91,64,160,0.10);
+    --dt-accent-tint-hover: rgba(91,64,160,0.12);
+    --dt-accent-tint-faint: rgba(91,64,160,0.03);
+    --dt-accent-glow: rgba(91,64,160,0.15);
+    --dt-accent-border-color: var(--v3-glass-iris-border);
+    --dt-accent-border-strong: rgba(91,64,160,0.30);
+    --dt-accent-border-subtle: rgba(91,64,160,0.15);
+    --dt-accent-highlight: rgba(91,64,160,0.40);
+    --dt-accent-highlight-strong: rgba(91,64,160,0.55);
+    --dt-accent-solid: rgba(91,64,160,0.70);
+    --dt-active-item-bg: rgba(91,64,160,0.06);
+
+    /* Teal → V3 teal */
+    --dt-teal-tint: rgba(13,148,136,0.10);
+    --dt-teal-on-surface: var(--v3-teal);
+    --dt-teal-border-color: rgba(13,148,136,0.25);
+
+    /* Button/pill → V3 glass surface */
+    --dt-button-bg: var(--v3-glass-surface-bg);
+    --dt-button-bg-hover: var(--v3-glass-surface-bg-hover);
+    --dt-button-border-color: var(--v3-glass-surface-border);
+    --dt-pill-bg: var(--v3-glass-surface-bg);
+    --dt-pill-bg-subtle: rgba(255,255,255,0.30);
+    --dt-pill-bg-hover: var(--v3-glass-surface-bg-hover);
+    --dt-pill-border-color: var(--v3-glass-elevated-border);
+
+    /* Content card → V3 surface */
+    --dt-content-card-bg: rgba(255,255,255,0.82);
+    --dt-content-card-border: var(--v3-glass-elevated-border);
+    --dt-content-card-shadow: var(--v3-glass-elevated-shadow);
+    --dt-progress-track-bg: rgba(91,64,160,0.08);
+    --dt-divider-bg: rgba(91,64,160,0.06);
+    --dt-divider-border: rgba(91,64,160,0.12);
+
+    /* Source chip → iris */
+    --dt-chip-bg: var(--v3-glass-iris-bg);
+    --dt-chip-border: var(--v3-glass-iris-border);
+    --dt-chip-hover-bg: rgba(91,64,160,0.10);
+    --dt-chip-hover-border: rgba(91,64,160,0.30);
+
+    /* Citation */
+    --dt-citation-resolvable-color: var(--v3-iris);
+    --dt-citation-resolvable-tint: var(--v3-glass-iris-bg);
+    --dt-citation-resolvable-border: var(--v3-glass-iris-border);
+    --dt-citation-default-tint: rgba(91,64,160,0.04);
+    --dt-citation-default-border: rgba(91,64,160,0.10);
+
+    /* Confidence badge → iris */
+    --dt-confidence-bg: var(--v3-glass-iris-bg);
+    --dt-confidence-border: var(--v3-glass-iris-border);
+    --dt-confidence-text: var(--v3-iris);
+
+    /* Code block */
+    --dt-code-bg: rgba(91,64,160,0.06);
+    --dt-code-border: var(--v3-glass-elevated-border);
+    --dt-code-copy-color: var(--v3-text-secondary);
+
+    /* Vote/feedback */
+    --dt-vote-text: var(--v3-text-tertiary);
+    --dt-text-secondary-accent: var(--v3-text-secondary);
 }
 
 /* ── V3 Dark mode tokens ──────────────────────────────────── */
@@ -685,49 +916,110 @@ textarea::placeholder { color: #b29254; }
 
     /* ── Design token V3 dark overrides ──────────────────────── */
 
-    /* GLASS dark → V3 dark glass */
-    --dt-glass-dark-bg: var(--v3-glass-surface-bg);
-    --dt-glass-dark-bg-subtle: rgba(255,255,255,0.02);
-    --dt-glass-dark-bg-hover: var(--v3-glass-surface-bg-hover);
-    --dt-glass-dark-border: var(--v3-glass-surface-border);
-    --dt-glass-dark-border-subtle: rgba(255,255,255,0.05);
-    --dt-glass-dark-blur: var(--v3-glass-surface-blur);
-    --dt-glass-dark-blur-light: blur(12px) saturate(150%);
-    --dt-glass-dark-inner-glow: var(--v3-specular-top);
-    --dt-glass-dark-shadow: var(--v3-glass-surface-shadow);
+    /* Glass → V3 elevated glass (dark) */
+    --dt-glass-bg: var(--v3-glass-elevated-bg);
+    --dt-glass-bg-subtle: rgba(255,255,255,0.02);
+    --dt-glass-bg-hover: var(--v3-glass-elevated-bg-hover);
+    --dt-glass-border: var(--v3-glass-elevated-border);
+    --dt-glass-border-subtle: rgba(255,255,255,0.05);
+    --dt-glass-blur: var(--v3-glass-elevated-blur);
+    --dt-glass-blur-light: blur(12px) saturate(150%);
+    --dt-glass-inner-glow: var(--v3-specular-top);
+    --dt-glass-shadow: var(--v3-glass-elevated-shadow);
 
-    /* TEXT dark → V3 dark text */
-    --dt-text-dark-primary: var(--v3-text-primary);
-    --dt-text-dark-secondary: var(--v3-text-secondary);
-    --dt-text-dark-tertiary: var(--v3-text-tertiary);
-    --dt-text-dark-quaternary: var(--v3-text-quaternary);
+    /* Text → V3 dark text */
+    --dt-text-primary: var(--v3-text-primary);
+    --dt-text-secondary: var(--v3-text-secondary);
+    --dt-text-tertiary: var(--v3-text-tertiary);
+    --dt-text-quaternary: var(--v3-text-quaternary);
+    --dt-text-strong: var(--v3-text-primary);
 
-    /* COLOR gold → V3 iris (dark mode brighter) */
+    /* COLOR → V3 iris (dark brighter) */
     --dt-color-gold-base: var(--v3-iris-bright);
     --dt-color-gold-light: var(--v3-iris);
     --dt-color-gold-solid: rgba(157,127,204,0.75);
     --dt-color-gold-tint: var(--v3-glass-iris-bg);
     --dt-color-gold-border: var(--v3-glass-iris-border);
     --dt-color-gold-glow: rgba(123,94,167,0.20);
-
-    /* COLOR teal → V3 teal (dark brighter) */
     --dt-color-teal-base: var(--v3-teal);
     --dt-color-teal-tint: rgba(45,212,191,0.14);
     --dt-color-teal-border: rgba(45,212,191,0.30);
-
-    /* COLOR bronze → V3 rose */
     --dt-color-bronze-base: var(--v3-rose);
     --dt-color-bronze-tint: rgba(244,114,182,0.14);
-
-    /* COLOR blue → V3 aurora (dark brighter) */
     --dt-color-blue-base: var(--v3-aurora);
     --dt-color-blue-tint: rgba(56,189,248,0.16);
     --dt-color-blue-border: rgba(56,189,248,0.35);
 
-    /* ANSWER_CARD dark → V3 dark glass */
-    --dt-answer-dark-bg: var(--v3-glass-surface-bg);
-    --dt-answer-dark-border: var(--v3-glass-surface-border);
-    --dt-answer-dark-footnote-bg: rgba(255,255,255,0.02);
+    /* Answer card → V3 dark glass */
+    --dt-answer-bg: var(--v3-glass-surface-bg);
+    --dt-answer-border: var(--v3-glass-surface-border);
+    --dt-answer-footnote-bg: rgba(255,255,255,0.02);
+
+    /* Semantic accent → iris bright in dark */
+    --dt-accent-color: var(--v3-iris-bright);
+    --dt-accent-color-hover: var(--v3-iris-bright);
+    --dt-accent-tint: var(--v3-glass-iris-bg);
+    --dt-accent-tint-subtle: var(--v3-glass-iris-bg);
+    --dt-accent-tint-strong: rgba(123,94,167,0.16);
+    --dt-accent-tint-hover: rgba(123,94,167,0.18);
+    --dt-accent-tint-faint: rgba(123,94,167,0.08);
+    --dt-accent-glow: rgba(123,94,167,0.20);
+    --dt-accent-border-color: var(--v3-glass-iris-border);
+    --dt-accent-border-strong: rgba(157,127,204,0.35);
+    --dt-accent-border-subtle: rgba(123,94,167,0.18);
+    --dt-accent-highlight: rgba(157,127,204,0.40);
+    --dt-accent-highlight-strong: rgba(157,127,204,0.55);
+    --dt-accent-solid: rgba(157,127,204,0.75);
+    --dt-active-item-bg: var(--v3-glass-iris-bg);
+
+    /* Teal → V3 teal dark */
+    --dt-teal-tint: rgba(45,212,191,0.14);
+    --dt-teal-on-surface: var(--v3-teal);
+    --dt-teal-border-color: rgba(45,212,191,0.30);
+
+    /* Button/pill → V3 glass surface */
+    --dt-button-bg: var(--v3-glass-surface-bg);
+    --dt-button-bg-hover: var(--v3-glass-surface-bg-hover);
+    --dt-button-border-color: var(--v3-glass-surface-border);
+    --dt-pill-bg: var(--v3-glass-surface-bg);
+    --dt-pill-bg-subtle: rgba(255,255,255,0.02);
+    --dt-pill-bg-hover: var(--v3-glass-surface-bg-hover);
+    --dt-pill-border-color: var(--v3-glass-surface-border);
+
+    /* Content card */
+    --dt-content-card-bg: rgba(13,17,32,0.88);
+    --dt-content-card-border: var(--v3-glass-elevated-border);
+    --dt-content-card-shadow: var(--v3-glass-elevated-shadow);
+    --dt-progress-track-bg: rgba(123,94,167,0.14);
+    --dt-divider-bg: rgba(123,94,167,0.10);
+    --dt-divider-border: rgba(157,127,204,0.14);
+
+    /* Source chip → iris */
+    --dt-chip-bg: var(--v3-glass-iris-bg);
+    --dt-chip-border: var(--v3-glass-iris-border);
+    --dt-chip-hover-bg: rgba(123,94,167,0.18);
+    --dt-chip-hover-border: rgba(157,127,204,0.35);
+
+    /* Citation */
+    --dt-citation-resolvable-color: var(--v3-iris-bright);
+    --dt-citation-resolvable-tint: var(--v3-glass-iris-bg);
+    --dt-citation-resolvable-border: var(--v3-glass-iris-border);
+    --dt-citation-default-tint: rgba(255,255,255,0.04);
+    --dt-citation-default-border: rgba(255,255,255,0.08);
+
+    /* Confidence badge */
+    --dt-confidence-bg: var(--v3-glass-iris-bg);
+    --dt-confidence-border: var(--v3-glass-iris-border);
+    --dt-confidence-text: var(--v3-iris-bright);
+
+    /* Code block */
+    --dt-code-bg: rgba(123,94,167,0.10);
+    --dt-code-border: var(--v3-glass-elevated-border);
+    --dt-code-copy-color: var(--v3-text-tertiary);
+
+    /* Vote/feedback */
+    --dt-vote-text: var(--v3-text-tertiary);
+    --dt-text-secondary-accent: var(--v3-text-secondary);
 }
 
 /* ── V3 Aurora backgrounds ────────────────────────────────── */

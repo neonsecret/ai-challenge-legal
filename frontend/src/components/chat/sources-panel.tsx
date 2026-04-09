@@ -3,7 +3,7 @@
 import {Source} from "@/components/chat/use-query-stream"
 import {Globe} from "lucide-react"
 import {motion} from "motion/react"
-import {COLOR, FONT, TYPE_SCALE, SPACE, TIMING, EASE, TEXT_DARK, TEXT_LIGHT, RADIUS} from "@/lib/design-tokens"
+import {FONT, TYPE_SCALE, SPACE, TIMING, EASE, RADIUS} from "@/lib/tokens"
 import {V3_BUTTON_PRESS} from "@/lib/v3-motion"
 import {useDesignVersion} from "@/lib/design-version"
 import {useEffect, useState} from "react"
@@ -35,10 +35,11 @@ function getDomain(url: string): string {
 interface SourcesPanelProps {
     sources: Source[]
     onSourceClick: (source: Source) => void
+    /** @deprecated Theme is now handled via CSS variables */
     isDark?: boolean
 }
 
-export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPanelProps) {
+export function SourcesPanel({sources, onSourceClick}: SourcesPanelProps) {
     const {version: designVersion} = useDesignVersion()
     const [mounted, setMounted] = useState(false)
     useEffect(() => { setMounted(true) }, [])
@@ -46,18 +47,11 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
 
     if (!sources || sources.length === 0) return null
 
-    const chipBg = isDark ? COLOR.gold.tint : "rgba(120,70,0,0.08)"
-    const chipBorderColor = isDark ? COLOR.gold.border : "rgba(120,70,0,0.15)"
-    const chipHoverBg = isDark ? "rgba(201,168,76,0.22)" : "rgba(120,70,0,0.14)"
-    const chipHoverBorder = isDark ? "rgba(201,168,76,0.45)" : "rgba(120,70,0,0.35)"
-    const textColor = isDark ? TEXT_DARK.secondary : TEXT_LIGHT.tertiary
-    const labelColor = isDark ? TEXT_DARK.tertiary : TEXT_LIGHT.tertiary
-
     return (
         <div style={{marginBottom: SPACE["3"]}}>
             <p style={{
                 fontSize: TYPE_SCALE.xs - 1, textTransform: "uppercase", letterSpacing: "0.14em",
-                color: labelColor, margin: `0 0 ${SPACE["2"]}px`, fontWeight: 600,
+                color: "var(--dt-text-tertiary)", margin: `0 0 ${SPACE["2"]}px`, fontWeight: 600,
                 fontFamily: FONT.sans,
             }}>
                 Sources
@@ -78,7 +72,7 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
                         title = `${source.doc_id}${source.page_numbers.length > 0 ? ` · p.${source.page_numbers.join(", ")}` : ""}`
                     }
 
-                    const badgeBg = isWeb ? COLOR.teal.base : COLOR.gold.base
+                    const badgeBg = isWeb ? "var(--dt-color-teal-base)" : "var(--dt-color-gold-base)"
 
                     return (
                         <motion.button
@@ -96,17 +90,18 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
                                 display: "inline-flex", alignItems: "center", gap: `${SPACE["1"] + 2}px`,
                                 padding: `${SPACE["1"] + 1}px ${SPACE["3"]}px ${SPACE["1"] + 1}px ${SPACE["1"] + 2}px`,
                                 borderRadius: RADIUS.full,
-                                background: chipBg, border: `1px solid ${chipBorderColor}`,
+                                background: "var(--dt-chip-bg)",
+                                border: "1px solid var(--dt-chip-border)",
                                 cursor: "pointer",
                                 transition: `background ${TIMING.fast} ${EASE.out}, border-color ${TIMING.fast} ${EASE.out}`,
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.background = chipHoverBg
-                                e.currentTarget.style.borderColor = chipHoverBorder
+                                e.currentTarget.style.background = "var(--dt-chip-hover-bg)"
+                                e.currentTarget.style.borderColor = "var(--dt-chip-hover-border)"
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.background = chipBg
-                                e.currentTarget.style.borderColor = chipBorderColor
+                                e.currentTarget.style.background = "var(--dt-chip-bg)"
+                                e.currentTarget.style.borderColor = "var(--dt-chip-border)"
                             }}
                         >
                             {isWeb ? (
@@ -125,7 +120,7 @@ export function SourcesPanel({sources, onSourceClick, isDark = false}: SourcesPa
                                 }}>{i + 1}</span>
                             )}
                             <span style={{
-                                fontSize: TYPE_SCALE.xs, color: textColor,
+                                fontSize: TYPE_SCALE.xs, color: "var(--dt-text-secondary)",
                                 fontFamily: isWeb ? FONT.sans : FONT.mono,
                                 fontWeight: 500, maxWidth: "200px",
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
