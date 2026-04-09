@@ -38,7 +38,7 @@ function SingleSourceCard({
                                     fontWeight: 700,
                                     padding: "1px 4px",
                                     borderRadius: 3,
-                                    background: "rgba(201,168,76,0.15)",
+                                    background: "var(--dt-landing-bubble-bg)",
                                     color: "#8B6914",
                                     marginRight: 4,
                                     verticalAlign: "middle",
@@ -75,8 +75,8 @@ function SingleSourceCard({
                                     className="absolute inset-0 rounded-sm pointer-events-none"
                                     style={{
                                         backgroundColor: isCourtDecision
-                                            ? "rgba(201, 168, 76, 0.30)"
-                                            : "rgba(201, 168, 76, 0.22)",
+                                            ? "var(--dt-landing-highlight-strong)"
+                                            : "var(--dt-landing-highlight)",
                                         zIndex: 0,
                                     }}
                                 />
@@ -93,9 +93,10 @@ function SingleSourceCard({
                         y: showHighlights ? 0 : 4,
                     }}
                     transition={{duration: 0.3, delay: 0.5}}
-                    className="absolute bottom-2 left-2 right-2 flex items-center gap-1.5 bg-[#1B2B4B]/90 backdrop-blur-sm rounded-md px-2 py-1"
+                    className="absolute bottom-2 left-2 right-2 flex items-center gap-1.5 backdrop-blur-sm rounded-md px-2 py-1"
+                    style={{backgroundColor: "var(--dt-landing-pdf-badge-bg)"}}
                 >
-                    <div className="size-1.5 rounded-full bg-[#C9A84C] shrink-0"/>
+                    <div className="size-1.5 rounded-full shrink-0" style={{backgroundColor: "var(--dt-accent-color)"}}/>
                     <span className="text-[8px] text-white font-mono">
                         {badge}
                     </span>
@@ -144,7 +145,7 @@ export function FakePdf({scenario, showHighlights}: FakePdfProps) {
                 transition={{duration: 0.25}}
                 className="relative h-full flex flex-col"
             >
-                <div className="absolute top-3 right-3 z-10 bg-[#1B2B4B] text-white text-[10px] font-mono px-2 py-0.5 rounded">
+                <div className="absolute top-3 right-3 z-10 text-white text-[10px] font-mono px-2 py-0.5 rounded" style={{backgroundColor: "var(--dt-landing-pdf-badge-bg)"}}>
                     {pageBadge}
                 </div>
                 <div className="relative flex-1 bg-white rounded-xl shadow-lg overflow-hidden" style={{fontFamily: "Georgia, serif"}}>
@@ -167,7 +168,7 @@ export function FakePdf({scenario, showHighlights}: FakePdfProps) {
                                             animate={{opacity: showHighlights ? 1 : 0}}
                                             transition={{duration: 0.4, delay: (i - highlightRange[0]) * 0.15}}
                                             className="absolute inset-0 rounded-sm pointer-events-none"
-                                            style={{backgroundColor: "rgba(201, 168, 76, 0.22)", zIndex: 0}}
+                                            style={{backgroundColor: "var(--dt-landing-highlight)", zIndex: 0}}
                                         />
                                     )}
                                 </div>
@@ -177,9 +178,10 @@ export function FakePdf({scenario, showHighlights}: FakePdfProps) {
                             initial={{opacity: 0, y: 4}}
                             animate={{opacity: showHighlights ? 1 : 0, y: showHighlights ? 0 : 4}}
                             transition={{duration: 0.3, delay: 0.5}}
-                            className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 bg-[#1B2B4B]/90 backdrop-blur-sm rounded-md px-2.5 py-1.5"
+                            className="absolute bottom-3 left-3 right-3 flex items-center gap-1.5 backdrop-blur-sm rounded-md px-2.5 py-1.5"
+                            style={{backgroundColor: "var(--dt-landing-pdf-badge-bg)"}}
                         >
-                            <div className="size-1.5 rounded-full bg-[#C9A84C] shrink-0"/>
+                            <div className="size-1.5 rounded-full shrink-0" style={{backgroundColor: "var(--dt-accent-color)"}}/>
                             <span className="text-[9px] text-white font-mono">{sourceBadge}</span>
                         </motion.div>
                     </div>

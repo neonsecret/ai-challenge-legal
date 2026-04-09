@@ -25,7 +25,7 @@ export function TrustSection({
         <section
             id="access"
             className="relative py-16 sm:py-32 px-6 overflow-hidden"
-            style={{background: "#080E1A"}}
+            style={{background: "var(--dt-landing-bg-deep)"}}
         >
             {/* Aurora orbs */}
             <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -38,7 +38,7 @@ export function TrustSection({
                         left: "50%",
                         transform: "translate(-50%, -50%)",
                         background:
-                            "radial-gradient(circle, rgba(201,168,76,0.18) 0%, rgba(201,168,76,0.06) 40%, transparent 70%)",
+                            "radial-gradient(circle, var(--dt-landing-accent-bg) 0%, var(--dt-landing-glass-bg) 40%, transparent 70%)",
                         filter: "blur(60px)",
                     }}
                 />
@@ -50,7 +50,7 @@ export function TrustSection({
                         top: "-100px",
                         right: "-100px",
                         background:
-                            "radial-gradient(circle, rgba(27,43,75,0.9) 0%, transparent 70%)",
+                            "radial-gradient(circle, var(--dt-landing-glass-card) 0%, transparent 70%)",
                         filter: "blur(80px)",
                     }}
                 />
@@ -63,7 +63,7 @@ export function TrustSection({
                     viewport={{once: true}}
                     transition={{duration: 0.5}}
                     className="text-center text-[11px] uppercase tracking-[0.2em] font-semibold mb-3"
-                    style={{color: "rgba(201,168,76,0.7)"}}
+                    style={{color: "var(--dt-landing-label-color)"}}
                 >
                     {t("landing.cta_label")}
                 </motion.p>
@@ -75,7 +75,7 @@ export function TrustSection({
                     transition={{duration: 0.5, delay: 0.08}}
                     className="font-heading text-center text-3xl md:text-4xl font-bold mb-16"
                     style={{
-                        color: "rgba(255,255,255,0.95)",
+                        color: "var(--dt-text-primary)",
                         letterSpacing: "-0.02em",
                         lineHeight: 1.15,
                     }}
@@ -102,32 +102,32 @@ export function TrustSection({
                             transition={{duration: 0.4, delay: 0.15 + i * 0.08}}
                             className="flex items-center gap-2.5 rounded-full px-4 py-2.5"
                             style={{
-                                background: "rgba(255,255,255,0.08)",
+                                background: "var(--dt-glass-border-subtle)",
                                 backdropFilter: "blur(32px) saturate(150%)",
                                 WebkitBackdropFilter: "blur(32px) saturate(150%)",
-                                border: "1px solid rgba(255,255,255,0.15)",
-                                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.07)",
+                                border: "1px solid var(--dt-landing-glass-border)",
+                                boxShadow: "inset 0 1px 0 var(--dt-landing-glass-glow)",
                             }}
                         >
                             <div
                                 className="flex items-center justify-center size-5 rounded-md shrink-0"
                                 style={{
-                                    background: "rgba(201,168,76,0.12)",
-                                    border: "1px solid rgba(201,168,76,0.2)",
+                                    background: "var(--dt-landing-accent-bg-subtle)",
+                                    border: "1px solid var(--dt-landing-accent-border-light)",
                                 }}
                             >
-                                <Icon className="size-3" style={{color: "#C9A84C"}}/>
+                                <Icon className="size-3" style={{color: "var(--dt-accent-color)"}}/>
                             </div>
                             <div>
                                 <p
                                     className="text-[12px] font-semibold leading-none mb-0.5"
-                                    style={{color: "rgba(255,255,255,0.88)"}}
+                                    style={{color: "var(--dt-confidence-text)"}}
                                 >
                                     {t(keys.label)}
                                 </p>
                                 <p
                                     className="text-[10px] leading-none"
-                                    style={{color: "rgba(255,255,255,0.38)"}}
+                                    style={{color: "var(--dt-landing-text-faint)"}}
                                 >
                                     {t(keys.sub)}
                                 </p>
@@ -145,23 +145,23 @@ export function TrustSection({
                     transition={{duration: 0.6, delay: 0.2}}
                     className="rounded-3xl p-8 text-center"
                     style={{
-                        background: "rgba(255,255,255,0.10)",
+                        background: "var(--dt-landing-glass-bg-strong)",
                         backdropFilter: "blur(48px) saturate(160%)",
                         WebkitBackdropFilter: "blur(48px) saturate(160%)",
-                        border: "1px solid rgba(255,255,255,0.18)",
+                        border: "1px solid var(--dt-panel-border-color)",
                         boxShadow:
-                            "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.08), inset 0 1px 0 rgba(255,255,255,0.10)",
+                            "0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px var(--dt-accent-tint-faint), inset 0 1px 0 var(--dt-landing-glass-bg-strong)",
                     }}
                 >
                     <h3
                         className="font-heading text-xl font-bold mb-2"
-                        style={{color: "rgba(255,255,255,0.95)"}}
+                        style={{color: "var(--dt-text-primary)"}}
                     >
                         {t("landing.cta_no_cc")}
                     </h3>
                     <p
                         className="text-sm mb-8"
-                        style={{color: "rgba(255,255,255,0.38)"}}
+                        style={{color: "var(--dt-landing-text-faint)"}}
                     >
                         {t("landing.cta_signup_info")}
                     </p>
@@ -171,11 +171,10 @@ export function TrustSection({
                             href="/login"
                             className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all"
                             style={{
-                                background:
-                                    "linear-gradient(135deg, #C9A84C 0%, #e8cc7a 50%, #C9A84C 100%)",
+                                background: "var(--dt-landing-cta-gradient)",
                                 backgroundSize: "200% auto",
-                                color: "#0F1623",
-                                boxShadow: "0 4px 20px rgba(201,168,76,0.3)",
+                                color: "var(--dt-landing-cta-text)",
+                                boxShadow: "var(--dt-landing-cta-shadow)",
                                 textDecoration: "none",
                             }}
                         >
@@ -186,9 +185,9 @@ export function TrustSection({
                             href="/login"
                             className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-medium transition-all"
                             style={{
-                                background: "rgba(255,255,255,0.06)",
-                                border: "1px solid rgba(255,255,255,0.14)",
-                                color: "rgba(255,255,255,0.55)",
+                                background: "var(--dt-landing-glass-bg)",
+                                border: "1px solid var(--dt-glass-border)",
+                                color: "var(--dt-code-copy-color)",
                                 textDecoration: "none",
                             }}
                         >

@@ -4,9 +4,8 @@ import { motion } from "motion/react"
 import { Scale, BookOpen, RefreshCw } from "lucide-react"
 
 /* ------------------------------------------------------------------ */
-/*  Czech Case Law Feature Section (dark theme only -- landing hero)  */
-/* This section renders on a hardcoded dark (#0A1120) background,     */
-/* so dark-mode values are inlined directly rather than via CSS vars.  */
+/*  Czech Case Law Feature Section (dark theme — landing hero)         */
+/*  Uses CSS variables so V3 iris palette is applied automatically.    */
 /* ------------------------------------------------------------------ */
 
 const FEATURES = [
@@ -41,7 +40,7 @@ export function CzechCaselawSection() {
         <section
             style={{
                 padding: "48px 24px",
-                background: "#0A1120",
+                background: "var(--dt-landing-bg-secondary)",
                 position: "relative",
                 overflow: "hidden",
             }}
@@ -64,7 +63,7 @@ export function CzechCaselawSection() {
                         left: "50%",
                         transform: "translate(-50%,-50%)",
                         background:
-                            "radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%)",
+                            "radial-gradient(circle, var(--dt-landing-accent-glow-subtle) 0%, transparent 70%)",
                         filter: "blur(60px)",
                     }}
                 />
@@ -83,7 +82,7 @@ export function CzechCaselawSection() {
                     className="text-center uppercase tracking-[0.16em] font-semibold"
                     style={{
                         fontSize: 11,
-                        color: "rgba(201,168,76,0.60)",
+                        color: "var(--dt-landing-label-muted)",
                         marginBottom: 8,
                     }}
                 >
@@ -100,7 +99,7 @@ export function CzechCaselawSection() {
                     style={{
                         fontSize: "clamp(1.8rem,3vw,2.4rem)",
                         letterSpacing: "-0.03em",
-                        color: "rgba(255,255,255,0.92)",
+                        color: "var(--dt-text-primary)",
                         marginBottom: 12,
                     }}
                 >
@@ -116,7 +115,7 @@ export function CzechCaselawSection() {
                     className="text-center"
                     style={{
                         fontSize: 13,
-                        color: "rgba(255,255,255,0.45)",
+                        color: "var(--dt-text-tertiary)",
                         marginBottom: 40,
                         maxWidth: 560,
                         marginLeft: "auto",
@@ -152,10 +151,10 @@ export function CzechCaselawSection() {
                             >
                                 <div
                                     style={{
-                                        background: "rgba(255,255,255,0.07)",
-                                        backdropFilter: "blur(16px) saturate(160%)",
-                                        WebkitBackdropFilter: "blur(16px) saturate(160%)",
-                                        border: "1px solid rgba(255,255,255,0.08)",
+                                        background: "var(--dt-glass-bg)",
+                                        backdropFilter: "var(--dt-glass-blur-light)",
+                                        WebkitBackdropFilter: "var(--dt-glass-blur-light)",
+                                        border: "1px solid var(--dt-glass-border-subtle)",
                                         borderRadius: 16,
                                         padding: 20,
                                         display: "flex",
@@ -201,7 +200,7 @@ export function CzechCaselawSection() {
                                         <span
                                             style={{
                                                 fontSize: 11,
-                                                color: "rgba(255,255,255,0.45)",
+                                                color: "var(--dt-text-tertiary)",
                                                 marginLeft: 8,
                                                 fontWeight: 600,
                                                 textTransform: "uppercase",
@@ -217,7 +216,7 @@ export function CzechCaselawSection() {
                                         style={{
                                             fontSize: 15,
                                             fontWeight: 600,
-                                            color: "rgba(255,255,255,0.92)",
+                                            color: "var(--dt-text-primary)",
                                         }}
                                     >
                                         {f.title}
@@ -226,7 +225,7 @@ export function CzechCaselawSection() {
                                         style={{
                                             fontSize: 13,
                                             lineHeight: 1.65,
-                                            color: "rgba(255,255,255,0.72)",
+                                            color: "var(--dt-text-secondary)",
                                         }}
                                     >
                                         {f.description}
@@ -255,7 +254,7 @@ export function CzechCaselawSection() {
                     {/* statute card */}
                     <div
                         style={{
-                            background: "rgba(255,255,255,0.07)",
+                            background: "var(--dt-glass-bg)",
                             border: "1px solid var(--dt-color-gold-border)",
                             borderRadius: 12,
                             padding: "12px 16px",
@@ -277,7 +276,7 @@ export function CzechCaselawSection() {
                         <p
                             style={{
                                 fontSize: 11,
-                                color: "rgba(255,255,255,0.92)",
+                                color: "var(--dt-text-primary)",
                                 fontWeight: 600,
                                 marginBottom: 4,
                             }}
@@ -287,7 +286,7 @@ export function CzechCaselawSection() {
                         <p
                             style={{
                                 fontSize: 10,
-                                color: "rgba(255,255,255,0.45)",
+                                color: "var(--dt-text-tertiary)",
                                 lineHeight: 1.5,
                             }}
                         >
@@ -316,7 +315,7 @@ export function CzechCaselawSection() {
                     {/* court decision card */}
                     <div
                         style={{
-                            background: "rgba(255,255,255,0.07)",
+                            background: "var(--dt-glass-bg)",
                             border: "1px solid var(--dt-color-teal-border)",
                             borderRadius: 12,
                             padding: "12px 16px",
@@ -338,7 +337,7 @@ export function CzechCaselawSection() {
                         <p
                             style={{
                                 fontSize: 11,
-                                color: "rgba(255,255,255,0.92)",
+                                color: "var(--dt-text-primary)",
                                 fontWeight: 600,
                                 marginBottom: 4,
                             }}
@@ -348,7 +347,7 @@ export function CzechCaselawSection() {
                         <p
                             style={{
                                 fontSize: 10,
-                                color: "rgba(255,255,255,0.45)",
+                                color: "var(--dt-text-tertiary)",
                                 lineHeight: 1.5,
                             }}
                         >

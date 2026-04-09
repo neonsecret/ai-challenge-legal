@@ -419,18 +419,18 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
         <div
             className="w-full max-w-5xl mx-auto rounded-2xl overflow-hidden"
             style={{
-                background: "rgba(255,255,255,0.05)",
+                background: "var(--dt-answer-bg)",
                 backdropFilter: "blur(24px)",
                 WebkitBackdropFilter: "blur(24px)",
-                border: "1px solid rgba(255,255,255,0.10)",
+                border: "1px solid var(--dt-divider-border)",
                 boxShadow:
-                    "0 40px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,168,76,0.10), inset 0 1px 0 rgba(255,255,255,0.08)",
+                    "var(--dt-landing-hero-shadow), 0 0 0 1px var(--dt-accent-tint-faint), inset 0 1px 0 var(--dt-glass-border-subtle)",
             }}
         >
             {/* Window chrome + jurisdiction tabs */}
             <div
                 className="flex flex-col"
-                style={{borderBottom: "1px solid rgba(255,255,255,0.08)"}}
+                style={{borderBottom: "1px solid var(--dt-glass-border-subtle)"}}
             >
                 {/* Traffic lights + title */}
                 <div className="flex items-center gap-2 px-4 py-3">
@@ -441,7 +441,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                     </div>
                     <div
                         className="flex-1 text-center text-[11px] font-mono"
-                        style={{color: "rgba(255,255,255,0.25)"}}
+                        style={{color: "var(--dt-text-quaternary)"}}
                     >
                         vitreon.app — Research Assistant
                     </div>
@@ -453,9 +453,9 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                         onClick={handlePrev}
                         className="shrink-0 flex items-center justify-center size-6 min-h-[44px] min-w-[44px] rounded-md transition-colors hover:bg-white/10"
                         style={{
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "rgba(255,255,255,0.5)",
+                            background: "var(--dt-landing-glass-bg)",
+                            border: "1px solid var(--dt-glass-border-subtle)",
+                            color: "var(--dt-landing-text-muted)",
                         }}
                         aria-label="Previous jurisdiction"
                     >
@@ -474,14 +474,14 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                                 style={{
                                     background:
                                         i === activeIdx
-                                            ? "rgba(201,168,76,0.18)"
-                                            : "rgba(255,255,255,0.04)",
+                                            ? "var(--dt-landing-accent-bg)"
+                                            : "var(--dt-glass-bg-subtle)",
                                     border:
                                         i === activeIdx
-                                            ? "1px solid rgba(201,168,76,0.4)"
-                                            : "1px solid rgba(255,255,255,0.08)",
+                                            ? "1px solid var(--dt-accent-border-color)"
+                                            : "1px solid var(--dt-glass-border-subtle)",
                                     color:
-                                        i === activeIdx ? "#C9A84C" : "rgba(255,255,255,0.45)",
+                                        i === activeIdx ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
                                 }}
                             >
                                 {s.jurisdiction}
@@ -493,9 +493,9 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                         onClick={handleNext}
                         className="shrink-0 flex items-center justify-center size-6 min-h-[44px] min-w-[44px] rounded-md transition-colors hover:bg-white/10"
                         style={{
-                            background: "rgba(255,255,255,0.06)",
-                            border: "1px solid rgba(255,255,255,0.08)",
-                            color: "rgba(255,255,255,0.5)",
+                            background: "var(--dt-landing-glass-bg)",
+                            border: "1px solid var(--dt-glass-border-subtle)",
+                            color: "var(--dt-landing-text-muted)",
                         }}
                         aria-label="Next jurisdiction"
                     >
@@ -513,11 +513,11 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                 <div
                     ref={chatScrollRef}
                     className="flex flex-col p-5 gap-4 overflow-y-auto max-h-[420px]"
-                    style={{borderRight: "1px solid rgba(255,255,255,0.08)"}}
+                    style={{borderRight: "1px solid var(--dt-glass-border-subtle)"}}
                 >
                     <p
                         className="text-[10px] uppercase tracking-widest font-semibold"
-                        style={{color: "rgba(201,168,76,0.7)"}}
+                        style={{color: "var(--dt-landing-label-color)"}}
                     >
                         Research Query
                     </p>
@@ -535,16 +535,16 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                                 <div
                                     className="max-w-[85%] rounded-2xl rounded-tr-sm px-3.5 py-2.5 text-[12px] leading-relaxed"
                                     style={{
-                                        background: "rgba(201,168,76,0.15)",
-                                        border: "1px solid rgba(201,168,76,0.25)",
-                                        color: "rgba(255,255,255,0.9)",
+                                        background: "var(--dt-landing-bubble-bg)",
+                                        border: "1px solid var(--dt-accent-glow)",
+                                        color: "var(--dt-landing-text-bright)",
                                     }}
                                 >
                                     {showQuestionFull ? scenario.question : questionText}
                                     {phase === "typing-question" && !questionDone && (
                                         <span
                                             className="inline-block w-[2px] h-[13px] ml-0.5 align-middle animate-pulse"
-                                            style={{backgroundColor: "#C9A84C"}}
+                                            style={{backgroundColor: "var(--dt-accent-color)"}}
                                         />
                                     )}
                                 </div>
@@ -565,7 +565,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                                     <motion.div
                                         key={i}
                                         className="size-1.5 rounded-full"
-                                        style={{backgroundColor: "#C9A84C"}}
+                                        style={{backgroundColor: "var(--dt-accent-color)"}}
                                         animate={{opacity: [0.3, 1, 0.3]}}
                                         transition={{
                                             duration: 0.8,
@@ -592,9 +592,9 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                                     <div
                                         className="rounded-2xl rounded-tl-sm px-3.5 py-3 text-[11.5px] leading-[1.65]"
                                         style={{
-                                            background: "rgba(27,43,75,0.5)",
-                                            border: "1px solid rgba(255,255,255,0.08)",
-                                            color: "rgba(255,255,255,0.82)",
+                                            background: "var(--dt-landing-glass-card)",
+                                            border: "1px solid var(--dt-glass-border-subtle)",
+                                            color: "var(--dt-text-strong)",
                                         }}
                                     >
                                         {answerLines.map((line, i) => (
@@ -607,7 +607,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                                             <span
                                                 className="inline-block w-[2px] h-[13px] ml-0.5 align-middle"
                                                 style={{
-                                                    backgroundColor: "#C9A84C",
+                                                    backgroundColor: "var(--dt-accent-color)",
                                                     animation: "blink-cursor 0.7s step-end infinite",
                                                 }}
                                             />
@@ -623,14 +623,14 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                                                 transition={{delay: 0.2}}
                                                 className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5"
                                                 style={{
-                                                    background: "rgba(201,168,76,0.12)",
-                                                    border: "1px solid rgba(201,168,76,0.3)",
+                                                    background: "var(--dt-landing-accent-bg-subtle)",
+                                                    border: "1px solid var(--dt-landing-highlight-strong)",
                                                 }}
                                             >
-                                                <div className="size-1.5 rounded-full bg-[#C9A84C]"/>
+                                                <div className="size-1.5 rounded-full" style={{backgroundColor: "var(--dt-accent-color)"}}/>
                                                 <span
                                                     className="text-[10px] font-mono"
-                                                    style={{color: "#C9A84C"}}
+                                                    style={{color: "var(--dt-accent-color)"}}
                                                 >
                           {scenario.sourceBadge
                               .split(" \u00b7 ")
@@ -650,23 +650,23 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                 {/* Mobile: source badge strip */}
                 <div
                     className="md:hidden px-5 py-3"
-                    style={{borderTop: "1px solid rgba(255,255,255,0.06)"}}
+                    style={{borderTop: "1px solid var(--dt-landing-glass-bg)"}}
                 >
                     <p
                         className="text-[10px] uppercase tracking-widest font-semibold mb-2"
-                        style={{color: "rgba(201,168,76,0.7)"}}
+                        style={{color: "var(--dt-landing-label-color)"}}
                     >
                         Source Document
                     </p>
                     <div
                         className="inline-flex items-center gap-2 rounded-lg px-3 py-2"
                         style={{
-                            background: "rgba(201,168,76,0.10)",
-                            border: "1px solid rgba(201,168,76,0.25)",
+                            background: "var(--dt-accent-tint-faint)",
+                            border: "1px solid var(--dt-accent-glow)",
                         }}
                     >
-                        <div className="size-1.5 rounded-full bg-[#C9A84C] shrink-0"/>
-                        <span className="text-[11px] font-mono" style={{color: "#C9A84C"}}>
+                        <div className="size-1.5 rounded-full shrink-0" style={{backgroundColor: "var(--dt-accent-color)"}}/>
+                        <span className="text-[11px] font-mono" style={{color: "var(--dt-accent-color)"}}>
               {scenario.sourceBadge}
             </span>
                     </div>
@@ -676,7 +676,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
                 <div className="hidden md:block p-5">
                     <p
                         className="text-[10px] uppercase tracking-widest font-semibold mb-3"
-                        style={{color: "rgba(201,168,76,0.7)"}}
+                        style={{color: "var(--dt-landing-label-color)"}}
                     >
                         Source Document
                     </p>

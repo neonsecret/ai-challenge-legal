@@ -43,18 +43,18 @@ function TypingVisual() {
         <div
             className="rounded-xl px-4 py-3 min-h-[52px] flex items-center"
             style={{
-                background: "rgba(201,168,76,0.08)",
-                border: "1px solid rgba(201,168,76,0.2)",
+                background: "var(--dt-accent-tint-faint)",
+                border: "1px solid var(--dt-landing-accent-border-light)",
             }}
         >
       <span
           className="text-[12px] font-mono"
-          style={{color: "rgba(255,255,255,0.75)"}}
+          style={{color: "var(--dt-landing-text-mid)"}}
       >
         {displayed}
           <span
               className="inline-block w-[2px] h-[13px] ml-0.5 align-middle animate-pulse"
-              style={{backgroundColor: "#C9A84C"}}
+              style={{backgroundColor: "var(--dt-accent-color)"}}
           />
       </span>
         </div>
@@ -76,19 +76,19 @@ function ScanningVisual() {
                 >
                     <motion.div
                         className="size-2 rounded-full shrink-0"
-                        style={{backgroundColor: "#C9A84C"}}
+                        style={{backgroundColor: "var(--dt-accent-color)"}}
                         animate={{scale: [1, 1.4, 1], opacity: [0.6, 1, 0.6]}}
                         transition={{duration: 1, repeat: Infinity, delay: i * 0.3}}
                     />
                     <span
                         className="text-[12px] font-mono"
-                        style={{color: "rgba(255,255,255,0.6)"}}
+                        style={{color: "var(--dt-landing-text-soft)"}}
                     >
             {label}
           </span>
                     <motion.div
                         className="flex-1 h-px rounded"
-                        style={{background: "rgba(201,168,76,0.3)"}}
+                        style={{background: "var(--dt-landing-highlight-strong)"}}
                         initial={{scaleX: 0, originX: 0}}
                         animate={{scaleX: 1}}
                         transition={{delay: i * 0.35 + 0.2, duration: 0.5}}
@@ -104,13 +104,13 @@ function HighlightVisual() {
         <div
             className="rounded-xl p-4"
             style={{
-                background: "rgba(27,43,75,0.5)",
-                border: "1px solid rgba(255,255,255,0.08)",
+                background: "var(--dt-landing-glass-card)",
+                border: "1px solid var(--dt-glass-border-subtle)",
             }}
         >
             <p
                 className="text-[10px] font-mono mb-2 uppercase tracking-wide"
-                style={{color: "rgba(201,168,76,0.7)"}}
+                style={{color: "var(--dt-landing-label-color)"}}
             >
                 Section 9.2 · Indemnification Agreement · Page 18
             </p>
@@ -119,11 +119,11 @@ function HighlightVisual() {
                 initial={{opacity: 0}}
                 animate={{opacity: 1}}
                 transition={{delay: 0.3, duration: 0.5}}
-                style={{backgroundColor: "rgba(201,168,76,0.18)"}}
+                style={{backgroundColor: "var(--dt-landing-accent-bg)"}}
             >
                 <p
                     className="text-[11px] leading-relaxed"
-                    style={{color: "rgba(255,255,255,0.82)"}}
+                    style={{color: "var(--dt-text-strong)"}}
                 >
                     &ldquo;...the Indemnifying Party shall defend, indemnify, and hold
                     harmless the Indemnitee from and against any and all losses, damages,
@@ -174,7 +174,7 @@ export function HowItWorks() {
     return (
         <section
             className="py-16 sm:py-24 px-6"
-            style={{background: "linear-gradient(180deg, #0F1623 0%, #0A1120 100%)"}}
+            style={{background: "var(--dt-landing-gradient)"}}
         >
             <div className="max-w-4xl mx-auto">
                 <motion.p
@@ -183,7 +183,7 @@ export function HowItWorks() {
                     viewport={{once: true, margin: "-60px"}}
                     transition={{duration: 0.5}}
                     className="text-center text-[11px] uppercase tracking-widest font-semibold mb-3"
-                    style={{color: "rgba(201,168,76,0.7)"}}
+                    style={{color: "var(--dt-landing-label-color)"}}
                 >
                     {t("landing.how_label")}
                 </motion.p>
@@ -194,7 +194,7 @@ export function HowItWorks() {
                     transition={{duration: 0.5, delay: 0.08}}
                     className="font-heading text-center text-3xl md:text-4xl font-bold mb-12"
                     style={{
-                        color: "rgba(255,255,255,0.95)",
+                        color: "var(--dt-text-primary)",
                         letterSpacing: "-0.02em",
                         lineHeight: 1.15,
                     }}
@@ -215,9 +215,9 @@ export function HowItWorks() {
                             onClick={goPrev}
                             className="shrink-0 flex items-center justify-center size-8 min-h-[44px] min-w-[44px] rounded-full transition-colors hover:bg-white/10"
                             style={{
-                                background: "rgba(255,255,255,0.06)",
-                                border: "1px solid rgba(255,255,255,0.10)",
-                                color: "rgba(255,255,255,0.5)",
+                                background: "var(--dt-landing-glass-bg)",
+                                border: "1px solid var(--dt-divider-border)",
+                                color: "var(--dt-landing-text-muted)",
                             }}
                             aria-label="Previous step"
                         >
@@ -237,14 +237,14 @@ export function HowItWorks() {
                                     style={{
                                         background:
                                             i === activeStep
-                                                ? "rgba(201,168,76,0.18)"
-                                                : "rgba(255,255,255,0.04)",
+                                                ? "var(--dt-landing-accent-bg)"
+                                                : "var(--dt-glass-bg-subtle)",
                                         border:
                                             i === activeStep
-                                                ? "1px solid rgba(201,168,76,0.4)"
-                                                : "1px solid rgba(255,255,255,0.08)",
+                                                ? "1px solid var(--dt-accent-border-color)"
+                                                : "1px solid var(--dt-glass-border-subtle)",
                                         color:
-                                            i === activeStep ? "#C9A84C" : "rgba(255,255,255,0.45)",
+                                            i === activeStep ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
                                     }}
                                 >
                   <span className="font-mono text-[11px] font-bold">
@@ -262,9 +262,9 @@ export function HowItWorks() {
                             onClick={goNext}
                             className="shrink-0 flex items-center justify-center size-8 min-h-[44px] min-w-[44px] rounded-full transition-colors hover:bg-white/10"
                             style={{
-                                background: "rgba(255,255,255,0.06)",
-                                border: "1px solid rgba(255,255,255,0.10)",
-                                color: "rgba(255,255,255,0.5)",
+                                background: "var(--dt-landing-glass-bg)",
+                                border: "1px solid var(--dt-divider-border)",
+                                color: "var(--dt-landing-text-muted)",
                             }}
                             aria-label="Next step"
                         >
@@ -285,8 +285,8 @@ export function HowItWorks() {
                             transition={{duration: 0.3}}
                             className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center rounded-2xl p-5 md:p-8"
                             style={{
-                                background: "rgba(255,255,255,0.03)",
-                                border: "1px solid rgba(255,255,255,0.07)",
+                                background: "var(--dt-answer-footnote-bg)",
+                                border: "1px solid var(--dt-glass-bg)",
                             }}
                         >
                             {/* Left: text */}
@@ -294,22 +294,22 @@ export function HowItWorks() {
                                 <div
                                     className="inline-flex items-center justify-center size-10 rounded-full font-mono text-[11px] font-bold mb-4"
                                     style={{
-                                        background: "rgba(201,168,76,0.12)",
-                                        border: "1px solid rgba(201,168,76,0.3)",
-                                        color: "#C9A84C",
+                                        background: "var(--dt-landing-accent-bg-subtle)",
+                                        border: "1px solid var(--dt-landing-highlight-strong)",
+                                        color: "var(--dt-accent-color)",
                                     }}
                                 >
                                     {steps[activeStep].number}
                                 </div>
                                 <h3
                                     className="text-xl font-semibold mb-2"
-                                    style={{color: "rgba(255,255,255,0.92)"}}
+                                    style={{color: "var(--dt-text-primary)"}}
                                 >
                                     {steps[activeStep].title}
                                 </h3>
                                 <p
                                     className="text-sm leading-relaxed mb-5"
-                                    style={{color: "rgba(255,255,255,0.5)"}}
+                                    style={{color: "var(--dt-landing-text-muted)"}}
                                 >
                                     {steps[activeStep].body}
                                 </p>
@@ -320,7 +320,7 @@ export function HowItWorks() {
                                         <motion.div
                                             key={i}
                                             className="h-1 rounded-full cursor-pointer"
-                                            style={{backgroundColor: "#C9A84C"}}
+                                            style={{backgroundColor: "var(--dt-accent-color)"}}
                                             animate={{
                                                 width: i === activeStep ? 28 : 8,
                                                 opacity: i === activeStep ? 1 : 0.25,
@@ -332,7 +332,7 @@ export function HowItWorks() {
                                     {!userInteracted && (
                                         <span
                                             className="ml-2 text-[10px] font-mono"
-                                            style={{color: "rgba(255,255,255,0.2)"}}
+                                            style={{color: "var(--dt-landing-text-ghost)"}}
                                         >
                       auto
                     </span>
