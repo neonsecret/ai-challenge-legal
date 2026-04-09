@@ -91,11 +91,11 @@ export function WebContentPreview({source, answer, isMobile}: {
 
     return (
         <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: "var(--dt-glass-bg-subtle)",
-            border: `0.5px solid var(--dt-glass-border-subtle)`,
-            backdropFilter: "var(--dt-glass-blur-light)",
-            WebkitBackdropFilter: "var(--dt-glass-blur-light)",
-            boxShadow: `var(--dt-glass-inner-glow), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(100,50,0,0.08)`,
+            background: "var(--gm-surface-0, var(--dt-glass-bg-subtle))",
+            border: `1px solid var(--gm-border-outer, var(--dt-glass-border-subtle))`,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            boxShadow: `inset 0 0 2px 1px var(--gm-border-inner-glow, rgba(222,222,222,0.14)), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`,
         }}>
             {/* Header: favicon + title + domain */}
             <div style={{display: "flex", alignItems: "center", gap: SPACE['3'], marginBottom: SPACE['3']}}>

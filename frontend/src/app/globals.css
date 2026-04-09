@@ -1122,6 +1122,213 @@ textarea::placeholder { color: #b29254; }
     --dt-landing-card-glow: inset 0 1px 0 rgba(255,255,255,0.08);
     --dt-landing-hero-shadow: 0 40px 80px rgba(0,0,0,0.6);
     --dt-landing-pdf-badge-bg: rgba(20,24,50,0.90);
+
+    /* ── Glassmorphism variables (GM) ────────────────────────────
+       These override V3 dark with the achromatic black-glass aesthetic.
+       All existing components that use --dt-* or --v3-glass-* vars
+       automatically pick up the new look without component changes.
+       ─────────────────────────────────────────────────────────── */
+
+    /* Page canvas — true black */
+    --background: #000000;
+
+    /* Surface palette — achromatic near-invisible warmth */
+    --gm-surface-0: rgba(9, 9, 9, 0.73);
+    --gm-surface-1: rgba(19, 19, 19, 0.64);
+    --gm-surface-2: rgba(30, 30, 30, 0.50);
+    --gm-surface-3: rgba(50, 50, 50, 0.21);
+
+    /* Accent — iris at ultra-low opacity for trace presence */
+    --gm-accent: #8B6FD4;
+    --gm-accent-glow: rgba(139, 111, 212, 0.12);
+    --gm-accent-border: rgba(139, 111, 212, 0.20);
+
+    /* Text — pure white at varying opacity (oklch for perceptual uniformity) */
+    --gm-text-primary: oklch(0.87 0 0 / 0.90);
+    --gm-text-secondary: oklch(0.87 0 0 / 0.60);
+    --gm-text-tertiary: oklch(0.87 0 0 / 0.40);
+    --gm-text-quaternary: oklch(0.87 0 0 / 0.22);
+
+    /* Border system — the key to glassmorphism */
+    --gm-border-outer: rgba(222, 222, 222, 0.22);
+    --gm-border-inner-glow: rgba(222, 222, 222, 0.14);
+
+    /* Signature structural shadow */
+    --gm-shadow-structural:
+        0 10px 14px 4px rgba(0, 0, 0, 0.23),
+        0 10px 19px 1px rgba(0, 0, 0, 0.27),
+        inset -2px 0 10px 10px rgba(67, 67, 67, 0.15),
+        inset 0 0 2px 1px rgba(222, 222, 222, 0.22);
+
+    /* Override --v3-glass-* so V3 components auto-inherit GM look */
+    --v3-glass-surface-bg:        var(--gm-surface-1);
+    --v3-glass-surface-bg-hover:  var(--gm-surface-2);
+    --v3-glass-surface-border:    var(--gm-border-inner-glow);
+    --v3-glass-surface-blur:      blur(15px);
+    --v3-glass-surface-shadow:    inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.30);
+    --v3-glass-elevated-bg:       var(--gm-surface-0);
+    --v3-glass-elevated-bg-hover: var(--gm-surface-1);
+    --v3-glass-elevated-border:   var(--gm-border-outer);
+    --v3-glass-elevated-blur:     blur(10px);
+    --v3-glass-elevated-shadow:   var(--gm-shadow-structural);
+    --v3-glass-iris-bg:           var(--gm-accent-glow);
+    --v3-glass-iris-border:       var(--gm-accent-border);
+
+    /* Override --dt-* tokens to use glassmorphism values */
+    --dt-glass-bg: var(--gm-surface-0);
+    --dt-glass-bg-subtle: var(--gm-surface-3);
+    --dt-glass-bg-hover: var(--gm-surface-1);
+    --dt-glass-border: var(--gm-border-outer);
+    --dt-glass-border-subtle: var(--gm-border-inner-glow);
+    --dt-glass-blur: blur(10px);
+    --dt-glass-blur-light: blur(15px);
+    --dt-glass-inner-glow: inset 0 0 2px 1px rgba(222, 222, 222, 0.22);
+    --dt-glass-shadow: var(--gm-shadow-structural);
+
+    /* Text */
+    --dt-text-primary: var(--gm-text-primary);
+    --dt-text-secondary: var(--gm-text-secondary);
+    --dt-text-tertiary: var(--gm-text-tertiary);
+    --dt-text-quaternary: var(--gm-text-quaternary);
+    --dt-text-strong: var(--gm-text-primary);
+
+    /* Accent → iris GM */
+    --dt-accent-color: var(--gm-accent);
+    --dt-accent-color-hover: var(--gm-accent);
+    --dt-accent-tint: var(--gm-accent-glow);
+    --dt-accent-tint-subtle: rgba(139, 111, 212, 0.06);
+    --dt-accent-tint-strong: rgba(139, 111, 212, 0.16);
+    --dt-accent-tint-hover: rgba(139, 111, 212, 0.18);
+    --dt-accent-tint-faint: rgba(139, 111, 212, 0.05);
+    --dt-accent-glow: rgba(139, 111, 212, 0.20);
+    --dt-accent-border-color: var(--gm-accent-border);
+    --dt-accent-border-strong: rgba(139, 111, 212, 0.30);
+    --dt-accent-border-subtle: rgba(139, 111, 212, 0.15);
+    --dt-accent-highlight: rgba(139, 111, 212, 0.40);
+    --dt-accent-highlight-strong: rgba(139, 111, 212, 0.55);
+    --dt-accent-solid: rgba(139, 111, 212, 0.75);
+    --dt-active-item-bg: rgba(139, 111, 212, 0.10);
+
+    /* Answer card */
+    --dt-answer-bg: rgba(14, 14, 14, 0.55);
+    --dt-answer-border: rgba(222, 222, 222, 0.10);
+    --dt-answer-footnote-bg: rgba(255, 255, 255, 0.02);
+
+    /* Button/pill → GM surface */
+    --dt-button-bg: var(--gm-surface-1);
+    --dt-button-bg-hover: var(--gm-surface-2);
+    --dt-button-border-color: var(--gm-border-inner-glow);
+    --dt-pill-bg: var(--gm-surface-3);
+    --dt-pill-bg-subtle: rgba(50, 50, 50, 0.12);
+    --dt-pill-bg-hover: var(--gm-surface-2);
+    --dt-pill-border-color: rgba(255, 255, 255, 0.06);
+
+    /* Confidence badge → iris GM */
+    --dt-confidence-bg: rgba(139, 111, 212, 0.10);
+    --dt-confidence-border: rgba(139, 111, 212, 0.22);
+    --dt-confidence-text: rgba(139, 111, 212, 0.90);
+
+    /* Code block */
+    --dt-code-bg: rgba(19, 19, 19, 0.64);
+    --dt-code-border: rgba(222, 222, 222, 0.10);
+    --dt-code-copy-color: var(--gm-text-secondary);
+
+    /* Source chip */
+    --dt-chip-bg: rgba(19, 19, 19, 0.64);
+    --dt-chip-border: rgba(222, 222, 222, 0.12);
+    --dt-chip-hover-bg: rgba(30, 30, 30, 0.70);
+    --dt-chip-hover-border: rgba(222, 222, 222, 0.20);
+
+    /* Citation */
+    --dt-citation-resolvable-color: rgba(139, 111, 212, 0.85);
+    --dt-citation-resolvable-tint: rgba(139, 111, 212, 0.08);
+    --dt-citation-resolvable-border: rgba(139, 111, 212, 0.18);
+    --dt-citation-default-tint: rgba(50, 50, 50, 0.15);
+    --dt-citation-default-border: rgba(255, 255, 255, 0.06);
+
+    /* Sidebar tokens — match structural glass */
+    --sidebar: rgba(9, 9, 9, 0.73);
+    --sidebar-border: var(--gm-border-outer);
+}
+
+/* ============================================================
+   V3 GLASSMORPHISM — utility classes + aurora suppression
+   Scoped to .design-v3.dark — V2 and V3 light are untouched.
+   ============================================================ */
+
+/* Tier 1: Structural panels (sidebar, chat container) */
+.design-v3.dark .gm-glass-structural {
+    background: rgba(9, 9, 9, 0.73);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(222, 222, 222, 0.22);
+    border-radius: 16px;
+    box-shadow:
+        0 10px 14px 4px rgba(0, 0, 0, 0.23),
+        0 10px 19px 1px rgba(0, 0, 0, 0.27),
+        inset -2px 0 10px 10px rgba(67, 67, 67, 0.15),
+        inset 0 0 2px 1px rgba(222, 222, 222, 0.22);
+}
+
+/* Tier 2: Interactive surfaces (inputs, cards, source chips) */
+.design-v3.dark .gm-glass-interactive {
+    background: rgba(19, 19, 19, 0.64);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(222, 222, 222, 0.14);
+    border-radius: 12px;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        0 4px 16px rgba(0, 0, 0, 0.30);
+}
+
+/* Tier 3: Minimal surfaces (list items, hover states) */
+.design-v3.dark .gm-glass-minimal {
+    background: rgba(50, 50, 50, 0.21);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+/* Aurora suppression — glassmorphism uses pure black, no orbs */
+.design-v3.dark .aurora-bg::before,
+.design-v3.dark .aurora-bg-static::before {
+    background:
+        radial-gradient(ellipse 60% 40% at 20% 30%, rgba(139, 111, 212, 0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 75% 50%, rgba(56, 189, 248, 0.03) 0%, transparent 55%),
+        #000000;
+    filter: blur(100px);
+    animation: none;
+}
+
+/* Hide aurora orbs entirely in glassmorphism dark */
+.design-v3.dark .v3-orb {
+    display: none;
+}
+
+/* Sidebar glass override for glassmorphism */
+.design-v3.dark [data-slot="sidebar"] {
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    background: rgba(9, 9, 9, 0.73) !important;
+    border-right: 1px solid rgba(222, 222, 222, 0.22) !important;
+}
+
+/* Custom scrollbars for glassmorphism panels */
+.design-v3.dark ::-webkit-scrollbar {
+    width: 6px;
+}
+.design-v3.dark ::-webkit-scrollbar-track {
+    background: transparent;
+}
+.design-v3.dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 3px;
+}
+.design-v3.dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
 }
 
 /* ── V3 Aurora backgrounds ────────────────────────────────── */

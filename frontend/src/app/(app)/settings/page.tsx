@@ -103,7 +103,20 @@ export default function SettingsPage() {
         {value: "system", labelKey: "settings.system", icon: <Monitor size={16}/>},
     ];
 
-    const glassCard: React.CSSProperties = isV3 ? {
+    const glassCard: React.CSSProperties = (isV3 && isDark) ? {
+        background: "rgba(9, 9, 9, 0.73)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        border: "1px solid rgba(222, 222, 222, 0.22)",
+        borderRadius: "16px",
+        boxShadow: [
+            "0 10px 14px 4px rgba(0, 0, 0, 0.23)",
+            "0 10px 19px 1px rgba(0, 0, 0, 0.27)",
+            "inset -2px 0 10px 10px rgba(67, 67, 67, 0.15)",
+            "inset 0 0 2px 1px rgba(222, 222, 222, 0.22)",
+        ].join(", "),
+        overflow: "clip",
+    } : isV3 ? {
         borderRadius: "16px",
         overflow: "clip",
     } : {

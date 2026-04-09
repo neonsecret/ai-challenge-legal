@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useRef, useMemo} from "react"
+import {useState, useRef, useMemo, useEffect} from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
@@ -13,6 +13,7 @@ import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
 import {AgentTrace} from "@/components/chat/agent-trace"
 import {FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
+import {useDesignVersion} from "@/lib/design-version"
 
 export type {Source} from "@/components/chat/use-query-stream"
 type Source = import("@/components/chat/use-query-stream").Source
@@ -109,6 +110,21 @@ const DARK_PROSE = [
     "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[rgba(255,255,255,0.08)]",
     "prose-hr:border-[rgba(255,255,255,0.12)] prose-hr:my-3",
     "prose-blockquote:border-l-[#C9A84C] prose-blockquote:text-[rgba(255,255,255,0.70)] prose-blockquote:bg-[rgba(201,168,76,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
+].join(" ")
+
+// V3 glassmorphism dark prose — achromatic palette, iris accent replaces gold
+const V3_DARK_PROSE = [
+    "prose prose-sm max-w-none leading-relaxed prose-invert font-sans",
+    "prose-p:text-[var(--gm-text-primary)] prose-p:my-2",
+    "prose-headings:font-sans prose-headings:text-[var(--gm-text-primary)] prose-headings:font-semibold",
+    "prose-strong:text-[var(--gm-text-primary)] prose-strong:font-semibold",
+    "prose-a:text-[var(--gm-accent)] prose-a:no-underline hover:prose-a:underline",
+    "prose-code:bg-[rgba(255,255,255,0.06)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-[var(--gm-text-secondary)]",
+    "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-[var(--gm-text-primary)]",
+    "prose-table:text-[var(--gm-text-secondary)] prose-th:text-left prose-th:text-[11px] prose-th:font-semibold prose-th:py-1.5 prose-th:px-2 prose-th:border-b prose-th:border-[rgba(222,222,222,0.12)]",
+    "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[rgba(222,222,222,0.08)]",
+    "prose-hr:border-[rgba(222,222,222,0.10)] prose-hr:my-3",
+    "prose-blockquote:border-l-[var(--gm-accent)] prose-blockquote:text-[var(--gm-text-secondary)] prose-blockquote:bg-[rgba(139,111,212,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
 // ─── Superscript helpers ─────────────────────────────────────────────────────
@@ -235,6 +251,11 @@ export function ChatMessage({
     feedback,
     onFeedback,
 }: ChatMessageProps) {
+    const {version: designVersion} = useDesignVersion()
+    const [v3Mounted, setV3Mounted] = useState(false)
+    useEffect(() => { setV3Mounted(true) }, [])
+    const isV3 = v3Mounted && designVersion === "v3"
+
     const [copied, setCopied] = useState(false)
     const [commentOpen, setCommentOpen] = useState(false)
     const [commentText, setCommentText] = useState("")
@@ -314,8 +335,11 @@ export function ChatMessage({
                     border: "1px solid var(--dt-confidence-border)",
                     borderRadius: "16px 16px 4px 16px",
                     padding: "10px 14px",
-                    backdropFilter: "blur(16px)",
-                    WebkitBackdropFilter: "blur(16px)",
+                    backdropFilter: "blur(15px)",
+                    WebkitBackdropFilter: "blur(15px)",
+                    ...(isV3 ? {
+                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.25)",
+                    } : {}),
                 }}>
                     <p style={{
                         fontSize: "13px", margin: 0, lineHeight: 1.6,
@@ -333,9 +357,14 @@ export function ChatMessage({
 
     const answerCardStyle: React.CSSProperties = {
         background: "var(--dt-answer-bg)",
-        border: "0.5px solid var(--dt-answer-border)",
+        border: `${isV3 ? "1px" : "0.5px"} solid var(--dt-answer-border)`,
         borderRadius: RADIUS.xl,
         fontFamily: FONT.sans,
+        ...(isV3 ? {
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.20)",
+        } : {}),
     }
 
     const labelStyle = {
@@ -442,7 +471,7 @@ export function ChatMessage({
                     ) : content ? (() => {
                         return (
                         <div className="group relative">
-                            <div className={isDark ? DARK_PROSE : WARM_PROSE}>
+                            <div className={isV3 && isDark ? V3_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}>
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm, remarkInlineCitations]}
                                     rehypePlugins={[rehypeInlineCitations]}

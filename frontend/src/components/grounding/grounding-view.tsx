@@ -199,7 +199,7 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
             paddingBottom: isMobile ? `max(${SPACE['2']}px, env(safe-area-inset-bottom))` : SPACE['2'],
             minHeight: 0,
             maxHeight: 124,
-            borderTop: `0.5px solid var(--dt-glass-border-subtle)`,
+            borderTop: `0.5px solid var(--gm-border-outer, var(--dt-glass-border-subtle))`,
             scrollbarWidth: "none",
             WebkitOverflowScrolling: "touch",
         }}>
@@ -277,13 +277,13 @@ function SourceCitationCard({
                     width: 140,
                     padding: `${SPACE['1']}px ${SPACE['2']}px`,
                     background: isActive
-                        ? "var(--dt-color-gold-tint)"
-                        : "var(--dt-glass-bg-subtle)",
+                        ? "var(--gm-surface-1, var(--dt-color-gold-tint))"
+                        : "var(--gm-surface-3, var(--dt-glass-bg-subtle))",
                     border: `0.5px solid ${isActive
-                        ? "var(--dt-color-gold-border)"
-                        : "var(--dt-glass-border-subtle)"}`,
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
+                        ? "var(--gm-accent-border, var(--dt-color-gold-border))"
+                        : "var(--gm-border-inner-glow, var(--dt-glass-border-subtle))"}`,
+                    backdropFilter: isActive ? "blur(15px)" : "blur(4px)",
+                    WebkitBackdropFilter: isActive ? "blur(15px)" : "blur(4px)",
                     cursor: "pointer",
                     transition: `all ${TIMING.fast} ${EASE.out}`,
                 }}
@@ -365,13 +365,13 @@ function SourceCitationCard({
                                             height: 18, padding: `0 ${SPACE['1']}px`,
                                             borderRadius: RADIUS.xs, fontSize: TYPE_SCALE.xs, fontWeight: 500,
                                             background: isActivePage
-                                                ? "var(--dt-color-gold-glow)"
-                                                : "var(--dt-glass-bg-subtle)",
+                                                ? "var(--gm-accent-glow, var(--dt-color-gold-glow))"
+                                                : "var(--gm-surface-3, var(--dt-glass-bg-subtle))",
                                             border: `0.5px solid ${isActivePage
-                                                ? "var(--dt-color-gold-border)"
-                                                : "var(--dt-glass-border)"}`,
+                                                ? "var(--gm-accent-border, var(--dt-color-gold-border))"
+                                                : "var(--gm-border-inner-glow, var(--dt-glass-border))"}`,
                                             color: isActivePage
-                                                ? "var(--dt-color-gold-base)"
+                                                ? "var(--gm-accent, var(--dt-color-gold-base))"
                                                 : "var(--dt-text-tertiary)",
                                             cursor: "pointer",
                                             transition: `all ${TIMING.instant} ${EASE.out}`,
@@ -394,13 +394,13 @@ function SourceCitationCard({
             onClick={() => onPageClick(firstPage)}
             style={{
                 background: isActive
-                    ? "var(--dt-color-gold-tint)"
-                    : "var(--dt-glass-bg-subtle)",
+                    ? "var(--gm-surface-1, var(--dt-color-gold-tint))"
+                    : "var(--gm-surface-3, var(--dt-glass-bg-subtle))",
                 border: `0.5px solid ${isActive
-                    ? "var(--dt-color-gold-border)"
-                    : "var(--dt-glass-border-subtle)"}`,
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
+                    ? "var(--gm-accent-border, var(--dt-color-gold-border))"
+                    : "var(--gm-border-inner-glow, var(--dt-glass-border-subtle))"}`,
+                backdropFilter: isActive ? "blur(15px)" : "blur(4px)",
+                WebkitBackdropFilter: isActive ? "blur(15px)" : "blur(4px)",
                 cursor: "pointer",
                 transition: `all ${TIMING.fast} ${EASE.out}`,
             }}
@@ -455,9 +455,9 @@ function SourceCitationCard({
                     onClick={handleCopySource}
                     className="rounded p-1 opacity-0 group-hover/card:opacity-100 focus-visible:opacity-100 shrink-0 ml-2"
                     style={{
-                        background: "var(--dt-glass-bg-subtle)",
-                        border: `0.5px solid var(--dt-glass-border-subtle)`,
-                        color: copied ? "var(--dt-color-blue-base)" : "var(--dt-accent-color)",
+                        background: "var(--gm-surface-3, var(--dt-glass-bg-subtle))",
+                        border: `0.5px solid var(--gm-border-inner-glow, var(--dt-glass-border-subtle))`,
+                        color: copied ? "var(--dt-color-blue-base)" : "var(--gm-accent, var(--dt-accent-color))",
                         transition: `all ${TIMING.instant} ${EASE.out}`,
                     }}
                     aria-label={isCourtDecision(source) ? "Copy case reference" : isWeb ? "Copy URL" : "Copy source reference"}
@@ -514,13 +514,13 @@ function SourceCitationCard({
                                     borderRadius: RADIUS.xs,
                                     fontSize: TYPE_SCALE.xs,
                                     background: isActivePage
-                                        ? "var(--dt-color-gold-glow)"
-                                        : "var(--dt-glass-bg-subtle)",
+                                        ? "var(--gm-accent-glow, var(--dt-color-gold-glow))"
+                                        : "var(--gm-surface-3, var(--dt-glass-bg-subtle))",
                                     border: `0.5px solid ${isActivePage
-                                        ? "var(--dt-color-gold-border)"
-                                        : "var(--dt-glass-border)"}`,
+                                        ? "var(--gm-accent-border, var(--dt-color-gold-border))"
+                                        : "var(--gm-border-inner-glow, var(--dt-glass-border))"}`,
                                     color: isActivePage
-                                        ? "var(--dt-color-gold-base)"
+                                        ? "var(--gm-accent, var(--dt-color-gold-base))"
                                         : "var(--dt-text-tertiary)",
                                     cursor: "pointer",
                                     transition: `all ${TIMING.instant} ${EASE.out}`,

@@ -72,15 +72,15 @@ function LoginPageContent() {
     const isDark = mounted && resolvedTheme === "dark";
     const isV3 = mounted && designVersion === "v3";
 
-    /* ── Shared glass styles (matching settings page exactly) ── */
+    /* ── Shared glass styles ── */
     const glassCard: React.CSSProperties = isV3 ? {
-        background: isDark ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.78)",
-        backdropFilter: "blur(40px) saturate(160%) brightness(105%)",
-        WebkitBackdropFilter: "blur(40px) saturate(160%) brightness(105%)",
-        border: isDark ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(255,255,255,0.90)",
+        background: isDark ? "rgba(9,9,9,0.73)" : "rgba(255,255,255,0.78)",
+        backdropFilter: isDark ? "blur(10px)" : "blur(40px) saturate(160%) brightness(105%)",
+        WebkitBackdropFilter: isDark ? "blur(10px)" : "blur(40px) saturate(160%) brightness(105%)",
+        border: isDark ? "1px solid rgba(222,222,222,0.22)" : "1px solid rgba(255,255,255,0.90)",
         borderRadius: "16px",
         boxShadow: isDark
-            ? "0 12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.10)"
+            ? "0 10px 14px 4px rgba(0,0,0,0.23), 0 10px 19px 1px rgba(0,0,0,0.27), inset -2px 0 10px 10px rgba(67,67,67,0.15), inset 0 0 2px 1px rgba(222,222,222,0.22)"
             : "0 8px 32px rgba(7,9,30,0.12), inset 0 1px 0 rgba(255,255,255,0.95)",
         overflow: "clip",
     } : {
@@ -100,17 +100,21 @@ function LoginPageContent() {
     };
 
     const inputStyle: React.CSSProperties = {
-        background: isDark
-            ? "rgba(255,255,255,0.08)"
-            : "rgba(255,255,255,0.35)",
-        border: isDark
-            ? "0.5px solid rgba(255,255,255,0.14)"
-            : "0.5px solid rgba(255,255,255,0.50)",
+        background: isV3 && isDark
+            ? "rgba(19,19,19,0.64)"
+            : isDark
+                ? "rgba(255,255,255,0.08)"
+                : "rgba(255,255,255,0.35)",
+        border: isV3 && isDark
+            ? "1px solid rgba(222,222,222,0.14)"
+            : isDark
+                ? "0.5px solid rgba(255,255,255,0.14)"
+                : "0.5px solid rgba(255,255,255,0.50)",
         borderRadius: "10px",
         padding: "11px 14px",
         fontSize: "14px",
         color: isDark ? "rgba(255,255,255,0.88)" : "#2e1f08",
-        caretColor: isDark ? "#C9A84C" : undefined,
+        caretColor: isV3 && isDark ? "rgba(139,111,212,0.80)" : isDark ? "#C9A84C" : undefined,
         fontFamily: fontStack,
         width: "100%",
         outline: "none",
@@ -197,7 +201,7 @@ function LoginPageContent() {
                 padding: "24px 16px",
                 fontFamily: fontStack,
                 background: isV3
-                    ? (isDark ? "var(--v3-dark-bg)" : "var(--v3-light-bg)")
+                    ? (isDark ? "#000000" : "var(--v3-light-bg)")
                     : isDark
                         ? "linear-gradient(145deg, #0d1520 0%, #0f1b2e 50%, #0a1120 100%)"
                         : "linear-gradient(145deg, #c8b080 0%, #d4be92 45%, #bca070 100%)",
@@ -215,7 +219,22 @@ function LoginPageContent() {
                     pointerEvents: "none",
                 }}
             >
-                {isDark ? (
+                {isDark && isV3 ? (
+                    /* Glassmorphism: minimal iris trace only */
+                    <div
+                        style={{
+                            position: "absolute",
+                            width: 700,
+                            height: 700,
+                            top: "50%",
+                            left: "50%",
+                            transform: "translate(-50%,-50%)",
+                            background:
+                                "radial-gradient(circle, rgba(139,111,212,0.04) 0%, transparent 65%)",
+                            filter: "blur(60px)",
+                        }}
+                    />
+                ) : isDark ? (
                     <>
                         <div
                             style={{
@@ -322,12 +341,16 @@ function LoginPageContent() {
                             width: 44,
                             height: 44,
                             borderRadius: 13,
-                            background: isDark
-                                ? "rgba(201,168,76,0.12)"
-                                : "rgba(196,124,0,0.18)",
-                            border: isDark
-                                ? "1px solid rgba(201,168,76,0.25)"
-                                : "0.5px solid rgba(196,124,0,0.38)",
+                            background: isV3 && isDark
+                                ? "rgba(123,94,167,0.12)"
+                                : isDark
+                                    ? "rgba(201,168,76,0.12)"
+                                    : "rgba(196,124,0,0.18)",
+                            border: isV3 && isDark
+                                ? "1px solid rgba(157,127,204,0.25)"
+                                : isDark
+                                    ? "1px solid rgba(201,168,76,0.25)"
+                                    : "0.5px solid rgba(196,124,0,0.38)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
@@ -340,11 +363,12 @@ function LoginPageContent() {
                         <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
                             <path
                                 d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z"
-                                stroke={isDark ? "#C9A84C" : "#7a4a00"}
+                                stroke={isV3 && isDark ? "var(--v3-iris-bright)" : isDark ? "#C9A84C" : "#7a4a00"}
                                 strokeWidth="1.2"
                                 strokeLinejoin="round"
-                                fill={
-                                    isDark ? "rgba(201,168,76,0.15)" : "rgba(196,124,0,0.10)"
+                                fill={isV3 && isDark
+                                    ? "rgba(123,94,167,0.15)"
+                                    : isDark ? "rgba(201,168,76,0.15)" : "rgba(196,124,0,0.10)"
                                 }
                             />
                         </svg>
@@ -387,14 +411,18 @@ function LoginPageContent() {
                         display: "flex",
                         position: "relative",
                         margin: "20px 32px 0",
-                        background: isDark
-                            ? "rgba(255,255,255,0.05)"
-                            : "rgba(255,255,255,0.20)",
+                        background: isV3 && isDark
+                            ? "rgba(19,19,19,0.64)"
+                            : isDark
+                                ? "rgba(255,255,255,0.05)"
+                                : "rgba(255,255,255,0.20)",
                         borderRadius: "10px",
                         padding: 3,
-                        border: isDark
-                            ? "0.5px solid rgba(255,255,255,0.08)"
-                            : "0.5px solid rgba(255,255,255,0.30)",
+                        border: isV3 && isDark
+                            ? "1px solid rgba(222,222,222,0.10)"
+                            : isDark
+                                ? "0.5px solid rgba(255,255,255,0.08)"
+                                : "0.5px solid rgba(255,255,255,0.30)",
                     }}
                 >
                     {/* Sliding indicator pill */}
@@ -406,9 +434,11 @@ function LoginPageContent() {
                             bottom: 3,
                             width: "calc(50% - 3px)",
                             borderRadius: "8px",
-                            background: isDark
-                                ? "rgba(201,168,76,0.18)"
-                                : "rgba(255,255,255,0.55)",
+                            background: isV3 && isDark
+                                ? "rgba(139,111,212,0.16)"
+                                : isDark
+                                    ? "rgba(201,168,76,0.18)"
+                                    : "rgba(255,255,255,0.55)",
                             boxShadow: isDark
                                 ? "0 1px 4px rgba(0,0,0,0.20)"
                                 : "0 1px 4px rgba(100,50,0,0.10)",
@@ -472,12 +502,16 @@ function LoginPageContent() {
                             fontFamily: fontStack,
                             cursor: "pointer",
                             transition: "all 0.15s ease",
-                            background: isDark
-                                ? "rgba(255,255,255,0.08)"
-                                : "rgba(255,255,255,0.45)",
-                            border: isDark
-                                ? "0.5px solid rgba(255,255,255,0.14)"
-                                : "0.5px solid rgba(255,255,255,0.55)",
+                            background: isV3 && isDark
+                                ? "rgba(19,19,19,0.64)"
+                                : isDark
+                                    ? "rgba(255,255,255,0.08)"
+                                    : "rgba(255,255,255,0.45)",
+                            border: isV3 && isDark
+                                ? "1px solid rgba(222,222,222,0.14)"
+                                : isDark
+                                    ? "0.5px solid rgba(255,255,255,0.14)"
+                                    : "0.5px solid rgba(255,255,255,0.55)",
                             color: isDark ? "rgba(255,255,255,0.85)" : "#2e1f08",
                         }}
                     >

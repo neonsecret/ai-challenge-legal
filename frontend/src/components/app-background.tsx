@@ -23,10 +23,23 @@ export function AppBackground({children}: { children: React.ReactNode }) {
                     className="aurora-bg-static flex h-full w-full relative"
                     style={{
                         overflowX: "hidden",
-                        background: isDark ? "var(--v3-dark-bg)" : "var(--v3-light-bg)",
+                        background: isDark ? "#000000" : "var(--v3-light-bg)",
                         transition: "background 0.4s ease",
                     }}
                 >
+                    {/* V3 dark: suppress aurora to near-invisible — glassmorphism needs a clean black canvas */}
+                    {isDark && (
+                        <style>{`
+                            .design-v3.dark .aurora-bg-static::before {
+                                opacity: 0.07;
+                                filter: blur(100px);
+                                background:
+                                    radial-gradient(ellipse 60% 40% at 20% 30%, rgba(139, 111, 212, 0.04) 0%, transparent 60%),
+                                    radial-gradient(ellipse 50% 60% at 75% 50%, rgba(56, 189, 248, 0.03) 0%, transparent 55%),
+                                    #000000;
+                            }
+                        `}</style>
+                    )}
                     {children}
                 </div>
             </MotionConfig>

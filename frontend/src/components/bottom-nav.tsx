@@ -29,7 +29,17 @@ export function BottomNav() {
     const isDark = mounted && resolvedTheme === "dark";
     const isV3 = mounted && designVersion === "v3";
 
-    const pill = isDark ? {
+    const pill = (isV3 && isDark) ? {
+        // V3 dark: structural glass tier
+        background: "rgba(9, 9, 9, 0.73)",
+        border: "1px solid rgba(222, 222, 222, 0.22)",
+        boxShadow: [
+            "0 10px 14px 4px rgba(0, 0, 0, 0.23)",
+            "0 10px 19px 1px rgba(0, 0, 0, 0.27)",
+            "inset -2px 0 10px 10px rgba(67, 67, 67, 0.15)",
+            "inset 0 0 2px 1px rgba(222, 222, 222, 0.22)",
+        ].join(", "),
+    } : isDark ? {
         background: "rgba(15,22,35,0.80)",
         border: "0.5px solid rgba(255,255,255,0.12)",
         boxShadow: [
@@ -51,14 +61,14 @@ export function BottomNav() {
     };
 
     const activeColor = isV3
-        ? (isDark ? "var(--v3-iris-bright)" : "var(--v3-iris)")
+        ? (isDark ? "rgba(139, 111, 212, 0.90)" : "var(--v3-iris)")
         : (isDark ? "#C9A84C" : "#4F46E5");
-    const inactiveColor = isDark ? "rgba(255,255,255,0.42)" : "rgba(30,50,100,0.45)";
+    const inactiveColor = (isV3 && isDark) ? "rgba(255,255,255,0.60)" : isDark ? "rgba(255,255,255,0.42)" : "rgba(30,50,100,0.45)";
     const activeBg = isV3
-        ? (isDark ? "rgba(157,127,204,0.16)" : "rgba(123,94,167,0.12)")
+        ? (isDark ? "rgba(139, 111, 212, 0.10)" : "rgba(123,94,167,0.12)")
         : (isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)");
     const activeBorder = isV3
-        ? (isDark ? "0.5px solid rgba(157,127,204,0.30)" : "0.5px solid rgba(123,94,167,0.22)")
+        ? (isDark ? "1px solid rgba(139, 111, 212, 0.18)" : "0.5px solid rgba(123,94,167,0.22)")
         : (isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)");
 
     return (
@@ -74,8 +84,8 @@ export function BottomNav() {
                 alignItems: "center",
                 gap: "1px",
                 padding: isMobile ? "3px 3px" : "4px 5px",
-                backdropFilter: "blur(32px) saturate(180%)",
-                WebkitBackdropFilter: "blur(32px) saturate(180%)",
+                backdropFilter: (isV3 && isDark) ? "blur(10px)" : "blur(32px) saturate(180%)",
+                WebkitBackdropFilter: (isV3 && isDark) ? "blur(10px)" : "blur(32px) saturate(180%)",
                 borderRadius: "22px",
                 maxWidth: "calc(100vw - 24px)",
                 ...pill,

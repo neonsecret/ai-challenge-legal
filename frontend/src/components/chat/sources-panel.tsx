@@ -89,19 +89,24 @@ export function SourcesPanel({sources, onSourceClick}: SourcesPanelProps) {
                             style={{
                                 display: "inline-flex", alignItems: "center", gap: `${SPACE["1"] + 2}px`,
                                 padding: `${SPACE["1"] + 1}px ${SPACE["3"]}px ${SPACE["1"] + 1}px ${SPACE["1"] + 2}px`,
-                                borderRadius: RADIUS.full,
+                                borderRadius: isV3 ? "8px" : RADIUS.full,
                                 background: "var(--dt-chip-bg)",
                                 border: "1px solid var(--dt-chip-border)",
+                                backdropFilter: isV3 ? "blur(15px)" : undefined,
+                                WebkitBackdropFilter: isV3 ? "blur(15px)" : undefined,
+                                boxShadow: isV3 ? "inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.20)" : undefined,
                                 cursor: "pointer",
-                                transition: `background ${TIMING.fast} ${EASE.out}, border-color ${TIMING.fast} ${EASE.out}`,
+                                transition: `background ${TIMING.fast} ${EASE.out}, border-color ${TIMING.fast} ${EASE.out}, box-shadow ${TIMING.fast} ${EASE.out}`,
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.background = "var(--dt-chip-hover-bg)"
                                 e.currentTarget.style.borderColor = "var(--dt-chip-hover-border)"
+                                if (isV3) e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.30)"
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = "var(--dt-chip-bg)"
                                 e.currentTarget.style.borderColor = "var(--dt-chip-border)"
+                                if (isV3) e.currentTarget.style.boxShadow = "inset 0 1px 0 rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.20)"
                             }}
                         >
                             {isWeb ? (

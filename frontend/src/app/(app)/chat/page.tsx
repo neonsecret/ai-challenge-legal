@@ -70,13 +70,14 @@ const FOLLOWUP_SUGGESTIONS = [
 function makeGlassPanel(isV3 = false) {
     if (isV3) {
         return {
-            background: "var(--v3-glass-elevated-bg)",
-            backdropFilter: "var(--v3-glass-elevated-blur)",
-            WebkitBackdropFilter: "var(--v3-glass-elevated-blur)",
-            border: "1px solid var(--v3-glass-elevated-border)",
-            // V3: larger radius (28px) vs V2 (24px) for structural distinctiveness
-            borderRadius: "var(--v3-radius-2xl)",
-            boxShadow: "var(--v3-glass-elevated-shadow)",
+            background: "var(--gm-structural-bg, var(--v3-glass-elevated-bg))",
+            backdropFilter: "var(--gm-structural-blur, var(--v3-glass-elevated-blur))",
+            WebkitBackdropFilter: "var(--gm-structural-blur, var(--v3-glass-elevated-blur))",
+            border: "1px solid var(--gm-structural-border, var(--v3-glass-elevated-border))",
+            // V3 glassmorphism: 16px (was 28px)
+            borderRadius: "16px",
+            boxShadow: "var(--gm-structural-shadow, var(--v3-glass-elevated-shadow))",
+            overflow: "hidden",
             willChange: "transform",
             transform: "translateZ(0)",
         };
@@ -526,9 +527,9 @@ export default function ChatPage() {
                 {/* Header */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                    borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+                    borderBottom: isV3 ? "1px solid rgba(222,222,222,0.08)" : "0.5px solid var(--dt-glass-border-subtle)",
                     display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
-                    background: "var(--dt-glass-bg-subtle)",
+                    background: isV3 ? "linear-gradient(180deg, rgba(0,0,0,0.60) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                     overflow: "visible", position: "relative", zIndex: 10,
                 }}>
                     <div style={{
@@ -671,10 +672,10 @@ export default function ChatPage() {
                                         cursor: isEnabled ? "pointer" : "not-allowed",
                                         opacity: isEnabled ? 1 : 0.38,
                                         background: isActive
-                                            ? "var(--dt-color-gold-solid)"
+                                            ? (isV3 ? "var(--dt-active-item-bg)" : "var(--dt-color-gold-solid)")
                                             : "var(--dt-pill-bg)",
                                         border: isActive
-                                            ? "0.5px solid var(--dt-color-gold-border)"
+                                            ? (isV3 ? "0.5px solid var(--dt-accent-border-color)" : "0.5px solid var(--dt-color-gold-border)")
                                             : "0.5px solid var(--dt-glass-border)",
                                         color: isActive
                                             ? "var(--dt-text-primary)"

@@ -95,11 +95,11 @@ export function CourtDecisionTextViewer({source, isMobile, onPageClick}: {
 
     return (
         <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: "var(--dt-content-card-bg)",
-            border: `0.5px solid var(--dt-content-card-border)`,
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`,
+            background: "var(--gm-surface-0, var(--dt-content-card-bg))",
+            border: `1px solid var(--gm-border-outer, var(--dt-content-card-border))`,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            boxShadow: `inset 0 0 2px 1px var(--gm-border-inner-glow, rgba(222,222,222,0.14)), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`,
         }}>
             {/* Case metadata header */}
             <div style={{marginBottom: SPACE['4']}}>
@@ -265,11 +265,11 @@ export function SingleChunkView({source, raw, answer, isMobile, onPageClick}: {
 
     return (
         <div ref={scrollContainerRef} className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-            background: "var(--dt-content-card-bg)",
-            border: `0.5px solid var(--dt-content-card-border)`,
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.05), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`,
+            background: "var(--gm-surface-0, var(--dt-content-card-bg))",
+            border: `1px solid var(--gm-border-outer, var(--dt-content-card-border))`,
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            boxShadow: `inset 0 0 2px 1px var(--gm-border-inner-glow, rgba(222,222,222,0.14)), 0 ${SPACE['1']}px ${SPACE['6']}px rgba(0,0,0,0.30)`,
         }}>
             {/* Header: law name + breadcrumb */}
             {(lawName || breadcrumb) && (
@@ -483,10 +483,10 @@ export function TextSourceViewer({source, page, answer, isMobile, onPageClick, p
     if (!raw.trim()) {
         return (
             <div className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")} style={{
-                background: "var(--dt-content-card-bg)",
-                border: `0.5px solid var(--dt-content-card-border)`,
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
+                background: "var(--gm-surface-0, var(--dt-content-card-bg))",
+                border: `1px solid var(--gm-border-outer, var(--dt-content-card-border))`,
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

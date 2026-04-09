@@ -246,11 +246,11 @@ export function ContextChunkView({
             ref={scrollContainerRef}
             className={cn("overflow-y-auto rounded-xl", isMobile ? "h-full p-3" : "h-full p-5")}
             style={{
-                background: "var(--dt-content-card-bg)",
-                border: `0.5px solid var(--dt-content-card-border)`,
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                boxShadow: `var(--dt-glass-inner-glow), 0 ${SPACE["1"]}px ${SPACE["6"]}px rgba(100,50,0,0.08)`,
+                background: "var(--gm-surface-0, var(--dt-content-card-bg))",
+                border: `1px solid var(--gm-border-outer, var(--dt-content-card-border))`,
+                backdropFilter: "blur(10px)",
+                WebkitBackdropFilter: "blur(10px)",
+                boxShadow: `inset 0 0 2px 1px var(--gm-border-inner-glow, rgba(222,222,222,0.14)), 0 ${SPACE["1"]}px ${SPACE["6"]}px rgba(0,0,0,0.30)`,
             }}
         >
             {/* Header: law name + breadcrumb from target chunk */}

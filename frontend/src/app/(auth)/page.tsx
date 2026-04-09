@@ -108,7 +108,7 @@ export default function LandingPage() {
 
     if (!mounted || loading) {
         const skeletonBg = designVersion === "v3"
-            ? (isDark ? "#07090F" : "#F0F2F8")
+            ? (isDark ? "#000000" : "#F0F2F8")
             : (isDark ? "#0F1623" : "#e8d4b8");
         const skeletonSpinner = designVersion === "v3"
             ? (isDark ? "#9D7FCC" : "#9D7FCC")
@@ -127,14 +127,14 @@ export default function LandingPage() {
         const isDarkV3 = resolvedTheme === "dark";
         return (
             <MotionConfig {...V3_MOTION_CONFIG}>
-                <div className={isDarkV3 ? "dark design-v3" : "design-v3"} style={{minHeight: "100vh", background: isDarkV3 ? "var(--v3-dark-bg)" : "var(--v3-light-bg)"}}>
+                <div className={isDarkV3 ? "dark design-v3" : "design-v3"} style={{minHeight: "100vh", background: isDarkV3 ? "#000000" : "var(--v3-light-bg)"}}>
                     <AuroraBackground className="min-h-screen flex flex-col">
                         {/* Nav */}
                         <nav className="sticky top-0 z-50 w-full" style={{
-                            background: isDarkV3 ? "rgba(7,9,15,0.75)" : "rgba(240,242,248,0.80)",
-                            backdropFilter: "blur(20px) saturate(140%)",
-                            WebkitBackdropFilter: "blur(20px) saturate(140%)",
-                            borderBottom: isDarkV3 ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(123,94,167,0.12)"
+                            background: isDarkV3 ? "linear-gradient(180deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0) 100%)" : "rgba(240,242,248,0.80)",
+                            backdropFilter: isDarkV3 ? undefined : "blur(20px) saturate(140%)",
+                            WebkitBackdropFilter: isDarkV3 ? undefined : "blur(20px) saturate(140%)",
+                            borderBottom: isDarkV3 ? "1px solid rgba(222,222,222,0.08)" : "1px solid rgba(123,94,167,0.12)"
                         }}>
                             <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
@@ -224,7 +224,16 @@ export default function LandingPage() {
                             </motion.p>
                             <motion.div variants={V3_FADE_UP} initial="hidden" animate="visible"
                                         className="w-full max-w-5xl">
-                                <div className="v3-glass-panel" style={{borderRadius: "var(--v3-radius-xl)"}}>
+                                <div className="v3-glass-panel" style={{
+                                    borderRadius: "var(--v3-radius-xl)",
+                                    ...(isDarkV3 ? {
+                                        background: "rgba(9,9,9,0.73)",
+                                        backdropFilter: "blur(10px)",
+                                        WebkitBackdropFilter: "blur(10px)",
+                                        border: "1px solid rgba(222,222,222,0.22)",
+                                        boxShadow: "0 10px 14px 4px rgba(0,0,0,0.23), 0 10px 19px 1px rgba(0,0,0,0.27), inset -2px 0 10px 10px rgba(67,67,67,0.15), inset 0 0 2px 1px rgba(222,222,222,0.22)",
+                                    } : {})
+                                }}>
                                     <DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
                                 </div>
                             </motion.div>
@@ -253,7 +262,7 @@ export default function LandingPage() {
                     {/* Benchmark section — V3 glass cards */}
                     <section style={{
                         padding: "100px 24px",
-                        background: isDarkV3 ? "rgba(13,17,32,0.95)" : "rgba(240,242,248,0.90)",
+                        background: isDarkV3 ? "#000000" : "rgba(240,242,248,0.90)",
                         position: "relative", overflow: "hidden"
                     }}>
                         <div className="max-w-5xl mx-auto" style={{position: "relative"}}>
@@ -281,7 +290,7 @@ export default function LandingPage() {
                                     <motion.div key={b.name} variants={V3_ITEM_VARIANT} {...V3_CARD_HOVER}>
                                         <div className="v3-glass-panel" style={{padding: "28px 32px", height: "100%"}}>
                                             <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color: "var(--v3-iris-bright)"}}>{b.name}</p>
-                                            <p className="text-xs mb-3" style={{color: isDarkV3 ? "rgba(255,255,255,0.45)" : "rgba(13,15,26,0.50)"}}>{b.description}</p>
+                                            <p className="text-xs mb-3" style={{color: isDarkV3 ? "rgba(255,255,255,0.60)" : "rgba(13,15,26,0.50)"}}>{b.description}</p>
                                             <div className="flex items-end gap-3">
                                                 <span className="text-2xl font-bold" style={{color: "var(--v3-text-primary)"}}>{(b.ourScore * 100).toFixed(1)}%</span>
                                                 <span className="text-xs font-medium pb-1" style={{color: "var(--v3-success)"}}>{b.improvement}</span>
@@ -295,8 +304,8 @@ export default function LandingPage() {
 
                     {/* Footer */}
                     <footer className="py-8 px-6" style={{
-                        background: isDarkV3 ? "rgba(7,9,15,0.95)" : "rgba(240,242,248,0.95)",
-                        borderTop: isDarkV3 ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(123,94,167,0.12)"
+                        background: isDarkV3 ? "rgba(9,9,9,0.95)" : "rgba(240,242,248,0.95)",
+                        borderTop: isDarkV3 ? "1px solid rgba(222,222,222,0.08)" : "1px solid rgba(123,94,167,0.12)"
                     }}>
                         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
