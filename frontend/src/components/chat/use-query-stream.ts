@@ -81,7 +81,7 @@ function extractAnswerContent(raw: string): string | null {
     // No <answer> tags — strip all analysis tags (open or closed) and show the rest.
     // Claude sometimes wraps its reasoning in <analysis> tags spontaneously.
     // We strip them completely so the answer text is always visible during streaming.
-    let text = raw
+    const text = raw
         .replace(/<analysis>[\s\S]*?<\/analysis>/g, "")  // Remove closed blocks
         .replace(/<analysis>[\s\S]*$/g, "")               // Remove open block (still streaming)
         .replace(/<\/?(?:analysis|answer)>/g, "")          // Clean leftover tags
@@ -334,7 +334,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 // "Writing answer...", reset the answer and token buffer.
                                 // The intermediate text was from a non-final LLM call
                                 // and will be discarded by the backend.
-                                const isSearchPhase = raw.startsWith("retrieving:") || raw.startsWith("agent:thinking")
+                                const isSearchPhase = raw.startsWith("retrieving:") || raw === "agent:thinking" || raw === "agent:understanding" || raw === "agent:reasoning"
                                 if (isSearchPhase) {
                                     // Show the new status immediately but delay clearing
                                     // the intermediate answer text so the user can read it.

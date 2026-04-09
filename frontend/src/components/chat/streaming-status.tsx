@@ -77,8 +77,13 @@ export function StreamingStatus({status, progress, thinkingPreview, isDark = fal
     const [dotIndex, setDotIndex] = useState(0)
 
     // --- Elapsed timer state ---
-    const stepStartTime = useRef(Date.now())
+    const stepStartTime = useRef(0)
     const [elapsed, setElapsed] = useState(0)
+
+    // Initialize stepStartTime on mount (avoids calling Date.now during render)
+    useEffect(() => {
+        stepStartTime.current = Date.now()
+    }, [])
 
     const {icon: Icon, name: iconName, color: iconColor} = getIconForStatus(label)
 
