@@ -180,7 +180,7 @@ function LoginPageContent() {
     };
 
     const accentColor = isV3
-        ? (isDark ? "#9D7FCC" : "#7B5EA7")
+        ? (isDark ? "var(--v3-iris-bright)" : "var(--v3-iris)")
         : (isDark ? "#C9A84C" : "#5c2e08");
     const mutedText = isV3
         ? (isDark ? "rgba(255,255,255,0.50)" : "rgba(13,15,26,0.55)")
@@ -197,7 +197,7 @@ function LoginPageContent() {
                 padding: "24px 16px",
                 fontFamily: fontStack,
                 background: isV3
-                    ? (isDark ? "#07090F" : "#F0F2F8")
+                    ? (isDark ? "var(--v3-dark-bg)" : "var(--v3-light-bg)")
                     : isDark
                         ? "linear-gradient(145deg, #0d1520 0%, #0f1b2e 50%, #0a1120 100%)"
                         : "linear-gradient(145deg, #c8b080 0%, #d4be92 45%, #bca070 100%)",
@@ -707,7 +707,7 @@ function LoginPageContent() {
                                 border: "none",
                                 transition: "all 0.15s ease",
                                 background: isV3
-                                    ? "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)"
+                                    ? "var(--v3-btn-primary-bg)"
                                     : isDark
                                         ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
                                         : "#5c2e08",

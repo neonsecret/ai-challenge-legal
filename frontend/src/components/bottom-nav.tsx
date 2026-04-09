@@ -51,7 +51,7 @@ export function BottomNav() {
     };
 
     const activeColor = isV3
-        ? (isDark ? "#9D7FCC" : "#7B5EA7")
+        ? (isDark ? "var(--v3-iris-bright)" : "var(--v3-iris)")
         : (isDark ? "#C9A84C" : "#4F46E5");
     const inactiveColor = isDark ? "rgba(255,255,255,0.42)" : "rgba(30,50,100,0.45)";
     const activeBg = isV3

@@ -23,7 +23,7 @@ export function AppBackground({children}: { children: React.ReactNode }) {
                     className="aurora-bg-static flex h-full w-full relative"
                     style={{
                         overflowX: "hidden",
-                        background: isDark ? "#07090F" : "#F0F2F8",
+                        background: isDark ? "var(--v3-dark-bg)" : "var(--v3-light-bg)",
                         transition: "background 0.4s ease",
                     }}
                 >
