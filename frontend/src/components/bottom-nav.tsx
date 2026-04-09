@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {usePathname} from "next/navigation";
 import {useTheme} from "@/lib/theme";
+import {useDesignVersion} from "@/lib/design-version";
 import {useEffect, useState} from "react";
 import {MessageSquare, FileText, Settings, CreditCard, Sun, Moon} from "lucide-react";
 import {useIsMobile} from "@/hooks/use-mobile";
@@ -19,12 +20,14 @@ const navItemDefs = [
 export function BottomNav() {
     const pathname = usePathname();
     const {resolvedTheme, setTheme} = useTheme();
+    const {version: designVersion} = useDesignVersion();
     const [mounted, setMounted] = useState(false);
     const isMobile = useIsMobile();
     const {t} = useI18n();
     useEffect(() => setMounted(true), []);
 
     const isDark = mounted && resolvedTheme === "dark";
+    const isV3 = mounted && designVersion === "v3";
 
     const pill = isDark ? {
         background: "rgba(15,22,35,0.80)",
@@ -47,10 +50,16 @@ export function BottomNav() {
         ].join(", "),
     };
 
-    const activeColor = isDark ? "#C9A84C" : "#4F46E5";
+    const activeColor = isV3
+        ? (isDark ? "#9D7FCC" : "#7B5EA7")
+        : (isDark ? "#C9A84C" : "#4F46E5");
     const inactiveColor = isDark ? "rgba(255,255,255,0.42)" : "rgba(30,50,100,0.45)";
-    const activeBg = isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)";
-    const activeBorder = isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)";
+    const activeBg = isV3
+        ? (isDark ? "rgba(157,127,204,0.16)" : "rgba(123,94,167,0.12)")
+        : (isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)");
+    const activeBorder = isV3
+        ? (isDark ? "0.5px solid rgba(157,127,204,0.30)" : "0.5px solid rgba(123,94,167,0.22)")
+        : (isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)");
 
     return (
         <div

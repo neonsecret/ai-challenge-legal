@@ -4,6 +4,7 @@ import {useState, useEffect} from "react";
 import {Moon, Sun, Monitor, LogOut, User, Loader2, ChevronDown} from "lucide-react";
 import {useTheme} from "@/lib/theme";
 import {useDesignVersion} from "@/lib/design-version";
+import {DesignVersionToggle} from "@/components/design-version-toggle";
 import {motion} from "motion/react";
 import {V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import {useRouter} from "next/navigation";
@@ -370,20 +371,28 @@ export default function SettingsPage() {
                         <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("settings.appearance")}</h2>
                     </div>
                     <div style={cardBody}>
-                        <div>
-                            <span style={labelStyleDyn}>{t("settings.theme")}</span>
-                            <div style={{display: "flex", gap: "8px", marginTop: "2px"}}>
-                                {themeOptions.map((opt) => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => setTheme(opt.value)}
-                                        aria-pressed={theme === opt.value}
-                                        style={themeButton(theme === opt.value)}
-                                    >
-                                        {opt.icon}
-                                        {t(opt.labelKey)}
-                                    </button>
-                                ))}
+                        <div style={{display: "flex", flexDirection: "column", gap: "20px"}}>
+                            <div>
+                                <span style={labelStyleDyn}>{t("settings.theme")}</span>
+                                <div style={{display: "flex", gap: "8px", marginTop: "2px"}}>
+                                    {themeOptions.map((opt) => (
+                                        <button
+                                            key={opt.value}
+                                            onClick={() => setTheme(opt.value)}
+                                            aria-pressed={theme === opt.value}
+                                            style={themeButton(theme === opt.value)}
+                                        >
+                                            {opt.icon}
+                                            {t(opt.labelKey)}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div>
+                                <span style={labelStyleDyn}>Design version</span>
+                                <div style={{marginTop: "2px"}}>
+                                    <DesignVersionToggle variant={isDark ? "dark" : "light"} />
+                                </div>
                             </div>
                         </div>
                     </div>
