@@ -738,7 +738,7 @@ textarea::placeholder { color: #b29254; }
     border-top: 1.5px solid transparent;
     backdrop-filter: var(--v3-glass-surface-blur);
     -webkit-backdrop-filter: var(--v3-glass-surface-blur);
-    border-radius: var(--v3-radius-md);
+    border-radius: var(--v3-radius-pill);
     transition: var(--v3-transition-interactive);
 }
 
@@ -888,24 +888,12 @@ textarea::placeholder { color: #b29254; }
     border-radius: var(--v3-radius-pill) !important;
 }
 
-/* Source chips in SourcesPanel — ensure pill, matches inline RADIUS.full */
-.design-v3 .v3-source-card {
-    border-radius: var(--v3-radius-pill) !important;
-}
-
 /* ── Larger card padding utility ────────────────────────── */
-/* Use .v3-card on any V3 glass panel that needs spacious padding */
+/* Use .v3-card on any V3 glass panel that needs spacious padding.
+   Base glass classes (.v3-glass-panel, .v3-glass-elevated) stay padding-free —
+   consumers manage their own spacing to avoid double-padding. */
 .design-v3 .v3-card {
     padding: var(--v3-space-xl);
-}
-
-/* Slightly larger padding on all three glass tiers in V3 */
-.design-v3 .v3-glass-panel {
-    padding: var(--v3-space-lg);
-}
-
-.design-v3 .v3-glass-elevated {
-    padding: var(--v3-space-lg);
 }
 
 /* ── More breathing room between list items ─────────────── */
@@ -928,16 +916,13 @@ textarea::placeholder { color: #b29254; }
     margin-top: var(--v3-space-xl);
 }
 
-/* ── 1px specular inset highlight on glass cards (dark mode) ── */
-/* Ensures the top-edge catch-light is always present on surface-tier cards.
-   Stacks on top of --v3-glass-surface-shadow (which includes a dimmer 0.06
-   variant). Dark mode only — light mode glass panels use natural highlight. */
+/* ── 1px specular inset highlight on glass surface cards (dark mode) ── */
+/* --v3-glass-surface-shadow already embeds an inset 0.06 catch-light which
+   is too dim. Override with the outer drop shadow + --v3-specular-top (0.12)
+   to replace the embedded highlight — no double-stacking.
+   Elevated tier already embeds 0.10 inset (close enough), so no override needed. */
 .design-v3.dark .v3-glass-panel {
-    box-shadow: var(--v3-glass-surface-shadow), var(--v3-specular-top);
-}
-
-.design-v3.dark .v3-glass-elevated {
-    box-shadow: var(--v3-glass-elevated-shadow), var(--v3-specular-top);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), var(--v3-specular-top);
 }
 
 /* ── Typography scale — slightly larger headings in V3 ───── */
