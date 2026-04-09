@@ -127,6 +127,21 @@ const V3_DARK_PROSE = [
     "prose-blockquote:border-l-[var(--gm-accent)] prose-blockquote:text-[var(--gm-text-secondary)] prose-blockquote:bg-[rgba(139,111,212,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
+// Strict (Full Glass Scholar) dark prose — Georgia serif, gold accents
+const STRICT_DARK_PROSE = [
+    "prose prose-sm max-w-none prose-invert",
+    "prose-p:text-[var(--strict-text-body)] prose-p:my-2",
+    "prose-headings:text-[var(--strict-text-primary)] prose-headings:font-normal",
+    "prose-strong:text-[var(--strict-text-primary)] prose-strong:font-semibold",
+    "prose-a:text-[var(--strict-citation)] prose-a:no-underline hover:prose-a:underline",
+    "prose-code:bg-[rgba(255,255,255,0.06)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-[var(--strict-text-body)]",
+    "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-[var(--strict-text-body)]",
+    "prose-table:text-[var(--strict-text-secondary)] prose-th:text-left prose-th:text-[11px] prose-th:py-1.5 prose-th:px-2 prose-th:border-b prose-th:border-[rgba(255,255,255,0.1)]",
+    "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[rgba(255,255,255,0.06)]",
+    "prose-hr:border-[rgba(201,168,76,0.15)] prose-hr:my-3",
+    "prose-blockquote:border-l-[var(--strict-gold-base)] prose-blockquote:text-[var(--strict-text-secondary)] prose-blockquote:bg-[rgba(201,168,76,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
+].join(" ")
+
 // ─── Superscript helpers ─────────────────────────────────────────────────────
 
 const SUPERSCRIPT_DIGITS = ['\u2070', '\u00B9', '\u00B2', '\u00B3', '\u2074', '\u2075', '\u2076', '\u2077', '\u2078', '\u2079']
@@ -327,6 +342,26 @@ export function ChatMessage({
 
     // ── User message ──────────────────────────────────────────────────────────
     if (role === "user") {
+        // Strict: inline italic serif question with gold separator — no bubble
+        if (isV3) {
+            return (
+                <div className="mb-5 animate-fade-in-up">
+                    <p style={{
+                        fontFamily: "Georgia, serif",
+                        fontSize: "12px",
+                        fontStyle: "italic",
+                        color: "var(--strict-text-question)",
+                        margin: 0,
+                        marginBottom: 14,
+                        paddingBottom: 10,
+                        borderBottom: "1px solid var(--strict-gold-border)",
+                        lineHeight: 1.7,
+                    }}>
+                        {content}
+                    </p>
+                </div>
+            )
+        }
         return (
             <div className="mb-5 animate-fade-in-up" style={{display: "flex", justifyContent: "flex-end"}}>
                 <div style={{
@@ -337,9 +372,6 @@ export function ChatMessage({
                     padding: "10px 14px",
                     backdropFilter: "blur(15px)",
                     WebkitBackdropFilter: "blur(15px)",
-                    ...(isV3 ? {
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.25)",
-                    } : {}),
                 }}>
                     <p style={{
                         fontSize: "13px", margin: 0, lineHeight: 1.6,
@@ -355,16 +387,14 @@ export function ChatMessage({
 
     // ── Assistant message ─────────────────────────────────────────────────────
 
-    const answerCardStyle: React.CSSProperties = {
+    const answerCardStyle: React.CSSProperties = isV3 ? {
+        // Strict: no card — inline serif content in the glass reading area
+        fontFamily: "Georgia, serif",
+    } : {
         background: "var(--dt-answer-bg)",
-        border: `${isV3 ? "1px" : "0.5px"} solid var(--dt-answer-border)`,
+        border: "0.5px solid var(--dt-answer-border)",
         borderRadius: RADIUS.xl,
         fontFamily: FONT.sans,
-        ...(isV3 ? {
-            backdropFilter: "blur(12px)",
-            WebkitBackdropFilter: "blur(12px)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.20)",
-        } : {}),
     }
 
     const labelStyle = {
@@ -389,6 +419,71 @@ export function ChatMessage({
     }) {
         if (isStreaming) return null
 
+        // ── Strict mode: gold superscript, no pill ────────────────────────────
+        if (isV3) {
+            if (citationkind === "source") {
+                const resolvedDocId = docid ?? ""
+                const resolvedPage = page ?? 0
+                const srcIdx = sources.findIndex(s =>
+                    s.doc_id === resolvedDocId ||
+                    s.doc_id.startsWith(resolvedDocId) ||
+                    resolvedDocId.startsWith(s.doc_id)
+                )
+                const resolvable = srcIdx >= 0
+                const footnoteNum = srcIdx + 1
+                return (
+                    <sup
+                        onClick={resolvable ? (e) => {
+                            e.stopPropagation()
+                            onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
+                        } : undefined}
+                        title={resolvable
+                            ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
+                            : "Source not found in retrieved documents"
+                        }
+                        style={{
+                            color: "var(--strict-citation)",
+                            cursor: resolvable ? "pointer" : "not-allowed",
+                            fontSize: "0.7em",
+                            fontFamily: "system-ui",
+                            verticalAlign: "super",
+                        }}
+                    >
+                        {footnoteNum}
+                    </sup>
+                )
+            }
+            if (citationkind === "docref") {
+                const sourceIdx = (refindex ?? 0) - 1
+                const matchedSource = sources[sourceIdx]
+                const resolvable = !!matchedSource
+                const pageNum = matchedSource?.page_numbers[0]
+                return (
+                    <sup
+                        onClick={resolvable ? (e) => {
+                            e.stopPropagation()
+                            onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
+                        } : undefined}
+                        title={resolvable
+                            ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
+                            : "Source not found in retrieved documents"
+                        }
+                        style={{
+                            color: "var(--strict-citation)",
+                            cursor: resolvable ? "pointer" : "not-allowed",
+                            fontSize: "0.7em",
+                            fontFamily: "system-ui",
+                            verticalAlign: "super",
+                        }}
+                    >
+                        {refindex ?? 0}
+                    </sup>
+                )
+            }
+            return null
+        }
+
+        // ── Default: pill button ──────────────────────────────────────────────
         const hoverHandlers = {
             onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.style.background = "var(--dt-accent-highlight)"
@@ -459,11 +554,11 @@ export function ChatMessage({
 
     return (
         <div className="mb-7 animate-fade-in-up">
-            <p style={labelStyle}>Answer</p>
+            {!isV3 && <p style={labelStyle}>Answer</p>}
 
             {/* Answer card */}
             <div style={answerCardStyle}>
-                <div style={{padding: SPACE[4]}}>
+                <div style={isV3 ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
                     {content === "__polling_pipeline_status__" ? (
                         <StreamingStatus status="Processing..."/>
                     ) : content?.startsWith("__pipeline_status:") ? (
@@ -471,7 +566,15 @@ export function ChatMessage({
                     ) : content ? (() => {
                         return (
                         <div className="group relative">
-                            <div className={isV3 && isDark ? V3_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}>
+                            <div
+                                className={isV3 && isDark ? STRICT_DARK_PROSE : isV3 ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}
+                                style={isV3 ? {
+                                    fontFamily: "Georgia, serif",
+                                    lineHeight: 1.8,
+                                    letterSpacing: "0.01em",
+                                    fontSize: "12.5px",
+                                } : undefined}
+                            >
                                 <ReactMarkdown
                                     remarkPlugins={[remarkGfm, remarkInlineCitations]}
                                     rehypePlugins={[rehypeInlineCitations]}
@@ -534,8 +637,8 @@ export function ChatMessage({
                     )}
                 </div>
 
-                {/* References — inside the answer card, at the bottom */}
-                {citedSources.length > 0 && (
+                {/* References — inside the answer card, at the bottom (hidden in Strict) */}
+                {citedSources.length > 0 && !isV3 && (
                     <div style={{
                         padding: `${SPACE[3]}px ${SPACE[4]}px ${SPACE[4]}px`,
                         borderTop: "1px solid var(--dt-answer-border)",
@@ -579,8 +682,8 @@ export function ChatMessage({
                 )}
             </div>
 
-            {/* Source chips — below the answer card */}
-            {sources.length > 0 && (
+            {/* Source chips — below the answer card (hidden in Strict; sources are in StrictSourceMargin) */}
+            {sources.length > 0 && !isV3 && (
                 <div style={{marginTop: SPACE[3]}}>
                     <SourcesPanel
                         sources={sources}

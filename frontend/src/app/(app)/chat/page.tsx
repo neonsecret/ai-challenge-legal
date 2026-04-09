@@ -1526,15 +1526,15 @@ export default function ChatPage() {
                 )}
             </AnimatePresence>
 
-            {/* ── Source grounding panel — glass panel beside the chat, same style as preview ── */}
+            {/* ── Source grounding panel ── */}
+            {/* In Strict mode: centered overlay. Otherwise: flex sibling beside chat. */}
             <AnimatePresence>
                 {drawerOpen && drawerData.sources.length > 0 && (
                     <motion.div
-                        initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
-                        animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
-                        exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
+                        initial={isMobile ? {y: "100%"} : isStrict ? {opacity: 0, y: 16} : {opacity: 0, width: 0}}
+                        animate={isMobile ? {y: 0} : isStrict ? {opacity: 1, y: 0} : {opacity: 1, width: "50%"}}
+                        exit={isMobile ? {y: "100%"} : isStrict ? {opacity: 0, y: 16} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
-                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             ...(isMobile ? {
                                 position: "fixed",
@@ -1550,11 +1550,25 @@ export default function ChatPage() {
                                 WebkitBackdropFilter: "var(--dt-glass-blur-light)",
                                 border: "0.5px solid var(--dt-panel-border-color)",
                                 boxShadow: "var(--dt-panel-shadow)",
+                            } : isStrict ? {
+                                // Strict: centered glass overlay — doesn't compress StrictLayout
+                                position: "fixed",
+                                left: "8%",
+                                right: "8%",
+                                top: "6%",
+                                bottom: "6%",
+                                zIndex: 200,
+                                borderRadius: 16,
+                                background: "var(--strict-glass-bg)",
+                                backdropFilter: "var(--strict-glass-blur)",
+                                WebkitBackdropFilter: "var(--strict-glass-blur)",
+                                border: "1px solid var(--strict-glass-border)",
+                                boxShadow: "var(--strict-glass-shadow)",
                             } : {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
                                 flexShrink: 0,
-                                ...makeGlassPanel(isStrict),
+                                ...makeGlassPanel(false),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1575,21 +1589,24 @@ export default function ChatPage() {
                         {/* Panel header */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+                            borderBottom: isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
+                            flexShrink: 0,
+                            background: isStrict ? "rgba(0,0,0,0.2)" : "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
-                  fontSize: TYPE_SCALE.sm, fontWeight: 700, textTransform: "uppercase",
-                  letterSpacing: "0.12em",
-                  color: "var(--dt-accent-color)",
-                  fontFamily: FONT.sans,
+                  fontSize: isStrict ? 9 : TYPE_SCALE.sm,
+                  fontWeight: isStrict ? 400 : 700,
+                  textTransform: "uppercase",
+                  letterSpacing: isStrict ? "1.5px" : "0.12em",
+                  color: isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)",
+                  fontFamily: isStrict ? "system-ui" : FONT.sans,
               }}>
                 Source Grounding
               </span>
                             <div style={{display: "flex", alignItems: "center", gap: SPACE['1']}}>
-                                {/* Layout toggle buttons — hide on mobile since it's full-screen */}
-                                {!isMobile && (["chat", "split", "source"] as const).map((mode) => (
+                                {/* Layout toggle buttons — hide on mobile and in Strict mode */}
+                                {!isMobile && !isStrict && (["chat", "split", "source"] as const).map((mode) => (
                                     <button
                                         key={mode}
                                         onClick={() => setLayoutMode(mode)}

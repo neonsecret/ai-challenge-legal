@@ -104,7 +104,7 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
       <textarea
           ref={ref}
           suppressHydrationWarning
-          placeholder={t("chat.placeholder")}
+          placeholder={mounted && version === "strict" ? "Continue your research..." : t("chat.placeholder")}
           className="w-full bg-transparent resize-none outline-none leading-relaxed px-4 pt-3.5 pb-11 min-h-[52px] max-h-[200px]"
           style={{
               color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",
