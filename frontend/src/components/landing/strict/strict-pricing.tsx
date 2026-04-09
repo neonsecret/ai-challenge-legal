@@ -207,6 +207,7 @@ export function StrictPricing() {
 
   return (
     <section
+        id="pricing"
         className="mx-auto"
         style={{
           maxWidth: "880px",

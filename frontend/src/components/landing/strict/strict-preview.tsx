@@ -80,6 +80,7 @@ export function StrictPreview() {
 
   return (
     <section
+      id="features"
       ref={sectionRef}
       className="mx-auto"
       style={{
