@@ -10,39 +10,59 @@ const NAV_LINKS = [
 export function StrictNav() {
   return (
     <nav
-      className="flex items-center mx-auto max-w-[880px] px-8 py-5"
-      style={{ borderBottom: "1px solid var(--strict-nav-sep)" }}
+      className="flex items-center mx-auto px-4 py-4 sm:px-8 sm:py-5"
+      style={{
+        maxWidth: "880px",
+        borderBottom: "1px solid var(--strict-nav-sep)",
+      }}
     >
-      <Link href="/" className="text-[13px] tracking-[2px] font-normal no-underline" style={{ color: "var(--strict-nav-signin)" }}>
+      <Link
+        href="/"
+        className="text-[13px] tracking-[2px] font-normal no-underline"
+        style={{ color: "var(--strict-nav-signin)" }}
+      >
         VITREON
       </Link>
-      <div className="ml-auto flex items-center gap-5">
+
+      {/* Desktop nav links */}
+      <div className="ml-auto flex items-center gap-4 sm:gap-5">
         {NAV_LINKS.map((link) => (
           <a
             key={link.href}
             href={link.href}
-            className="text-[11px] no-underline transition-colors duration-150"
+            className="hidden sm:block text-[11px] no-underline transition-colors duration-150"
             style={{ color: "var(--strict-nav-link)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--strict-nav-link-hover)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--strict-nav-link)")}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--strict-nav-link-hover)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--strict-nav-link)")
+            }
           >
             {link.label}
           </a>
         ))}
+
         <Link
           href="/login"
           className="text-[11px] no-underline pb-px transition-all duration-150"
           style={{
             color: "var(--strict-nav-signin)",
             borderBottom: "1px solid var(--strict-gold-underbar)",
+            /* Ensure 44px tap target on mobile */
+            display: "inline-flex",
+            alignItems: "center",
+            minHeight: "44px",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = "var(--strict-nav-signin-hover)";
-            e.currentTarget.style.borderBottomColor = "var(--strict-gold-underbar-hover)";
+            e.currentTarget.style.borderBottomColor =
+              "var(--strict-gold-underbar-hover)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.color = "var(--strict-nav-signin)";
-            e.currentTarget.style.borderBottomColor = "var(--strict-gold-underbar)";
+            e.currentTarget.style.borderBottomColor =
+              "var(--strict-gold-underbar)";
           }}
         >
           Sign In

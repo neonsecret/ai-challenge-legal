@@ -137,8 +137,8 @@ export function DesignVersionToggle(
             >
                 {OPTIONS.map(({ value, label, swatch }) => {
                     const isActive = version === value;
-                    // Luminous gets a faint aurora glow on its label when active
-                    const isLuminousActive = value === "strict" && isActive;
+                    // Strict gets a faint gold glow on its label when active
+                    const isStrictActive = value === "strict" && isActive;
 
                     const textColor = dark
                         ? isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.40)"
@@ -212,14 +212,14 @@ export function DesignVersionToggle(
                                 }}
                             />
 
-                            {/* Label — always visible; Luminous label glows when active */}
+                            {/* Label — always visible; Strict label glows gold when active */}
                             <span
                                 style={{
                                     position: "relative",
                                     zIndex: 1,
                                     transition: "text-shadow 0.3s ease",
-                                    textShadow: isLuminousActive
-                                        ? "0 0 12px var(--v3-aurora-glow, #60A5FA)"
+                                    textShadow: isStrictActive
+                                        ? "0 0 10px rgba(201,168,76,0.35)"
                                         : "none",
                                 }}
                             >

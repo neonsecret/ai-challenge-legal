@@ -1,5 +1,5 @@
 /**
- * V3 "Luminous" motion tokens.
+ * V3 motion tokens (used by both Neon and Strict designs).
  *
  * Spring physics presets and animation variants for Framer Motion.
  * Import these instead of inline configs to ensure consistency across

@@ -1845,7 +1845,7 @@ button:active:not(:disabled):not(.no-press-scale) {
     outline: none !important;
 }
 
-/* Primary button — luminous iris gradient */
+/* Primary button — strict design */
 .design-strict button[data-variant="primary"],
 .design-strict .btn-v3-primary {
     background: var(--v3-btn-primary-bg) !important;

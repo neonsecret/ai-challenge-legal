@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AuroraBackground — V3 "Luminous" animated aurora for the landing page only.
+ * AuroraBackground — V3 "Strict" animated aurora for the landing page only.
  *
  * Contains animated orbs + cursor ambient light. Do NOT render this in the
  * workspace layout — use `.aurora-bg-static` there instead.
