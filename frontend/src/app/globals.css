@@ -869,6 +869,40 @@ textarea::placeholder { color: #b29254; }
     /* Vote/feedback */
     --dt-vote-text: var(--v3-text-tertiary);
     --dt-text-secondary-accent: var(--v3-text-secondary);
+
+    /* Landing section tokens — V3 iris light-mode overrides */
+    --dt-landing-label-color: rgba(91,64,160,0.70);
+    --dt-landing-label-muted: rgba(91,64,160,0.55);
+    --dt-landing-stat-label: rgba(91,64,160,0.50);
+    --dt-landing-accent-bg: rgba(91,64,160,0.12);
+    --dt-landing-accent-bg-subtle: rgba(91,64,160,0.08);
+    --dt-landing-accent-border-light: rgba(91,64,160,0.18);
+    --dt-landing-highlight: rgba(91,64,160,0.16);
+    --dt-landing-highlight-strong: rgba(91,64,160,0.25);
+    --dt-landing-accent-glow-subtle: rgba(91,64,160,0.04);
+    --dt-landing-bubble-bg: rgba(91,64,160,0.10);
+    --dt-landing-glass-card: rgba(255,255,255,0.65);
+    --dt-landing-text-bright: var(--v3-text-primary);
+    --dt-landing-text-mid: var(--v3-text-secondary);
+    --dt-landing-text-soft: rgba(13,15,26,0.55);
+    --dt-landing-text-muted: rgba(13,15,26,0.50);
+    --dt-landing-text-faint: rgba(13,15,26,0.38);
+    --dt-landing-text-ghost: rgba(13,15,26,0.20);
+    --dt-landing-glass-bg: rgba(255,255,255,0.45);
+    --dt-landing-glass-bg-strong: rgba(255,255,255,0.60);
+    --dt-landing-glass-border: rgba(123,94,167,0.18);
+    --dt-landing-glass-glow: rgba(255,255,255,0.50);
+    --dt-landing-bg-primary: #ECEEF7;
+    --dt-landing-bg-secondary: #E4E6F2;
+    --dt-landing-bg-deep: #DDDFF0;
+    --dt-landing-gradient: linear-gradient(180deg, #ECEEF7 0%, #E4E6F2 100%);
+    --dt-landing-cta-gradient: linear-gradient(135deg, #5B40A0 0%, #7B5EA7 50%, #5B40A0 100%);
+    --dt-landing-cta-text: #FFFFFF;
+    --dt-landing-cta-shadow: 0 4px 20px rgba(91,64,160,0.25);
+    --dt-landing-card-shadow: 0 8px 32px rgba(7,9,30,0.10);
+    --dt-landing-card-glow: inset 0 1px 0 rgba(255,255,255,0.80);
+    --dt-landing-hero-shadow: 0 40px 80px rgba(7,9,30,0.12);
+    --dt-landing-pdf-badge-bg: rgba(91,64,160,0.85);
 }
 
 /* ── V3 Dark mode tokens ──────────────────────────────────── */
