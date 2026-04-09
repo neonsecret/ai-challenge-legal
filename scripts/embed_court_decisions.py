@@ -47,7 +47,7 @@ async def _embed_batch(
 
     Returns (success_count, error_count).
     """
-    from arlc.retriever import embed_query
+    from arlc.retriever import embed_document
     from neolex.db.court_decisions import upsert_decision
 
     success = 0
@@ -55,12 +55,19 @@ async def _embed_batch(
 
     async def _process_one(decision) -> bool:
         async with semaphore:
+            # Prefer legal_thesis (short, dense); fall back to full_text (no truncation).
+            # Use embed_document (not embed_query) — documents must be in the
+            # document subspace, not the query subspace (Qwen3 is asymmetric).
             thesis = decision.legal_thesis
-            if not thesis or not thesis.strip():
+            ft = decision.full_text
+            text = (thesis.strip() if thesis and thesis.strip()
+                    else ft.strip() if ft and ft.strip()
+                    else None)
+            if not text:
                 return False
             try:
-                # embed_query is synchronous HTTP — run in thread pool
-                embedding = await asyncio.to_thread(embed_query, thesis)
+                # embed_document is synchronous HTTP — run in thread pool
+                embedding = await asyncio.to_thread(embed_document, text)
                 if not dry_run:
                     await upsert_decision(
                         {

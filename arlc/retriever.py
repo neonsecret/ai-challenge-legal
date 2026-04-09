@@ -363,6 +363,22 @@ def embed_query(question: str) -> list[float]:
     return embedding.tolist()
 
 
+def embed_document(text: str) -> list[float]:
+    """Embed a document/passage for asymmetric retrieval (no instruction prefix).
+
+    Qwen3 is asymmetric: queries get an instruction prefix, documents don't.
+    Use this for indexing court decisions, statute chunks, etc.
+    Use embed_query() for search queries.
+    """
+    model = get_embedding_model()
+    if _is_llama_server():
+        embedding = model.encode(text, normalize_embeddings=True)
+    else:
+        with _embedding_lock:
+            embedding = model.encode(text, normalize_embeddings=True)
+    return embedding.tolist()
+
+
 def _get_sync_engine():
     """Lazy singleton for sync PostgreSQL engine (retriever runs in threads)."""
     global _sync_engine

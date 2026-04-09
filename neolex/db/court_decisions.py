@@ -526,15 +526,21 @@ async def backfill_regulations_from_thesis(batch_size: int = 500) -> int:
 
 
 async def get_unembedded_decisions(limit: int = 500) -> list[CourtDecision]:
-    """Return decisions that have legal_thesis but no embedding yet.
+    """Return decisions that have embeddable text but no embedding yet.
 
-    Used by the batch embedding script to find rows that need to be processed.
+    Fetches rows with legal_thesis OR full_text (the embed script prefers
+    legal_thesis when available, falls back to full_text).
     Ordered by updated_at DESC so recently-scraped decisions are embedded first.
     """
+    from sqlalchemy import or_
+
     stmt = (
         select(CourtDecision)
         .where(
-            CourtDecision.legal_thesis.is_not(None),
+            or_(
+                CourtDecision.legal_thesis.is_not(None),
+                CourtDecision.full_text.is_not(None),
+            ),
             CourtDecision.embedding.is_(None),
         )
         .order_by(CourtDecision.updated_at.desc())
