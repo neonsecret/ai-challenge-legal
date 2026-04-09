@@ -26,6 +26,7 @@ import re
 from datetime import date
 
 from arlc.agent.state import SourceDocument
+from arlc.constants import CASELAW_SEARCH_PREVIEW_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +163,7 @@ async def execute_caselaw_search(
             SourceDocument(
                 doc_id=d.ecli or f"NSOUD:{d.source_unid}",
                 page=1,
-                text=d.legal_thesis or (d.full_text[:3000] if d.full_text else ""),
+                text=d.legal_thesis or (d.full_text[:CASELAW_SEARCH_PREVIEW_CHARS] if d.full_text else ""),
                 score=float(d.score) if hasattr(d, "score") else 0.0,
                 chunk_id=d.source_unid or "",
                 _corpus="czech",

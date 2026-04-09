@@ -1,8 +1,11 @@
-"""Batch embed legal theses of Czech court decisions using Qwen3-8B.
+"""Batch embed Czech court decisions using Qwen3-Embedding-8B via llama-server.
 
-Finds rows in court_decisions where legal_thesis IS NOT NULL AND embedding IS NULL,
-embeds each thesis using arlc.retriever.embed_query (Qwen3-8B via llama-server),
-and stores the result back via upsert_decision.
+Finds rows in court_decisions where embedding IS NULL, embeds each document
+using arlc.retriever.embed_document (document subspace, NO instruction prefix),
+and stores the L2-normalised vector back via upsert_decision.
+
+Uses embed_document — NOT embed_query. Qwen3 is asymmetric: queries get an
+instruction prefix, documents do not.
 
 Run:
     uv run python scripts/embed_court_decisions.py

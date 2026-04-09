@@ -43,6 +43,16 @@ after the query prefix. Increase to 3000 to use more of the context window.
 (TRUNCATION_AUDIT #1)"""
 
 # ═══════════════════════════════════════════════════════════════════════════
+# Case Law Search Results (agent tool output)
+# ═══════════════════════════════════════════════════════════════════════════
+
+CASELAW_SEARCH_PREVIEW_CHARS: int = 3000
+"""Max chars of full_text shown in search results when legal_thesis is NULL.
+99.7% of court decisions lack a legal_thesis summary; this provides
+a preview of the full text so the LLM can assess relevance. 3000 chars
+≈ 1700 tokens — enough for the ruling header and beginning of reasoning."""
+
+# ═══════════════════════════════════════════════════════════════════════════
 # LLM Reranker (Haiku secondary scoring pass)
 # Model: Claude Haiku 4.5 (200K context)
 # Cost-controlled: called per-query on top-k candidates.
