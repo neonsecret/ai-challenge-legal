@@ -252,7 +252,7 @@ export default function LandingPage() {
 
                     {/* Benchmark section — V3 glass cards */}
                     <section style={{
-                        padding: "80px 24px",
+                        padding: "100px 24px",
                         background: isDarkV3 ? "rgba(13,17,32,0.95)" : "rgba(240,242,248,0.90)",
                         position: "relative", overflow: "hidden"
                     }}>
@@ -276,10 +276,10 @@ export default function LandingPage() {
                                 {t("landing.bench_subtitle")}
                             </motion.p>
                             <motion.div variants={V3_LIST_VARIANT} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-60px"}}
-                                        style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16}}>
+                                        style={{display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24}}>
                                 {BENCHMARKS.map((b) => (
                                     <motion.div key={b.name} variants={V3_ITEM_VARIANT} {...V3_CARD_HOVER}>
-                                        <div className="v3-glass-panel" style={{padding: "20px 24px", height: "100%"}}>
+                                        <div className="v3-glass-panel" style={{padding: "28px 32px", height: "100%"}}>
                                             <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color: "#9D7FCC"}}>{b.name}</p>
                                             <p className="text-xs mb-3" style={{color: isDarkV3 ? "rgba(255,255,255,0.45)" : "rgba(13,15,26,0.50)"}}>{b.description}</p>
                                             <div className="flex items-end gap-3">
