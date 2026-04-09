@@ -127,7 +127,7 @@ export default function LandingPage() {
         const isDarkV3 = resolvedTheme === "dark";
         return (
             <MotionConfig {...V3_MOTION_CONFIG}>
-                <div className={isDarkV3 ? "dark" : ""} style={{minHeight: "100vh", background: isDarkV3 ? "#07090F" : "#F0F2F8"}}>
+                <div className={isDarkV3 ? "dark design-v3" : "design-v3"} style={{minHeight: "100vh", background: isDarkV3 ? "var(--v3-dark-bg)" : "var(--v3-light-bg)"}}>
                     <AuroraBackground className="min-h-screen flex flex-col">
                         {/* Nav */}
                         <nav className="sticky top-0 z-50 w-full" style={{
@@ -143,12 +143,12 @@ export default function LandingPage() {
                                         border: "1px solid rgba(157,127,204,0.25)"
                                     }}>
                                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                            <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#9D7FCC"
+                                            <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="var(--v3-iris-bright)"
                                                   strokeWidth="1.2" strokeLinejoin="round" fill="rgba(123,94,167,0.15)"/>
                                         </svg>
                                     </div>
                                     <span className="hidden sm:inline font-heading text-lg font-bold tracking-tight"
-                                          style={{color: isDarkV3 ? "rgba(255,255,255,0.95)" : "#0D0F1A"}}>Vitreon Legal</span>
+                                          style={{color: isDarkV3 ? "rgba(255,255,255,0.95)" : "var(--v3-text-primary)"}}>Vitreon Legal</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <LanguageToggle />
@@ -158,7 +158,7 @@ export default function LandingPage() {
                                             display: "flex", alignItems: "center", justifyContent: "center",
                                             minWidth: 44, minHeight: 44, borderRadius: 10,
                                             border: "none", background: "transparent", cursor: "pointer",
-                                            color: "#9D7FCC", transition: "background 0.14s ease",
+                                            color: "var(--v3-iris-bright)", transition: "background 0.14s ease",
                                         }}
                                         aria-label="Toggle theme"
                                     >
@@ -170,7 +170,7 @@ export default function LandingPage() {
                                            className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
                                            style={{
                                                background: "rgba(123,94,167,0.12)", border: "1px solid rgba(157,127,204,0.25)",
-                                               color: "#9D7FCC"
+                                               color: "var(--v3-iris-bright)"
                                            }}>
                                             {t("landing.go_to_chat")} <ArrowRight size={13}/>
                                         </a>
@@ -183,7 +183,7 @@ export default function LandingPage() {
                                             <motion.a href="/login"
                                                className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full min-h-[44px]"
                                                style={{
-                                                   background: "linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 60%, #2DD4BF 100%)",
+                                                   background: "var(--v3-btn-primary-bg)",
                                                    backgroundSize: "300% 300%",
                                                    animation: "iridescent-shift 6s ease infinite",
                                                    color: "#fff",
@@ -202,7 +202,7 @@ export default function LandingPage() {
                         <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 sm:pt-12 pb-12 sm:pb-8">
                             <motion.p variants={V3_FADE_UP} initial="hidden" animate="visible"
                                       className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
-                                      style={{color: "#9D7FCC"}}>
+                                      style={{color: "var(--v3-iris-bright)"}}>
                                 {t("landing.tag")}
                             </motion.p>
                             <motion.h1 variants={V3_FADE_UP} initial="hidden" animate="visible"
@@ -259,14 +259,14 @@ export default function LandingPage() {
                         <div className="max-w-5xl mx-auto" style={{position: "relative"}}>
                             <motion.p variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
                                       className="text-center text-[11px] uppercase tracking-[0.16em] font-semibold mb-2.5"
-                                      style={{color: "#9D7FCC"}}>
+                                      style={{color: "var(--v3-iris-bright)"}}>
                                 {t("landing.bench_label")}
                             </motion.p>
                             <motion.h2 variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
                                        className="font-heading text-center font-bold mb-2"
                                        style={{
                                            fontSize: "clamp(1.8rem,3vw,2.4rem)", letterSpacing: "-0.03em",
-                                           color: isDarkV3 ? "rgba(255,255,255,0.90)" : "#0D0F1A"
+                                           color: isDarkV3 ? "rgba(255,255,255,0.90)" : "var(--v3-text-primary)"
                                        }}>
                                 {t("landing.bench_heading")}
                             </motion.h2>
@@ -280,11 +280,11 @@ export default function LandingPage() {
                                 {BENCHMARKS.map((b) => (
                                     <motion.div key={b.name} variants={V3_ITEM_VARIANT} {...V3_CARD_HOVER}>
                                         <div className="v3-glass-panel" style={{padding: "28px 32px", height: "100%"}}>
-                                            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color: "#9D7FCC"}}>{b.name}</p>
+                                            <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color: "var(--v3-iris-bright)"}}>{b.name}</p>
                                             <p className="text-xs mb-3" style={{color: isDarkV3 ? "rgba(255,255,255,0.45)" : "rgba(13,15,26,0.50)"}}>{b.description}</p>
                                             <div className="flex items-end gap-3">
-                                                <span className="text-2xl font-bold" style={{color: isDarkV3 ? "rgba(255,255,255,0.90)" : "#0D0F1A"}}>{(b.ourScore * 100).toFixed(1)}%</span>
-                                                <span className="text-xs font-medium pb-1" style={{color: "#34D399"}}>{b.improvement}</span>
+                                                <span className="text-2xl font-bold" style={{color: isDarkV3 ? "rgba(255,255,255,0.90)" : "var(--v3-text-primary)"}}>{(b.ourScore * 100).toFixed(1)}%</span>
+                                                <span className="text-xs font-medium pb-1" style={{color: "var(--v3-success)"}}>{b.improvement}</span>
                                             </div>
                                         </div>
                                     </motion.div>
@@ -302,7 +302,7 @@ export default function LandingPage() {
                             <div className="flex items-center gap-2">
                                 <div className="flex items-center justify-center size-5 rounded" style={{background: "rgba(123,94,167,0.12)"}}>
                                     <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                                        <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#9D7FCC" strokeWidth="1.2" strokeLinejoin="round"/>
+                                        <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="var(--v3-iris-bright)" strokeWidth="1.2" strokeLinejoin="round"/>
                                     </svg>
                                 </div>
                                 <span className="font-heading text-sm font-semibold"
@@ -327,7 +327,7 @@ export default function LandingPage() {
     ══════════════════════════════════════════════════════════ */
     if (isDark) {
         return (
-            <div className="dark landing-sections">
+            <div className="dark landing-sections design-v2">
                 <section className="hero-aurora relative min-h-screen flex flex-col overflow-hidden"
                          style={{color: "rgba(255,255,255,0.9)"}}>
                     <nav className="sticky top-0 z-50 w-full" style={{
@@ -569,7 +569,7 @@ export default function LandingPage() {
        LIGHT THEME — warm Arrakis amber
     ══════════════════════════════════════════════════════════ */
     return (
-        <div style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
+        <div className="design-v2" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
 
             {/* ── HERO ── */}
             <section style={{
