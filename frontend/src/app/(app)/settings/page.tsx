@@ -389,7 +389,7 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                             <div>
-                                <span style={labelStyleDyn}>Design version</span>
+                                <span style={labelStyleDyn}>{t("settings.designVersion")}</span>
                                 <div style={{marginTop: "2px"}}>
                                     <DesignVersionToggle variant={isDark ? "dark" : "light"} />
                                 </div>

@@ -86,6 +86,7 @@
   "settings.account": "Konto",
   "settings.appearance": "Darstellung",
   "settings.theme": "Design",
+  "settings.designVersion": "Design-Version",
   "settings.light": "Hell",
   "settings.dark": "Dunkel",
   "settings.system": "System",

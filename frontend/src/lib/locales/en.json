@@ -89,6 +89,7 @@
   "settings.account": "Account",
   "settings.appearance": "Appearance",
   "settings.theme": "Theme",
+  "settings.designVersion": "Design version",
   "settings.light": "Light",
   "settings.dark": "Dark",
   "settings.system": "System",
