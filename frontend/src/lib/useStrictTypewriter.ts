@@ -33,16 +33,20 @@ function nextChunk(src: string, pos: number): { chunk: string; next: number } {
  * rAF-based typewriter hook for Strict design preview.
  * Advances multiple chars per frame to match the target ms-per-char rate
  * without scheduling hundreds of setTimeout callbacks.
+ *
+ * Instead of using `setTick` to force React re-renders at 60fps, this hook
+ * mutates the DOM directly via `answerRef`, emitting only a single state
+ * update when typing is complete.
  */
 export function useStrictTypewriter(
   text: string,
   active: boolean
-): { bufferRef: React.MutableRefObject<string>; typingDone: boolean } {
+): { answerRef: React.RefObject<HTMLDivElement | null>; typingDone: boolean } {
+  const answerRef = useRef<HTMLDivElement | null>(null);
   const bufferRef = useRef("");
   const posRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const [typingDone, setTypingDone] = useState(false);
-  const [, setTick] = useState(0);
 
   useEffect(() => {
     if (!active) {
@@ -53,6 +57,7 @@ export function useStrictTypewriter(
     bufferRef.current = "";
     posRef.current = 0;
     setTypingDone(false);
+    if (answerRef.current) answerRef.current.innerHTML = "";
 
     const tick = () => {
       // Advance enough chars so that at 60fps we match STRICT_TYPEWRITER.preview ms/char
@@ -62,7 +67,8 @@ export function useStrictTypewriter(
         bufferRef.current += chunk;
         posRef.current = next;
       }
-      setTick((n) => n + 1);
+      // Imperatively update DOM — no React re-render
+      if (answerRef.current) answerRef.current.innerHTML = bufferRef.current;
       if (posRef.current < text.length) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
@@ -77,5 +83,5 @@ export function useStrictTypewriter(
     };
   }, [active, text]);
 
-  return { bufferRef, typingDone };
+  return { answerRef, typingDone };
 }

@@ -94,8 +94,8 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                     : isDark
                         ? focused ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.06)"
                         : focused ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.22)",
-                backdropFilter: isGlassmorphic ? "blur(15px)" : "blur(32px) saturate(160%)",
-                WebkitBackdropFilter: isGlassmorphic ? "blur(15px)" : "blur(32px) saturate(160%)",
+                backdropFilter: isGlassmorphic ? "blur(15px)" : "var(--dt-glass-blur)",
+                WebkitBackdropFilter: isGlassmorphic ? "blur(15px)" : "var(--dt-glass-blur)",
                 border: `${isGlassmorphic ? "1px" : "0.5px"} solid ${borderColor}`,
                 boxShadow: glowShadow,
                 transition: "border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease",

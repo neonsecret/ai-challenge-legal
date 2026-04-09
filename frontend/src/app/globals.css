@@ -165,6 +165,9 @@ textarea::placeholder { color: #b29254; }
     --dt-color-gold-tint: rgba(201,168,76,0.14);
     --dt-color-gold-border: rgba(201,168,76,0.40);
     --dt-color-gold-glow: rgba(201,168,76,0.25);
+    --dt-preview-btn-bg: #5c2e08;
+    --dt-preview-btn-text: #fff8ee;
+    --dt-preview-btn-shadow: rgba(92,46,8,0.30);
     --dt-color-teal-base: #38B2AC;
     --dt-color-teal-tint: rgba(56,178,172,0.14);
     --dt-color-teal-border: rgba(56,178,172,0.35);
@@ -693,6 +696,21 @@ textarea::placeholder { color: #b29254; }
   --strict-input-bg-focused: rgba(255,255,255,0.82);
   --strict-input-border: rgba(180,150,60,0.14);
   --strict-input-glow: inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(180,150,60,0.06);
+  /* Prose typography */
+  --strict-prose-font: Georgia, serif;
+  --strict-prose-size: 12.5px;
+  --strict-prose-lh: 1.8;
+  --strict-prose-tracking: 0.01em;
+  /* Strict prose markdown elements (light) */
+  --strict-table-border: rgba(20,22,30,0.1);
+  --strict-hr-border: rgba(20,22,30,0.06);
+  --strict-blockquote-bg: rgba(138,110,24,0.04);
+  --strict-code-bg: rgba(138,110,24,0.08);
+  /* Chat-specific */
+  --strict-chat-header-bg: linear-gradient(180deg, rgba(20,22,30,0.15) 0%, transparent 100%);
+  --strict-drawer-header-bg: rgba(20,22,30,0.05);
+  --strict-label-size: 9px;
+  --strict-label-tracking: 1.5px;
   --dt-glass-bg: var(--strict-glass-bg);
   --dt-glass-border: var(--strict-glass-border);
   --dt-glass-blur: var(--strict-glass-blur);
@@ -761,6 +779,21 @@ textarea::placeholder { color: #b29254; }
   --strict-input-bg-focused: rgba(19,19,19,0.72);
   --strict-input-border: rgba(222,222,222,0.14);
   --strict-input-glow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 2px rgba(201,168,76,0.08), 0 4px 24px rgba(0,0,0,0.35);
+  /* Prose typography */
+  --strict-prose-font: Georgia, serif;
+  --strict-prose-size: 12.5px;
+  --strict-prose-lh: 1.8;
+  --strict-prose-tracking: 0.01em;
+  /* Strict prose markdown elements (dark) */
+  --strict-table-border: rgba(255,255,255,0.1);
+  --strict-hr-border: rgba(255,255,255,0.06);
+  --strict-blockquote-bg: rgba(201,168,76,0.04);
+  --strict-code-bg: rgba(201,168,76,0.15);
+  /* Chat-specific */
+  --strict-chat-header-bg: linear-gradient(180deg, rgba(0,0,0,0.60) 0%, transparent 100%);
+  --strict-drawer-header-bg: rgba(0,0,0,0.2);
+  --strict-label-size: 9px;
+  --strict-label-tracking: 1.5px;
   --dt-glass-bg: var(--strict-glass-bg);
   --dt-glass-border: var(--strict-glass-border);
   --dt-glass-blur: var(--strict-glass-blur);

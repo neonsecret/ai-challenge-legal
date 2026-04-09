@@ -39,8 +39,8 @@ export function StrictPreview() {
   const [sourcesVisible, setSourcesVisible] = useState(false);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
 
-  // rAF typewriter hook
-  const { bufferRef, typingDone } = useStrictTypewriter(ANSWER_HTML, typewriterActive);
+  // rAF typewriter hook — answerRef is mutated directly, no tick re-renders
+  const { answerRef, typingDone } = useStrictTypewriter(ANSWER_HTML, typewriterActive);
 
   // ── IntersectionObserver: fire once ────────────────────────────────────────
   useEffect(() => {
@@ -161,9 +161,9 @@ export function StrictPreview() {
             {QUESTION}
           </p>
 
-          {/* Step 3 — typewriter answer */}
+          {/* Step 3 — typewriter answer (innerHTML set imperatively via answerRef) */}
           <div
-            dangerouslySetInnerHTML={{ __html: bufferRef.current }}
+            ref={answerRef}
             style={{
               fontFamily: "Georgia, serif",
               fontSize: isMobile ? 12 : 12.5,

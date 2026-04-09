@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useRef, useMemo, useEffect} from "react"
+import {useState, useRef, useMemo, useEffect, useCallback, memo} from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
@@ -13,7 +13,6 @@ import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
 import {AgentTrace} from "@/components/chat/agent-trace"
 import {FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
-import {useDesignVersion} from "@/lib/design-version"
 
 export type {Source} from "@/components/chat/use-query-stream"
 type Source = import("@/components/chat/use-query-stream").Source
@@ -134,12 +133,12 @@ const STRICT_DARK_PROSE = [
     "prose-headings:text-[var(--strict-text-primary)] prose-headings:font-normal",
     "prose-strong:text-[var(--strict-text-primary)] prose-strong:font-semibold",
     "prose-a:text-[var(--strict-citation)] prose-a:no-underline hover:prose-a:underline",
-    "prose-code:bg-[rgba(255,255,255,0.06)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-[var(--strict-text-body)]",
+    "prose-code:bg-[var(--strict-code-bg)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-[var(--strict-text-body)]",
     "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-[var(--strict-text-body)]",
-    "prose-table:text-[var(--strict-text-secondary)] prose-th:text-left prose-th:text-[11px] prose-th:py-1.5 prose-th:px-2 prose-th:border-b prose-th:border-[rgba(255,255,255,0.1)]",
-    "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[rgba(255,255,255,0.06)]",
-    "prose-hr:border-[rgba(201,168,76,0.15)] prose-hr:my-3",
-    "prose-blockquote:border-l-[var(--strict-gold-base)] prose-blockquote:text-[var(--strict-text-secondary)] prose-blockquote:bg-[rgba(201,168,76,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
+    "prose-table:text-[var(--strict-text-secondary)] prose-th:text-left prose-th:text-[11px] prose-th:py-1.5 prose-th:px-2 prose-th:border-b prose-th:border-[var(--strict-table-border)]",
+    "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[var(--strict-hr-border)]",
+    "prose-hr:border-[var(--strict-code-bg)] prose-hr:my-3",
+    "prose-blockquote:border-l-[var(--strict-gold-base)] prose-blockquote:text-[var(--strict-text-secondary)] prose-blockquote:bg-[var(--strict-blockquote-bg)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
 // ─── Superscript helpers ─────────────────────────────────────────────────────
@@ -224,6 +223,166 @@ function footnoteStyle(resolvable: boolean): React.CSSProperties {
     }
 }
 
+// ─── Citation button (module scope — stable identity across renders) ──────────
+
+interface CitationButtonProps {
+    citationkind?: string
+    docid?: string
+    page?: number
+    refindex?: number
+    isStrict: boolean
+    isStreaming: boolean
+    sources: Source[]
+    content: string | null
+    onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
+}
+
+const CitationButton = memo(function CitationButton({
+    citationkind,
+    docid,
+    page,
+    refindex,
+    isStrict,
+    isStreaming,
+    sources,
+    content,
+    onSourceClick,
+}: CitationButtonProps) {
+    if (isStreaming) return null
+
+    // ── Strict mode: gold superscript, no pill ────────────────────────────
+    if (isStrict) {
+        if (citationkind === "source") {
+            const resolvedDocId = docid ?? ""
+            const resolvedPage = page ?? 0
+            const srcIdx = sources.findIndex(s =>
+                s.doc_id === resolvedDocId ||
+                s.doc_id.startsWith(resolvedDocId) ||
+                resolvedDocId.startsWith(s.doc_id)
+            )
+            const resolvable = srcIdx >= 0
+            const footnoteNum = srcIdx + 1
+            return (
+                <sup
+                    onClick={resolvable ? (e) => {
+                        e.stopPropagation()
+                        onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
+                    } : undefined}
+                    title={resolvable
+                        ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
+                        : "Source not found in retrieved documents"
+                    }
+                    style={{
+                        color: "var(--strict-citation)",
+                        cursor: resolvable ? "pointer" : "not-allowed",
+                        fontSize: "0.7em",
+                        fontFamily: "system-ui",
+                        verticalAlign: "super",
+                    }}
+                >
+                    {footnoteNum}
+                </sup>
+            )
+        }
+        if (citationkind === "docref") {
+            const sourceIdx = (refindex ?? 0) - 1
+            const matchedSource = sources[sourceIdx]
+            const resolvable = !!matchedSource
+            const pageNum = matchedSource?.page_numbers[0]
+            return (
+                <sup
+                    onClick={resolvable ? (e) => {
+                        e.stopPropagation()
+                        onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
+                    } : undefined}
+                    title={resolvable
+                        ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
+                        : "Source not found in retrieved documents"
+                    }
+                    style={{
+                        color: "var(--strict-citation)",
+                        cursor: resolvable ? "pointer" : "not-allowed",
+                        fontSize: "0.7em",
+                        fontFamily: "system-ui",
+                        verticalAlign: "super",
+                    }}
+                >
+                    {refindex ?? 0}
+                </sup>
+            )
+        }
+        return null
+    }
+
+    // ── Default: pill button ──────────────────────────────────────────────
+    const hoverHandlers = {
+        onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
+            e.currentTarget.style.background = "var(--dt-accent-highlight)"
+            e.currentTarget.style.borderColor = "var(--dt-accent-border-strong)"
+            e.currentTarget.style.color = "var(--dt-accent-color)"
+        },
+        onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
+            const style = footnoteStyle(true)
+            e.currentTarget.style.background = style.background as string
+            e.currentTarget.style.borderColor = ""
+            e.currentTarget.style.color = style.color as string
+        },
+    }
+
+    if (citationkind === "source") {
+        const resolvedDocId = docid ?? ""
+        const resolvedPage = page ?? 0
+        const srcIdx = sources.findIndex(s =>
+            s.doc_id === resolvedDocId ||
+            s.doc_id.startsWith(resolvedDocId) ||
+            resolvedDocId.startsWith(s.doc_id)
+        )
+        const resolvable = srcIdx >= 0
+        const footnoteNum = srcIdx + 1
+        return (
+            <button
+                onClick={resolvable ? (e) => {
+                    e.stopPropagation()
+                    onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
+                } : undefined}
+                title={resolvable
+                    ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
+                    : "Source not found in retrieved documents"
+                }
+                style={footnoteStyle(resolvable)}
+                {...(resolvable ? hoverHandlers : {})}
+            >
+                {footnoteNum}
+            </button>
+        )
+    }
+
+    if (citationkind === "docref") {
+        const sourceIdx = (refindex ?? 0) - 1
+        const matchedSource = sources[sourceIdx]
+        const resolvable = !!matchedSource
+        const pageNum = matchedSource?.page_numbers[0]
+        return (
+            <button
+                onClick={resolvable ? (e) => {
+                    e.stopPropagation()
+                    onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
+                } : undefined}
+                title={resolvable
+                    ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
+                    : "Source not found in retrieved documents"
+                }
+                style={footnoteStyle(resolvable)}
+                {...(resolvable ? hoverHandlers : {})}
+            >
+                {refindex ?? 0}
+            </button>
+        )
+    }
+
+    return null
+})
+
 // ─── Component props ──────────────────────────────────────────────────────────
 
 interface ChatMessageProps {
@@ -239,6 +398,8 @@ interface ChatMessageProps {
     onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
     /** isDark is retained for prose class selection and child components not yet migrated */
     isDark?: boolean
+    /** isStrict — pass from page-level isStrict to avoid per-message subscriptions */
+    isStrict?: boolean
     messageId?: string
     traceId?: string | null
     conversationId?: string | null
@@ -260,17 +421,13 @@ export function ChatMessage({
     trace,
     onSourceClick,
     isDark = false,
+    isStrict = false,
     messageId,
     traceId,
     conversationId,
     feedback,
     onFeedback,
 }: ChatMessageProps) {
-    const {version: designVersion} = useDesignVersion()
-    const [v3Mounted, setV3Mounted] = useState(false)
-    useEffect(() => { setV3Mounted(true) }, [])
-    const isV3 = v3Mounted && designVersion === "strict"
-
     const [copied, setCopied] = useState(false)
     const [commentOpen, setCommentOpen] = useState(false)
     const [commentText, setCommentText] = useState("")
@@ -343,7 +500,7 @@ export function ChatMessage({
     // ── User message ──────────────────────────────────────────────────────────
     if (role === "user") {
         // Strict: inline italic serif question with gold separator — no bubble
-        if (isV3) {
+        if (isStrict) {
             return (
                 <div className="mb-5 animate-fade-in-up">
                     <p style={{
@@ -387,9 +544,9 @@ export function ChatMessage({
 
     // ── Assistant message ─────────────────────────────────────────────────────
 
-    const answerCardStyle: React.CSSProperties = isV3 ? {
+    const answerCardStyle: React.CSSProperties = isStrict ? {
         // Strict: no card — inline serif content in the glass reading area
-        fontFamily: "Georgia, serif",
+        fontFamily: "var(--strict-prose-font)",
     } : {
         background: "var(--dt-answer-bg)",
         border: "0.5px solid var(--dt-answer-border)",
@@ -398,7 +555,7 @@ export function ChatMessage({
     }
 
     const labelStyle = {
-        fontSize: 10,
+        fontSize: TYPE_SCALE.xs,
         textTransform: "uppercase" as const,
         letterSpacing: "0.14em",
         color: "var(--dt-vote-text)",
@@ -406,159 +563,27 @@ export function ChatMessage({
         fontWeight: 600,
     }
 
-    function CitationButtonComponent({
-        citationkind,
-        docid,
-        page,
-        refindex,
-    }: {
-        citationkind?: string
-        docid?: string
-        page?: number
-        refindex?: number
-    }) {
-        if (isStreaming) return null
-
-        // ── Strict mode: gold superscript, no pill ────────────────────────────
-        if (isV3) {
-            if (citationkind === "source") {
-                const resolvedDocId = docid ?? ""
-                const resolvedPage = page ?? 0
-                const srcIdx = sources.findIndex(s =>
-                    s.doc_id === resolvedDocId ||
-                    s.doc_id.startsWith(resolvedDocId) ||
-                    resolvedDocId.startsWith(s.doc_id)
-                )
-                const resolvable = srcIdx >= 0
-                const footnoteNum = srcIdx + 1
-                return (
-                    <sup
-                        onClick={resolvable ? (e) => {
-                            e.stopPropagation()
-                            onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
-                        } : undefined}
-                        title={resolvable
-                            ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
-                            : "Source not found in retrieved documents"
-                        }
-                        style={{
-                            color: "var(--strict-citation)",
-                            cursor: resolvable ? "pointer" : "not-allowed",
-                            fontSize: "0.7em",
-                            fontFamily: "system-ui",
-                            verticalAlign: "super",
-                        }}
-                    >
-                        {footnoteNum}
-                    </sup>
-                )
-            }
-            if (citationkind === "docref") {
-                const sourceIdx = (refindex ?? 0) - 1
-                const matchedSource = sources[sourceIdx]
-                const resolvable = !!matchedSource
-                const pageNum = matchedSource?.page_numbers[0]
-                return (
-                    <sup
-                        onClick={resolvable ? (e) => {
-                            e.stopPropagation()
-                            onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
-                        } : undefined}
-                        title={resolvable
-                            ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
-                            : "Source not found in retrieved documents"
-                        }
-                        style={{
-                            color: "var(--strict-citation)",
-                            cursor: resolvable ? "pointer" : "not-allowed",
-                            fontSize: "0.7em",
-                            fontFamily: "system-ui",
-                            verticalAlign: "super",
-                        }}
-                    >
-                        {refindex ?? 0}
-                    </sup>
-                )
-            }
-            return null
-        }
-
-        // ── Default: pill button ──────────────────────────────────────────────
-        const hoverHandlers = {
-            onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-                e.currentTarget.style.background = "var(--dt-accent-highlight)"
-                e.currentTarget.style.borderColor = "var(--dt-accent-border-strong)"
-                e.currentTarget.style.color = "var(--dt-accent-color)"
-            },
-            onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-                const style = footnoteStyle(true)
-                e.currentTarget.style.background = style.background as string
-                e.currentTarget.style.borderColor = ""
-                e.currentTarget.style.color = style.color as string
-            },
-        }
-
-        if (citationkind === "source") {
-            const resolvedDocId = docid ?? ""
-            const resolvedPage = page ?? 0
-            const srcIdx = sources.findIndex(s =>
-                s.doc_id === resolvedDocId ||
-                s.doc_id.startsWith(resolvedDocId) ||
-                resolvedDocId.startsWith(s.doc_id)
-            )
-            const resolvable = srcIdx >= 0
-            const footnoteNum = srcIdx + 1
-            return (
-                <button
-                    onClick={resolvable ? (e) => {
-                        e.stopPropagation()
-                        onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
-                    } : undefined}
-                    title={resolvable
-                        ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
-                        : "Source not found in retrieved documents"
-                    }
-                    style={footnoteStyle(resolvable)}
-                    {...(resolvable ? hoverHandlers : {})}
-                >
-                    {footnoteNum}
-                </button>
-            )
-        }
-
-        if (citationkind === "docref") {
-            const sourceIdx = (refindex ?? 0) - 1
-            const matchedSource = sources[sourceIdx]
-            const resolvable = !!matchedSource
-            const pageNum = matchedSource?.page_numbers[0]
-            return (
-                <button
-                    onClick={resolvable ? (e) => {
-                        e.stopPropagation()
-                        onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
-                    } : undefined}
-                    title={resolvable
-                        ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
-                        : "Source not found in retrieved documents"
-                    }
-                    style={footnoteStyle(resolvable)}
-                    {...(resolvable ? hoverHandlers : {})}
-                >
-                    {refindex ?? 0}
-                </button>
-            )
-        }
-
-        return null
-    }
+    const citationButtonComponent = useCallback(
+        (props: Record<string, unknown>) => (
+            <CitationButton
+                {...(props as Omit<CitationButtonProps, "isStrict" | "sources" | "content" | "onSourceClick" | "isStreaming">)}
+                isStrict={isStrict}
+                sources={sources}
+                content={content}
+                onSourceClick={onSourceClick}
+                isStreaming={isStreaming}
+            />
+        ),
+        [isStrict, sources, content, onSourceClick, isStreaming],
+    )
 
     return (
         <div className="mb-7 animate-fade-in-up">
-            {!isV3 && <p style={labelStyle}>Answer</p>}
+            {!isStrict && <p style={labelStyle}>Answer</p>}
 
             {/* Answer card */}
             <div style={answerCardStyle}>
-                <div style={isV3 ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
+                <div style={isStrict ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
                     {content === "__polling_pipeline_status__" ? (
                         <StreamingStatus status="Processing..."/>
                     ) : content?.startsWith("__pipeline_status:") ? (
@@ -567,12 +592,12 @@ export function ChatMessage({
                         return (
                         <div className="group relative">
                             <div
-                                className={isV3 && isDark ? STRICT_DARK_PROSE : isV3 ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}
-                                style={isV3 ? {
-                                    fontFamily: "Georgia, serif",
-                                    lineHeight: 1.8,
-                                    letterSpacing: "0.01em",
-                                    fontSize: "12.5px",
+                                className={isStrict ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}
+                                style={isStrict ? {
+                                    fontFamily: "var(--strict-prose-font)",
+                                    lineHeight: "var(--strict-prose-lh)",
+                                    letterSpacing: "var(--strict-prose-tracking)",
+                                    fontSize: "var(--strict-prose-size)",
                                 } : undefined}
                             >
                                 <ReactMarkdown
@@ -598,7 +623,7 @@ export function ChatMessage({
                                             </a>
                                         },
                                         // @ts-expect-error — citationbutton is a custom element from our rehype plugin
-                                        citationbutton: CitationButtonComponent,
+                                        citationbutton: citationButtonComponent,
                                     }}
                                 >
                                     {content}
@@ -638,7 +663,7 @@ export function ChatMessage({
                 </div>
 
                 {/* References — inside the answer card, at the bottom (hidden in Strict) */}
-                {citedSources.length > 0 && !isV3 && (
+                {citedSources.length > 0 && !isStrict && (
                     <div style={{
                         padding: `${SPACE[3]}px ${SPACE[4]}px ${SPACE[4]}px`,
                         borderTop: "1px solid var(--dt-answer-border)",
@@ -683,7 +708,7 @@ export function ChatMessage({
             </div>
 
             {/* Source chips — below the answer card (hidden in Strict; sources are in StrictSourceMargin) */}
-            {sources.length > 0 && !isV3 && (
+            {sources.length > 0 && !isStrict && (
                 <div style={{marginTop: SPACE[3]}}>
                     <SourcesPanel
                         sources={sources}

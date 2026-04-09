@@ -44,12 +44,17 @@ class GroundingErrorBoundary extends Component<
     componentDidCatch(error: Error, info: ErrorInfo) {
         console.error("[Grounding] render error:", error, info)
     }
+    private _retryTimer: ReturnType<typeof setTimeout> | null = null
+
     componentDidUpdate(_: unknown, prevState: {error: Error | null}) {
         // Auto-recover once after 500ms (enough for worker cleanup).
         // Won't loop: retried flag prevents a second reset.
         if (this.state.error && !prevState.error && !this.state.retried) {
-            setTimeout(() => this.setState({error: null, retried: true}), 500)
+            this._retryTimer = setTimeout(() => this.setState({error: null, retried: true}), 500)
         }
+    }
+    componentWillUnmount() {
+        if (this._retryTimer) clearTimeout(this._retryTimer)
     }
     render() {
         if (this.state.error) {
@@ -148,6 +153,7 @@ export default function ChatPage() {
     const [lawPaneOpen, setLawPaneOpen] = useState(false)
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const longPressFiredRef = useRef(false)
+    const corpusBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [layoutMode, setLayoutMode] = useState<"chat" | "split" | "source">("split")
     const [customCorpus, setCustomCorpus] = useState("")
     const [corpusWarning, setCorpusWarning] = useState<{corpus: string, jurisdiction: Jurisdiction} | null>(null)
@@ -170,7 +176,8 @@ export default function ChatPage() {
         const corpus = jurisdiction === "uk" ? "uk" : jurisdiction === "au" ? "au" : ""
         if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return }
         const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? ""
-        fetch(`${sseBase}/api/v1/laws?corpus=${corpus}`)
+        const controller = new AbortController()
+        fetch(`${sseBase}/api/v1/laws?corpus=${corpus}`, {signal: controller.signal})
             .then(r => r.ok ? r.json() : null)
             .then(data => {
                 if (data?.laws?.length) {
@@ -182,7 +189,8 @@ export default function ChatPage() {
                     setLawPaneOpen(false)
                 }
             })
-            .catch(() => { setAvailableLaws([]); setLawPaneOpen(false) })
+            .catch(err => { if (err.name !== "AbortError") { setAvailableLaws([]); setLawPaneOpen(false) } })
+        return () => controller.abort()
     }, [jurisdiction])
 
     const scrollAreaRef = useRef<HTMLDivElement>(null)
@@ -215,15 +223,28 @@ export default function ChatPage() {
         }
     }, [])
 
+    const showCorpusBlocked = useCallback(() => {
+        setCorpusBlocked(true)
+        if (corpusBlockedTimerRef.current) clearTimeout(corpusBlockedTimerRef.current)
+        corpusBlockedTimerRef.current = setTimeout(() => setCorpusBlocked(false), 4000)
+    }, [])
+
+    // Cleanup timers on unmount
+    useEffect(() => {
+        return () => {
+            if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current)
+            if (corpusBlockedTimerRef.current) clearTimeout(corpusBlockedTimerRef.current)
+        }
+    }, [])
+
     const onSend = useCallback((question: string) => {
         setPreviewIndex(null)
         const result = handleSend(question)
         if (result === "blocked") {
-            setCorpusBlocked(true)
-            setTimeout(() => setCorpusBlocked(false), 4000)
+            showCorpusBlocked()
         }
         // "streaming" means previous query still running — silently ignore
-    }, [handleSend])
+    }, [handleSend, showCorpusBlocked])
 
     // Load custom corpus name and corpus warning preference from localStorage
     useEffect(() => {
@@ -573,7 +594,7 @@ export default function ChatPage() {
                 sources={strictMarginSources}
                 onSourceClick={(id) => {
                     const recentSources = lastAssistant?.sources ?? sources
-                    const src = recentSources.find(s => s.doc_id === id)
+                    const src = recentSources.find((s, i) => (s.doc_id ?? `src-${i}`) === id)
                     if (src) handleSourceClick(
                         lastAssistant?.content ?? "",
                         recentSources,
@@ -588,7 +609,7 @@ export default function ChatPage() {
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
                     borderBottom: isStrict ? "1px solid var(--dt-glass-border-subtle)" : "0.5px solid var(--dt-glass-border-subtle)",
                     display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
-                    background: isStrict ? "linear-gradient(180deg, rgba(0,0,0,0.60) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
+                    background: isStrict ? "var(--strict-chat-header-bg)" : "var(--dt-glass-bg-subtle)",
                     overflow: "visible", position: "relative", zIndex: 10,
                 }}>
                     <div style={{
@@ -661,8 +682,7 @@ export default function ChatPage() {
 
                                         // Would be 3rd+ corpus — block
                                         if (currentCorpora.length >= 2) {
-                                            setCorpusBlocked(true)
-                                            setTimeout(() => setCorpusBlocked(false), 4000)
+                                            showCorpusBlocked()
                                             return
                                         }
 
@@ -1320,6 +1340,7 @@ export default function ChatPage() {
                                     trace={m.trace}
                                     onSourceClick={handleSourceClick}
                                     isDark={isDark}
+                                    isStrict={isStrict}
                                     messageId={m.id}
                                     traceId={m.traceId}
                                     conversationId={currentSessionId}
@@ -1509,11 +1530,11 @@ export default function ChatPage() {
                                 onClick={() => onSend(presetQuestions[previewIndex!].full)}
                                 style={{
                                     width: "100%", padding: SPACE['3'], borderRadius: RADIUS.xl,
-                                    background: "#5c2e08", color: "#fff8ee",
+                                    background: "var(--dt-preview-btn-bg)", color: "var(--dt-preview-btn-text)",
                                     border: "none", cursor: "pointer",
                                     fontSize: TYPE_SCALE.sm, fontWeight: 600,
                                     fontFamily: FONT.sans,
-                                    boxShadow: "0 2px 12px rgba(92,46,8,0.30)",
+                                    boxShadow: "0 2px 12px var(--dt-preview-btn-shadow)",
                                     transition: `opacity ${TIMING.fast}`,
                                 }}
                                 onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
@@ -1525,6 +1546,14 @@ export default function ChatPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ── Strict overlay backdrop — dismiss on click-outside ── */}
+            {isStrict && drawerOpen && (
+                <div
+                    onClick={() => setDrawerOpen(false)}
+                    style={{position: "fixed", inset: 0, zIndex: 199, background: "rgba(0,0,0,0.4)"}}
+                />
+            )}
 
             {/* ── Source grounding panel ── */}
             {/* In Strict mode: centered overlay. Otherwise: flex sibling beside chat. */}
@@ -1564,6 +1593,7 @@ export default function ChatPage() {
                                 WebkitBackdropFilter: "var(--strict-glass-blur)",
                                 border: "1px solid var(--strict-glass-border)",
                                 boxShadow: "var(--strict-glass-shadow)",
+                                willChange: "transform, opacity",
                             } : {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
@@ -1592,13 +1622,13 @@ export default function ChatPage() {
                             borderBottom: isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isStrict ? "rgba(0,0,0,0.2)" : "var(--dt-glass-bg-subtle)",
+                            background: isStrict ? "var(--strict-drawer-header-bg)" : "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
-                  fontSize: isStrict ? 9 : TYPE_SCALE.sm,
+                  fontSize: isStrict ? "var(--strict-label-size)" : TYPE_SCALE.sm,
                   fontWeight: isStrict ? 400 : 700,
                   textTransform: "uppercase",
-                  letterSpacing: isStrict ? "1.5px" : "0.12em",
+                  letterSpacing: isStrict ? "var(--strict-label-tracking)" : "0.12em",
                   color: isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)",
                   fontFamily: isStrict ? "system-ui" : FONT.sans,
               }}>
