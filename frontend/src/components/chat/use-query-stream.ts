@@ -334,7 +334,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 // "Writing answer...", reset the answer and token buffer.
                                 // The intermediate text was from a non-final LLM call
                                 // and will be discarded by the backend.
-                                const isSearchPhase = raw.startsWith("retrieving:") || raw === "agent:thinking" || raw === "agent:understanding" || raw === "agent:reasoning"
+                                const isSearchPhase = raw.startsWith("retrieving:") || raw.startsWith("agent:")
                                 if (isSearchPhase) {
                                     // Show the new status immediately but delay clearing
                                     // the intermediate answer text so the user can read it.
