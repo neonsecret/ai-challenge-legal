@@ -670,6 +670,29 @@ textarea::placeholder { color: #b29254; }
   --strict-source-label: rgba(138,110,24, 0.4);
   --strict-scrollbar: rgba(180,150,60, 0.12);
   --strict-scrollbar-hover: rgba(180,150,60, 0.2);
+  /* How It Works section */
+  --strict-hiw-bg: rgba(0,0,0,0.05);
+  --strict-hiw-border: rgba(180,150,60,0.04);
+  --strict-hiw-progress-track: rgba(180,150,60,0.06);
+  --strict-hiw-progress-fill: rgba(180,150,60,0.3);
+  --strict-hiw-dot: rgba(180,150,60,0.4);
+  --strict-hiw-scan-fill: linear-gradient(90deg, rgba(180,150,60,0.25), rgba(180,150,60,0.05));
+  --strict-step-num-active: rgba(180,150,60,0.5);
+  --strict-step-num-inactive: rgba(180,150,60,0.25);
+  --strict-step-title-active: rgba(20,22,30,0.8);
+  --strict-step-title-inactive: rgba(20,22,30,0.45);
+  --strict-step-sub-active: rgba(20,22,30,0.35);
+  --strict-step-sub-inactive: rgba(20,22,30,0.22);
+  /* Hero */
+  --strict-gold-gradient-start: #8B6914;
+  --strict-gold-gradient-end: #b8920a;
+  --strict-glow-radial: radial-gradient(ellipse, rgba(180,150,60,0.12) 0%, transparent 70%);
+  --strict-badge-text: rgba(138,110,24,0.6);
+  /* Chat input glassmorphic */
+  --strict-input-bg: rgba(250,250,248,0.72);
+  --strict-input-bg-focused: rgba(255,255,255,0.82);
+  --strict-input-border: rgba(180,150,60,0.14);
+  --strict-input-glow: inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(180,150,60,0.06);
   --dt-glass-bg: var(--strict-glass-bg);
   --dt-glass-border: var(--strict-glass-border);
   --dt-glass-blur: var(--strict-glass-blur);
@@ -715,6 +738,29 @@ textarea::placeholder { color: #b29254; }
   --strict-source-label: rgba(201,168,76, 0.3);
   --strict-scrollbar: rgba(201,168,76, 0.15);
   --strict-scrollbar-hover: rgba(201,168,76, 0.25);
+  /* How It Works section */
+  --strict-hiw-bg: rgba(255,255,255,0.015);
+  --strict-hiw-border: rgba(201,168,76,0.04);
+  --strict-hiw-progress-track: rgba(201,168,76,0.06);
+  --strict-hiw-progress-fill: rgba(201,168,76,0.3);
+  --strict-hiw-dot: rgba(201,168,76,0.4);
+  --strict-hiw-scan-fill: linear-gradient(90deg, rgba(201,168,76,0.25), rgba(201,168,76,0.05));
+  --strict-step-num-active: rgba(201,168,76,0.5);
+  --strict-step-num-inactive: rgba(201,168,76,0.25);
+  --strict-step-title-active: rgba(230,235,245,0.8);
+  --strict-step-title-inactive: rgba(230,235,245,0.45);
+  --strict-step-sub-active: rgba(200,210,230,0.35);
+  --strict-step-sub-inactive: rgba(200,210,230,0.22);
+  /* Hero */
+  --strict-gold-gradient-start: #C9A84C;
+  --strict-gold-gradient-end: #E0C878;
+  --strict-glow-radial: radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%);
+  --strict-badge-text: rgba(201,168,76,0.45);
+  /* Chat input glassmorphic */
+  --strict-input-bg: rgba(19,19,19,0.64);
+  --strict-input-bg-focused: rgba(19,19,19,0.72);
+  --strict-input-border: rgba(222,222,222,0.14);
+  --strict-input-glow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 2px rgba(201,168,76,0.08), 0 4px 24px rgba(0,0,0,0.35);
   --dt-glass-bg: var(--strict-glass-bg);
   --dt-glass-border: var(--strict-glass-border);
   --dt-glass-blur: var(--strict-glass-blur);
@@ -902,6 +948,14 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
   33% { transform: translate(15px, -10px); }
   66% { transform: translate(-10px, 15px); }
 }
+
+/* ── Strict component keyframes ───────────────────────────── */
+@keyframes hiwProgressFill { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes hiwCursorBlink { 50% { opacity: 0; } }
+@keyframes hiwScanPulse { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.4); opacity: 1; } }
+@keyframes hiwScanFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes strictBadgePulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+@keyframes strictGlowPulse { 0%,100%{opacity:0.85} 50%{opacity:1} }
 
 /* ── V3 Typography signature effects ──────────────────────── */
 

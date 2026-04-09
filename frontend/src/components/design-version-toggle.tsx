@@ -56,8 +56,8 @@ function getTrackStyle(variant: Variant, version: DesignVersion): React.CSSPrope
     if (version === "strict") {
         // Strict: glass surface, gold-tinted border
         return {
-            background: "rgba(255,255,255,0.10)",
-            border: "0.5px solid rgba(201,168,76,0.24)",
+            background: "var(--strict-glass-bg)",
+            border: "0.5px solid var(--strict-gold-border-active)",
             backdropFilter: "blur(16px) saturate(140%)",
             WebkitBackdropFilter: "blur(16px) saturate(140%)",
         };
@@ -87,9 +87,9 @@ function getActivePillStyle(
     }
     // Strict option in Strict context: gold accent
     return {
-        background: "rgba(201,168,76,0.15)",
-        border: "0.5px solid rgba(201,168,76,0.25)",
-        boxShadow: "0 0 10px rgba(201,168,76,0.12)",
+        background: "var(--strict-gold-badge-bg)",
+        border: "0.5px solid var(--strict-gold-border-active)",
+        boxShadow: "0 0 10px var(--strict-hiw-progress-track)",
     };
 }
 
@@ -219,7 +219,7 @@ export function DesignVersionToggle(
                                     zIndex: 1,
                                     transition: "text-shadow 0.3s ease",
                                     textShadow: isStrictActive
-                                        ? "0 0 10px rgba(201,168,76,0.35)"
+                                        ? "0 0 10px var(--strict-gold-underbar)"
                                         : "none",
                                 }}
                             >

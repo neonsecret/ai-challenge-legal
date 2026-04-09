@@ -2,138 +2,71 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
-import { STRICT_TYPEWRITER, STRICT_SOURCES } from "@/lib/strict-tokens";
+import { STRICT_SOURCES, STRICT_PREVIEW } from "@/lib/strict-tokens";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useStrictTypewriter } from "@/lib/useStrictTypewriter";
+import { StrictSidebarRail } from "@/components/chat/strict-sidebar-rail";
+import { StrictSourceMargin } from "@/components/chat/strict-source-margin";
+import type { StrictSourceMarginSource } from "@/components/chat/strict-source-margin";
 
 // ─── Static content constants ─────────────────────────────────────────────────
 
 const QUESTION =
   "What is the notice period for termination of employment under DIFC law?";
 
-/**
- * Answer HTML source. Citations are wrapped as <sup>N</sup> so the typewriter
- * appends entire tags at once (per the task spec).
- */
 const ANSWER_HTML =
   "The notice period under DIFC Employment Law No. 4 of 2005 varies based on the length of continuous service<sup>1</sup>. For employees with less than one year of service, the minimum notice period is seven days. For those with one to five years, the period extends to thirty days<sup>2</sup>.<br><br>In cases where the employment contract specifies a longer notice period, the contractual term prevails<sup>3</sup>.";
 
-const SOURCES = [
-  "DIFC Law No. 4 of 2005, Art. 58 — Notice Requirements",
-  "DIFC Employment Regulations 2019, Schedule 2",
-  "DIFC Court of First Instance, Case 024/2021",
-] as const;
-
-// ─── Typewriter helpers ───────────────────────────────────────────────────────
-
-/**
- * Build the next "chunk" to append from position `pos` in `src`.
- * - If the char at `pos` is `<`, scan ahead to the closing `>` and return the
- *   full tag (plus one trailing char after `</...>` if present).
- * - `\n` becomes `<br>`.
- * - Otherwise returns the single character.
- *
- * Returns `{ chunk, next }` where `next` is the new cursor position.
- */
-function nextChunk(src: string, pos: number): { chunk: string; next: number } {
-  if (pos >= src.length) return { chunk: "", next: pos };
-
-  const ch = src[pos];
-
-  if (ch === "<") {
-    // Scan to closing >
-    const closeIdx = src.indexOf(">", pos);
-    if (closeIdx === -1) {
-      // Malformed — emit char by char
-      return { chunk: ch, next: pos + 1 };
-    }
-    const tag = src.slice(pos, closeIdx + 1);
-    let next = closeIdx + 1;
-
-    // After a closing tag, also grab the very next char so the cursor advances
-    // past it without extra flicker.
-    if (tag.startsWith("</") && next < src.length && src[next] !== "<") {
-      const extra = src[next] === "\n" ? "<br>" : src[next];
-      return { chunk: tag + extra, next: next + 1 };
-    }
-    return { chunk: tag, next };
-  }
-
-  if (ch === "\n") return { chunk: "<br>", next: pos + 1 };
-
-  return { chunk: ch, next: pos + 1 };
-}
+const SOURCES_DATA: StrictSourceMarginSource[] = [
+  { id: "0", label: "DIFC Law No. 4 of 2005, Art. 58 — Notice Requirements", detail: "" },
+  { id: "1", label: "DIFC Employment Regulations 2019, Schedule 2", detail: "" },
+  { id: "2", label: "DIFC Court of First Instance, Case 024/2021", detail: "" },
+];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StrictPreview() {
   const isMobile = useIsMobile();
 
-  // Intersection visibility
+  // Intersection visibility — trigger once, then unobserve
   const sectionRef = useRef<HTMLElement>(null);
   const [inView, setInView] = useState(false);
 
   // Animation phase tracking
   const [questionVisible, setQuestionVisible] = useState(false);
-  const [typingDone, setTypingDone] = useState(false);
+  const [typewriterActive, setTypewriterActive] = useState(false);
   const [sourcesVisible, setSourcesVisible] = useState(false);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
 
-  // Typewriter state
-  const bufferRef = useRef("");
-  const posRef = useRef(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [, setTick] = useState(0); // forces re-render on each char
+  // rAF typewriter hook
+  const { bufferRef, typingDone } = useStrictTypewriter(ANSWER_HTML, typewriterActive);
 
-  // ── IntersectionObserver: trigger at 30% threshold ──────────────────────────
+  // ── IntersectionObserver: fire once ────────────────────────────────────────
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
-
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !inView) {
+        if (entry.isIntersecting) {
           setInView(true);
+          observer.unobserve(entry.target);
         }
       },
       { threshold: 0.3 }
     );
-
     observer.observe(el);
     return () => observer.disconnect();
-  }, [inView]);
+  }, []);
 
   // ── Choreography: kick off sub-animations once in view ──────────────────────
   useEffect(() => {
     if (!inView) return;
-
-    // Step 2 — question fades in at 300 ms
-    const t1 = setTimeout(() => setQuestionVisible(true), 300);
-
-    // Step 3 — typewriter starts at 900 ms
-    const t2 = setTimeout(() => {
-      bufferRef.current = "";
-      posRef.current = 0;
-
-      const tick = () => {
-        if (posRef.current >= ANSWER_HTML.length) {
-          setTypingDone(true);
-          return;
-        }
-        const { chunk, next } = nextChunk(ANSWER_HTML, posRef.current);
-        bufferRef.current += chunk;
-        posRef.current = next;
-        setTick((n) => n + 1);
-        timerRef.current = setTimeout(tick, STRICT_TYPEWRITER.preview);
-      };
-
-      timerRef.current = setTimeout(tick, STRICT_TYPEWRITER.preview);
-    }, 900);
-
+    const t1 = setTimeout(() => setQuestionVisible(true), STRICT_PREVIEW.questionDelay);
+    const t2 = setTimeout(() => setTypewriterActive(true), STRICT_PREVIEW.typewriterDelay);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [inView]);
 
@@ -141,7 +74,6 @@ export function StrictPreview() {
   useEffect(() => {
     if (typingDone) {
       setSourcesVisible(true);
-      // Auto-expand sources on mobile when they appear
       if (isMobile) setSourcesExpanded(true);
     }
   }, [typingDone, isMobile]);
@@ -198,50 +130,7 @@ export function StrictPreview() {
         }}
       >
         {/* Sidebar rail — desktop only */}
-        {!isMobile && (
-          <div
-            style={{
-              width: 44,
-              background: "var(--strict-glass-recessed)",
-              borderRight: "1px solid var(--strict-gold-border)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              paddingTop: 14,
-              gap: 10,
-              flexShrink: 0,
-            }}
-          >
-            {/* Logo circle */}
-            <div
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: "50%",
-                border: "1px solid var(--strict-gold-border-active)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 8,
-                color: "var(--strict-gold-text)",
-              }}
-            >
-              V
-            </div>
-            {/* Icon placeholders */}
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                style={{
-                  width: 16,
-                  height: 16,
-                  borderRadius: 4,
-                  background: "var(--strict-glass-bg)",
-                }}
-              />
-            ))}
-          </div>
-        )}
+        {!isMobile && <StrictSidebarRail />}
 
         {/* Reading area — flex-1 */}
         <div
@@ -318,11 +207,7 @@ export function StrictPreview() {
 
         {/* Source margin — desktop: right column; mobile: collapsible section below */}
         {isMobile ? (
-          <div
-            style={{
-              borderTop: "1px solid var(--strict-gold-border)",
-            }}
-          >
+          <div style={{ borderTop: "1px solid var(--strict-gold-border)" }}>
             {/* Collapsible toggle */}
             <button
               type="button"
@@ -348,7 +233,7 @@ export function StrictPreview() {
                   opacity: 0.6,
                 }}
               >
-                SOURCES ({SOURCES.length})
+                SOURCES ({SOURCES_DATA.length})
               </span>
               <span
                 style={{
@@ -363,141 +248,30 @@ export function StrictPreview() {
               </span>
             </button>
 
-            {/* Expandable source list */}
+            {/* Expandable source list — CSS grid for GPU-composited animation */}
             <div
               style={{
                 background: "var(--strict-glass-recessed)",
+                display: "grid",
+                gridTemplateRows: sourcesExpanded ? "1fr" : "0fr",
+                transition: "grid-template-rows 0.35s ease",
                 overflow: "hidden",
-                maxHeight: sourcesExpanded ? "400px" : "0",
-                transition: "max-height 0.35s ease",
-                padding: sourcesExpanded ? "12px 14px 14px" : "0 14px",
               }}
             >
-              {SOURCES.map((src, idx) => (
-                <div key={idx}>
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
-                    animate={
-                      sourcesVisible && sourcesExpanded
-                        ? { opacity: 1, scale: 1, y: 0 }
-                        : { opacity: 0, scale: 0.95, y: 8 }
-                    }
-                    transition={{
-                      ...V3_SPRING.standard,
-                      delay:
-                        sourcesVisible && sourcesExpanded
-                          ? idx * (STRICT_SOURCES.stagger / 1000)
-                          : 0,
-                    }}
-                  >
-                    <p
-                      style={{
-                        color: "var(--strict-gold-text)",
-                        fontSize: 9,
-                        marginBottom: 2,
-                        opacity: 0.6,
-                      }}
-                    >
-                      {idx + 1}
-                    </p>
-                    <p
-                      style={{
-                        color: "var(--strict-source-text)",
-                        fontSize: 10,
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {src}
-                    </p>
-                  </motion.div>
-                  {idx < SOURCES.length - 1 && (
-                    <div
-                      style={{
-                        height: 1,
-                        background: "var(--strict-gold-sep)",
-                        margin: "10px 0",
-                      }}
-                    />
-                  )}
-                </div>
-              ))}
+              <div style={{ overflow: "hidden" }}>
+                <StrictSourceMargin
+                  sources={SOURCES_DATA}
+                  visible={sourcesVisible && sourcesExpanded}
+                  mobile
+                />
+              </div>
             </div>
           </div>
         ) : (
-          /* Desktop source margin */
-          <div
-            style={{
-              width: 160,
-              background: "var(--strict-glass-recessed)",
-              borderLeft: "1px solid var(--strict-gold-border)",
-              padding: "18px 12px",
-              flexShrink: 0,
-            }}
-          >
-            <p
-              style={{
-                color: "var(--strict-gold-text)",
-                fontSize: 8,
-                letterSpacing: "0.5px",
-                textTransform: "uppercase",
-                marginBottom: 12,
-                opacity: 0.6,
-              }}
-            >
-              SOURCES
-            </p>
-
-            {/* Step 4 — sources reveal as staggered glass tiles */}
-            {SOURCES.map((src, idx) => (
-              <div key={idx}>
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, x: 12 }}
-                  animate={
-                    sourcesVisible
-                      ? { opacity: 1, scale: 1, x: 0 }
-                      : { opacity: 0, scale: 0.95, x: 12 }
-                  }
-                  transition={{
-                    ...V3_SPRING.standard,
-                    delay: sourcesVisible
-                      ? idx * (STRICT_SOURCES.stagger / 1000)
-                      : 0,
-                  }}
-                >
-                  <p
-                    style={{
-                      color: "var(--strict-gold-text)",
-                      fontSize: 9,
-                      marginBottom: 2,
-                      opacity: 0.6,
-                    }}
-                  >
-                    {idx + 1}
-                  </p>
-                  <p
-                    style={{
-                      color: "var(--strict-source-text)",
-                      fontSize: 9,
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {src}
-                  </p>
-                </motion.div>
-
-                {/* Gold gradient fade separator (not after last item) */}
-                {idx < SOURCES.length - 1 && (
-                  <div
-                    style={{
-                      height: 1,
-                      background: "var(--strict-gold-sep)",
-                      margin: "10px 0",
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-          </div>
+          <StrictSourceMargin
+            sources={SOURCES_DATA}
+            visible={sourcesVisible}
+          />
         )}
       </motion.div>
     </section>

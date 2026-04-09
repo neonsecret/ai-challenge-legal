@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, MotionConfig } from "motion/react";
+import { motion } from "motion/react";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -185,15 +185,7 @@ function PricingCard({
           background: "rgba(255,255,255,0.025)",
           backdropFilter: "blur(12px)",
           border: "1px solid rgba(255,255,255,0.04)",
-          borderBottom: `1px solid ${
-            plan.featured
-              ? ctaHovered
-                ? "var(--strict-gold-underbar-hover)"
-                : "var(--strict-gold-underbar-hover)"
-              : ctaHovered
-                ? "var(--strict-gold-underbar-hover)"
-                : "var(--strict-gold-underbar)"
-          }`,
+          borderBottom: `1px solid ${ctaHovered || plan.featured ? "var(--strict-gold-underbar-hover)" : "var(--strict-gold-underbar)"}`,
           borderRadius: "8px",
           padding: "8px 16px",
           color: "var(--strict-text-primary)",
@@ -214,8 +206,7 @@ export function StrictPricing() {
   const isMobile = useIsMobile();
 
   return (
-    <MotionConfig reducedMotion="user">
-      <section
+    <section
         className="mx-auto"
         style={{
           maxWidth: "880px",
@@ -348,6 +339,5 @@ export function StrictPricing() {
           </motion.div>
         )}
       </section>
-    </MotionConfig>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 const NAV_LINKS = [
@@ -8,6 +9,9 @@ const NAV_LINKS = [
 ] as const;
 
 export function StrictNav() {
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const [signInHovered, setSignInHovered] = useState(false);
+
   return (
     <nav
       className="flex items-center mx-auto px-4 py-4 sm:px-8 sm:py-5"
@@ -31,13 +35,13 @@ export function StrictNav() {
             key={link.href}
             href={link.href}
             className="hidden sm:block text-[11px] no-underline transition-colors duration-150"
-            style={{ color: "var(--strict-nav-link)" }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = "var(--strict-nav-link-hover)")
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.color = "var(--strict-nav-link)")
-            }
+            style={{
+              color: hoveredLink === link.href
+                ? "var(--strict-nav-link-hover)"
+                : "var(--strict-nav-link)",
+            }}
+            onMouseEnter={() => setHoveredLink(link.href)}
+            onMouseLeave={() => setHoveredLink(null)}
           >
             {link.label}
           </a>
@@ -47,23 +51,14 @@ export function StrictNav() {
           href="/login"
           className="text-[11px] no-underline pb-px transition-all duration-150"
           style={{
-            color: "var(--strict-nav-signin)",
-            borderBottom: "1px solid var(--strict-gold-underbar)",
-            /* Ensure 44px tap target on mobile */
+            color: signInHovered ? "var(--strict-nav-signin-hover)" : "var(--strict-nav-signin)",
+            borderBottom: `1px solid ${signInHovered ? "var(--strict-gold-underbar-hover)" : "var(--strict-gold-underbar)"}`,
             display: "inline-flex",
             alignItems: "center",
             minHeight: "44px",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--strict-nav-signin-hover)";
-            e.currentTarget.style.borderBottomColor =
-              "var(--strict-gold-underbar-hover)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--strict-nav-signin)";
-            e.currentTarget.style.borderBottomColor =
-              "var(--strict-gold-underbar)";
-          }}
+          onMouseEnter={() => setSignInHovered(true)}
+          onMouseLeave={() => setSignInHovered(false)}
         >
           Sign In
         </Link>

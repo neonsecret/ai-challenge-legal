@@ -6,6 +6,7 @@ import {
     StrictSourceMargin,
     type StrictSourceMarginSource,
 } from "./strict-source-margin"
+import { StrictSidebarRail } from "./strict-sidebar-rail"
 
 interface StrictLayoutProps {
     children: ReactNode
@@ -53,53 +54,7 @@ export function StrictLayout({
             }}
         >
             {/* Sidebar rail — desktop only */}
-            {!isMobile && (
-                <div
-                    style={{
-                        width: 44,
-                        flexShrink: 0,
-                        background: "var(--strict-glass-recessed)",
-                        borderRight: "1px solid var(--strict-gold-border)",
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        paddingTop: 14,
-                        gap: 10,
-                    }}
-                >
-                    {/* Logo circle */}
-                    <div
-                        style={{
-                            width: 22,
-                            height: 22,
-                            borderRadius: "50%",
-                            border: "1px solid var(--strict-gold-border-active)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 8,
-                            color: "var(--strict-source-label)",
-                            flexShrink: 0,
-                        }}
-                    >
-                        V
-                    </div>
-
-                    {/* Icon placeholders */}
-                    {[0, 1, 2].map((i) => (
-                        <div
-                            key={i}
-                            style={{
-                                width: 16,
-                                height: 16,
-                                borderRadius: 4,
-                                background: "rgba(255,255,255,0.04)",
-                                flexShrink: 0,
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
+            {!isMobile && <StrictSidebarRail />}
 
             {/* Reading area */}
             <div
@@ -165,22 +120,24 @@ export function StrictLayout({
                             </span>
                         </button>
 
-                        {/* Expandable content */}
+                        {/* Expandable content — CSS grid for GPU-composited animation */}
                         <div
                             style={{
                                 background: "var(--strict-glass-recessed)",
+                                display: "grid",
+                                gridTemplateRows: sourcesExpanded ? "1fr" : "0fr",
+                                transition: "grid-template-rows 0.35s ease",
                                 overflow: "hidden",
-                                maxHeight: sourcesExpanded ? "280px" : "0",
-                                transition: "max-height 0.35s ease",
-                                overflowY: sourcesExpanded ? "auto" : "hidden",
                             }}
                         >
-                            <StrictSourceMargin
-                                sources={sources}
-                                onSourceClick={onSourceClick}
-                                visible={sourcesVisible && sourcesExpanded}
-                                mobile
-                            />
+                            <div style={{ overflow: "hidden" }}>
+                                <StrictSourceMargin
+                                    sources={sources}
+                                    onSourceClick={onSourceClick}
+                                    visible={sourcesVisible && sourcesExpanded}
+                                    mobile
+                                />
+                            </div>
                         </div>
                     </div>
                 ) : null

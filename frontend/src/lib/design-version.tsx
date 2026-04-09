@@ -5,8 +5,7 @@
 //
 // V1 (Classic) has been removed. Neon (formerly V2/Modern) and Strict (formerly V3/Luminous) are active.
 //
-// No inline <script> needed — a brief flash on first load is acceptable
-// (design version is not SSR-critical).
+// An inline <script> in layout.tsx applies the stored class before paint to prevent FOUC.
 
 import {
     createContext,

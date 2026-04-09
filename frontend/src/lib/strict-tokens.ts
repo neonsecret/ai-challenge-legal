@@ -18,6 +18,20 @@ export const STRICT_HIW = {
   scanStagger: 800,
   /** Delay before result highlight slides in (ms) */
   resultHighlightDelay: 400,
+  /** Duration of scan fill animation (ms) */
+  scanFillDuration: 1500,
+  /** Base delay for step item entrance animation (s) */
+  stepBaseDelay: 0.1,
+  /** Stagger between each step item (s) */
+  stepStagger: 0.08,
+} as const;
+
+/** Preview section delays */
+export const STRICT_PREVIEW = {
+  /** Delay before question fades in (ms) */
+  questionDelay: 300,
+  /** Delay before typewriter starts (ms) */
+  typewriterDelay: 900,
 } as const;
 
 /** Source margin reveal */

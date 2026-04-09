@@ -99,8 +99,8 @@ function StrictChatWrapper({
     return <>{children}</>
 }
 
-function makeGlassPanel(isV3 = false) {
-    if (isV3) {
+function makeGlassPanel(isStrict = false) {
+    if (isStrict) {
         return {
             background: "var(--strict-glass-bg)",
             backdropFilter: "var(--strict-glass-blur)",
@@ -160,7 +160,7 @@ export default function ChatPage() {
     const [mounted, setMounted] = useState(false)
     useEffect(() => setMounted(true), [])
     const isDark = mounted && resolvedTheme === "dark"
-    const isV3 = mounted && designVersion === "strict"
+    const isStrict = mounted && designVersion === "strict"
     const isMobile = useIsMobile()
     const documentIndex = useDocumentIndex(messages)
 
@@ -352,7 +352,7 @@ export default function ChatPage() {
                 : s.case_number ?? "",
         }))
     })()
-    const strictSourcesVisible = isV3 && strictMarginSources.length > 0 && !isStreaming
+    const strictSourcesVisible = isStrict && strictMarginSources.length > 0 && !isStreaming
 
     return (
         <div className="p-2 sm:p-4" style={{
@@ -372,7 +372,7 @@ export default function ChatPage() {
                         animate={isMobile ? {x: 0} : {opacity: 1, width: 260}}
                         exit={isMobile ? {x: "-100%"} : {opacity: 0, width: 0}}
                         transition={isMobile ? {type: "spring", damping: 30, stiffness: 300} : {duration: 0.25, ease: [0.32, 0.72, 0, 1]}}
-                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
+                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             display: "flex", flexDirection: "column",
                             minHeight: 0, flexShrink: 0,
@@ -388,7 +388,7 @@ export default function ChatPage() {
                                 WebkitBackdropFilter: "var(--dt-glass-blur-light)",
                                 boxShadow: "var(--dt-glass-inner-glow)",
                                 border: "0.5px solid var(--dt-panel-border-color)",
-                            } : makeGlassPanel(isV3)),
+                            } : makeGlassPanel(isStrict)),
                         }}
                     >
                         {/* History header */}
@@ -566,10 +566,10 @@ export default function ChatPage() {
                 overflow: "hidden",
                 contain: "style",
                 transition: `all ${TIMING.slow} ${EASE.out}`,
-                ...(isV3 && !isMobile ? {} : makeGlassPanel(false)),
+                ...(isStrict && !isMobile ? {} : makeGlassPanel(false)),
             }}>
             <StrictChatWrapper
-                active={isV3 && !isMobile}
+                active={isStrict && !isMobile}
                 sources={strictMarginSources}
                 onSourceClick={(id) => {
                     const recentSources = lastAssistant?.sources ?? sources
@@ -586,9 +586,9 @@ export default function ChatPage() {
                 {/* Header */}
                 <div style={{
                     padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                    borderBottom: isV3 ? "1px solid var(--dt-glass-border-subtle)" : "0.5px solid var(--dt-glass-border-subtle)",
+                    borderBottom: isStrict ? "1px solid var(--dt-glass-border-subtle)" : "0.5px solid var(--dt-glass-border-subtle)",
                     display: "flex", alignItems: "center", gap: isMobile ? SPACE['2'] : SPACE['3'], flexShrink: 0,
-                    background: isV3 ? "linear-gradient(180deg, rgba(0,0,0,0.60) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
+                    background: isStrict ? "linear-gradient(180deg, rgba(0,0,0,0.60) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                     overflow: "visible", position: "relative", zIndex: 10,
                 }}>
                     <div style={{
@@ -731,10 +731,10 @@ export default function ChatPage() {
                                         cursor: isEnabled ? "pointer" : "not-allowed",
                                         opacity: isEnabled ? 1 : 0.38,
                                         background: isActive
-                                            ? (isV3 ? "var(--dt-active-item-bg)" : "var(--dt-color-gold-solid)")
+                                            ? (isStrict ? "var(--dt-active-item-bg)" : "var(--dt-color-gold-solid)")
                                             : "var(--dt-pill-bg)",
                                         border: isActive
-                                            ? (isV3 ? "0.5px solid var(--dt-accent-border-color)" : "0.5px solid var(--dt-color-gold-border)")
+                                            ? (isStrict ? "0.5px solid var(--dt-accent-border-color)" : "0.5px solid var(--dt-color-gold-border)")
                                             : "0.5px solid var(--dt-glass-border)",
                                         color: isActive
                                             ? "var(--dt-text-primary)"
@@ -1296,10 +1296,10 @@ export default function ChatPage() {
                             <motion.div
                                 key={m.id}
                                 ref={isLastAssistant ? lastAssistantRef : undefined}
-                                variants={isV3 ? V3_FADE_UP : undefined}
-                                initial={isV3 ? "hidden" : {opacity: 0, y: SPACE['3'], ...(isMobile ? {} : {scale: 0.98})}}
-                                animate={isV3 ? "visible" : {opacity: 1, y: 0, ...(isMobile ? {} : {scale: 1})}}
-                                transition={isV3 ? undefined : (isMobile
+                                variants={isStrict ? V3_FADE_UP : undefined}
+                                initial={isStrict ? "hidden" : {opacity: 0, y: SPACE['3'], ...(isMobile ? {} : {scale: 0.98})}}
+                                animate={isStrict ? "visible" : {opacity: 1, y: 0, ...(isMobile ? {} : {scale: 1})}}
+                                transition={isStrict ? undefined : (isMobile
                                     ? {duration: 0.2, ease: [0.32, 0.72, 0, 1]}
                                     : {
                                         type: "spring",
@@ -1419,7 +1419,7 @@ export default function ChatPage() {
                         animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
                         exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
-                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
+                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             ...(isMobile ? {
                                 position: "fixed",
@@ -1440,7 +1440,7 @@ export default function ChatPage() {
                                 position: "relative",
                                 zIndex: 1,
                                 flexShrink: 0,
-                                ...makeGlassPanel(isV3),
+                                ...makeGlassPanel(isStrict),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1534,7 +1534,7 @@ export default function ChatPage() {
                         animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
                         exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
-                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
+                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             ...(isMobile ? {
                                 position: "fixed",
@@ -1554,7 +1554,7 @@ export default function ChatPage() {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
                                 flexShrink: 0,
-                                ...makeGlassPanel(isV3),
+                                ...makeGlassPanel(isStrict),
                             }),
                             display: "flex",
                             flexDirection: "column",
@@ -1667,7 +1667,7 @@ export default function ChatPage() {
                             ? {type: "spring", damping: 30, stiffness: 300}
                             : {duration: 0.25, ease: [0.32, 0.72, 0, 1]}
                         }
-                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
+                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             display: "flex", flexDirection: "column",
                             minHeight: 0, flexShrink: 0,
@@ -1686,7 +1686,7 @@ export default function ChatPage() {
                                 WebkitBackdropFilter: "var(--dt-glass-blur-light)",
                                 border: "0.5px solid var(--dt-panel-border-color)",
                                 boxShadow: "var(--dt-panel-shadow)",
-                            } : makeGlassPanel(isV3)),
+                            } : makeGlassPanel(isStrict)),
                         }}
                     >
                         {/* Mobile drag handle */}

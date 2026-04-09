@@ -71,11 +71,11 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
 
     const borderColor = focused
         ? isGlassmorphic ? "var(--strict-gold-underbar)" : isDark ? "rgba(201,168,76,0.40)" : "rgba(196,124,0,0.35)"
-        : isGlassmorphic ? "rgba(222,222,222,0.14)" : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.55)"
+        : isGlassmorphic ? "var(--strict-input-border)" : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.55)"
 
     const glowShadow = focused
         ? isGlassmorphic
-            ? "inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 2px rgba(201,168,76,0.08), 0 4px 24px rgba(0,0,0,0.35)"
+            ? "var(--strict-input-glow)"
             : isDark
                 ? "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 3px rgba(201,168,76,0.08), 0 2px 16px rgba(201,168,76,0.10)"
                 : "inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(196,124,0,0.06), 0 2px 16px rgba(196,124,0,0.08)"
@@ -90,7 +90,7 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
             className="relative rounded-2xl"
             style={{
                 background: isGlassmorphic
-                    ? focused ? "rgba(19,19,19,0.72)" : "rgba(19,19,19,0.64)"
+                    ? focused ? "var(--strict-input-bg-focused)" : "var(--strict-input-bg)"
                     : isDark
                         ? focused ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.06)"
                         : focused ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.22)",

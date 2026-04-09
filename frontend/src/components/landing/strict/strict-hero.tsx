@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, MotionConfig } from "motion/react";
+import { motion } from "motion/react";
 import { V3_SPRING } from "@/lib/v3-motion";
 import {
   STRICT_COUNTER,
@@ -24,7 +24,7 @@ const JURISDICTIONS = ["DIFC", "Czech", "UK", "Australia"] as const;
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const goldGradientText: React.CSSProperties = {
-  background: "linear-gradient(135deg, #C9A84C, #E0C878)",
+  background: "linear-gradient(135deg, var(--strict-gold-gradient-start), var(--strict-gold-gradient-end))",
   WebkitBackgroundClip: "text",
   WebkitTextFillColor: "transparent",
   backgroundClip: "text",
@@ -82,19 +82,18 @@ function CtaButton() {
       onMouseLeave={() => setHovered(false)}
       className="inline-block text-[12px] tracking-[0.3px] no-underline"
       style={{
-        background: "rgba(255,255,255,0.025)",
+        background: "var(--strict-glass-bg)",
         backdropFilter: "blur(12px)",
-        border: "1px solid rgba(255,255,255,0.04)",
-        borderBottom: `1px solid ${hovered ? "rgba(201,168,76,0.5)" : "var(--strict-gold-underbar)"}`,
+        border: "1px solid var(--strict-glass-border)",
+        borderBottom: `1px solid ${hovered ? "var(--strict-gold-underbar-hover)" : "var(--strict-gold-underbar)"}`,
         borderRadius: "8px",
         padding: "10px 24px",
         color: "var(--strict-text-primary)",
         opacity: hovered ? 1 : 0.8,
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
-        boxShadow: hovered ? "0 2px 8px rgba(201,168,76,0.08)" : "none",
+        boxShadow: hovered ? "0 2px 8px var(--strict-hiw-progress-track)" : "none",
         transition:
           "transform 0.2s ease, border-bottom-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease",
-        /* 44px min tap target for mobile */
         minHeight: "44px",
         display: "inline-flex",
         alignItems: "center",
@@ -228,8 +227,7 @@ function CitationStat() {
           left: "-8px",
           width: "60px",
           height: "36px",
-          background:
-            "radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%)",
+          background: "var(--strict-glow-radial)",
           borderRadius: "50%",
           opacity: glowVisible ? 1 : 0,
           transition: "opacity 1s ease",
@@ -305,110 +303,103 @@ export function StrictHero() {
   const isMobile = useIsMobile();
 
   return (
-    <MotionConfig reducedMotion="user">
-      <style>{`
-        @keyframes strictBadgePulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
-        @keyframes strictGlowPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.2)} }
-      `}</style>
-
-      <section
-        className="mx-auto"
-        style={{ maxWidth: "880px", padding: isMobile ? "24px 16px 32px" : "40px 32px 48px" }}
+    <section
+      className="mx-auto"
+      style={{ maxWidth: "880px", padding: isMobile ? "24px 16px 32px" : "40px 32px 48px" }}
+    >
+      {/* Living Glass Slab */}
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          background: "var(--strict-glass-bg)",
+          backdropFilter: "var(--strict-glass-blur)",
+          border: "1px solid var(--strict-glass-border)",
+          borderRadius: isMobile ? "12px" : "18px",
+          padding: isMobile ? "20px 16px" : "32px",
+          boxShadow: "var(--strict-glass-shadow)",
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          gap: isMobile ? "0" : "28px",
+          alignItems: "flex-start",
+        }}
       >
-        {/* Living Glass Slab */}
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            background: "var(--strict-glass-bg)",
-            backdropFilter: "var(--strict-glass-blur)",
-            border: "1px solid var(--strict-glass-border)",
-            borderRadius: isMobile ? "12px" : "18px",
-            padding: isMobile ? "20px 16px" : "32px",
-            boxShadow: "var(--strict-glass-shadow)",
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            gap: isMobile ? "0" : "28px",
-            alignItems: "flex-start",
-          }}
-        >
-          {/* Hero text */}
-          <div className="flex flex-col" style={{ flex: 1 }}>
-            <motion.h1
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...V3_SPRING.gentle, delay: 0.1 }}
-              className="font-serif font-normal leading-[1.2] mb-2.5"
-              style={{
-                fontSize: isMobile ? "24px" : "32px",
-                color: "var(--strict-text-primary)",
-              }}
-            >
-              Legal Research,
-              <br />
-              <span style={goldGradientText}>Reimagined</span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...V3_SPRING.gentle, delay: 0.25 }}
-              className="text-[13px] leading-[1.6] mb-[18px]"
-              style={{ color: "var(--strict-text-secondary)" }}
-            >
-              AI-powered analysis across four jurisdictions.
-              <br />
-              Every answer grounded in source law.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...V3_SPRING.gentle, delay: 0.4 }}
-            >
-              <JurisdictionPills />
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...V3_SPRING.gentle, delay: 0.55 }}
-            >
-              <CtaButton />
-            </motion.div>
-          </div>
-
-          {/* Divider — horizontal on mobile, vertical on desktop */}
-          <div
-            style={
-              isMobile
-                ? {
-                    height: "1px",
-                    background: "var(--strict-gold-sep)",
-                    margin: "20px 0",
-                    width: "100%",
-                  }
-                : {
-                    width: "1px",
-                    background: "var(--strict-gold-border)",
-                    alignSelf: "stretch",
-                  }
-            }
-          />
-
-          {/* Stats */}
-          <div
-            style={
-              isMobile
-                ? { width: "100%" }
-                : { width: "260px", flexShrink: 0 }
-            }
+        {/* Hero text */}
+        <div className="flex flex-col" style={{ flex: 1 }}>
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...V3_SPRING.gentle, delay: 0.1 }}
+            className="font-serif font-normal leading-[1.2] mb-2.5"
+            style={{
+              fontSize: isMobile ? "24px" : "32px",
+              color: "var(--strict-text-primary)",
+            }}
           >
-            <StatsBlock />
-          </div>
-        </motion.div>
-      </section>
-    </MotionConfig>
+            Legal Research,
+            <br />
+            <span style={goldGradientText}>Reimagined</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...V3_SPRING.gentle, delay: 0.25 }}
+            className="text-[13px] leading-[1.6] mb-[18px]"
+            style={{ color: "var(--strict-text-secondary)" }}
+          >
+            AI-powered analysis across four jurisdictions.
+            <br />
+            Every answer grounded in source law.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...V3_SPRING.gentle, delay: 0.4 }}
+          >
+            <JurisdictionPills />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...V3_SPRING.gentle, delay: 0.55 }}
+          >
+            <CtaButton />
+          </motion.div>
+        </div>
+
+        {/* Divider — horizontal on mobile, vertical on desktop */}
+        <div
+          style={
+            isMobile
+              ? {
+                  height: "1px",
+                  background: "var(--strict-gold-sep)",
+                  margin: "20px 0",
+                  width: "100%",
+                }
+              : {
+                  width: "1px",
+                  background: "var(--strict-gold-border)",
+                  alignSelf: "stretch",
+                }
+          }
+        />
+
+        {/* Stats */}
+        <div
+          style={
+            isMobile
+              ? { width: "100%" }
+              : { width: "260px", flexShrink: 0 }
+          }
+        >
+          <StatsBlock />
+        </div>
+      </motion.div>
+    </section>
   );
 }

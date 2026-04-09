@@ -26,6 +26,7 @@ export function StrictMeshBlobs() {
             filter: "blur(80px)",
             animation: `strict-drift ${STRICT_MESH.driftDuration}s ease-in-out infinite`,
             animationDelay: `${blob.delay}s`,
+            willChange: "transform",
           }}
         />
       ))}

@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react"
 import { V3_SPRING } from "@/lib/v3-motion"
+import { STRICT_SOURCES } from "@/lib/strict-tokens"
 
 export interface StrictSourceMarginSource {
     id: string
@@ -76,7 +77,7 @@ export function StrictSourceMargin({ sources, onSourceClick, visible = false, mo
                             }
                             transition={{
                                 ...V3_SPRING.standard,
-                                delay: visible ? idx * 0.25 : 0,
+                                delay: visible ? idx * (STRICT_SOURCES.stagger / 1000) : 0,
                             }}
                             onClick={() => onSourceClick?.(src.id)}
                             style={{
