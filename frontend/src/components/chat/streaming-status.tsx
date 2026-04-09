@@ -32,7 +32,7 @@ interface StepEntry {
 
 function getIconForStatus(label: string): { icon: typeof Sparkles; name: string; color: string } {
     const lower = label.toLowerCase()
-    if (lower.includes("analyzing") || lower.includes("thinking")) {
+    if (lower.includes("analyzing") || lower.includes("thinking") || lower.includes("reasoning")) {
         return {icon: Sparkles, name: "sparkles", color: STEP_COLOR.thinking}
     }
     if (lower.includes("searching legal") || lower.includes("corpus") || lower.includes("reading legal") || lower.includes("evaluating") || lower.includes("broadening")) {
