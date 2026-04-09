@@ -12,7 +12,9 @@ const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 export function formatStatus(raw: string): string | null {
     // ── Agent lifecycle ──
     if (raw === "agent:done") return null
-    if (raw === "agent:thinking") return "Analyzing your question..."
+    if (raw === "agent:understanding") return "Thinking..."
+    if (raw === "agent:reasoning") return "Reasoning..."
+    if (raw === "agent:thinking") return "Thinking..."  // backwards compat
     if (raw.startsWith("agent:")) {
         // Unknown agent sub-status — strip prefix and capitalize
         const detail = raw.slice("agent:".length).trim()
