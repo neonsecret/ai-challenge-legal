@@ -148,7 +148,7 @@ export default function LandingPage() {
                                         </svg>
                                     </div>
                                     <span className="hidden sm:inline font-heading text-lg font-bold tracking-tight"
-                                          style={{color: isDarkV3 ? "rgba(255,255,255,0.95)" : "var(--v3-text-primary)"}}>Vitreon Legal</span>
+                                          style={{color: "var(--v3-text-primary)"}}>Vitreon Legal</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <LanguageToggle />
@@ -217,7 +217,7 @@ export default function LandingPage() {
                             <motion.p variants={V3_FADE_UP} initial="hidden" animate="visible"
                                       className="text-base text-center mb-10 max-w-xl"
                                       style={{
-                                          color: isDarkV3 ? "rgba(255,255,255,0.64)" : "rgba(13,15,26,0.64)",
+                                          color: "var(--v3-text-secondary)",
                                           lineHeight: 1.6, whiteSpace: "pre-line"
                                       }}>
                                 {t("landing.hero_subtitle")}
@@ -266,13 +266,13 @@ export default function LandingPage() {
                                        className="font-heading text-center font-bold mb-2"
                                        style={{
                                            fontSize: "clamp(1.8rem,3vw,2.4rem)", letterSpacing: "-0.03em",
-                                           color: isDarkV3 ? "rgba(255,255,255,0.90)" : "var(--v3-text-primary)"
+                                           color: "var(--v3-text-primary)"
                                        }}>
                                 {t("landing.bench_heading")}
                             </motion.h2>
                             <motion.p variants={V3_FADE_UP} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-80px"}}
                                       className="text-center text-sm mb-10"
-                                      style={{color: isDarkV3 ? "rgba(255,255,255,0.64)" : "rgba(13,15,26,0.64)"}}>
+                                      style={{color: "var(--v3-text-secondary)"}}>
                                 {t("landing.bench_subtitle")}
                             </motion.p>
                             <motion.div variants={V3_LIST_VARIANT} initial="hidden" whileInView="visible" viewport={{once: true, margin: "-60px"}}
@@ -283,7 +283,7 @@ export default function LandingPage() {
                                             <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{color: "var(--v3-iris-bright)"}}>{b.name}</p>
                                             <p className="text-xs mb-3" style={{color: isDarkV3 ? "rgba(255,255,255,0.45)" : "rgba(13,15,26,0.50)"}}>{b.description}</p>
                                             <div className="flex items-end gap-3">
-                                                <span className="text-2xl font-bold" style={{color: isDarkV3 ? "rgba(255,255,255,0.90)" : "var(--v3-text-primary)"}}>{(b.ourScore * 100).toFixed(1)}%</span>
+                                                <span className="text-2xl font-bold" style={{color: "var(--v3-text-primary)"}}>{(b.ourScore * 100).toFixed(1)}%</span>
                                                 <span className="text-xs font-medium pb-1" style={{color: "var(--v3-success)"}}>{b.improvement}</span>
                                             </div>
                                         </div>
@@ -306,7 +306,7 @@ export default function LandingPage() {
                                     </svg>
                                 </div>
                                 <span className="font-heading text-sm font-semibold"
-                                      style={{color: isDarkV3 ? "rgba(255,255,255,0.6)" : "rgba(13,15,26,0.60)"}}>Vitreon Legal</span>
+                                      style={{color: "var(--v3-text-secondary)"}}>Vitreon Legal</span>
                             </div>
                             <p className="text-[11px]" style={{color: isDarkV3 ? "rgba(255,255,255,0.28)" : "rgba(13,15,26,0.35)"}}>
                                 {new Date().getFullYear()} Vitreon Legal

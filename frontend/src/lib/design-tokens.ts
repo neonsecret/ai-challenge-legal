@@ -47,73 +47,73 @@ export const SPACE = {
 
 export const COLOR = {
     gold: {
-        base: "#C9A84C",
-        light: "#d4a843",
+        base: "var(--dt-color-gold-base)",
+        light: "var(--dt-color-gold-light)",
         /** Solid active background */
-        solid: "rgba(201,168,76,0.75)",
+        solid: "var(--dt-color-gold-solid)",
         /** Subtle tinted background */
-        tint: "rgba(201,168,76,0.14)",
+        tint: "var(--dt-color-gold-tint)",
         /** Border for active/highlighted elements */
-        border: "rgba(201,168,76,0.40)",
+        border: "var(--dt-color-gold-border)",
         /** Faint glow */
-        glow: "rgba(201,168,76,0.25)",
+        glow: "var(--dt-color-gold-glow)",
     },
     teal: {
-        base: "#38B2AC",
-        tint: "rgba(56,178,172,0.14)",
-        border: "rgba(56,178,172,0.35)",
+        base: "var(--dt-color-teal-base)",
+        tint: "var(--dt-color-teal-tint)",
+        border: "var(--dt-color-teal-border)",
     },
     bronze: {
-        base: "#d4956b",
-        tint: "rgba(212,149,107,0.14)",
+        base: "var(--dt-color-bronze-base)",
+        tint: "var(--dt-color-bronze-tint)",
     },
     blue: {
-        base: "#3576ae",
-        tint: "rgba(53,118,174,0.18)",
-        border: "rgba(53,118,174,0.38)",
+        base: "var(--dt-color-blue-base)",
+        tint: "var(--dt-color-blue-tint)",
+        border: "var(--dt-color-blue-border)",
     },
 } as const
 
 /** Dark theme text opacity levels */
 export const TEXT_DARK = {
-    primary: "rgba(255,255,255,0.92)",
-    secondary: "rgba(255,255,255,0.72)",
-    tertiary: "rgba(255,255,255,0.45)",
-    quaternary: "rgba(255,255,255,0.25)",
+    primary: "var(--dt-text-dark-primary)",
+    secondary: "var(--dt-text-dark-secondary)",
+    tertiary: "var(--dt-text-dark-tertiary)",
+    quaternary: "var(--dt-text-dark-quaternary)",
 } as const
 
 /** Light theme text colors */
 export const TEXT_LIGHT = {
-    primary: "#1a0e04",
-    secondary: "#2e1f08",
-    tertiary: "rgba(46,31,8,0.55)",
-    quaternary: "rgba(46,31,8,0.25)",
+    primary: "var(--dt-text-light-primary)",
+    secondary: "var(--dt-text-light-secondary)",
+    tertiary: "var(--dt-text-light-tertiary)",
+    quaternary: "var(--dt-text-light-quaternary)",
 } as const
 
 // ─── Glass ───────────────────────────────────────────────────────────────────
 
 export const GLASS = {
     dark: {
-        bg: "rgba(255,255,255,0.07)",
-        bgSubtle: "rgba(255,255,255,0.04)",
-        bgHover: "rgba(255,255,255,0.12)",
-        border: "rgba(255,255,255,0.14)",
-        borderSubtle: "rgba(255,255,255,0.08)",
-        blur: "blur(40px) saturate(180%) brightness(108%)",
-        blurLight: "blur(16px) saturate(160%)",
-        innerGlow: "inset 0 1px 0 rgba(255,255,255,0.10)",
-        shadow: "0 20px 60px rgba(0,0,0,0.40)",
+        bg: "var(--dt-glass-dark-bg)",
+        bgSubtle: "var(--dt-glass-dark-bg-subtle)",
+        bgHover: "var(--dt-glass-dark-bg-hover)",
+        border: "var(--dt-glass-dark-border)",
+        borderSubtle: "var(--dt-glass-dark-border-subtle)",
+        blur: "var(--dt-glass-dark-blur)",
+        blurLight: "var(--dt-glass-dark-blur-light)",
+        innerGlow: "var(--dt-glass-dark-inner-glow)",
+        shadow: "var(--dt-glass-dark-shadow)",
     },
     light: {
-        bg: "rgba(255,255,255,0.45)",
-        bgSubtle: "rgba(255,255,255,0.22)",
-        bgHover: "rgba(255,255,255,0.55)",
-        border: "rgba(255,255,255,0.55)",
-        borderSubtle: "rgba(255,255,255,0.35)",
-        blur: "blur(40px) saturate(180%) brightness(108%)",
-        blurLight: "blur(16px) saturate(160%)",
-        innerGlow: "inset 0 1.5px 0 rgba(255,255,255,0.80)",
-        shadow: "0 20px 60px rgba(100,50,0,0.08)",
+        bg: "var(--dt-glass-light-bg)",
+        bgSubtle: "var(--dt-glass-light-bg-subtle)",
+        bgHover: "var(--dt-glass-light-bg-hover)",
+        border: "var(--dt-glass-light-border)",
+        borderSubtle: "var(--dt-glass-light-border-subtle)",
+        blur: "var(--dt-glass-light-blur)",
+        blurLight: "var(--dt-glass-light-blur-light)",
+        innerGlow: "var(--dt-glass-light-inner-glow)",
+        shadow: "var(--dt-glass-light-shadow)",
     },
 } as const
 
@@ -165,13 +165,13 @@ export const STEP_COLOR = {
 
 export const ANSWER_CARD = {
     dark: {
-        bg: "rgba(255,255,255,0.05)",
-        border: "rgba(255,255,255,0.10)",
-        footnoteBg: "rgba(255,255,255,0.03)",
+        bg: "var(--dt-answer-dark-bg)",
+        border: "var(--dt-answer-dark-border)",
+        footnoteBg: "var(--dt-answer-dark-footnote-bg)",
     },
     light: {
-        bg: "rgba(255,255,255,0.50)",
-        border: "rgba(255,255,255,0.60)",
-        footnoteBg: "rgba(245,240,230,0.40)",
+        bg: "var(--dt-answer-light-bg)",
+        border: "var(--dt-answer-light-border)",
+        footnoteBg: "var(--dt-answer-light-footnote-bg)",
     },
 } as const
