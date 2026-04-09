@@ -615,6 +615,7 @@ export default function ChatPage() {
                         animate={isMobile ? {x: 0} : {opacity: 1, width: 260}}
                         exit={isMobile ? {x: "-100%"} : {opacity: 0, width: 0}}
                         transition={isMobile ? {type: "spring", damping: 30, stiffness: 300} : {duration: 0.25, ease: [0.32, 0.72, 0, 1]}}
+                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             display: "flex", flexDirection: "column",
                             minHeight: 0, flexShrink: 0,
@@ -798,7 +799,7 @@ export default function ChatPage() {
             </AnimatePresence>
 
             {/* ── Chat panel ── */}
-            <div className="animate-glass-in" style={{
+            <div className={`animate-glass-in${isV3 ? " v3-glass-elevated" : ""}`} style={{
                 flex: (drawerOpen && drawerData.sources.length > 0) || showPreview
                     ? layoutMode === "chat" ? 2 : layoutMode === "source" ? 1 : 1
                     : 1,
@@ -1647,6 +1648,7 @@ export default function ChatPage() {
                         animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
                         exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
+                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             ...(isMobile ? {
                                 position: "fixed",
@@ -1763,6 +1765,7 @@ export default function ChatPage() {
                         animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
                         exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
+                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             ...(isMobile ? {
                                 position: "fixed",
@@ -1897,6 +1900,7 @@ export default function ChatPage() {
                             ? {type: "spring", damping: 30, stiffness: 300}
                             : {duration: 0.25, ease: [0.32, 0.72, 0, 1]}
                         }
+                        className={isV3 && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
                             display: "flex", flexDirection: "column",
                             minHeight: 0, flexShrink: 0,
