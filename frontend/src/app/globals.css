@@ -634,628 +634,106 @@ textarea::placeholder { color: #b29254; }
    V2 is completely untouched — all V3 rules scoped to .design-strict.
    ============================================================ */
 
-/* ── V3 Light mode tokens ─────────────────────────────────── */
+/* ── Strict Light mode tokens ─────────────────────────────── */
 .design-strict {
-    /* Brand palette — aurora spectrum */
-    --v3-iris:        #5B40A0;
-    --v3-aurora:      #1D6FB8;
-    --v3-teal:        #0D9488;
-    --v3-rose:        #F472B6;
-    --v3-gold:        #FCD34D;
-    --v3-iris-bright: #9D7FCC;
-    --v3-aurora-glow: #60A5FA;
-
-    /* Light mode surfaces */
-    --v3-light-bg:          #ECEEF7;
-    --v3-light-surface:     rgba(255, 255, 255, 0.82);
-    --v3-light-elevated:    rgba(255, 255, 255, 0.92);
-    --v3-light-floating:    rgba(255, 255, 255, 0.97);
-    --v3-light-overlay:     rgba(7, 9, 30, 0.40);
-
-    /* Light mode text */
-    --v3-text-primary:      #0D0F1A;
-    --v3-text-secondary:    rgba(13, 15, 26, 0.65);
-    /* DECORATION ONLY: ~2.4:1 on #ECEEF7 — never use for semantic text content in light mode */
-    --v3-text-tertiary:     rgba(13, 15, 26, 0.42);
-    /* DECORATION ONLY: < 2:1 — dividers, placeholder dots only */
-    --v3-text-quaternary:   rgba(13, 15, 26, 0.22);
-    --v3-text-accent:       #5B40A0;
-
-    /* Light mode glass */
-    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.62);
-    --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.72);
-    --v3-glass-surface-border:    rgba(123, 94, 167, 0.18);
-    --v3-glass-surface-blur:      blur(20px) saturate(180%);
-    --v3-glass-surface-shadow:    0 2px 12px rgba(7, 9, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.90);
-
-    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.80);
-    --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.86);
-    --v3-glass-elevated-border:   rgba(123, 94, 167, 0.12);
-    --v3-glass-elevated-blur:     blur(40px) saturate(190%);
-    --v3-glass-elevated-shadow:   0 8px 32px rgba(7, 9, 30, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
-
-    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.92);
-    --v3-glass-floating-border:   rgba(255, 255, 255, 0.95);
-    --v3-glass-floating-blur:     blur(60px) saturate(200%);
-    --v3-glass-floating-shadow:   0 16px 56px rgba(7, 9, 30, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1);
-
-    --v3-glass-iris-bg:           rgba(91, 64, 160, 0.06);
-    --v3-glass-iris-border:       rgba(91, 64, 160, 0.20);
-    --v3-glass-iris-glow:         0 0 24px rgba(91, 64, 160, 0.12);
-
-    /* Specular */
-    --v3-specular-top:    inset 0 1px 0 rgba(255, 255, 255, 0.80);
-    --v3-specular-full:   inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 -1px 0 rgba(7, 9, 30, 0.06);
-
-    /* Semantic colors */
-    --v3-success:   #34D399;
-    --v3-warning:   #FBBF24;
-    --v3-danger:    #F87171;
-    --v3-info:      #60A5FA;
-
-    /* Spacing */
-    --v3-space-xs:    4px;
-    --v3-space-sm:    8px;
-    --v3-space-md:    16px;
-    --v3-space-lg:    24px;
-    --v3-space-xl:    32px;
-    --v3-space-2xl:   48px;
-    --v3-space-3xl:   64px;
-    --v3-space-4xl:   96px;
-    --v3-section-pad-y: clamp(64px, 8vw, 120px);
-
-    /* Border radius */
-    --v3-radius-xs:   4px;
-    --v3-radius-sm:   8px;
-    --v3-radius-md:   12px;
-    --v3-radius-lg:   16px;
-    --v3-radius-xl:   20px;
-    --v3-radius-2xl:  28px;
-    --v3-radius-pill: 9999px;
-
-    /* CSS transition shorthands */
-    --v3-transition-color:       color 0.15s ease, background-color 0.15s ease;
-    --v3-transition-border:      border-color 0.15s ease;
-    --v3-transition-opacity:     opacity 0.15s ease;
-    --v3-transition-shadow:      box-shadow 0.20s ease;
-    --v3-transition-interactive: color 0.15s ease, background-color 0.15s ease,
-                                  border-color 0.15s ease, box-shadow 0.20s ease, opacity 0.15s ease;
-
-    /* Iridescent gradient */
-    --v3-iridescent: linear-gradient(
-        135deg,
-        oklch(0.55 0.25 285) 0%,
-        oklch(0.50 0.28 260) 35%,
-        oklch(0.55 0.22 195) 65%,
-        oklch(0.62 0.25 285) 100%
-    );
-
-    /* Button tokens */
-    --v3-btn-primary-bg: linear-gradient(135deg, #7B5EA7 0%, #4F8FD4 50%, #2DD4BF 100%);
-    --v3-btn-primary-hover-bg: linear-gradient(135deg, #9D7FCC 0%, #60A5FA 50%, #2DD4BF 100%);
-
-    /* Override base Shadcn tokens for V3 light mode */
-    --background: #ECEEF7;
-    --foreground: #0D0F1A;
-    --card: rgba(255, 255, 255, 0.82);
-    --card-foreground: #0D0F1A;
-    --popover: rgba(255, 255, 255, 0.97);
-    --popover-foreground: #0D0F1A;
-    --primary: #5B40A0;
-    --primary-foreground: #FFFFFF;
-    --secondary: rgba(123, 94, 167, 0.08);
-    --secondary-foreground: #5B40A0;
-    --muted: rgba(123, 94, 167, 0.05);
-    --muted-foreground: rgba(13, 15, 26, 0.55);
-    --accent: #5B40A0;
-    --accent-foreground: #FFFFFF;
-    --border: rgba(123, 94, 167, 0.15);
-    --input: rgba(123, 94, 167, 0.10);
-    --ring: #5B40A0;
-    --sidebar: rgba(255, 255, 255, 0.70);
-    --sidebar-foreground: #0D0F1A;
-    --sidebar-primary: #5B40A0;
-    --sidebar-primary-foreground: #FFFFFF;
-    --sidebar-accent: rgba(123, 94, 167, 0.08);
-    --sidebar-accent-foreground: #5B40A0;
-    --sidebar-border: rgba(123, 94, 167, 0.12);
-    --sidebar-ring: #5B40A0;
-    /* Larger base radius than V2 — scales all Tailwind rounded-* in V3 context */
-    --radius: 1.125rem;
-
-    /* ── Design token V3 light overrides ─────────────────────── */
-
-    /* Glass → V3 elevated glass (main panels) */
-    --dt-glass-bg: var(--v3-glass-elevated-bg);
-    --dt-glass-bg-subtle: rgba(255,255,255,0.40);
-    --dt-glass-bg-hover: var(--v3-glass-elevated-bg-hover);
-    --dt-glass-border: var(--v3-glass-elevated-border);
-    --dt-glass-border-subtle: rgba(123,94,167,0.10);
-    --dt-glass-blur: var(--v3-glass-elevated-blur);
-    --dt-glass-blur-light: blur(12px) saturate(150%);
-    --dt-glass-inner-glow: var(--v3-specular-top);
-    --dt-glass-shadow: var(--v3-glass-elevated-shadow);
-
-    /* Text → V3 light text */
-    --dt-text-primary: var(--v3-text-primary);
-    --dt-text-secondary: var(--v3-text-secondary);
-    --dt-text-tertiary: var(--v3-text-tertiary);
-    --dt-text-quaternary: var(--v3-text-quaternary);
-    --dt-text-strong: var(--v3-text-primary);
-
-    /* COLOR → V3 iris palette */
-    --dt-color-gold-base: var(--v3-iris);
-    --dt-color-gold-light: var(--v3-iris-bright);
-    --dt-color-gold-solid: rgba(91,64,160,0.75);
-    --dt-color-gold-tint: var(--v3-glass-iris-bg);
-    --dt-color-gold-border: var(--v3-glass-iris-border);
-    --dt-color-gold-glow: rgba(91,64,160,0.15);
-    --dt-color-teal-base: var(--v3-teal);
-    --dt-color-teal-tint: rgba(13,148,136,0.12);
-    --dt-color-teal-border: rgba(13,148,136,0.30);
-    --dt-color-bronze-base: var(--v3-rose);
-    --dt-color-bronze-tint: rgba(244,114,182,0.12);
-    --dt-color-blue-base: var(--v3-aurora);
-    --dt-color-blue-tint: rgba(29,111,184,0.16);
-    --dt-color-blue-border: rgba(29,111,184,0.35);
-
-    /* Answer card → V3 glass */
-    --dt-answer-bg: var(--v3-glass-surface-bg);
-    --dt-answer-border: var(--v3-glass-surface-border);
-    --dt-answer-footnote-bg: rgba(236,238,247,0.40);
-
-    /* Semantic accent → V3 iris */
-    --dt-accent-color: var(--v3-iris);
-    --dt-accent-color-hover: var(--v3-iris-bright);
-    --dt-accent-tint: var(--v3-glass-iris-bg);
-    --dt-accent-tint-subtle: rgba(91,64,160,0.04);
-    --dt-accent-tint-strong: rgba(91,64,160,0.10);
-    --dt-accent-tint-hover: rgba(91,64,160,0.12);
-    --dt-accent-tint-faint: rgba(91,64,160,0.03);
-    --dt-accent-glow: rgba(91,64,160,0.15);
-    --dt-accent-border-color: var(--v3-glass-iris-border);
-    --dt-accent-border-strong: rgba(91,64,160,0.30);
-    --dt-accent-border-subtle: rgba(91,64,160,0.15);
-    --dt-accent-highlight: rgba(91,64,160,0.40);
-    --dt-accent-highlight-strong: rgba(91,64,160,0.55);
-    --dt-accent-solid: rgba(91,64,160,0.70);
-    --dt-active-item-bg: rgba(91,64,160,0.06);
-
-    /* Teal → V3 teal */
-    --dt-teal-tint: rgba(13,148,136,0.10);
-    --dt-teal-on-surface: var(--v3-teal);
-    --dt-teal-border-color: rgba(13,148,136,0.25);
-
-    /* Button/pill → V3 glass surface */
-    --dt-button-bg: var(--v3-glass-surface-bg);
-    --dt-button-bg-hover: var(--v3-glass-surface-bg-hover);
-    --dt-button-border-color: var(--v3-glass-surface-border);
-    --dt-pill-bg: var(--v3-glass-surface-bg);
-    --dt-pill-bg-subtle: rgba(255,255,255,0.30);
-    --dt-pill-bg-hover: var(--v3-glass-surface-bg-hover);
-    --dt-pill-border-color: var(--v3-glass-elevated-border);
-
-    /* Content card → V3 surface */
-    --dt-content-card-bg: rgba(255,255,255,0.82);
-    --dt-content-card-border: var(--v3-glass-elevated-border);
-    --dt-content-card-shadow: var(--v3-glass-elevated-shadow);
-    --dt-progress-track-bg: rgba(91,64,160,0.08);
-    --dt-divider-bg: rgba(91,64,160,0.06);
-    --dt-divider-border: rgba(91,64,160,0.12);
-
-    /* Source chip → iris */
-    --dt-chip-bg: var(--v3-glass-iris-bg);
-    --dt-chip-border: var(--v3-glass-iris-border);
-    --dt-chip-hover-bg: rgba(91,64,160,0.10);
-    --dt-chip-hover-border: rgba(91,64,160,0.30);
-
-    /* Citation */
-    --dt-citation-resolvable-color: var(--v3-iris);
-    --dt-citation-resolvable-tint: var(--v3-glass-iris-bg);
-    --dt-citation-resolvable-border: var(--v3-glass-iris-border);
-    --dt-citation-default-tint: rgba(91,64,160,0.04);
-    --dt-citation-default-border: rgba(91,64,160,0.10);
-
-    /* Confidence badge → iris */
-    --dt-confidence-bg: var(--v3-glass-iris-bg);
-    --dt-confidence-border: var(--v3-glass-iris-border);
-    --dt-confidence-text: var(--v3-iris);
-
-    /* Code block */
-    --dt-code-bg: rgba(91,64,160,0.06);
-    --dt-code-border: var(--v3-glass-elevated-border);
-    --dt-code-copy-color: var(--v3-text-secondary);
-
-    /* Vote/feedback */
-    --dt-vote-text: var(--v3-text-tertiary);
-    --dt-text-secondary-accent: var(--v3-text-secondary);
-
-    /* Landing section tokens — V3 iris light-mode overrides */
-    --dt-landing-label-color: rgba(91,64,160,0.70);
-    --dt-landing-label-muted: rgba(91,64,160,0.55);
-    --dt-landing-stat-label: rgba(91,64,160,0.50);
-    --dt-landing-accent-bg: rgba(91,64,160,0.12);
-    --dt-landing-accent-bg-subtle: rgba(91,64,160,0.08);
-    --dt-landing-accent-border-light: rgba(91,64,160,0.18);
-    --dt-landing-highlight: rgba(91,64,160,0.16);
-    --dt-landing-highlight-strong: rgba(91,64,160,0.25);
-    --dt-landing-accent-glow-subtle: rgba(91,64,160,0.04);
-    --dt-landing-bubble-bg: rgba(91,64,160,0.10);
-    --dt-landing-glass-card: rgba(255,255,255,0.65);
-    --dt-landing-text-bright: var(--v3-text-primary);
-    --dt-landing-text-mid: var(--v3-text-secondary);
-    --dt-landing-text-soft: rgba(13,15,26,0.55);
-    --dt-landing-text-muted: rgba(13,15,26,0.50);
-    --dt-landing-text-faint: rgba(13,15,26,0.38);
-    --dt-landing-text-ghost: rgba(13,15,26,0.20);
-    --dt-landing-glass-bg: rgba(255,255,255,0.45);
-    --dt-landing-glass-bg-strong: rgba(255,255,255,0.60);
-    --dt-landing-glass-border: rgba(123,94,167,0.18);
-    --dt-landing-glass-glow: rgba(255,255,255,0.50);
-    --dt-landing-bg-primary: #ECEEF7;
-    --dt-landing-bg-secondary: #E4E6F2;
-    --dt-landing-bg-deep: #DDDFF0;
-    --dt-landing-gradient: linear-gradient(180deg, #ECEEF7 0%, #E4E6F2 100%);
-    --dt-landing-cta-gradient: linear-gradient(135deg, #5B40A0 0%, #7B5EA7 50%, #5B40A0 100%);
-    --dt-landing-cta-text: #FFFFFF;
-    --dt-landing-cta-shadow: 0 4px 20px rgba(91,64,160,0.25);
-    --dt-landing-card-shadow: 0 8px 32px rgba(7,9,30,0.10);
-    --dt-landing-card-glow: inset 0 1px 0 rgba(255,255,255,0.80);
-    --dt-landing-hero-shadow: 0 40px 80px rgba(7,9,30,0.12);
-    --dt-landing-pdf-badge-bg: rgba(91,64,160,0.85);
+  --strict-bg-html: #D8DAE2;
+  --background: #E0E2E8;
+  --strict-glass-bg: rgba(20,22,30, 0.04);
+  --strict-glass-border: rgba(20,22,30, 0.08);
+  --strict-glass-blur: blur(14px);
+  --strict-glass-shadow: 0 2px 6px rgba(80,60,20,0.04), inset 0 1px 0 rgba(255,255,255,0.4);
+  --strict-glass-recessed: rgba(20,22,30, 0.03);
+  --strict-text-primary: rgba(20,22,30, 0.78);
+  --strict-text-body: rgba(20,22,30, 0.65);
+  --strict-text-question: rgba(20,22,30, 0.82);
+  --strict-text-secondary: rgba(20,22,30, 0.5);
+  --strict-text-dim: rgba(20,22,30, 0.3);
+  --strict-text-ghost: rgba(20,22,30, 0.2);
+  --strict-gold-base: #8B6914;
+  --strict-gold-text: rgba(138,110,24, 0.7);
+  --strict-gold-border: rgba(180,150,60, 0.14);
+  --strict-gold-border-active: rgba(180,150,60, 0.25);
+  --strict-gold-badge-bg: rgba(180,150,60, 0.07);
+  --strict-gold-badge-border: rgba(180,150,60, 0.14);
+  --strict-gold-badge-text: rgba(138,110,24, 0.6);
+  --strict-citation: rgba(138,110,24, 0.65);
+  --strict-gold-sep: linear-gradient(90deg, rgba(180,150,60,0.15), rgba(180,150,60,0.03));
+  --strict-gold-underbar: rgba(180,150,60, 0.25);
+  --strict-gold-underbar-hover: rgba(180,150,60, 0.4);
+  --strict-nav-link: rgba(20,22,30, 0.38);
+  --strict-nav-link-hover: rgba(20,22,30, 0.6);
+  --strict-nav-signin: rgba(138,110,24, 0.7);
+  --strict-nav-signin-hover: rgba(138,110,24, 0.9);
+  --strict-nav-sep: rgba(180,150,60, 0.08);
+  --strict-source-text: rgba(20,22,30, 0.35);
+  --strict-source-num: rgba(138,110,24, 0.5);
+  --strict-source-label: rgba(138,110,24, 0.4);
+  --strict-scrollbar: rgba(180,150,60, 0.12);
+  --strict-scrollbar-hover: rgba(180,150,60, 0.2);
+  --dt-glass-bg: var(--strict-glass-bg);
+  --dt-glass-border: var(--strict-glass-border);
+  --dt-glass-blur: var(--strict-glass-blur);
+  --dt-text-primary: var(--strict-text-primary);
+  --dt-text-secondary: var(--strict-text-secondary);
+  --dt-accent-color: var(--strict-gold-base);
 }
 
-/* ── V3 Dark mode tokens ──────────────────────────────────── */
+/* ── Strict Dark mode tokens ──────────────────────────────── */
 .design-strict.dark {
-    /* Dark mode surfaces */
-    --v3-dark-bg:           #07091A;
-    --v3-dark-surface:      #0D1120;
-    --v3-dark-elevated:     #111827;
-    --v3-dark-floating:     #161F30;
-    --v3-dark-overlay:      rgba(7, 9, 15, 0.85);
-
-    /* Dark mode text */
-    --v3-text-primary:      rgba(255, 255, 255, 0.95);
-    --v3-text-secondary:    rgba(255, 255, 255, 0.65);
-    --v3-text-tertiary:     rgba(255, 255, 255, 0.42);
-    --v3-text-quaternary:   rgba(255, 255, 255, 0.38);
-    --v3-text-accent:       #9D7FCC;
-
-    /* Dark mode glass */
-    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.05);
-    --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.08);
-    --v3-glass-surface-border:    rgba(255, 255, 255, 0.09);
-    --v3-glass-surface-blur:      blur(20px) saturate(180%);
-    --v3-glass-surface-shadow:    0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-
-    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.09);
-    --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.12);
-    --v3-glass-elevated-border:   rgba(255, 255, 255, 0.14);
-    --v3-glass-elevated-blur:     blur(40px) saturate(200%) brightness(106%);
-    --v3-glass-elevated-shadow:   0 12px 48px rgba(0, 0, 0, 0.50), 0 2px 8px rgba(0, 0, 0, 0.30),
-                                   inset 0 1px 0 rgba(255, 255, 255, 0.10);
-
-    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.13);
-    --v3-glass-floating-border:   rgba(255, 255, 255, 0.20);
-    --v3-glass-floating-blur:     blur(60px) saturate(220%) brightness(110%);
-    --v3-glass-floating-shadow:   0 24px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.40),
-                                   inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.20);
-
-    --v3-glass-iris-bg:           rgba(123, 94, 167, 0.12);
-    --v3-glass-iris-border:       rgba(157, 127, 204, 0.25);
-    --v3-glass-iris-glow:         0 0 24px rgba(123, 94, 167, 0.20);
-
-    --v3-specular-top:    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    --v3-specular-full:   inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(0, 0, 0, 0.20),
-                           inset 1px 0 rgba(255, 255, 255, 0.06), inset -1px 0 rgba(0, 0, 0, 0.08);
-    --v3-specular-iris:   inset 0 1px 0 rgba(157, 127, 204, 0.30);
-
-    /* Brand palette overrides for dark — brighter values for near-black bg */
-    --v3-iris:   #8B6FD4;
-    --v3-aurora: #38BDF8;
-    --v3-teal:   #2DD4BF;
-
-    /* Override Shadcn base tokens for V3 dark */
-    --background: #07091A;
-    --foreground: rgba(255, 255, 255, 0.95);
-    --card: rgba(255, 255, 255, 0.04);
-    --card-foreground: rgba(255, 255, 255, 0.94);
-    --popover: #161F30;
-    --popover-foreground: rgba(255, 255, 255, 0.94);
-    --primary: #9D7FCC;
-    --primary-foreground: #07090F;
-    --secondary: rgba(123, 94, 167, 0.14);
-    --secondary-foreground: rgba(255, 255, 255, 0.85);
-    --muted: rgba(123, 94, 167, 0.08);
-    --muted-foreground: rgba(255, 255, 255, 0.50);
-    --accent: #9D7FCC;
-    --accent-foreground: #07090F;
-    --border: rgba(255, 255, 255, 0.08);
-    --input: rgba(255, 255, 255, 0.06);
-    --ring: #9D7FCC;
-    --sidebar: rgba(13, 17, 32, 0.85);
-    --sidebar-foreground: rgba(255, 255, 255, 0.80);
-    --sidebar-primary: #9D7FCC;
-    --sidebar-primary-foreground: #07090F;
-    --sidebar-accent: rgba(123, 94, 167, 0.14);
-    --sidebar-accent-foreground: rgba(255, 255, 255, 0.80);
-    --sidebar-border: rgba(255, 255, 255, 0.06);
-    --sidebar-ring: #9D7FCC;
-
-    /* ── Design token V3 dark overrides ──────────────────────── */
-
-    /* Glass → V3 elevated glass (dark) */
-    --dt-glass-bg: var(--v3-glass-elevated-bg);
-    --dt-glass-bg-subtle: rgba(255,255,255,0.02);
-    --dt-glass-bg-hover: var(--v3-glass-elevated-bg-hover);
-    --dt-glass-border: var(--v3-glass-elevated-border);
-    --dt-glass-border-subtle: rgba(255,255,255,0.05);
-    --dt-glass-blur: var(--v3-glass-elevated-blur);
-    --dt-glass-blur-light: blur(12px) saturate(150%);
-    --dt-glass-inner-glow: var(--v3-specular-top);
-    --dt-glass-shadow: var(--v3-glass-elevated-shadow);
-
-    /* Text → V3 dark text */
-    --dt-text-primary: var(--v3-text-primary);
-    --dt-text-secondary: var(--v3-text-secondary);
-    --dt-text-tertiary: var(--v3-text-tertiary);
-    --dt-text-quaternary: var(--v3-text-quaternary);
-    --dt-text-strong: var(--v3-text-primary);
-
-    /* COLOR → V3 iris (dark brighter) */
-    --dt-color-gold-base: var(--v3-iris-bright);
-    --dt-color-gold-light: var(--v3-iris);
-    --dt-color-gold-solid: rgba(157,127,204,0.75);
-    --dt-color-gold-tint: var(--v3-glass-iris-bg);
-    --dt-color-gold-border: var(--v3-glass-iris-border);
-    --dt-color-gold-glow: rgba(123,94,167,0.20);
-    --dt-color-teal-base: var(--v3-teal);
-    --dt-color-teal-tint: rgba(45,212,191,0.14);
-    --dt-color-teal-border: rgba(45,212,191,0.30);
-    --dt-color-bronze-base: var(--v3-rose);
-    --dt-color-bronze-tint: rgba(244,114,182,0.14);
-    --dt-color-blue-base: var(--v3-aurora);
-    --dt-color-blue-tint: rgba(56,189,248,0.16);
-    --dt-color-blue-border: rgba(56,189,248,0.35);
-
-    /* Answer card → V3 dark glass */
-    --dt-answer-bg: var(--v3-glass-surface-bg);
-    --dt-answer-border: var(--v3-glass-surface-border);
-    --dt-answer-footnote-bg: rgba(255,255,255,0.02);
-
-    /* Semantic accent → iris bright in dark */
-    --dt-accent-color: var(--v3-iris-bright);
-    --dt-accent-color-hover: var(--v3-iris-bright);
-    --dt-accent-tint: var(--v3-glass-iris-bg);
-    --dt-accent-tint-subtle: var(--v3-glass-iris-bg);
-    --dt-accent-tint-strong: rgba(123,94,167,0.16);
-    --dt-accent-tint-hover: rgba(123,94,167,0.18);
-    --dt-accent-tint-faint: rgba(123,94,167,0.08);
-    --dt-accent-glow: rgba(123,94,167,0.20);
-    --dt-accent-border-color: var(--v3-glass-iris-border);
-    --dt-accent-border-strong: rgba(157,127,204,0.35);
-    --dt-accent-border-subtle: rgba(123,94,167,0.18);
-    --dt-accent-highlight: rgba(157,127,204,0.40);
-    --dt-accent-highlight-strong: rgba(157,127,204,0.55);
-    --dt-accent-solid: rgba(157,127,204,0.75);
-    --dt-active-item-bg: var(--v3-glass-iris-bg);
-
-    /* Teal → V3 teal dark */
-    --dt-teal-tint: rgba(45,212,191,0.14);
-    --dt-teal-on-surface: var(--v3-teal);
-    --dt-teal-border-color: rgba(45,212,191,0.30);
-
-    /* Button/pill → V3 glass surface */
-    --dt-button-bg: var(--v3-glass-surface-bg);
-    --dt-button-bg-hover: var(--v3-glass-surface-bg-hover);
-    --dt-button-border-color: var(--v3-glass-surface-border);
-    --dt-pill-bg: var(--v3-glass-surface-bg);
-    --dt-pill-bg-subtle: rgba(255,255,255,0.02);
-    --dt-pill-bg-hover: var(--v3-glass-surface-bg-hover);
-    --dt-pill-border-color: var(--v3-glass-surface-border);
-
-    /* Content card */
-    --dt-content-card-bg: rgba(13,17,32,0.88);
-    --dt-content-card-border: var(--v3-glass-elevated-border);
-    --dt-content-card-shadow: var(--v3-glass-elevated-shadow);
-    --dt-progress-track-bg: rgba(123,94,167,0.14);
-    --dt-divider-bg: rgba(123,94,167,0.10);
-    --dt-divider-border: rgba(157,127,204,0.14);
-
-    /* Source chip → iris */
-    --dt-chip-bg: var(--v3-glass-iris-bg);
-    --dt-chip-border: var(--v3-glass-iris-border);
-    --dt-chip-hover-bg: rgba(123,94,167,0.18);
-    --dt-chip-hover-border: rgba(157,127,204,0.35);
-
-    /* Citation */
-    --dt-citation-resolvable-color: var(--v3-iris-bright);
-    --dt-citation-resolvable-tint: var(--v3-glass-iris-bg);
-    --dt-citation-resolvable-border: var(--v3-glass-iris-border);
-    --dt-citation-default-tint: rgba(255,255,255,0.04);
-    --dt-citation-default-border: rgba(255,255,255,0.08);
-
-    /* Confidence badge */
-    --dt-confidence-bg: var(--v3-glass-iris-bg);
-    --dt-confidence-border: var(--v3-glass-iris-border);
-    --dt-confidence-text: var(--v3-iris-bright);
-
-    /* Code block */
-    --dt-code-bg: rgba(123,94,167,0.10);
-    --dt-code-border: var(--v3-glass-elevated-border);
-    --dt-code-copy-color: var(--v3-text-tertiary);
-
-    /* Vote/feedback */
-    --dt-vote-text: var(--v3-text-tertiary);
-    --dt-text-secondary-accent: var(--v3-text-secondary);
-
-    /* Landing section tokens — V3 iris overrides */
-    --dt-landing-label-color: rgba(157,127,204,0.70);
-    --dt-landing-label-muted: rgba(157,127,204,0.60);
-    --dt-landing-stat-label: rgba(157,127,204,0.55);
-    --dt-landing-accent-bg: rgba(123,94,167,0.18);
-    --dt-landing-accent-bg-subtle: rgba(123,94,167,0.12);
-    --dt-landing-accent-border-light: rgba(123,94,167,0.20);
-    --dt-landing-highlight: rgba(157,127,204,0.22);
-    --dt-landing-highlight-strong: rgba(157,127,204,0.30);
-    --dt-landing-accent-glow-subtle: rgba(123,94,167,0.05);
-    --dt-landing-bubble-bg: rgba(123,94,167,0.15);
-    --dt-landing-glass-card: rgba(20,24,50,0.50);
-    --dt-landing-text-bright: var(--v3-text-primary);
-    --dt-landing-text-mid: rgba(255,255,255,0.75);
-    --dt-landing-text-soft: rgba(255,255,255,0.60);
-    --dt-landing-text-muted: rgba(255,255,255,0.50);
-    --dt-landing-text-faint: var(--v3-text-quaternary);
-    --dt-landing-text-ghost: rgba(255,255,255,0.20);
-    --dt-landing-glass-bg: rgba(255,255,255,0.06);
-    --dt-landing-glass-bg-strong: rgba(255,255,255,0.10);
-    --dt-landing-glass-border: rgba(255,255,255,0.15);
-    --dt-landing-glass-glow: rgba(255,255,255,0.07);
-    --dt-landing-bg-primary: #07091A;
-    --dt-landing-bg-secondary: #0D1120;
-    --dt-landing-bg-deep: #060A16;
-    --dt-landing-gradient: linear-gradient(180deg, #07091A 0%, #0D1120 100%);
-    --dt-landing-cta-gradient: linear-gradient(135deg, #7B5EA7 0%, #9D7FCC 50%, #7B5EA7 100%);
-    --dt-landing-cta-text: #07091A;
-    --dt-landing-cta-shadow: 0 4px 20px rgba(123,94,167,0.3);
-    --dt-landing-card-shadow: 0 8px 32px rgba(0,0,0,0.35);
-    --dt-landing-card-glow: inset 0 1px 0 rgba(255,255,255,0.08);
-    --dt-landing-hero-shadow: 0 40px 80px rgba(0,0,0,0.6);
-    --dt-landing-pdf-badge-bg: rgba(20,24,50,0.90);
-
-    /* ── Glassmorphism variables (GM) ────────────────────────────
-       These override V3 dark with the achromatic black-glass aesthetic.
-       All existing components that use --dt-* or --v3-glass-* vars
-       automatically pick up the new look without component changes.
-       ─────────────────────────────────────────────────────────── */
-
-    /* Page canvas — true black */
-    --background: #000000;
-
-    /* Surface palette — achromatic near-invisible warmth */
-    --gm-surface-0: rgba(9, 9, 9, 0.73);
-    --gm-surface-1: rgba(19, 19, 19, 0.64);
-    --gm-surface-2: rgba(30, 30, 30, 0.50);
-    --gm-surface-3: rgba(50, 50, 50, 0.21);
-
-    /* Accent — iris at ultra-low opacity for trace presence */
-    --gm-accent: #8B6FD4;
-    --gm-accent-glow: rgba(139, 111, 212, 0.12);
-    --gm-accent-border: rgba(139, 111, 212, 0.20);
-
-    /* Text — pure white at varying opacity (oklch for perceptual uniformity) */
-    --gm-text-primary: oklch(0.87 0 0 / 0.90);
-    --gm-text-secondary: oklch(0.87 0 0 / 0.60);
-    --gm-text-tertiary: oklch(0.87 0 0 / 0.40);
-    --gm-text-quaternary: oklch(0.87 0 0 / 0.22);
-
-    /* Border system — the key to glassmorphism */
-    --gm-border-outer: rgba(222, 222, 222, 0.22);
-    --gm-border-inner-glow: rgba(222, 222, 222, 0.14);
-
-    /* Signature structural shadow */
-    --gm-shadow-structural:
-        0 10px 14px 4px rgba(0, 0, 0, 0.23),
-        0 10px 19px 1px rgba(0, 0, 0, 0.27),
-        inset -2px 0 10px 10px rgba(67, 67, 67, 0.15),
-        inset 0 0 2px 1px rgba(222, 222, 222, 0.22);
-
-    /* Structural aliases used by makeGlassPanel() in chat/page.tsx */
-    --gm-structural-bg: var(--gm-surface-0);
-    --gm-structural-blur: blur(10px);
-    --gm-structural-border: var(--gm-border-outer);
-    --gm-structural-shadow: var(--gm-shadow-structural);
-
-    /* Override --v3-glass-* so V3 components auto-inherit GM look */
-    --v3-glass-surface-bg:        var(--gm-surface-1);
-    --v3-glass-surface-bg-hover:  var(--gm-surface-2);
-    --v3-glass-surface-border:    var(--gm-border-inner-glow);
-    --v3-glass-surface-blur:      blur(15px);
-    --v3-glass-surface-shadow:    inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.30);
-    --v3-glass-elevated-bg:       var(--gm-surface-0);
-    --v3-glass-elevated-bg-hover: var(--gm-surface-1);
-    --v3-glass-elevated-border:   var(--gm-border-outer);
-    --v3-glass-elevated-blur:     blur(10px);
-    --v3-glass-elevated-shadow:   var(--gm-shadow-structural);
-    --v3-glass-iris-bg:           var(--gm-accent-glow);
-    --v3-glass-iris-border:       var(--gm-accent-border);
-
-    /* Override --dt-* tokens to use glassmorphism values */
-    --dt-glass-bg: var(--gm-surface-0);
-    --dt-glass-bg-subtle: var(--gm-surface-3);
-    --dt-glass-bg-hover: var(--gm-surface-1);
-    --dt-glass-border: var(--gm-border-outer);
-    --dt-glass-border-subtle: var(--gm-border-inner-glow);
-    --dt-glass-blur: blur(10px);
-    --dt-glass-blur-light: blur(15px);
-    --dt-glass-inner-glow: inset 0 0 2px 1px rgba(222, 222, 222, 0.22);
-    --dt-glass-shadow: var(--gm-shadow-structural);
-
-    /* Text */
-    --dt-text-primary: var(--gm-text-primary);
-    --dt-text-secondary: var(--gm-text-secondary);
-    --dt-text-tertiary: var(--gm-text-tertiary);
-    --dt-text-quaternary: var(--gm-text-quaternary);
-    --dt-text-strong: var(--gm-text-primary);
-
-    /* Accent → iris GM */
-    --dt-accent-color: var(--gm-accent);
-    --dt-accent-color-hover: var(--gm-accent);
-    --dt-accent-tint: var(--gm-accent-glow);
-    --dt-accent-tint-subtle: rgba(139, 111, 212, 0.06);
-    --dt-accent-tint-strong: rgba(139, 111, 212, 0.16);
-    --dt-accent-tint-hover: rgba(139, 111, 212, 0.18);
-    --dt-accent-tint-faint: rgba(139, 111, 212, 0.05);
-    --dt-accent-glow: rgba(139, 111, 212, 0.20);
-    --dt-accent-border-color: var(--gm-accent-border);
-    --dt-accent-border-strong: rgba(139, 111, 212, 0.30);
-    --dt-accent-border-subtle: rgba(139, 111, 212, 0.15);
-    --dt-accent-highlight: rgba(139, 111, 212, 0.40);
-    --dt-accent-highlight-strong: rgba(139, 111, 212, 0.55);
-    --dt-accent-solid: rgba(139, 111, 212, 0.75);
-    --dt-active-item-bg: rgba(139, 111, 212, 0.10);
-
-    /* Answer card */
-    --dt-answer-bg: rgba(14, 14, 14, 0.55);
-    --dt-answer-border: rgba(222, 222, 222, 0.10);
-    --dt-answer-footnote-bg: rgba(255, 255, 255, 0.02);
-
-    /* Button/pill → GM surface */
-    --dt-button-bg: var(--gm-surface-1);
-    --dt-button-bg-hover: var(--gm-surface-2);
-    --dt-button-border-color: var(--gm-border-inner-glow);
-    --dt-pill-bg: var(--gm-surface-3);
-    --dt-pill-bg-subtle: rgba(50, 50, 50, 0.12);
-    --dt-pill-bg-hover: var(--gm-surface-2);
-    --dt-pill-border-color: rgba(255, 255, 255, 0.06);
-
-    /* Confidence badge → iris GM */
-    --dt-confidence-bg: rgba(139, 111, 212, 0.10);
-    --dt-confidence-border: rgba(139, 111, 212, 0.22);
-    --dt-confidence-text: rgba(139, 111, 212, 0.90);
-
-    /* Code block */
-    --dt-code-bg: rgba(19, 19, 19, 0.64);
-    --dt-code-border: rgba(222, 222, 222, 0.10);
-    --dt-code-copy-color: var(--gm-text-secondary);
-
-    /* Source chip */
-    --dt-chip-bg: rgba(19, 19, 19, 0.64);
-    --dt-chip-border: rgba(222, 222, 222, 0.12);
-    --dt-chip-hover-bg: rgba(30, 30, 30, 0.70);
-    --dt-chip-hover-border: rgba(222, 222, 222, 0.20);
-
-    /* Citation */
-    --dt-citation-resolvable-color: rgba(139, 111, 212, 0.85);
-    --dt-citation-resolvable-tint: rgba(139, 111, 212, 0.08);
-    --dt-citation-resolvable-border: rgba(139, 111, 212, 0.18);
-    --dt-citation-default-tint: rgba(50, 50, 50, 0.15);
-    --dt-citation-default-border: rgba(255, 255, 255, 0.06);
-
-    /* Sidebar tokens — match structural glass */
-    --sidebar: rgba(9, 9, 9, 0.73);
-    --sidebar-border: var(--gm-border-outer);
+  --strict-bg-html: #0D0A12;
+  --background: #0B0E16;
+  --strict-glass-bg: rgba(255,255,255, 0.02);
+  --strict-glass-border: rgba(201,168,76, 0.06);
+  --strict-glass-blur: blur(24px);
+  --strict-glass-shadow: 0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.025);
+  --strict-glass-recessed: rgba(0,0,0, 0.1);
+  --strict-glass-hover-shadow: 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+  --strict-text-primary: rgba(230,235,245, 0.88);
+  --strict-text-body: rgba(255,255,255, 0.56);
+  --strict-text-question: rgba(255,255,255, 0.7);
+  --strict-text-secondary: rgba(200,210,230, 0.42);
+  --strict-text-dim: rgba(200,210,230, 0.22);
+  --strict-text-ghost: rgba(255,255,255, 0.16);
+  --strict-gold-base: #C9A84C;
+  --strict-gold-text: rgba(201,168,76, 0.7);
+  --strict-gold-border: rgba(201,168,76, 0.06);
+  --strict-gold-border-active: rgba(201,168,76, 0.15);
+  --strict-gold-badge-bg: rgba(201,168,76, 0.06);
+  --strict-gold-badge-border: rgba(201,168,76, 0.1);
+  --strict-gold-badge-text: rgba(201,168,76, 0.45);
+  --strict-citation: rgba(201,168,76, 0.55);
+  --strict-gold-sep: linear-gradient(90deg, rgba(201,168,76,0.2), rgba(201,168,76,0.04));
+  --strict-gold-underbar: rgba(201,168,76, 0.3);
+  --strict-gold-underbar-hover: rgba(201,168,76, 0.5);
+  --strict-nav-link: rgba(200,210,230, 0.38);
+  --strict-nav-link-hover: rgba(200,210,230, 0.6);
+  --strict-nav-signin: rgba(201,168,76, 0.7);
+  --strict-nav-signin-hover: rgba(201,168,76, 0.9);
+  --strict-nav-sep: rgba(201,168,76, 0.06);
+  --strict-source-text: rgba(255,255,255, 0.3);
+  --strict-source-num: rgba(201,168,76, 0.4);
+  --strict-source-label: rgba(201,168,76, 0.3);
+  --strict-scrollbar: rgba(201,168,76, 0.15);
+  --strict-scrollbar-hover: rgba(201,168,76, 0.25);
+  --dt-glass-bg: var(--strict-glass-bg);
+  --dt-glass-border: var(--strict-glass-border);
+  --dt-glass-blur: var(--strict-glass-blur);
+  --dt-text-primary: var(--strict-text-primary);
+  --dt-text-secondary: var(--strict-text-secondary);
+  --dt-accent-color: var(--strict-gold-base);
+  --dt-color-gold-base: var(--strict-gold-base);
 }
+
+/* ── Strict scrollbar + overscroll ───────────────────────── */
+.design-strict {
+  scrollbar-width: thin;
+  scrollbar-color: var(--strict-scrollbar) transparent;
+}
+.design-strict::-webkit-scrollbar { width: 6px; }
+.design-strict::-webkit-scrollbar-track { background: transparent; }
+.design-strict::-webkit-scrollbar-thumb { background: var(--strict-scrollbar); border-radius: 3px; }
+.design-strict::-webkit-scrollbar-thumb:hover { background: var(--strict-scrollbar-hover); }
+html.design-strict { background: var(--strict-bg-html); overscroll-behavior: none; }
 
 /* ============================================================
    V3 GLASSMORPHISM — utility classes + aurora suppression
@@ -1417,6 +895,12 @@ textarea::placeholder { color: #b29254; }
 @keyframes v3-orb-float {
     0%   { transform: translate(0, 0) translateZ(0); }
     100% { transform: translate(30px, 20px) translateZ(0); }
+}
+
+@keyframes strict-drift {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(15px, -10px); }
+  66% { transform: translate(-10px, 15px); }
 }
 
 /* ── V3 Typography signature effects ──────────────────────── */
