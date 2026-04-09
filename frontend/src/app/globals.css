@@ -362,16 +362,16 @@ textarea::placeholder { color: #b29254; }
 /* ── V3 Light mode tokens ─────────────────────────────────── */
 .design-v3 {
     /* Brand palette — aurora spectrum */
-    --v3-iris:        #7B5EA7;
-    --v3-aurora:      #4F8FD4;
-    --v3-teal:        #2DD4BF;
+    --v3-iris:        #5B40A0;
+    --v3-aurora:      #1D6FB8;
+    --v3-teal:        #0D9488;
     --v3-rose:        #F472B6;
     --v3-gold:        #FCD34D;
     --v3-iris-bright: #9D7FCC;
     --v3-aurora-glow: #60A5FA;
 
     /* Light mode surfaces */
-    --v3-light-bg:          #F0F2F8;
+    --v3-light-bg:          #ECEEF7;
     --v3-light-surface:     rgba(255, 255, 255, 0.82);
     --v3-light-elevated:    rgba(255, 255, 255, 0.92);
     --v3-light-floating:    rgba(255, 255, 255, 0.97);
@@ -379,29 +379,29 @@ textarea::placeholder { color: #b29254; }
 
     /* Light mode text */
     --v3-text-primary:      #0D0F1A;
-    --v3-text-secondary:    rgba(13, 15, 26, 0.64);
-    /* DECORATION ONLY: ~2.4:1 on #F0F2F8 — never use for semantic text content in light mode */
-    --v3-text-tertiary:     rgba(13, 15, 26, 0.38);
+    --v3-text-secondary:    rgba(13, 15, 26, 0.65);
+    /* DECORATION ONLY: ~2.4:1 on #ECEEF7 — never use for semantic text content in light mode */
+    --v3-text-tertiary:     rgba(13, 15, 26, 0.42);
     /* DECORATION ONLY: < 2:1 — dividers, placeholder dots only */
     --v3-text-quaternary:   rgba(13, 15, 26, 0.22);
     --v3-text-accent:       #5B40A0;
 
     /* Light mode glass */
-    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.60);
+    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.62);
     --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.72);
-    --v3-glass-surface-border:    rgba(255, 255, 255, 0.80);
-    --v3-glass-surface-blur:      blur(20px) saturate(140%);
+    --v3-glass-surface-border:    rgba(123, 94, 167, 0.18);
+    --v3-glass-surface-blur:      blur(20px) saturate(180%);
     --v3-glass-surface-shadow:    0 2px 12px rgba(7, 9, 30, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.90);
 
-    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.78);
+    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.80);
     --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.86);
-    --v3-glass-elevated-border:   rgba(255, 255, 255, 0.90);
-    --v3-glass-elevated-blur:     blur(40px) saturate(150%);
+    --v3-glass-elevated-border:   rgba(123, 94, 167, 0.12);
+    --v3-glass-elevated-blur:     blur(40px) saturate(190%);
     --v3-glass-elevated-shadow:   0 8px 32px rgba(7, 9, 30, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.95);
 
-    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.90);
-    --v3-glass-floating-border:   rgba(255, 255, 255, 0.98);
-    --v3-glass-floating-blur:     blur(60px) saturate(160%);
+    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.92);
+    --v3-glass-floating-border:   rgba(255, 255, 255, 0.95);
+    --v3-glass-floating-blur:     blur(60px) saturate(200%);
     --v3-glass-floating-shadow:   0 16px 56px rgba(7, 9, 30, 0.18), inset 0 1px 0 rgba(255, 255, 255, 1);
 
     --v3-glass-iris-bg:           rgba(91, 64, 160, 0.06);
@@ -460,67 +460,68 @@ textarea::placeholder { color: #b29254; }
     --v3-btn-primary-hover-bg: linear-gradient(135deg, #9D7FCC 0%, #60A5FA 50%, #2DD4BF 100%);
 
     /* Override base Shadcn tokens for V3 light mode */
-    --background: #F0F2F8;
+    --background: #ECEEF7;
     --foreground: #0D0F1A;
     --card: rgba(255, 255, 255, 0.82);
     --card-foreground: #0D0F1A;
     --popover: rgba(255, 255, 255, 0.97);
     --popover-foreground: #0D0F1A;
-    --primary: #7B5EA7;
+    --primary: #5B40A0;
     --primary-foreground: #FFFFFF;
     --secondary: rgba(123, 94, 167, 0.08);
     --secondary-foreground: #5B40A0;
     --muted: rgba(123, 94, 167, 0.05);
     --muted-foreground: rgba(13, 15, 26, 0.55);
-    --accent: #7B5EA7;
+    --accent: #5B40A0;
     --accent-foreground: #FFFFFF;
     --border: rgba(123, 94, 167, 0.15);
     --input: rgba(123, 94, 167, 0.10);
-    --ring: #7B5EA7;
+    --ring: #5B40A0;
     --sidebar: rgba(255, 255, 255, 0.70);
     --sidebar-foreground: #0D0F1A;
-    --sidebar-primary: #7B5EA7;
+    --sidebar-primary: #5B40A0;
     --sidebar-primary-foreground: #FFFFFF;
     --sidebar-accent: rgba(123, 94, 167, 0.08);
     --sidebar-accent-foreground: #5B40A0;
     --sidebar-border: rgba(123, 94, 167, 0.12);
-    --sidebar-ring: #7B5EA7;
-    --radius: 0.75rem;
+    --sidebar-ring: #5B40A0;
+    /* Larger base radius than V2 — scales all Tailwind rounded-* in V3 context */
+    --radius: 1.125rem;
 }
 
 /* ── V3 Dark mode tokens ──────────────────────────────────── */
 .design-v3.dark {
     /* Dark mode surfaces */
-    --v3-dark-bg:           #07090F;
+    --v3-dark-bg:           #07091A;
     --v3-dark-surface:      #0D1120;
     --v3-dark-elevated:     #111827;
     --v3-dark-floating:     #161F30;
     --v3-dark-overlay:      rgba(7, 9, 15, 0.85);
 
     /* Dark mode text */
-    --v3-text-primary:      rgba(255, 255, 255, 0.94);
-    --v3-text-secondary:    rgba(255, 255, 255, 0.64);
-    --v3-text-tertiary:     rgba(255, 255, 255, 0.50);
+    --v3-text-primary:      rgba(255, 255, 255, 0.95);
+    --v3-text-secondary:    rgba(255, 255, 255, 0.65);
+    --v3-text-tertiary:     rgba(255, 255, 255, 0.42);
     --v3-text-quaternary:   rgba(255, 255, 255, 0.38);
     --v3-text-accent:       #9D7FCC;
 
     /* Dark mode glass */
-    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.04);
-    --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.07);
-    --v3-glass-surface-border:    rgba(255, 255, 255, 0.08);
-    --v3-glass-surface-blur:      blur(20px) saturate(140%);
+    --v3-glass-surface-bg:        rgba(255, 255, 255, 0.05);
+    --v3-glass-surface-bg-hover:  rgba(255, 255, 255, 0.08);
+    --v3-glass-surface-border:    rgba(255, 255, 255, 0.09);
+    --v3-glass-surface-blur:      blur(20px) saturate(180%);
     --v3-glass-surface-shadow:    0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
-    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.07);
-    --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.10);
-    --v3-glass-elevated-border:   rgba(255, 255, 255, 0.12);
-    --v3-glass-elevated-blur:     blur(40px) saturate(160%) brightness(105%);
+    --v3-glass-elevated-bg:       rgba(255, 255, 255, 0.09);
+    --v3-glass-elevated-bg-hover: rgba(255, 255, 255, 0.12);
+    --v3-glass-elevated-border:   rgba(255, 255, 255, 0.14);
+    --v3-glass-elevated-blur:     blur(40px) saturate(200%) brightness(106%);
     --v3-glass-elevated-shadow:   0 12px 48px rgba(0, 0, 0, 0.50), 0 2px 8px rgba(0, 0, 0, 0.30),
                                    inset 0 1px 0 rgba(255, 255, 255, 0.10);
 
-    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.10);
-    --v3-glass-floating-border:   rgba(255, 255, 255, 0.16);
-    --v3-glass-floating-blur:     blur(60px) saturate(180%) brightness(108%);
+    --v3-glass-floating-bg:       rgba(255, 255, 255, 0.13);
+    --v3-glass-floating-border:   rgba(255, 255, 255, 0.20);
+    --v3-glass-floating-blur:     blur(60px) saturate(220%) brightness(110%);
     --v3-glass-floating-shadow:   0 24px 80px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.40),
                                    inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.20);
 
@@ -533,9 +534,14 @@ textarea::placeholder { color: #b29254; }
                            inset 1px 0 rgba(255, 255, 255, 0.06), inset -1px 0 rgba(0, 0, 0, 0.08);
     --v3-specular-iris:   inset 0 1px 0 rgba(157, 127, 204, 0.30);
 
+    /* Brand palette overrides for dark — brighter values for near-black bg */
+    --v3-iris:   #8B6FD4;
+    --v3-aurora: #38BDF8;
+    --v3-teal:   #2DD4BF;
+
     /* Override Shadcn base tokens for V3 dark */
-    --background: #07090F;
-    --foreground: rgba(255, 255, 255, 0.94);
+    --background: #07091A;
+    --foreground: rgba(255, 255, 255, 0.95);
     --card: rgba(255, 255, 255, 0.04);
     --card-foreground: rgba(255, 255, 255, 0.94);
     --popover: #161F30;
@@ -568,11 +574,11 @@ textarea::placeholder { color: #b29254; }
     content: '';
     position: fixed;
     inset: -50%;
-    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.25 0.20 285 / 0.6) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.16 260 / 0.4) 0%, transparent 55%),
-                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.22 0.14 230 / 0.35) 0%, transparent 60%),
+    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.22 0.26 285 / 0.65) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.22 250 / 0.45) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.25 0.18 195 / 0.35) 0%, transparent 60%),
                 radial-gradient(ellipse 90% 70% at 30% 70%, oklch(0.15 0.08 300 / 0.3) 0%, transparent 65%),
-                #07090F;
+                #07091A;
     animation: aurora-drift 30s ease-in-out infinite alternate;
     filter: blur(60px);
     transform: translateZ(0);
@@ -583,9 +589,9 @@ textarea::placeholder { color: #b29254; }
 
 /* Light mode animated aurora */
 .design-v3:not(.dark) .aurora-bg::before {
-    background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.06 285 / 0.35) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.04 220 / 0.25) 0%, transparent 55%),
-                #F0F2F8;
+    background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.09 285 / 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.09 225 / 0.35) 0%, transparent 55%),
+                #ECEEF7;
     filter: blur(80px);
 }
 
@@ -594,10 +600,10 @@ textarea::placeholder { color: #b29254; }
     content: '';
     position: fixed;
     inset: -50%;
-    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.25 0.20 285 / 0.45) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.16 260 / 0.30) 0%, transparent 55%),
-                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.22 0.14 230 / 0.25) 0%, transparent 60%),
-                #07090F;
+    background: radial-gradient(ellipse 80% 60% at 20% 20%, oklch(0.22 0.26 285 / 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 80% 30%, oklch(0.18 0.22 250 / 0.30) 0%, transparent 55%),
+                radial-gradient(ellipse 70% 50% at 50% 80%, oklch(0.25 0.18 195 / 0.25) 0%, transparent 60%),
+                #07091A;
     filter: blur(60px);
     transform: translateZ(0);
     pointer-events: none;
@@ -605,9 +611,9 @@ textarea::placeholder { color: #b29254; }
 }
 
 .design-v3:not(.dark) .aurora-bg-static::before {
-    background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.06 285 / 0.20) 0%, transparent 60%),
-                radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.04 220 / 0.15) 0%, transparent 55%),
-                #F0F2F8;
+    background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.09 285 / 0.45) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.09 225 / 0.35) 0%, transparent 55%),
+                #ECEEF7;
 }
 
 /* Aurora cursor ambient */
@@ -670,7 +676,7 @@ textarea::placeholder { color: #b29254; }
     -webkit-backdrop-filter: var(--v3-glass-surface-blur);
     border: 1px solid var(--v3-glass-surface-border);
     box-shadow: var(--v3-glass-surface-shadow);
-    border-radius: var(--v3-radius-md);
+    border-radius: var(--v3-radius-lg);
     position: relative;
 }
 
@@ -705,7 +711,17 @@ textarea::placeholder { color: #b29254; }
     -webkit-backdrop-filter: var(--v3-glass-elevated-blur);
     border: 1px solid var(--v3-glass-elevated-border);
     box-shadow: var(--v3-glass-elevated-shadow);
-    border-radius: var(--v3-radius-lg);
+    border-radius: var(--v3-radius-xl);
+}
+
+/* ── V3 Floating glass tier — modals, popovers, top-layer surfaces ── */
+.design-v3 .v3-glass-floating {
+    background: var(--v3-glass-floating-bg);
+    backdrop-filter: var(--v3-glass-floating-blur);
+    -webkit-backdrop-filter: var(--v3-glass-floating-blur);
+    border: 1px solid var(--v3-glass-floating-border);
+    box-shadow: var(--v3-glass-floating-shadow);
+    border-radius: var(--v3-radius-xl);
 }
 
 /* ── V3 Navigation active indicator ──────────────────────── */
@@ -841,6 +857,109 @@ textarea::placeholder { color: #b29254; }
     .design-v3 .v3-orb-1 {
         opacity: 0.20;
     }
+}
+
+/* ============================================================
+   V3 STRUCTURAL DIFFERENTIATION — layout distinct from V2
+   Pill shapes, larger cards, more whitespace, visible orbs.
+   All rules scoped to .design-v3 — V2 is untouched.
+   ============================================================ */
+
+/* ── Pill-shaped buttons ─────────────────────────────────── */
+/* Full pill (9999px) — clearly distinct from V2 rounded-md */
+.design-v3 [data-slot="button"] {
+    border-radius: var(--v3-radius-pill) !important;
+}
+
+/* ── Pill-shaped single-line inputs & search bar ─────────── */
+/* Full pill for inputs. Textareas stay at 2xl (28px) — pill looks bad
+   on multi-line content. */
+.design-v3 [data-slot="input"],
+.design-v3 input:not([type="checkbox"]):not([type="radio"]) {
+    border-radius: var(--v3-radius-pill) !important;
+}
+
+.design-v3 textarea {
+    border-radius: var(--v3-radius-2xl) !important;
+}
+
+/* ── Pill-shaped badges and tag chips ───────────────────── */
+.design-v3 [data-slot="badge"] {
+    border-radius: var(--v3-radius-pill) !important;
+}
+
+/* Source chips in SourcesPanel — ensure pill, matches inline RADIUS.full */
+.design-v3 .v3-source-card {
+    border-radius: var(--v3-radius-pill) !important;
+}
+
+/* ── Larger card padding utility ────────────────────────── */
+/* Use .v3-card on any V3 glass panel that needs spacious padding */
+.design-v3 .v3-card {
+    padding: var(--v3-space-xl);
+}
+
+/* Slightly larger padding on all three glass tiers in V3 */
+.design-v3 .v3-glass-panel {
+    padding: var(--v3-space-lg);
+}
+
+.design-v3 .v3-glass-elevated {
+    padding: var(--v3-space-lg);
+}
+
+/* ── More breathing room between list items ─────────────── */
+/* Applies to source chips list, search result lists in V3 */
+.design-v3 .v3-item-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--v3-space-md);
+}
+
+.design-v3 .v3-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--v3-space-sm);
+}
+
+/* ── Section whitespace ─────────────────────────────────── */
+/* Adds 32px top margin between direct children — use on section wrappers */
+.design-v3 .v3-section-gap > * + * {
+    margin-top: var(--v3-space-xl);
+}
+
+/* ── 1px specular inset highlight on glass cards (dark mode) ── */
+/* Ensures the top-edge catch-light is always present on surface-tier cards.
+   Stacks on top of --v3-glass-surface-shadow (which includes a dimmer 0.06
+   variant). Dark mode only — light mode glass panels use natural highlight. */
+.design-v3.dark .v3-glass-panel {
+    box-shadow: var(--v3-glass-surface-shadow), var(--v3-specular-top);
+}
+
+.design-v3.dark .v3-glass-elevated {
+    box-shadow: var(--v3-glass-elevated-shadow), var(--v3-specular-top);
+}
+
+/* ── Typography scale — slightly larger headings in V3 ───── */
+/* Lawyers need information density, so we scale proportionally (em-based),
+   not with fixed px jumps. Only headings inside .design-v3 grow. */
+.design-v3 h1 { font-size: 1.10em; }
+.design-v3 h2 { font-size: 1.08em; }
+.design-v3 h3 { font-size: 1.06em; }
+
+/* ── Light mode aurora orb colors ───────────────────────── */
+/* Dark orb gradients are invisible on #F0F2F8 — use lighter violet/teal */
+.design-v3:not(.dark) .v3-orb-1 {
+    background: radial-gradient(circle, oklch(0.72 0.12 285 / 0.45) 0%, transparent 70%);
+    opacity: 0.50;
+}
+.design-v3:not(.dark) .v3-orb-2 {
+    background: radial-gradient(circle, oklch(0.68 0.10 220 / 0.35) 0%, transparent 70%);
+    opacity: 0.40;
+}
+.design-v3:not(.dark) .v3-orb-3 {
+    background: radial-gradient(circle, oklch(0.70 0.12 195 / 0.30) 0%, transparent 70%);
+    opacity: 0.35;
 }
 
 /* ============================================================

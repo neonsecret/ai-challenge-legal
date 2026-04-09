@@ -353,7 +353,8 @@ function makeGlassPanel(isDark: boolean, isV3 = false) {
             backdropFilter: "var(--v3-glass-elevated-blur)",
             WebkitBackdropFilter: "var(--v3-glass-elevated-blur)",
             border: "1px solid var(--v3-glass-elevated-border)",
-            borderRadius: `${RADIUS['2xl']}px`,
+            // V3: larger radius (28px) vs V2 (24px) for structural distinctiveness
+            borderRadius: "var(--v3-radius-2xl)",
             boxShadow: "var(--v3-glass-elevated-shadow)",
             willChange: "transform",
             transform: "translateZ(0)",
