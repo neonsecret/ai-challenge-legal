@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -105,16 +105,18 @@ async def create_draft_document(
     if missing:
         return {"error": f"Missing required field(s): {', '.join(missing)}. Please ask the user to provide these."}
 
-    # Enforce max-3 cap with SELECT FOR UPDATE to prevent races
-    count_result = await db.execute(
-        select(func.count(ChatDocument.id))
+    # Enforce max-3 cap with SELECT FOR UPDATE to prevent races.
+    # PostgreSQL does not allow aggregates (COUNT) with FOR UPDATE — must fetch
+    # rows with a lock and count them in Python.
+    rows_result = await db.execute(
+        select(ChatDocument.id)
         .where(
             ChatDocument.conversation_id == conversation_id,
             ChatDocument.user_id == user_id,
         )
         .with_for_update()
     )
-    current_count = count_result.scalar_one()
+    current_count = len(rows_result.scalars().all())
     if current_count >= _MAX_DOCS_PER_CONVERSATION:
         return {
             "error": (

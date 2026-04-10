@@ -163,9 +163,10 @@ class TestCreateDraftDocument:
         db = AsyncMock()
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = tmpl
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 3  # already at max
-        db.execute.side_effect = [tmpl_result, count_result]
+        # Row-fetch FOR UPDATE returns a list of 3 row IDs (already at max)
+        rows_result = MagicMock()
+        rows_result.scalars.return_value.all.return_value = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
+        db.execute.side_effect = [tmpl_result, rows_result]
 
         out = await create_draft_document(
             db=db,
@@ -189,20 +190,21 @@ class TestCreateDraftDocument:
         db = AsyncMock()
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = tmpl
-        count_result = MagicMock()
-        count_result.scalar_one.return_value = 0  # under cap
-        db.execute.side_effect = [tmpl_result, count_result]
+        # Row-fetch FOR UPDATE returns an empty list (under cap)
+        rows_result = MagicMock()
+        rows_result.scalars.return_value.all.return_value = []
+        db.execute.side_effect = [tmpl_result, rows_result]
         db.refresh = AsyncMock(side_effect=lambda doc: setattr(doc, "id", uuid.UUID(new_doc_id)))
 
-        with patch("neolex.db.drafting_models.ChatDocument") as mock_cls:
-            mock_cls.return_value = new_doc
-            await create_draft_document(
-                db=db,
-                user_id=uuid.uuid4(),
-                conversation_id=uuid.uuid4(),
-                template_slug="test_template",
-                fields={"party_name": "Jan", "claim_amount": "5000"},
-            )
+        # Don't patch ChatDocument — select(ChatDocument.id) needs a real column expr.
+        # The model is importable without a live DB; db.add/commit/refresh are mocked.
+        await create_draft_document(
+            db=db,
+            user_id=uuid.uuid4(),
+            conversation_id=uuid.uuid4(),
+            template_slug="test_template",
+            fields={"party_name": "Jan", "claim_amount": "5000"},
+        )
 
         # Should call db.add, db.commit, db.refresh
         db.add.assert_called_once()
