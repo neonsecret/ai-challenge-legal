@@ -184,7 +184,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
         );
     }
 
-    // Dark mode: mockup-matched minimal design
+    // Dark mode: mockup-matched minimal design — dashed zone only, no collection header
     const zoneBg = isDragging
         ? "rgba(201,168,76,0.03)"
         : isHovering
@@ -197,45 +197,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
             : "1px dashed rgba(201,168,76,0.15)";
 
     return (
-        <div style={{display: "flex", flexDirection: "column", gap: "10px"}}>
-            {/* Collection name input — compact dark */}
-            <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
-                <label
-                    htmlFor="collection-name-dark"
-                    style={{
-                        fontSize: "10px",
-                        letterSpacing: "0.06em",
-                        textTransform: "uppercase",
-                        color: "rgba(201,168,76,0.5)",
-                        whiteSpace: "nowrap",
-                        fontFamily: "system-ui, sans-serif",
-                    }}
-                >
-                    Collection
-                </label>
-                <input
-                    id="collection-name-dark"
-                    type="text"
-                    value={collectionName}
-                    onChange={(e) => setCollectionName(e.target.value)}
-                    placeholder="My Documents"
-                    style={{
-                        flex: 1,
-                        fontSize: "11px",
-                        padding: "4px 10px",
-                        borderRadius: "5px",
-                        border: "1px solid rgba(201,168,76,0.10)",
-                        background: "rgba(255,255,255,0.02)",
-                        color: "rgba(230,235,245,0.88)",
-                        outline: "none",
-                        fontFamily: "Georgia, serif",
-                        transition: "border-color 0.15s",
-                    }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.30)"; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.10)"; }}
-                />
-            </div>
-
+        <div style={{display: "flex", flexDirection: "column", gap: "0"}}>
             {/* Drop zone */}
             <div
                 style={{

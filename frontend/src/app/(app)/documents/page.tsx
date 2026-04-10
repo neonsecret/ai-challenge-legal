@@ -3,11 +3,10 @@
 import {useEffect, useState, useCallback} from "react";
 import {useColorMode} from "@/lib/color-mode";
 import {motion} from "motion/react";
-import {V3_CARD_HOVER, V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
+import {V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import Link from "next/link";
 import {UploadZone} from "@/components/documents/upload-zone";
 import {FolderView} from "@/components/documents/folder-view";
-import {ReindexButton} from "@/components/documents/reindex-button";
 import {IndexInfoPanel} from "@/components/documents/index-info-panel";
 import {LegalIndexLibrary} from "@/components/documents/legal-index-library";
 import {useDocuments} from "@/components/documents/use-documents";
@@ -26,11 +25,9 @@ export default function DocumentsPage() {
         loading,
         error,
         uploadProgress,
-        reindexJob,
         fetchDocuments,
         uploadFile,
         deleteDocument,
-        triggerReindex,
     } = useDocuments();
 
     const [zipResult, setZipResult] = useState<import("@/components/documents/use-documents").ZipUploadResult | null>(null);
@@ -177,237 +174,204 @@ export default function DocumentsPage() {
             {/* Index info panel */}
             <IndexInfoPanel/>
 
-            {/* Section divider: Your Documents */}
-            <motion.div
-                variants={isDark ? V3_LIST_VARIANT : undefined}
-                initial={isDark ? "hidden" : undefined}
-                animate={isDark ? "visible" : undefined}
-            >
-                <h2
-                    className=""
-                    style={{
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        textTransform: "uppercase" as const,
-                        letterSpacing: "0.08em",
-                        color: isDark ? "var(--strict-text-dim)" : "rgba(46,31,8,0.40)",
-                        margin: "0 0 12px",
-                        fontFamily: fontStack,
-                    }}
-                >
-                    {t("documents.your_documents")}
-                </h2>
-
-                {/* Upload section — gated by plan */}
-                {isFreeTier ? (
-                    <motion.div
-                        variants={isDark ? V3_ITEM_VARIANT : undefined}
-                        className={glassCardClass}
-                        style={{...glassCard, marginBottom: "16px"}}
-                        {...(isDark ? V3_CARD_HOVER : {})}
-                    >
-                        <div style={{padding: "24px 20px", textAlign: "center"}}>
-                            <div
-                                style={{
-                                    width: "40px",
-                                    height: "40px",
-                                    margin: "0 auto 12px",
-                                    borderRadius: "12px",
-                                    background: isDark
-                                        ? "rgba(255,255,255,0.06)"
-                                        : "rgba(46,31,8,0.06)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
-                            >
-                                <svg
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke={isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.50)"}
-                                    strokeWidth="1.5"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="17 8 12 3 7 8"/>
-                                    <line x1="12" y1="3" x2="12" y2="15"/>
-                                </svg>
-                            </div>
-                            <h3
-                                style={{
-                                    fontSize: "15px",
-                                    fontWeight: 600,
-                                    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-                                    margin: "0 0 6px",
-                                    fontFamily: fontStack,
-                                }}
-                            >
-                                {t("documents.upgrade_required")}
-                            </h3>
-                            <p
-                                style={{
-                                    fontSize: "13px",
-                                    lineHeight: 1.5,
-                                    color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.55)",
-                                    margin: "0 0 16px",
-                                    maxWidth: "420px",
-                                    marginLeft: "auto",
-                                    marginRight: "auto",
-                                }}
-                            >
-                                {t("documents.upgrade_description")}
-                            </p>
-                            <Link
-                                href="/billing"
-                                style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    padding: "8px 20px",
-                                    fontSize: "13px",
-                                    fontWeight: 600,
-                                    fontFamily: fontStack,
-                                    color: isDark ? "var(--strict-gold-base)" : "#fff",
-                                    background: isDark
-                                        ? "rgba(201,168,76, 0.1)"
-                                        : "rgba(46,31,8,0.80)",
-                                    border: isDark
-                                        ? "1px solid rgba(201,168,76, 0.2)"
-                                        : "0.5px solid rgba(46,31,8,0.15)",
-                                    borderRadius: "10px",
-                                    textDecoration: "none",
-                                    cursor: "pointer",
-                                    transition: "opacity 0.15s",
-                                }}
-                            >
-                                {t("documents.upgrade_button")}
-                                <svg
-                                    width="14"
-                                    height="14"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <line x1="5" y1="12" x2="19" y2="12"/>
-                                    <polyline points="12 5 19 12 12 19"/>
-                                </svg>
-                            </Link>
-                        </div>
-                    </motion.div>
-                ) : (
-                    <motion.div
-                        variants={isDark ? V3_ITEM_VARIANT : undefined}
-                        className={glassCardClass}
-                        style={{...glassCard, marginBottom: "16px"}}
-                        {...(isDark ? V3_CARD_HOVER : {})}
-                    >
-                        <div style={{...cardHeaderSep, padding: "16px 20px"}}>
-                            <h3
-                                style={{
-                                    fontSize: "14px",
-                                    fontWeight: 600,
-                                    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-                                    margin: 0,
-                                    fontFamily: fontStack,
-                                }}
-                            >
-                                {t("documents.upload_document")}
-                            </h3>
-                        </div>
-                        <div style={{padding: "16px 20px"}}>
-                            <UploadZone onUpload={handleUpload} uploadProgress={uploadProgress} zipResult={zipResult}/>
-                        </div>
-                    </motion.div>
-                )}
-
-                {/* Collections / folder view */}
+            {isDark ? (
+                /* ── Dark mode: continuous flow, no glass card wrappers ── */
                 <motion.div
-                    variants={isDark ? V3_ITEM_VARIANT : undefined}
-                    className={glassCardClass}
-                    style={glassCard}
-                    {...(isDark ? V3_CARD_HOVER : {})}
+                    variants={V3_LIST_VARIANT}
+                    initial="hidden"
+                    animate="visible"
+                    style={{display: "flex", flexDirection: "column", gap: "12px"}}
                 >
-                    <div
-                        style={{
-                            ...cardHeaderSep,
-                            padding: "16px 20px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                        }}
-                    >
-                        <div>
-                            <h3
-                                style={{
-                                    fontSize: "14px",
-                                    fontWeight: 600,
-                                    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-                                    margin: 0,
-                                    fontFamily: fontStack,
-                                }}
-                            >
-                                {t("documents.collections")}
-                                {documents.length > 0 && (
-                                    <span
-                                        style={{
-                                            marginLeft: "8px",
-                                            fontSize: "13px",
-                                            fontWeight: 400,
-                                            color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
-                                        }}
-                                    >
-                    ({documents.length} {documents.length === 1 ? t("documents.document") : t("documents.documents")})
-                  </span>
-                                )}
-                            </h3>
-                            <p
-                                style={{
-                                    fontSize: "11px",
-                                    color: isDark ? "rgba(255,255,255,0.35)" : "rgba(46,31,8,0.45)",
-                                    margin: "3px 0 0",
-                                    fontFamily: fontStack,
-                                }}
-                            >
-                                {t("documents.collections_subtitle")}
-                            </p>
+                    {/* Upload section — gated by plan */}
+                    {isFreeTier ? (
+                        <motion.div variants={V3_ITEM_VARIANT}>
+                            <div style={{padding: "16px", textAlign: "center", border: "1px dashed rgba(201,168,76,0.12)", borderRadius: "8px"}}>
+                                <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "8px"}}>↑</div>
+                                <p style={{fontSize: "11px", fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.56)", margin: "0 0 6px"}}>
+                                    {t("documents.upgrade_required")}
+                                </p>
+                                <p style={{fontSize: "9px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", margin: "0 0 10px", lineHeight: 1.5}}>
+                                    {t("documents.upgrade_description")}
+                                </p>
+                                <Link
+                                    href="/billing"
+                                    style={{
+                                        display: "inline-flex", alignItems: "center", gap: "4px",
+                                        padding: "4px 12px", fontSize: "9px", fontFamily: "system-ui, sans-serif",
+                                        color: "rgba(201,168,76,0.7)",
+                                        background: "rgba(201,168,76,0.06)",
+                                        border: "1px solid rgba(201,168,76,0.12)",
+                                        borderRadius: "5px", textDecoration: "none", cursor: "pointer",
+                                    }}
+                                >
+                                    {t("documents.upgrade_button")}
+                                </Link>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <motion.div variants={V3_ITEM_VARIANT}>
+                            <UploadZone onUpload={handleUpload} uploadProgress={uploadProgress} zipResult={zipResult}/>
+                        </motion.div>
+                    )}
+
+                    {/* COLLECTIONS label + folder view */}
+                    <motion.div variants={V3_ITEM_VARIANT} style={{display: "flex", flexDirection: "column", gap: "0"}}>
+                        <div style={{
+                            fontSize: "7px", fontFamily: "system-ui, sans-serif",
+                            letterSpacing: "1px", textTransform: "uppercase" as const,
+                            color: "rgba(200,210,230,0.22)", marginBottom: "6px",
+                        }}>
+                            {t("documents.collections")}
                         </div>
-                        {/* Reindex button removed — indexing happens automatically after upload */}
-                    </div>
-                    <div style={{padding: "16px 20px"}}>
                         <FolderView
                             documents={documents}
                             loading={loading}
                             onDelete={deleteDocument}
                             onRefresh={fetchDocuments}
                         />
+                    </motion.div>
+
+                    {/* Legal index library — compact list (section label is inside LegalIndexLibrary) */}
+                    <motion.div variants={V3_ITEM_VARIANT}>
+                        <LegalIndexLibrary />
+                    </motion.div>
+                </motion.div>
+            ) : (
+                /* ── Light mode: original glass card sections ── */
+                <motion.div
+                    variants={V3_LIST_VARIANT}
+                    initial="hidden"
+                    animate="visible"
+                >
+                    <h2
+                        style={{
+                            fontSize: "11px",
+                            fontWeight: 600,
+                            textTransform: "uppercase" as const,
+                            letterSpacing: "0.08em",
+                            color: "rgba(46,31,8,0.40)",
+                            margin: "0 0 12px",
+                            fontFamily: fontStack,
+                        }}
+                    >
+                        {t("documents.your_documents")}
+                    </h2>
+
+                    {/* Upload section — gated by plan */}
+                    {isFreeTier ? (
+                        <motion.div
+                            variants={V3_ITEM_VARIANT}
+                            className={glassCardClass}
+                            style={{...glassCard, marginBottom: "16px"}}
+                        >
+                            <div style={{padding: "24px 20px", textAlign: "center"}}>
+                                <div
+                                    style={{
+                                        width: "40px", height: "40px",
+                                        margin: "0 auto 12px", borderRadius: "12px",
+                                        background: "rgba(46,31,8,0.06)",
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                    }}
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                                        stroke="rgba(46,31,8,0.50)" strokeWidth="1.5"
+                                        strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                        <polyline points="17 8 12 3 7 8"/>
+                                        <line x1="12" y1="3" x2="12" y2="15"/>
+                                    </svg>
+                                </div>
+                                <h3 style={{fontSize: "15px", fontWeight: 600, color: "#1e1208", margin: "0 0 6px", fontFamily: fontStack}}>
+                                    {t("documents.upgrade_required")}
+                                </h3>
+                                <p style={{fontSize: "13px", lineHeight: 1.5, color: "rgba(46,31,8,0.55)", margin: "0 0 16px", maxWidth: "420px", marginLeft: "auto", marginRight: "auto"}}>
+                                    {t("documents.upgrade_description")}
+                                </p>
+                                <Link
+                                    href="/billing"
+                                    style={{
+                                        display: "inline-flex", alignItems: "center", gap: "6px",
+                                        padding: "8px 20px", fontSize: "13px", fontWeight: 600,
+                                        fontFamily: fontStack, color: "#fff",
+                                        background: "rgba(46,31,8,0.80)",
+                                        border: "0.5px solid rgba(46,31,8,0.15)",
+                                        borderRadius: "10px", textDecoration: "none", cursor: "pointer",
+                                        transition: "opacity 0.15s",
+                                    }}
+                                >
+                                    {t("documents.upgrade_button")}
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                        stroke="currentColor" strokeWidth="2"
+                                        strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12"/>
+                                        <polyline points="12 5 19 12 12 19"/>
+                                    </svg>
+                                </Link>
+                            </div>
+                        </motion.div>
+                    ) : (
+                        <motion.div
+                            variants={V3_ITEM_VARIANT}
+                            className={glassCardClass}
+                            style={{...glassCard, marginBottom: "16px"}}
+                        >
+                            <div style={{...cardHeaderSep, padding: "16px 20px"}}>
+                                <h3 style={{fontSize: "14px", fontWeight: 600, color: "#1e1208", margin: 0, fontFamily: fontStack}}>
+                                    {t("documents.upload_document")}
+                                </h3>
+                            </div>
+                            <div style={{padding: "16px 20px"}}>
+                                <UploadZone onUpload={handleUpload} uploadProgress={uploadProgress} zipResult={zipResult}/>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Collections / folder view */}
+                    <motion.div
+                        variants={V3_ITEM_VARIANT}
+                        className={glassCardClass}
+                        style={glassCard}
+                    >
+                        <div style={{...cardHeaderSep, padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between"}}>
+                            <div>
+                                <h3 style={{fontSize: "14px", fontWeight: 600, color: "#1e1208", margin: 0, fontFamily: fontStack}}>
+                                    {t("documents.collections")}
+                                    {documents.length > 0 && (
+                                        <span style={{marginLeft: "8px", fontSize: "13px", fontWeight: 400, color: "rgba(46,31,8,0.55)"}}>
+                                            ({documents.length} {documents.length === 1 ? t("documents.document") : t("documents.documents")})
+                                        </span>
+                                    )}
+                                </h3>
+                                <p style={{fontSize: "11px", color: "rgba(46,31,8,0.45)", margin: "3px 0 0", fontFamily: fontStack}}>
+                                    {t("documents.collections_subtitle")}
+                                </p>
+                            </div>
+                        </div>
+                        <div style={{padding: "16px 20px"}}>
+                            <FolderView
+                                documents={documents}
+                                loading={loading}
+                                onDelete={deleteDocument}
+                                onRefresh={fetchDocuments}
+                            />
+                        </div>
+                    </motion.div>
+
+                    {/* Legal Index Library */}
+                    <div style={{marginTop: "24px"}}>
+                        <h2
+                            style={{
+                                fontSize: "11px", fontWeight: 600,
+                                textTransform: "uppercase" as const, letterSpacing: "0.08em",
+                                color: "rgba(46,31,8,0.40)", margin: "0 0 12px", fontFamily: fontStack,
+                            }}
+                        >
+                            {t("documents.legal_index_library")}
+                        </h2>
+                        <LegalIndexLibrary />
                     </div>
                 </motion.div>
-            </motion.div>
-
-            {/* Section divider: Legal Index Library */}
-            <div>
-                <h2
-                    className=""
-                    style={{
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        textTransform: "uppercase" as const,
-                        letterSpacing: "0.08em",
-                        color: isDark ? "var(--strict-text-dim)" : "rgba(46,31,8,0.40)",
-                        margin: "0 0 12px",
-                        fontFamily: fontStack,
-                    }}
-                >
-                    {t("documents.legal_index_library")}
-                </h2>
-                <LegalIndexLibrary />
-            </div>
+            )}
             </div>{/* end scrollable content wrapper */}
         </div>
     );
