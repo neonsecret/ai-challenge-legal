@@ -48,37 +48,54 @@ interface ConfidenceBadgeProps {
     confidence: number | string
     className?: string
     isDark?: boolean
+    /** @deprecated Use isDark instead */
     isStrict?: boolean
 }
 
-export function ConfidenceBadge({confidence, className, isDark = false, isStrict = false}: ConfidenceBadgeProps) {
+export function ConfidenceBadge({confidence, className, isDark = false, isStrict}: ConfidenceBadgeProps) {
     const level = getConfidenceLevel(confidence)
     const conf = CONFIDENCE_CONFIG[level]
+    const dark = isDark || isStrict
 
-    // Strict mode: gold badge for all confidence levels — matches the Full Glass Scholar design
-    if (isStrict) {
+    // Dark mode (Strict): unified gold badge per spec section 3.2
+    if (dark) {
         return (
             <div
-                className={cn(
-                    "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] shrink-0",
-                    className
-                )}
+                className={cn("inline-flex items-center gap-1 shrink-0", className)}
                 style={{
-                    background: "var(--strict-gold-badge-bg)",
-                    border: "1px solid var(--strict-gold-badge-border)",
-                    color: "var(--strict-gold-text)",
-                    fontFamily: "system-ui, -apple-system, sans-serif",
-                    letterSpacing: "0.04em",
-                    fontWeight: 400,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    height: 18,
+                    padding: "0 7px",
+                    borderRadius: 4,
+                    background: "rgba(201,168,76, 0.06)",
+                    border: "1px solid rgba(201,168,76, 0.1)",
+                    font: "8px/1 system-ui, sans-serif",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                    color: "rgba(201,168,76, 0.55)",
                 }}
             >
-                <conf.Icon className="size-3" style={{color: "var(--strict-gold-text)"}}/>
+                {/* 5px gold dot indicator */}
+                <span
+                    aria-hidden
+                    style={{
+                        display: "inline-block",
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: "rgba(201,168,76, 0.55)",
+                        flexShrink: 0,
+                    }}
+                />
                 {conf.label}
             </div>
         )
     }
 
-    const theme = isDark ? conf.dark : conf.light
+    // Light mode: colored confidence badges (unchanged)
+    const theme = conf.light
     return (
         <div
             className={cn(

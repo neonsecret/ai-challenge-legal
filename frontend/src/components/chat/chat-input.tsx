@@ -82,8 +82,9 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
 
     return (
         <div
-            className="relative rounded-2xl"
+            className="relative"
             style={{
+                borderRadius: isGlassmorphic ? 8 : 16,
                 background: isGlassmorphic
                     ? focused ? "var(--strict-input-bg-focused)" : "var(--strict-input-bg)"
                     : isDark
@@ -101,9 +102,14 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
           suppressHydrationWarning
           placeholder={isGlassmorphic ? "Continue your research..." : t("chat.placeholder")}
           className="w-full bg-transparent resize-none outline-none leading-relaxed px-4 pt-3.5 pb-11 min-h-[52px] max-h-[200px]"
-          style={{
+          style={isGlassmorphic ? {
+              color: "var(--strict-text-body)",
+              caretColor: "var(--strict-gold-base)",
+              font: "11px/1 Georgia, serif",
+              letterSpacing: "0.01em",
+          } : {
               color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",
-              caretColor: isGlassmorphic ? "var(--strict-gold-text)" : isDark ? "#C9A84C" : "#c9a230",
+              caretColor: isDark ? "#C9A84C" : "#c9a230",
               fontSize: "14px",
               fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
               letterSpacing: "-0.006em",
@@ -134,8 +140,10 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                     style={{
                         width: 32,
                         height: 32,
+                        borderRadius: 7,
                         background: sendBg,
                         color: sendColor,
+                        border: isGlassmorphic ? "1px solid rgba(201,168,76, 0.25)" : "none",
                         boxShadow: hasText && !disabled
                             ? isGlassmorphic ? "0 2px 12px rgba(201,168,76,0.20)" : "0 2px 12px rgba(201,168,76,0.25)"
                             : "none",
@@ -160,5 +168,16 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                 </button>
             </div>
         </div>
+        {isGlassmorphic && (
+            <p style={{
+                font: "8.5px/1.3 system-ui, sans-serif",
+                color: "var(--strict-text-ghost)",
+                textAlign: "center",
+                margin: "6px 0 0",
+                userSelect: "none",
+            }}>
+                AI-generated legal research. Verify all citations independently.
+            </p>
+        )}
     )
 }
