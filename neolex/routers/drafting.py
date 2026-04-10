@@ -28,7 +28,7 @@ from neolex.auth.middleware import get_api_key
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 from neolex.db.postgres import get_db
 from neolex.schemas.drafting import DocumentCreate, DocumentResponse, DocumentUpdate
-from neolex.services.pdf_generator import _XELATEX_BIN, generate_pdf, invalidate_cache
+from neolex.services.pdf_generator import _XELATEX_BIN, PDFTimeoutError, generate_pdf, invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -347,6 +347,12 @@ async def get_document_pdf(
             template=template.latex_template,
             fields=doc.fields,
         )
+    except PDFTimeoutError as exc:
+        logger.error("PDF generation timed out for doc_id=%s", doc.id)
+        raise HTTPException(
+            status_code=503,
+            detail="PDF generation failed.",
+        ) from exc
     except RuntimeError as exc:
         logger.error("PDF generation failed for doc_id=%s: %s", doc.id, exc)
         raise HTTPException(

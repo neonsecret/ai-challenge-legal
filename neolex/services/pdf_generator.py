@@ -22,6 +22,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
+class PDFTimeoutError(RuntimeError):
+    """Raised when xelatex compilation exceeds the per-run timeout."""
+
+
 # ---------------------------------------------------------------------------
 # xelatex availability check (startup)
 # ---------------------------------------------------------------------------
@@ -152,7 +157,7 @@ async def generate_pdf(
         # Run xelatex twice (resolves cross-references, e.g. \ref) — common practice.
         # 60-second hard timeout per run prevents a pathological template from
         # blocking an async worker indefinitely.
-        _XELATEX_TIMEOUT_SECS = 60
+        _XELATEX_TIMEOUT_SECS = 30
         for run in range(2):
             proc = await asyncio.create_subprocess_exec(
                 _XELATEX_BIN,
@@ -173,10 +178,7 @@ async def generate_pdf(
             except asyncio.TimeoutError:
                 proc.kill()
                 await proc.wait()
-                raise RuntimeError(
-                    f"PDF compilation timed out after {_XELATEX_TIMEOUT_SECS}s. "
-                    "The template may contain an infinite loop or very large content."
-                )
+                raise PDFTimeoutError(f"PDF compilation timed out after {_XELATEX_TIMEOUT_SECS}s.")
 
             if proc.returncode != 0:
                 log_output = (stdout + stderr).decode("utf-8", errors="replace")[-3000:]

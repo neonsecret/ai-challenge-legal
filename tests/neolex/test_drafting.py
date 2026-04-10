@@ -698,6 +698,69 @@ class TestDocumentPdf:
                 app.dependency_overrides.pop(get_api_key, None)
                 app.dependency_overrides.pop(get_db, None)
 
+    @pytest.mark.asyncio
+    async def test_pdf_endpoint_returns_503_on_timeout(self):
+        """GET .../pdf returns 503 when xelatex compilation times out."""
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import ChatDocument, DocumentTemplate
+        from neolex.services.pdf_generator import PDFTimeoutError
+
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = ChatDocument()
+        doc.id = doc_id
+        doc.conversation_id = conv_id
+        doc.user_id = uuid.UUID(user_id_str)
+        doc.template_slug = "test_template"
+        doc.fields = {"name": "Test"}
+        doc.version = 1
+        doc.created_at = datetime.now(UTC)
+        doc.updated_at = datetime.now(UTC)
+
+        tmpl = DocumentTemplate()
+        tmpl.id = uuid.uuid4()
+        tmpl.slug = "test_template"
+        tmpl.name = "Test"
+        tmpl.jurisdiction = "CZ"
+        tmpl.category = "civil"
+        tmpl.latex_template = r"\documentclass{article}\begin{document}{{name}}\end{document}"
+        tmpl.required_fields = []
+        tmpl.field_descriptions = None
+        tmpl.description = None
+        tmpl.created_at = datetime.now(UTC)
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        with (
+            patch("neolex.routers.drafting._XELATEX_BIN", "/usr/bin/xelatex"),
+            patch(
+                "neolex.routers.drafting.generate_pdf",
+                new_callable=AsyncMock,
+                side_effect=PDFTimeoutError("timed out"),
+            ),
+        ):
+            try:
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                    resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/pdf")
+                assert resp.status_code == 503
+                assert resp.json()["detail"] == "PDF generation failed."
+            finally:
+                from neolex.auth.middleware import get_api_key
+                from neolex.db.postgres import get_db
+
+                app.dependency_overrides.pop(get_api_key, None)
+                app.dependency_overrides.pop(get_db, None)
+
 
 class TestDocumentDelete:
     def _make_chat_doc(self, user_id_str: str, conv_id: uuid.UUID, doc_id: uuid.UUID):
