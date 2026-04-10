@@ -521,7 +521,7 @@ export default function SettingsPage() {
                         {/* Account group */}
                         <motion.div variants={V3_ITEM_VARIANT}>
                             <div style={{marginBottom: "12px"}}>
-                                <div style={darkGroupLabel}>Account</div>
+                                <div style={darkGroupLabel}>{t("settings.account")}</div>
                                 {renderDarkAccount()}
                             </div>
                         </motion.div>
@@ -529,7 +529,7 @@ export default function SettingsPage() {
                         {/* Appearance group */}
                         <motion.div variants={V3_ITEM_VARIANT}>
                             <div style={{marginBottom: "12px"}}>
-                                <div style={darkGroupLabel}>Appearance</div>
+                                <div style={darkGroupLabel}>{t("settings.appearance")}</div>
 
                                 {/* Theme row */}
                                 <div style={darkSettingRow}>
@@ -550,7 +550,7 @@ export default function SettingsPage() {
 
                                 {/* Language row */}
                                 <div style={{...darkSettingRow, borderBottom: "none"}}>
-                                    <span style={darkSettingLabel}>{t("settings.language") ?? "Language"}</span>
+                                    <span style={darkSettingLabel}>{t("settings.language")}</span>
                                     <select style={darkSelect} defaultValue="en">
                                         <option value="en">English ▾</option>
                                     </select>
