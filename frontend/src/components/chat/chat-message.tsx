@@ -1,27 +1,28 @@
 "use client"
 
-import {useMemo, useCallback, memo} from "react"
+import {useMemo, useCallback} from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
 import {findAndReplace} from "mdast-util-find-and-replace"
 import {FeedbackButtons} from "@/components/chat/feedback-buttons"
-import {Footnotes, type CitedEntry} from "@/components/chat/footnotes"
 import {SourcesPanel} from "@/components/chat/sources-panel"
-import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
 import {PipelineStatusBar} from "@/components/chat/pipeline-status-bar"
+import {DocumentCard} from "@/components/chat/document-card/DocumentCard"
+import {CitationButton} from "@/components/chat/message-parts/MessageCitations"
+import {MessageFootnotes} from "@/components/chat/message-parts/MessageFootnotes"
+import {MessageStatus} from "@/components/chat/message-parts/MessageStatus"
 import {FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
+import type {CitedEntry} from "@/components/chat/footnotes"
+import type {ChatDocument} from "@/types/documents"
 
 export type {Source} from "@/components/chat/use-query-stream"
 type Source = import("@/components/chat/use-query-stream").Source
 
 // ─── Citation patterns ────────────────────────────────────────────────────────
 
-/** [[source:DOC_ID:PAGE]] — deterministic pipeline */
 const SOURCE_LINK_PATTERN = /\[\[source:([^:\]]+):(\d+)\]\]/g
-
-/** [DOC-N] — agent pipeline (1-indexed into sources array) */
 const DOC_REF_PATTERN = /\[DOC-(\d+)\]/g
 
 // ─── Remark plugin ────────────────────────────────────────────────────────────
@@ -124,14 +125,6 @@ const STRICT_DARK_PROSE = [
     "prose-blockquote:border-l-[var(--strict-gold-base)] prose-blockquote:text-[var(--strict-text-secondary)] prose-blockquote:bg-[var(--strict-blockquote-bg)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
-// ─── Superscript helpers ─────────────────────────────────────────────────────
-
-const SUPERSCRIPT_DIGITS = ['\u2070', '\u00B9', '\u00B2', '\u00B3', '\u2074', '\u2075', '\u2076', '\u2077', '\u2078', '\u2079']
-
-function toSuperscript(n: number): string {
-    return String(n).split('').map(d => SUPERSCRIPT_DIGITS[parseInt(d, 10)]).join('')
-}
-
 // ─── Cited source collection ─────────────────────────────────────────────────
 
 function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
@@ -172,181 +165,6 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
     return [...cited.values()].sort((a, b) => a.footnoteNum - b.footnoteNum)
 }
 
-// ─── Footnote style (light-mode citation pills) ──────────────────────────────
-
-function footnoteStyle(resolvable: boolean): React.CSSProperties {
-    return {
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: TYPE_SCALE.xs,
-        lineHeight: 1,
-        fontWeight: 700,
-        fontFamily: FONT.sans,
-        color: resolvable ? "var(--dt-citation-resolvable-color)" : "var(--dt-text-quaternary)",
-        background: resolvable ? "var(--dt-citation-resolvable-tint)" : "var(--dt-citation-default-tint)",
-        border: `0.5px solid ${resolvable ? "var(--dt-citation-resolvable-border)" : "var(--dt-citation-default-border)"}`,
-        borderRadius: RADIUS.sm,
-        padding: `0 ${SPACE[1]}px`,
-        minWidth: SPACE[4],
-        height: SPACE[4],
-        cursor: resolvable ? "pointer" : "not-allowed",
-        verticalAlign: "middle",
-        position: "relative",
-        top: -1,
-        margin: "0 1px",
-        transition: "background 0.15s, border-color 0.15s, color 0.15s",
-    }
-}
-
-// ─── Citation button ──────────────────────────────────────────────────────────
-
-interface CitationButtonProps {
-    citationkind?: string
-    docid?: string
-    page?: number
-    refindex?: number
-    isDark: boolean
-    isStreaming: boolean
-    sources: Source[]
-    content: string | null
-    onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
-}
-
-const CitationButton = memo(function CitationButton({
-    citationkind,
-    docid,
-    page,
-    refindex,
-    isDark,
-    isStreaming,
-    sources,
-    content,
-    onSourceClick,
-}: CitationButtonProps) {
-    if (isStreaming) return null
-
-    // ── Dark/Strict mode: gold superscript ───────────────────────────────
-    if (isDark) {
-        if (citationkind === "source") {
-            const resolvedDocId = docid ?? ""
-            const resolvedPage = page ?? 0
-            const srcIdx = sources.findIndex(s =>
-                s.doc_id === resolvedDocId ||
-                s.doc_id.startsWith(resolvedDocId) ||
-                resolvedDocId.startsWith(s.doc_id)
-            )
-            const resolvable = srcIdx >= 0
-            const footnoteNum = srcIdx + 1
-            return (
-                <sup
-                    onClick={resolvable ? (e) => {
-                        e.stopPropagation()
-                        onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
-                    } : undefined}
-                    title={resolvable
-                        ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
-                        : "Source not found in retrieved documents"
-                    }
-                    style={{color: "var(--strict-citation)", cursor: resolvable ? "pointer" : "not-allowed", fontSize: "0.7em", fontFamily: "system-ui", verticalAlign: "super"}}
-                >
-                    {footnoteNum}
-                </sup>
-            )
-        }
-        if (citationkind === "docref") {
-            const sourceIdx = (refindex ?? 0) - 1
-            const matchedSource = sources[sourceIdx]
-            const resolvable = !!matchedSource
-            const pageNum = matchedSource?.page_numbers[0]
-            return (
-                <sup
-                    onClick={resolvable ? (e) => {
-                        e.stopPropagation()
-                        onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
-                    } : undefined}
-                    title={resolvable
-                        ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
-                        : "Source not found in retrieved documents"
-                    }
-                    style={{color: "var(--strict-citation)", cursor: resolvable ? "pointer" : "not-allowed", fontSize: "0.7em", fontFamily: "system-ui", verticalAlign: "super"}}
-                >
-                    {refindex ?? 0}
-                </sup>
-            )
-        }
-        return null
-    }
-
-    // ── Light mode: pill button ───────────────────────────────────────────
-    const hoverHandlers = {
-        onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-            e.currentTarget.style.background = "var(--dt-accent-highlight)"
-            e.currentTarget.style.borderColor = "var(--dt-accent-border-strong)"
-            e.currentTarget.style.color = "var(--dt-accent-color)"
-        },
-        onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
-            const style = footnoteStyle(true)
-            e.currentTarget.style.background = style.background as string
-            e.currentTarget.style.borderColor = ""
-            e.currentTarget.style.color = style.color as string
-        },
-    }
-
-    if (citationkind === "source") {
-        const resolvedDocId = docid ?? ""
-        const resolvedPage = page ?? 0
-        const srcIdx = sources.findIndex(s =>
-            s.doc_id === resolvedDocId ||
-            s.doc_id.startsWith(resolvedDocId) ||
-            resolvedDocId.startsWith(s.doc_id)
-        )
-        const resolvable = srcIdx >= 0
-        const footnoteNum = srcIdx + 1
-        return (
-            <button
-                onClick={resolvable ? (e) => {
-                    e.stopPropagation()
-                    onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
-                } : undefined}
-                title={resolvable
-                    ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
-                    : "Source not found in retrieved documents"
-                }
-                style={footnoteStyle(resolvable)}
-                {...(resolvable ? hoverHandlers : {})}
-            >
-                {footnoteNum}
-            </button>
-        )
-    }
-
-    if (citationkind === "docref") {
-        const sourceIdx = (refindex ?? 0) - 1
-        const matchedSource = sources[sourceIdx]
-        const resolvable = !!matchedSource
-        const pageNum = matchedSource?.page_numbers[0]
-        return (
-            <button
-                onClick={resolvable ? (e) => {
-                    e.stopPropagation()
-                    onSourceClick?.(content ?? "", sources, matchedSource.doc_id, pageNum)
-                } : undefined}
-                title={resolvable
-                    ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
-                    : "Source not found in retrieved documents"
-                }
-                style={footnoteStyle(resolvable)}
-                {...(resolvable ? hoverHandlers : {})}
-            >
-                {refindex ?? 0}
-            </button>
-        )
-    }
-
-    return null
-})
-
 // ─── Component props ──────────────────────────────────────────────────────────
 
 interface ChatMessageProps {
@@ -369,6 +187,11 @@ interface ChatMessageProps {
     conversationId?: string | null
     feedback?: { rating: "positive" | "negative"; comment?: string } | null
     onFeedback?: (messageId: string, rating: "positive" | "negative", comment?: string) => void
+    /** Documents generated by the agent in this message turn */
+    documents?: ChatDocument[]
+    /** chatId needed for document preview/download URLs */
+    chatId?: string
+    onDocumentPreview?: (docId: string) => void
 }
 
 // ─── ChatMessage ──────────────────────────────────────────────────────────────
@@ -392,8 +215,10 @@ export function ChatMessage({
     conversationId,
     feedback,
     onFeedback,
+    documents = [],
+    chatId,
+    onDocumentPreview,
 }: ChatMessageProps) {
-    // After theme migration, isStrict === isDark. Prefer explicitly-passed isStrict.
     const dark = isStrict ?? isDark
 
     const citedSources = useMemo(
@@ -406,7 +231,7 @@ export function ChatMessage({
     const citationButtonComponent = useCallback(
         (props: Record<string, unknown>) => (
             <CitationButton
-                {...(props as Omit<CitationButtonProps, "isDark" | "sources" | "content" | "onSourceClick" | "isStreaming">)}
+                {...(props as Omit<import("@/components/chat/message-parts/MessageCitations").CitationButtonProps, "isDark" | "sources" | "content" | "onSourceClick" | "isStreaming">)}
                 isDark={dark}
                 sources={sources}
                 content={content}
@@ -468,6 +293,21 @@ export function ChatMessage({
         fontFamily: FONT.sans,
     }
 
+    // Determine if we show a streaming status placeholder instead of content
+    const statusNode = (
+        <MessageStatus
+            content={content}
+            isStreaming={isStreaming}
+            streamingStatus={streamingStatus}
+            streamingProgress={streamingProgress}
+            streamingThinkingPreview={streamingThinkingPreview}
+        />
+    )
+
+    const isStatusOnly = content === "__polling_pipeline_status__" ||
+        content?.startsWith("__pipeline_status:") ||
+        (!content && isStreaming)
+
     return (
         <div className="mb-7 animate-fade-in-up">
             {!dark && (
@@ -483,7 +323,7 @@ export function ChatMessage({
                 </p>
             )}
 
-            {/* Pipeline status (trace) — horizontal bar, visible during and after streaming */}
+            {/* Pipeline status (trace) */}
             {trace && trace.length > 0 && (
                 <PipelineStatusBar trace={trace} isStreaming={isStreaming} isDark={dark} onAbort={isStreaming ? onAbort : undefined} />
             )}
@@ -491,11 +331,7 @@ export function ChatMessage({
             {/* Answer card */}
             <div style={answerCardStyle}>
                 <div style={dark ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
-                    {content === "__polling_pipeline_status__" ? (
-                        <StreamingStatus status="Processing..."/>
-                    ) : content?.startsWith("__pipeline_status:") ? (
-                        <StreamingStatus status={content.slice("__pipeline_status:".length)}/>
-                    ) : content ? (
+                    {isStatusOnly ? statusNode : content ? (
                         <div
                             className={`${dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}${dark && isStreaming ? " strict-streaming-cursor" : ""}`}
                             style={dark ? {
@@ -541,7 +377,6 @@ export function ChatMessage({
                             >
                                 {content}
                             </ReactMarkdown>
-                            {/* Typewriter cursor — dark mode only, injected via CSS ::after on last inline element */}
                             {isStreaming && dark && (
                                 <style>{`
                                     .strict-streaming-cursor > p:last-child::after,
@@ -563,8 +398,6 @@ export function ChatMessage({
                                 `}</style>
                             )}
                         </div>
-                    ) : isStreaming ? (
-                        dark ? null : <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview}/>
                     ) : (
                         <p style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: "var(--dt-vote-text)", margin: 0}}>
                             No response
@@ -572,24 +405,33 @@ export function ChatMessage({
                     )}
                 </div>
 
-                {/* Light-mode cited sources inside the card footer */}
-                {citedSources.length > 0 && !dark && !isStreaming && (
-                    <div style={{
-                        padding: `${SPACE[3]}px ${SPACE[4]}px ${SPACE[4]}px`,
-                        borderTop: "1px solid var(--dt-answer-border)",
-                        background: "var(--dt-answer-footnote-bg)",
-                        borderRadius: `0 0 ${RADIUS.xl}px ${RADIUS.xl}px`,
-                    }}>
-                        <Footnotes
-                            citedSources={citedSources}
-                            onSourceClick={(docId, page) => onSourceClick?.(content ?? "", sources, docId, page)}
-                            isDark={false}
-                        />
-                    </div>
+                {/* Light-mode footnotes inside card footer */}
+                {!dark && (
+                    <MessageFootnotes
+                        citedSources={citedSources}
+                        sources={sources}
+                        content={content}
+                        isDark={false}
+                        onSourceClick={onSourceClick}
+                    />
                 )}
             </div>
 
-            {/* Stop button — light mode only (dark mode uses inline stop in pipeline bar) */}
+            {/* Document cards — generated by agent in this turn */}
+            {documents.length > 0 && chatId && (
+                <div style={{display: "flex", flexDirection: "column", gap: SPACE[2], marginTop: SPACE[3]}}>
+                    {documents.map((doc) => (
+                        <DocumentCard
+                            key={doc.doc_id}
+                            doc={doc}
+                            chatId={chatId}
+                            onPreview={onDocumentPreview ?? (() => {})}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* Stop button — light mode only */}
             {isStreaming && onAbort && !dark && (
                 <button
                     onClick={onAbort}
@@ -601,9 +443,9 @@ export function ChatMessage({
                         gap: 6,
                         padding: "5px 10px",
                         borderRadius: 5,
-                        background: dark ? "rgba(201,168,76, 0.06)" : "var(--dt-button-bg-hover)",
-                        border: dark ? "1px solid rgba(201,168,76, 0.15)" : "1px solid var(--dt-glass-border)",
-                        color: dark ? "var(--strict-gold-text)" : "var(--dt-text-secondary)",
+                        background: "var(--dt-button-bg-hover)",
+                        border: "1px solid var(--dt-glass-border)",
+                        color: "var(--dt-text-secondary)",
                         cursor: "pointer",
                         fontSize: 10,
                         fontFamily: "system-ui, sans-serif",
@@ -611,39 +453,31 @@ export function ChatMessage({
                         transition: "background 0.15s, border-color 0.15s",
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = dark ? "rgba(201,168,76, 0.1)" : "var(--dt-accent-tint-hover)"
-                        e.currentTarget.style.borderColor = dark ? "rgba(201,168,76, 0.25)" : "var(--dt-accent-border-strong)"
+                        e.currentTarget.style.background = "var(--dt-accent-tint-hover)"
+                        e.currentTarget.style.borderColor = "var(--dt-accent-border-strong)"
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.background = dark ? "rgba(201,168,76, 0.06)" : "var(--dt-button-bg-hover)"
-                        e.currentTarget.style.borderColor = dark ? "rgba(201,168,76, 0.15)" : "var(--dt-glass-border)"
+                        e.currentTarget.style.background = "var(--dt-button-bg-hover)"
+                        e.currentTarget.style.borderColor = "var(--dt-glass-border)"
                     }}
                 >
-                    {/* Gold square stop icon */}
-                    <span
-                        aria-hidden
-                        style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: 1,
-                            background: dark ? "var(--strict-gold-base)" : "currentColor",
-                            flexShrink: 0,
-                        }}
-                    />
+                    <span aria-hidden style={{width: 6, height: 6, borderRadius: 1, background: "currentColor", flexShrink: 0}} />
                     Stop generating
                 </button>
             )}
 
-            {/* Dark-mode: Footnotes below the card */}
-            {dark && citedSources.length > 0 && !isStreaming && (
-                <Footnotes
+            {/* Dark-mode footnotes below the card */}
+            {dark && (
+                <MessageFootnotes
                     citedSources={citedSources}
-                    onSourceClick={(docId, page) => onSourceClick?.(content ?? "", sources, docId, page)}
+                    sources={sources}
+                    content={content}
                     isDark={true}
+                    onSourceClick={onSourceClick}
                 />
             )}
 
-            {/* Source chips — light mode only (dark uses StrictSourceMargin / SourcePanelV2) */}
+            {/* Source chips — light mode only */}
             {sources.length > 0 && !dark && (
                 <div style={{marginTop: SPACE[3]}}>
                     <SourcesPanel
@@ -655,11 +489,10 @@ export function ChatMessage({
 
             {confidence != null && !isStreaming && (
                 <div style={{marginTop: SPACE[2]}} className="animate-fade-in-up">
-                    <ConfidenceBadge confidence={confidence} isDark={dark}/>
+                    <ConfidenceBadge confidence={confidence} isDark={dark} />
                 </div>
             )}
 
-            {/* Feedback: dark = copy+thumbs+comment row; light = thumbs only */}
             {!isStreaming && traceId && (
                 <div style={{marginTop: dark ? 0 : SPACE[2]}}>
                     <FeedbackButtons
@@ -677,5 +510,6 @@ export function ChatMessage({
     )
 }
 
-// Keep toSuperscript in module scope so it's accessible if needed elsewhere
-export {toSuperscript}
+// Re-export for backward compat
+export {toSuperscript} from "@/components/chat/message-parts/MessageCitations"
+export {footnoteStyle} from "@/components/chat/message-parts/MessageCitations"
