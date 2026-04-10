@@ -41,10 +41,10 @@ else:
 # ---------------------------------------------------------------------------
 
 _CACHE_DIR = Path("/tmp/vitreon_pdf_cache")  # nosec B108 — intentional /tmp usage
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)  # create once at import time
 
 
 def _cache_path(doc_id: uuid.UUID, version: int) -> Path:
-    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return _CACHE_DIR / f"{doc_id}_{version}.pdf"
 
 
@@ -198,6 +198,8 @@ async def generate_pdf(
 
 def invalidate_cache(doc_id: uuid.UUID) -> None:
     """Remove all cached PDFs for a given document (call after fields update)."""
+    if not _CACHE_DIR.exists():
+        return
     for path in _CACHE_DIR.glob(f"{doc_id}_*.pdf"):
         try:
             path.unlink()
