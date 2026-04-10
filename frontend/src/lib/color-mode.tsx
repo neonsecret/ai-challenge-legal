@@ -77,9 +77,18 @@ function migrateOldKeys() {
 // Provider
 // ---------------------------------------------------------------------------
 
+function getInitialResolved(): "light" | "dark" {
+    if (typeof document !== "undefined") {
+        return document.documentElement.classList.contains("dark") ? "dark" : "light";
+    }
+    return "light";
+}
+
 export function ColorModeProvider({ children }: { children: ReactNode }) {
-    const [mode, setModeState] = useState<ColorMode>("system");
-    const [resolvedMode, setResolvedMode] = useState<"light" | "dark">("light");
+    const [mode, setModeState] = useState<ColorMode>(() =>
+        typeof window !== "undefined" ? readStoredMode() : "system"
+    );
+    const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(getInitialResolved);
 
     useEffect(() => {
         const stored = readStoredMode();
