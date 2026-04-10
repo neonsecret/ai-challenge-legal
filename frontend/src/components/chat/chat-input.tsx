@@ -54,7 +54,7 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
 
     const sendBg = hasText && !disabled
         ? isGlassmorphic
-            ? "linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15))"
+            ? "linear-gradient(135deg, rgba(201,168,76,0.22), rgba(201,168,76,0.12))"
             : isDark ? "linear-gradient(135deg, #C9A84C, #e8cc7a)" : "#5c2e08"
         : isGlassmorphic
             ? "rgba(50,50,50,0.40)"
@@ -65,12 +65,12 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
         : isGlassmorphic ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.30)" : "#b29254"
 
     const borderColor = focused
-        ? isGlassmorphic ? "var(--strict-gold-underbar)" : isDark ? "rgba(201,168,76,0.40)" : "rgba(196,124,0,0.35)"
+        ? isGlassmorphic ? "rgba(201,168,76, 0.2)" : isDark ? "rgba(201,168,76,0.40)" : "rgba(196,124,0,0.35)"
         : isGlassmorphic ? "var(--strict-input-border)" : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.55)"
 
     const glowShadow = focused
         ? isGlassmorphic
-            ? "var(--strict-input-glow)"
+            ? "0 0 0 2px rgba(201,168,76, 0.08)"
             : isDark
                 ? "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 3px rgba(201,168,76,0.08), 0 2px 16px rgba(201,168,76,0.10)"
                 : "inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(196,124,0,0.06), 0 2px 16px rgba(196,124,0,0.08)"
@@ -97,36 +97,36 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                 transition: "border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease",
             }}
         >
-      <textarea
-          ref={ref}
-          suppressHydrationWarning
-          placeholder={isGlassmorphic ? "Continue your research..." : t("chat.placeholder")}
-          className="w-full bg-transparent resize-none outline-none leading-relaxed px-4 pt-3.5 pb-11 min-h-[52px] max-h-[200px]"
-          style={isGlassmorphic ? {
-              color: "var(--strict-text-body)",
-              caretColor: "var(--strict-gold-base)",
-              font: "11px/1 Georgia, serif",
-              letterSpacing: "0.01em",
-          } : {
-              color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",
-              caretColor: isDark ? "#C9A84C" : "#c9a230",
-              fontSize: "14px",
-              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-              letterSpacing: "-0.006em",
-          }}
-          onKeyDown={handleKeyDown}
-          onInput={handleInput}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          disabled={disabled}
-          rows={1}
-          aria-label="Message input"
-      />
+            <textarea
+                ref={ref}
+                suppressHydrationWarning
+                placeholder={isGlassmorphic ? "Continue your research\u2026" : t("chat.placeholder")}
+                className="w-full bg-transparent resize-none outline-none leading-relaxed px-4 pt-3.5 pb-11 min-h-[52px] max-h-[200px]"
+                style={isGlassmorphic ? {
+                    color: "var(--strict-text-body)",
+                    caretColor: "var(--strict-gold-base)",
+                    font: "11px/1 Georgia, serif",
+                    letterSpacing: "0.01em",
+                } : {
+                    color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",
+                    caretColor: isDark ? "#C9A84C" : "#c9a230",
+                    fontSize: "14px",
+                    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
+                    letterSpacing: "-0.006em",
+                }}
+                onKeyDown={handleKeyDown}
+                onInput={handleInput}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                disabled={disabled}
+                rows={1}
+                aria-label="Message input"
+            />
             <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 pb-2.5">
                 <span style={{
                     fontSize: "11px",
-                    color: isGlassmorphic ? "var(--gm-text-quaternary, rgba(255,255,255,0.22))" : isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.25)",
-                    fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
+                    color: isGlassmorphic ? "rgba(255,255,255,0.22)" : isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.25)",
+                    fontFamily: "system-ui, sans-serif",
                     userSelect: "none",
                     transition: "opacity 0.2s",
                     opacity: focused && !hasText ? 1 : 0,
@@ -136,14 +136,16 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                 <button
                     onClick={handleSend}
                     disabled={disabled || !hasText}
-                    className="flex items-center justify-center rounded-xl disabled:opacity-30"
+                    className="flex items-center justify-center disabled:opacity-30"
                     style={{
                         width: 32,
                         height: 32,
-                        borderRadius: 7,
+                        borderRadius: isGlassmorphic ? 7 : 12,
                         background: sendBg,
                         color: sendColor,
-                        border: isGlassmorphic ? "1px solid rgba(201,168,76, 0.25)" : "none",
+                        border: isGlassmorphic
+                            ? `1px solid ${hasText && !disabled ? "rgba(201,168,76, 0.25)" : "rgba(201,168,76, 0.08)"}`
+                            : "none",
                         boxShadow: hasText && !disabled
                             ? isGlassmorphic ? "0 2px 12px rgba(201,168,76,0.20)" : "0 2px 12px rgba(201,168,76,0.25)"
                             : "none",
@@ -151,7 +153,7 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                         transform: "scale(1)",
                     }}
                     onMouseEnter={e => {
-                        if (hasText && !disabled) e.currentTarget.style.transform = "scale(1.08)"
+                        if (hasText && !disabled) e.currentTarget.style.transform = "scale(1.06)"
                     }}
                     onMouseLeave={e => {
                         e.currentTarget.style.transform = "scale(1)"
@@ -162,22 +164,11 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                     onMouseUp={e => {
                         e.currentTarget.style.transform = "scale(1)"
                     }}
-                    aria-label={disabled ? "Waiting for response" : "Send message"}
+                    aria-label={disabled ? "Stop generating" : "Send message"}
                 >
                     {disabled ? <StopCircle className="size-4"/> : <ArrowUp className="size-4" strokeWidth={2.5}/>}
                 </button>
             </div>
         </div>
-        {isGlassmorphic && (
-            <p style={{
-                font: "8.5px/1.3 system-ui, sans-serif",
-                color: "var(--strict-text-ghost)",
-                textAlign: "center",
-                margin: "6px 0 0",
-                userSelect: "none",
-            }}>
-                AI-generated legal research. Verify all citations independently.
-            </p>
-        )}
     )
 }
