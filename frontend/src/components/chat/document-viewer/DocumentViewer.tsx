@@ -3,23 +3,56 @@
 import {useCallback, useState, useEffect, useRef, useId} from "react"
 import dynamic from "next/dynamic"
 import {motion, AnimatePresence} from "motion/react"
-import {X, Download, MessageSquare, Loader2, RotateCcw} from "lucide-react"
+import {X, Download, MessageSquare, RotateCcw} from "lucide-react"
 import {useIsMobile} from "@/hooks/use-mobile"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/tokens"
 import type {DocPdfViewerProps} from "./DocPdfViewerImpl"
 
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
+function PdfLoadingSkeleton() {
+    return (
+        <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: SPACE[3],
+            padding: SPACE[8],
+        }}>
+            <div style={{
+                width: "100%",
+                maxWidth: 480,
+                aspectRatio: "0.707",
+                borderRadius: RADIUS.md,
+                background: "var(--doc-skeleton-bg)",
+                border: `1px solid var(--doc-skeleton-border)`,
+                position: "relative",
+                overflow: "hidden",
+            }}>
+                <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(90deg, transparent 0%, var(--doc-skeleton-shimmer) 50%, transparent 100%)",
+                    animation: "shimmer 1.8s ease-in-out infinite",
+                }} />
+            </div>
+            <span style={{
+                fontFamily: FONT.sans,
+                fontSize: TYPE_SCALE.xs,
+                color: "var(--doc-text-secondary)",
+                letterSpacing: "0.04em",
+            }}>
+                Generating PDF&hellip;
+            </span>
+        </div>
+    )
+}
+
 const DocPdfViewer = dynamic<DocPdfViewerProps>(
     () => import("./DocPdfViewerImpl"),
-    {
-        ssr: false,
-        loading: () => (
-            <div style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}>
-                <Loader2 size={20} style={{color: "var(--doc-text-label)", animation: "spin 1s linear infinite"}} />
-            </div>
-        ),
-    },
+    {ssr: false, loading: () => <PdfLoadingSkeleton />},
 )
 
 interface DocumentViewerProps {
@@ -257,7 +290,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                     margin: 0,
                                     textAlign: "center",
                                 }}>
-                                    Failed to load document. It may still be generating.
+                                    Could not load document. Try again.
                                 </p>
                                 <button
                                     onClick={handleRetry}
@@ -286,9 +319,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                 onError={() => setPdfError(true)}
                             />
                         ) : (
-                            <div style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}>
-                                <Loader2 size={20} style={{color: "var(--doc-text-label)", animation: "spin 1s linear infinite"}} />
-                            </div>
+                            <PdfLoadingSkeleton />
                         )}
                     </motion.div>
                 </>

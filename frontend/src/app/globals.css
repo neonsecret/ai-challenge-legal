@@ -309,6 +309,17 @@ textarea::placeholder { color: #b29254; }
     --doc-card-border: rgba(255,255,255,0.60);
     --doc-card-hover-bg: rgba(201,168,76,0.06);
     --doc-card-hover-border: rgba(196,124,0,0.25);
+    --doc-skeleton-bg: rgba(255,255,255,0.45);
+    --doc-skeleton-border: rgba(255,255,255,0.50);
+    --doc-skeleton-shimmer: rgba(255,255,255,0.60);
+    --doc-page-nav-border: 0.5px solid rgba(196,124,0,0.14);
+    --doc-count-badge-bg: rgba(255,255,255,0.50);
+    --doc-count-badge-border: 0.5px solid rgba(196,124,0,0.22);
+    --doc-count-badge-color: #7a4a00;
+    --doc-count-badge-maxed-bg: rgba(196,124,0,0.12);
+    --doc-count-badge-maxed-border: 0.5px solid rgba(196,124,0,0.38);
+    --doc-count-badge-maxed-color: #7a4a00;
+    --doc-btn-glass-bg: rgba(255,255,255,0.40);
 }
 
 /* ============================================================
@@ -909,6 +920,17 @@ textarea::placeholder { color: #b29254; }
   --doc-card-border: rgba(201,168,76,0.06);
   --doc-card-hover-bg: rgba(201,168,76,0.07);
   --doc-card-hover-border: rgba(201,168,76,0.18);
+  --doc-skeleton-bg: rgba(255,255,255,0.06);
+  --doc-skeleton-border: rgba(255,255,255,0.08);
+  --doc-skeleton-shimmer: rgba(255,255,255,0.10);
+  --doc-page-nav-border: 0.5px solid rgba(255,255,255,0.08);
+  --doc-count-badge-bg: rgba(255,255,255,0.06);
+  --doc-count-badge-border: 0.5px solid rgba(201,168,76,0.18);
+  --doc-count-badge-color: var(--strict-gold-text);
+  --doc-count-badge-maxed-bg: rgba(201,168,76,0.12);
+  --doc-count-badge-maxed-border: 0.5px solid rgba(201,168,76,0.35);
+  --doc-count-badge-maxed-color: var(--strict-gold-text);
+  --doc-btn-glass-bg: rgba(255,255,255,0.04);
 }
 
 /* ── Strict scrollbar + overscroll ───────────────────────── */

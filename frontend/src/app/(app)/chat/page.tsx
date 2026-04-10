@@ -149,7 +149,7 @@ export default function ChatPage() {
     const [availableLaws, setAvailableLaws] = useState<{id: string; name: string; name_en: string}[]>([])
     useEffect(() => {
         const corpus = jurisdiction === "uk" ? "uk" : jurisdiction === "au" ? "au" : ""
-        if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return }
+        if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return } // eslint-disable-line react-hooks/set-state-in-effect
         const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? ""
         const controller = new AbortController()
         fetch(`${sseBase}/api/v1/laws?corpus=${corpus}`, {signal: controller.signal})
@@ -236,7 +236,7 @@ export default function ChatPage() {
     // Load custom corpus name and corpus warning preference from localStorage
     useEffect(() => {
         const storedName = localStorage.getItem("neolex_custom_corpus_name")
-        if (storedName) setCustomCorpus(storedName)
+        if (storedName) setCustomCorpus(storedName) // eslint-disable-line react-hooks/set-state-in-effect
         setHideCorpusWarning(localStorage.getItem("neolex_hide_corpus_warning") === "1")
     }, [])
 
@@ -269,13 +269,13 @@ export default function ChatPage() {
     // Fetch corpora when switching to custom jurisdiction
     useEffect(() => {
         if (jurisdiction === "custom") {
-            fetchCorpora()
+            fetchCorpora() // eslint-disable-line react-hooks/set-state-in-effect
         }
     }, [jurisdiction, fetchCorpora])
 
     // Reset preview when jurisdiction changes
     useEffect(() => {
-        setPreviewIndex(null)
+        setPreviewIndex(null) // eslint-disable-line react-hooks/set-state-in-effect
     }, [jurisdiction])
 
     // Update document title
@@ -355,7 +355,7 @@ export default function ChatPage() {
         const pending = sessionStorage.getItem("vitreon:pending-action")
         if (pending) {
             sessionStorage.removeItem("vitreon:pending-action")
-            if (pending === "history-toggle") setHistoryOpen(true)
+            if (pending === "history-toggle") setHistoryOpen(true) // eslint-disable-line react-hooks/set-state-in-effect
             else if (pending === "doc-index-toggle") setIndexOpen(true)
         }
         return () => {
@@ -646,6 +646,8 @@ export default function ChatPage() {
                         chatId={currentSessionId ?? undefined}
                         onTemplateSelect={handleTemplateSelect}
                         documentCount={docState.count}
+                        pendingTemplateSlug={pendingTemplateSlug}
+                        onClearTemplate={() => setPendingTemplateSlug(null)}
                     />
                     <p style={{
                         fontSize: TYPE_SCALE.xs,

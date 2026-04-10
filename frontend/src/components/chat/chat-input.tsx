@@ -2,7 +2,7 @@
 
 import {useRef, useCallback, useEffect, useState} from "react"
 import {useColorMode} from "@/lib/color-mode"
-import {ArrowUp, StopCircle} from "lucide-react"
+import {ArrowUp, StopCircle, X} from "lucide-react"
 import {useI18n} from "@/lib/i18n"
 import {TemplatePicker} from "@/components/chat/template-picker/TemplatePicker"
 import {TemplatePanel} from "@/components/chat/template-picker/TemplatePanel"
@@ -17,9 +17,18 @@ interface ChatInputProps {
     onTemplateSelect?: (slug: string) => void
     /** Disables picker when chat already has 3 documents. */
     documentCount?: number
+    /** Slug of the template queued for the next send. Shown as a pill below input. */
+    pendingTemplateSlug?: string | null
+    /** Called when user dismisses the pending template pill. */
+    onClearTemplate?: () => void
 }
 
-export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelect, documentCount = 0}: ChatInputProps) {
+function formatTemplateName(slug: string): string {
+    if (slug === "__custom__") return "Custom document"
+    return slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelect, documentCount = 0, pendingTemplateSlug, onClearTemplate}: ChatInputProps) {
     const ref = useRef<HTMLTextAreaElement>(null)
     const [hasText, setHasText] = useState(false)
     const [focused, setFocused] = useState(false)
@@ -193,6 +202,60 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
                     </button>
                 </div>
             </div>
+
+            {/* Pending template pill — shown below the input when a template is queued */}
+            {pendingTemplateSlug && (
+                <div
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        marginTop: 6,
+                        padding: "4px 10px 4px 8px",
+                        borderRadius: 20,
+                        background: "var(--doc-pill-active-bg)",
+                        border: "1px solid var(--doc-pill-active-border)",
+                        width: "fit-content",
+                        maxWidth: "100%",
+                    }}
+                >
+                    <span style={{fontSize: 12, lineHeight: 1}}>📄</span>
+                    <span style={{
+                        fontFamily: "system-ui, sans-serif",
+                        fontSize: 11,
+                        color: "var(--doc-pill-active-color)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                    }}>
+                        {formatTemplateName(pendingTemplateSlug)} — press Enter to draft
+                    </span>
+                    {onClearTemplate && (
+                        <button
+                            onClick={onClearTemplate}
+                            aria-label="Clear selected template"
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                width: 14,
+                                height: 14,
+                                borderRadius: "50%",
+                                background: "var(--doc-close-btn-bg)",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "var(--doc-pill-active-color)",
+                                flexShrink: 0,
+                                padding: 0,
+                            }}
+                        >
+                            <X size={9} strokeWidth={2.5} />
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* Template panel — portal-like, rendered outside the input box */}
             {chatId && onTemplateSelect && (
