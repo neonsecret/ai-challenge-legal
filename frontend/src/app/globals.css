@@ -137,7 +137,7 @@ textarea::placeholder { color: #b29254; }
 
     /* ── Design Token CSS Variables ──────────────────────────────
        Unified theme-responsive tokens. :root = light defaults.
-       .dark overrides below. V3 overrides in .design-strict scopes.
+       .dark overrides below. V3 overrides in .dark scopes.
        ──────────────────────────────────────────────────────────── */
 
     /* Glass surface (light defaults) */
@@ -461,11 +461,11 @@ textarea::placeholder { color: #b29254; }
 
 /* ============================================================
    V2 DESIGN THEME — cooler SaaS palette, subtler glassmorphism
-   Applied by adding `.design-neon` class to <html>.
+   Applied by adding `.light` class to <html>.
    ============================================================ */
 
 /* Light mode V2 tokens */
-.design-neon {
+.light {
     /* Surfaces — cool grey/slate base */
     --background: #F3F4F6;
     --foreground: #111827;
@@ -537,7 +537,7 @@ textarea::placeholder { color: #b29254; }
 }
 
 /* Dark mode V2 overrides */
-.design-neon.dark {
+.dark {
     /* Surfaces — deep cool dark */
     --background: #0D1117;
     --foreground: rgba(255, 255, 255, 0.90);
@@ -584,40 +584,40 @@ textarea::placeholder { color: #b29254; }
 }
 
 /* V2: subtler blur across all glass utilities */
-.design-neon .glass-sm {
+.light .glass-sm {
     backdrop-filter: blur(8px) saturate(110%);
     -webkit-backdrop-filter: blur(8px) saturate(110%);
 }
 
-.design-neon .glass-md {
+.light .glass-md {
     backdrop-filter: blur(12px) saturate(115%);
     -webkit-backdrop-filter: blur(12px) saturate(115%);
 }
 
-.design-neon .glass-lg {
+.light .glass-lg {
     backdrop-filter: blur(16px) saturate(118%);
     -webkit-backdrop-filter: blur(16px) saturate(118%);
 }
 
-.design-neon .glass-heavy {
+.light .glass-heavy {
     backdrop-filter: blur(20px) saturate(120%);
     -webkit-backdrop-filter: blur(20px) saturate(120%);
 }
 
-.design-neon .glass-gold {
+.light .glass-gold {
     backdrop-filter: blur(10px) saturate(112%);
     -webkit-backdrop-filter: blur(10px) saturate(112%);
     background: linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(79, 70, 229, 0.04) 100%);
 }
 
 /* V2: sidebar glass override */
-.design-neon [data-slot="sidebar"] {
+.light [data-slot="sidebar"] {
     backdrop-filter: blur(16px) saturate(130%) brightness(103%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(130%) brightness(103%) !important;
 }
 
 /* V2: pill shimmer uses indigo instead of gold */
-.design-neon .shimmer-text {
+.light .shimmer-text {
     background: linear-gradient(
         90deg,
         #4F46E5 0%,
@@ -633,12 +633,12 @@ textarea::placeholder { color: #b29254; }
 
 /* ============================================================
    V3 "LUMINOUS" DESIGN THEME — violet-blue-teal aurora palette
-   Applied by adding `.design-strict` class to <html>.
-   V2 is completely untouched — all V3 rules scoped to .design-strict.
+   Applied by adding `.dark` class to <html>.
+   V2 is completely untouched — all V3 rules scoped to .dark.
    ============================================================ */
 
 /* ── Strict Light mode tokens ─────────────────────────────── */
-.design-strict {
+.dark {
   --strict-bg-html: #D8DAE2;
   --background: #E0E2E8;
   --strict-glass-bg: rgba(20,22,30, 0.04);
@@ -733,7 +733,7 @@ textarea::placeholder { color: #b29254; }
 }
 
 /* ── Strict Dark mode tokens ──────────────────────────────── */
-.design-strict.dark {
+.dark {
   --strict-bg-html: #0D0A12;
   --background: #0B0E16;
   --strict-glass-bg: rgba(255,255,255, 0.02);
@@ -830,23 +830,23 @@ textarea::placeholder { color: #b29254; }
 }
 
 /* ── Strict scrollbar + overscroll ───────────────────────── */
-.design-strict {
+.dark {
   scrollbar-width: thin;
   scrollbar-color: var(--strict-scrollbar) transparent;
 }
-.design-strict::-webkit-scrollbar { width: 6px; }
-.design-strict::-webkit-scrollbar-track { background: transparent; }
-.design-strict::-webkit-scrollbar-thumb { background: var(--strict-scrollbar); border-radius: 3px; }
-.design-strict::-webkit-scrollbar-thumb:hover { background: var(--strict-scrollbar-hover); }
-html.design-strict { background: var(--strict-bg-html); overscroll-behavior: none; }
+.dark::-webkit-scrollbar { width: 6px; }
+.dark::-webkit-scrollbar-track { background: transparent; }
+.dark::-webkit-scrollbar-thumb { background: var(--strict-scrollbar); border-radius: 3px; }
+.dark::-webkit-scrollbar-thumb:hover { background: var(--strict-scrollbar-hover); }
+html.dark { background: var(--strict-bg-html); overscroll-behavior: none; }
 
 /* ============================================================
    V3 GLASSMORPHISM — utility classes + aurora suppression
-   Scoped to .design-strict.dark — V2 and V3 light are untouched.
+   Scoped to .dark — V2 and V3 light are untouched.
    ============================================================ */
 
 /* Tier 1: Structural panels (sidebar, chat container) */
-.design-strict.dark .gm-glass-structural {
+.dark .gm-glass-structural {
     background: rgba(9, 9, 9, 0.73);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -860,7 +860,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Tier 2: Interactive surfaces (inputs, cards, source chips) */
-.design-strict.dark .gm-glass-interactive {
+.dark .gm-glass-interactive {
     background: rgba(19, 19, 19, 0.64);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
@@ -872,7 +872,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Tier 3: Minimal surfaces (list items, hover states) */
-.design-strict.dark .gm-glass-minimal {
+.dark .gm-glass-minimal {
     background: rgba(50, 50, 50, 0.21);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -882,8 +882,8 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Aurora suppression — glassmorphism uses pure black, no orbs */
-.design-strict.dark .aurora-bg::before,
-.design-strict.dark .aurora-bg-static::before {
+.dark .aurora-bg::before,
+.dark .aurora-bg-static::before {
     background:
         radial-gradient(ellipse 60% 40% at 20% 30%, rgba(139, 111, 212, 0.04) 0%, transparent 60%),
         radial-gradient(ellipse 50% 60% at 75% 50%, rgba(56, 189, 248, 0.03) 0%, transparent 55%),
@@ -893,12 +893,12 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Hide aurora orbs entirely in glassmorphism dark */
-.design-strict.dark .v3-orb {
+.dark .v3-orb {
     display: none;
 }
 
 /* Sidebar glass override for glassmorphism */
-.design-strict.dark [data-slot="sidebar"] {
+.dark [data-slot="sidebar"] {
     backdrop-filter: blur(10px) !important;
     -webkit-backdrop-filter: blur(10px) !important;
     background: rgba(9, 9, 9, 0.73) !important;
@@ -906,24 +906,24 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Custom scrollbars for glassmorphism panels */
-.design-strict.dark ::-webkit-scrollbar {
+.dark ::-webkit-scrollbar {
     width: 6px;
 }
-.design-strict.dark ::-webkit-scrollbar-track {
+.dark ::-webkit-scrollbar-track {
     background: transparent;
 }
-.design-strict.dark ::-webkit-scrollbar-thumb {
+.dark ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.10);
     border-radius: 3px;
 }
-.design-strict.dark ::-webkit-scrollbar-thumb:hover {
+.dark ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.18);
 }
 
 /* ── V3 Aurora backgrounds ────────────────────────────────── */
 
 /* Animated aurora — landing page only */
-.design-strict .aurora-bg::before {
+.dark .aurora-bg::before {
     content: '';
     position: fixed;
     inset: -50%;
@@ -941,7 +941,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Light mode animated aurora */
-.design-strict:not(.dark) .aurora-bg::before {
+.dark:not(.dark) .aurora-bg::before {
     background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.09 285 / 0.45) 0%, transparent 60%),
                 radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.09 225 / 0.35) 0%, transparent 55%),
                 #ECEEF7;
@@ -949,7 +949,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Static aurora — workspace (no animation, lawyer-safe) */
-.design-strict .aurora-bg-static::before {
+.dark .aurora-bg-static::before {
     content: '';
     position: fixed;
     inset: -50%;
@@ -963,14 +963,14 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
     z-index: 0;
 }
 
-.design-strict:not(.dark) .aurora-bg-static::before {
+.dark:not(.dark) .aurora-bg-static::before {
     background: radial-gradient(ellipse 70% 50% at 20% 20%, oklch(0.85 0.09 285 / 0.45) 0%, transparent 60%),
                 radial-gradient(ellipse 60% 70% at 80% 60%, oklch(0.88 0.09 225 / 0.35) 0%, transparent 55%),
                 #ECEEF7;
 }
 
 /* Aurora cursor ambient */
-.design-strict .ambient-cursor {
+.dark .ambient-cursor {
     background: radial-gradient(
         600px circle at var(--cursor-x, 50%) var(--cursor-y, 50%),
         rgba(123, 94, 167, 0.08) 0%,
@@ -1019,7 +1019,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 /* ── V3 Typography signature effects ──────────────────────── */
 
 /* Animated gradient text — landing hero only */
-.design-strict .v3-text-gradient {
+.dark .v3-text-gradient {
     background: var(--v3-iridescent);
     background-size: 200% 100%;
     -webkit-background-clip: text;
@@ -1029,7 +1029,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* Static gradient text — in-app safe */
-.design-strict .v3-text-aurora {
+.dark .v3-text-aurora {
     background: linear-gradient(135deg, #9D7FCC 0%, #60A5FA 50%, #2DD4BF 100%);
     -webkit-background-clip: text;
     background-clip: text;
@@ -1037,7 +1037,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* ── V3 Glass panel signature ─────────────────────────────── */
-.design-strict .v3-glass-panel {
+.dark .v3-glass-panel {
     background: var(--v3-glass-surface-bg);
     backdrop-filter: var(--v3-glass-surface-blur);
     -webkit-backdrop-filter: var(--v3-glass-surface-blur);
@@ -1047,7 +1047,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
     position: relative;
 }
 
-.design-strict .v3-glass-panel::before {
+.dark .v3-glass-panel::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -1068,11 +1068,11 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
     transition: opacity 0.3s ease;
 }
 
-.design-strict .v3-glass-panel:hover::before {
+.dark .v3-glass-panel:hover::before {
     opacity: 1;
 }
 
-.design-strict .v3-glass-elevated {
+.dark .v3-glass-elevated {
     background: var(--v3-glass-elevated-bg);
     backdrop-filter: var(--v3-glass-elevated-blur);
     -webkit-backdrop-filter: var(--v3-glass-elevated-blur);
@@ -1082,7 +1082,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* ── V3 Floating glass tier — modals, popovers, top-layer surfaces ── */
-.design-strict .v3-glass-floating {
+.dark .v3-glass-floating {
     background: var(--v3-glass-floating-bg);
     backdrop-filter: var(--v3-glass-floating-blur);
     -webkit-backdrop-filter: var(--v3-glass-floating-blur);
@@ -1092,14 +1092,14 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* ── V3 Navigation active indicator ──────────────────────── */
-.design-strict .v3-nav-active {
+.dark .v3-nav-active {
     background: var(--v3-glass-iris-bg);
     border-left: 2px solid var(--v3-iris-bright);
     box-shadow: inset 0 0 20px rgba(123, 94, 167, 0.10), -2px 0 12px rgba(123, 94, 167, 0.20);
 }
 
 /* ── V3 Source cards — jurisdiction color encoding ────────── */
-.design-strict .v3-source-card {
+.dark .v3-source-card {
     background: var(--v3-glass-surface-bg);
     border: 1px solid var(--v3-glass-surface-border);
     border-top: 1.5px solid transparent;
@@ -1109,17 +1109,17 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
     transition: var(--v3-transition-interactive);
 }
 
-.design-strict .v3-source-card:hover {
+.dark .v3-source-card:hover {
     background: var(--v3-glass-surface-bg-hover);
 }
 
-.design-strict .v3-source-card[data-corpus="difc"]  { border-top-color: #60A5FA; }
-.design-strict .v3-source-card[data-corpus="uk"]    { border-top-color: #A78BFA; }
-.design-strict .v3-source-card[data-corpus="czech"] { border-top-color: #34D399; }
-.design-strict .v3-source-card[data-corpus="au"]    { border-top-color: #FCD34D; }
+.dark .v3-source-card[data-corpus="difc"]  { border-top-color: #60A5FA; }
+.dark .v3-source-card[data-corpus="uk"]    { border-top-color: #A78BFA; }
+.dark .v3-source-card[data-corpus="czech"] { border-top-color: #34D399; }
+.dark .v3-source-card[data-corpus="au"]    { border-top-color: #FCD34D; }
 
 /* ── V3 Depth grid — landing page ────────────────────────── */
-.design-strict .v3-depth-grid {
+.dark .v3-depth-grid {
     position: absolute;
     inset: 0;
     background-image:
@@ -1133,7 +1133,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* ── V3 Aurora orbs — landing page only ──────────────────── */
-.design-strict .v3-orb {
+.dark .v3-orb {
     position: fixed;
     border-radius: 50%;
     filter: blur(80px);
@@ -1143,19 +1143,19 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
     will-change: transform;
 }
 
-.design-strict .v3-orb-1 {
+.dark .v3-orb-1 {
     width: 600px; height: 600px;
     background: radial-gradient(circle, oklch(0.40 0.22 285) 0%, transparent 70%);
     top: -100px; left: -100px;
     --orb-duration: 28s;
 }
-.design-strict .v3-orb-2 {
+.dark .v3-orb-2 {
     width: 500px; height: 500px;
     background: radial-gradient(circle, oklch(0.35 0.18 220) 0%, transparent 70%);
     top: 30%; right: -80px;
     --orb-duration: 22s;
 }
-.design-strict .v3-orb-3 {
+.dark .v3-orb-3 {
     width: 400px; height: 400px;
     background: radial-gradient(circle, oklch(0.38 0.20 195) 0%, transparent 70%);
     bottom: -80px; left: 30%;
@@ -1163,7 +1163,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 }
 
 /* ── V3 Sidebar glass ─────────────────────────────────────── */
-.design-strict [data-slot="sidebar"] {
+.dark [data-slot="sidebar"] {
     backdrop-filter: blur(24px) saturate(150%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
     background: var(--sidebar) !important;
@@ -1172,56 +1172,56 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 
 /* ── V3 Focus rings — WCAG 2.4.7 / 2.4.11 ───────────────── */
 /* Iris-tinted keyboard focus ring for all interactive V3 elements */
-.design-strict :focus-visible {
+.dark :focus-visible {
     outline: 2px solid rgba(123, 94, 167, 0.80);
     outline-offset: 2px;
 }
 
 /* Suppress pointer-driven focus rings — keyboard only */
-.design-strict :focus:not(:focus-visible) {
+.dark :focus:not(:focus-visible) {
     outline: none;
 }
 
 /* ── V3 Reduced motion ────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-    .design-strict * {
+    .dark * {
         animation-duration: 0.01ms !important;
         transition-duration: 0.01ms !important;
     }
-    .design-strict .aurora-bg::before {
+    .dark .aurora-bg::before {
         animation: none !important;
     }
-    .design-strict .v3-orb {
+    .dark .v3-orb {
         animation: none !important;
     }
-    .design-strict .v3-text-gradient {
+    .dark .v3-text-gradient {
         animation: none !important;
     }
 }
 
 /* ── V3 Mobile degradation ────────────────────────────────── */
 @media (max-width: 768px) {
-    .design-strict .aurora-bg::before,
-    .design-strict .aurora-bg-static::before {
+    .dark .aurora-bg::before,
+    .dark .aurora-bg-static::before {
         filter: blur(40px);
     }
 
-    .design-strict .v3-glass-panel {
+    .dark .v3-glass-panel {
         backdrop-filter: blur(12px) saturate(130%);
         -webkit-backdrop-filter: blur(12px) saturate(130%);
     }
 
-    .design-strict .v3-glass-elevated {
+    .dark .v3-glass-elevated {
         backdrop-filter: blur(20px) saturate(140%);
         -webkit-backdrop-filter: blur(20px) saturate(140%);
     }
 
-    .design-strict .v3-orb-2,
-    .design-strict .v3-orb-3 {
+    .dark .v3-orb-2,
+    .dark .v3-orb-3 {
         display: none;
     }
 
-    .design-strict .v3-orb-1 {
+    .dark .v3-orb-1 {
         opacity: 0.20;
     }
 }
@@ -1229,29 +1229,29 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 /* ============================================================
    V3 STRUCTURAL DIFFERENTIATION — layout distinct from V2
    Pill shapes, larger cards, more whitespace, visible orbs.
-   All rules scoped to .design-strict — V2 is untouched.
+   All rules scoped to .dark — V2 is untouched.
    ============================================================ */
 
 /* ── Pill-shaped buttons ─────────────────────────────────── */
 /* Full pill (9999px) — clearly distinct from V2 rounded-md */
-.design-strict [data-slot="button"] {
+.dark [data-slot="button"] {
     border-radius: var(--v3-radius-pill) !important;
 }
 
 /* ── Pill-shaped single-line inputs & search bar ─────────── */
 /* Full pill for inputs. Textareas stay at 2xl (28px) — pill looks bad
    on multi-line content. */
-.design-strict [data-slot="input"],
-.design-strict input:not([type="checkbox"]):not([type="radio"]) {
+.dark [data-slot="input"],
+.dark input:not([type="checkbox"]):not([type="radio"]) {
     border-radius: var(--v3-radius-pill) !important;
 }
 
-.design-strict textarea {
+.dark textarea {
     border-radius: var(--v3-radius-2xl) !important;
 }
 
 /* ── Pill-shaped badges and tag chips ───────────────────── */
-.design-strict [data-slot="badge"] {
+.dark [data-slot="badge"] {
     border-radius: var(--v3-radius-pill) !important;
 }
 
@@ -1259,19 +1259,19 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 /* Use .v3-card on any V3 glass panel that needs spacious padding.
    Base glass classes (.v3-glass-panel, .v3-glass-elevated) stay padding-free —
    consumers manage their own spacing to avoid double-padding. */
-.design-strict .v3-card {
+.dark .v3-card {
     padding: var(--v3-space-xl);
 }
 
 /* ── More breathing room between list items ─────────────── */
 /* Applies to source chips list, search result lists in V3 */
-.design-strict .v3-item-list {
+.dark .v3-item-list {
     display: flex;
     flex-direction: column;
     gap: var(--v3-space-md);
 }
 
-.design-strict .v3-chip-list {
+.dark .v3-chip-list {
     display: flex;
     flex-wrap: wrap;
     gap: var(--v3-space-sm);
@@ -1279,7 +1279,7 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
 
 /* ── Section whitespace ─────────────────────────────────── */
 /* Adds 32px top margin between direct children — use on section wrappers */
-.design-strict .v3-section-gap > * + * {
+.dark .v3-section-gap > * + * {
     margin-top: var(--v3-space-xl);
 }
 
@@ -1288,28 +1288,28 @@ html.design-strict { background: var(--strict-bg-html); overscroll-behavior: non
    is too dim. Override with the outer drop shadow + --v3-specular-top (0.12)
    to replace the embedded highlight — no double-stacking.
    Elevated tier already embeds 0.10 inset (close enough), so no override needed. */
-.design-strict.dark .v3-glass-panel {
+.dark .v3-glass-panel {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), var(--v3-specular-top);
 }
 
 /* ── Typography scale — slightly larger headings in V3 ───── */
 /* Lawyers need information density, so we scale proportionally (em-based),
-   not with fixed px jumps. Only headings inside .design-strict grow. */
-.design-strict h1 { font-size: 1.10em; }
-.design-strict h2 { font-size: 1.08em; }
-.design-strict h3 { font-size: 1.06em; }
+   not with fixed px jumps. Only headings inside .dark grow. */
+.dark h1 { font-size: 1.10em; }
+.dark h2 { font-size: 1.08em; }
+.dark h3 { font-size: 1.06em; }
 
 /* ── Light mode aurora orb colors ───────────────────────── */
 /* Dark orb gradients are invisible on #F0F2F8 — use lighter violet/teal */
-.design-strict:not(.dark) .v3-orb-1 {
+.dark:not(.dark) .v3-orb-1 {
     background: radial-gradient(circle, oklch(0.72 0.12 285 / 0.45) 0%, transparent 70%);
     opacity: 0.50;
 }
-.design-strict:not(.dark) .v3-orb-2 {
+.dark:not(.dark) .v3-orb-2 {
     background: radial-gradient(circle, oklch(0.68 0.10 220 / 0.35) 0%, transparent 70%);
     opacity: 0.40;
 }
-.design-strict:not(.dark) .v3-orb-3 {
+.dark:not(.dark) .v3-orb-3 {
     background: radial-gradient(circle, oklch(0.70 0.12 195 / 0.30) 0%, transparent 70%);
     opacity: 0.35;
 }
@@ -1817,6 +1817,18 @@ button:active:not(:disabled):not(.no-press-scale) {
     }
 }
 
+/* Gold typewriter cursor — dark mode (spec section 4) */
+@keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+/* Pipeline dot pulse — active step during streaming (spec section 3.1) */
+@keyframes pipeline-dot-pulse {
+    0%, 100% { opacity: 0.4; }
+    50%       { opacity: 0.9; }
+}
+
 /* Highlight fade-in animation for PDF */
 @keyframes highlight-fade {
     from {
@@ -1864,11 +1876,11 @@ button:active:not(:disabled):not(.no-press-scale) {
 /* ============================================================
    V3 WORKSPACE OVERRIDES
    Cascade onto existing class names in workspace pages
-   when .design-strict is active on <html>.
+   when .dark is active on <html>.
    ============================================================ */
 
 /* Bottom nav pill — V3 glass treatment */
-.design-strict .bottom-nav-pill {
+.dark .bottom-nav-pill {
     background: var(--v3-glass-elevated-bg) !important;
     border: 1px solid var(--v3-glass-elevated-border) !important;
     backdrop-filter: var(--v3-glass-elevated-blur) !important;
@@ -1877,12 +1889,12 @@ button:active:not(:disabled):not(.no-press-scale) {
 }
 
 /* Animate glass-in entry — unchanged keyframe, but honor V3 tokens */
-.design-strict .animate-glass-in {
+.dark .animate-glass-in {
     animation: glass-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 /* Existing glass utilities get V3 overrides */
-.design-strict .glass-sm {
+.dark .glass-sm {
     background: var(--v3-glass-surface-bg) !important;
     backdrop-filter: var(--v3-glass-surface-blur) !important;
     -webkit-backdrop-filter: var(--v3-glass-surface-blur) !important;
@@ -1890,7 +1902,7 @@ button:active:not(:disabled):not(.no-press-scale) {
     box-shadow: var(--v3-glass-surface-shadow) !important;
 }
 
-.design-strict .glass-md {
+.dark .glass-md {
     background: var(--v3-glass-surface-bg) !important;
     backdrop-filter: var(--v3-glass-surface-blur) !important;
     -webkit-backdrop-filter: var(--v3-glass-surface-blur) !important;
@@ -1898,7 +1910,7 @@ button:active:not(:disabled):not(.no-press-scale) {
     box-shadow: var(--v3-glass-surface-shadow) !important;
 }
 
-.design-strict .glass-lg {
+.dark .glass-lg {
     background: var(--v3-glass-elevated-bg) !important;
     backdrop-filter: var(--v3-glass-elevated-blur) !important;
     -webkit-backdrop-filter: var(--v3-glass-elevated-blur) !important;
@@ -1906,7 +1918,7 @@ button:active:not(:disabled):not(.no-press-scale) {
     box-shadow: var(--v3-glass-elevated-shadow) !important;
 }
 
-.design-strict .glass-heavy {
+.dark .glass-heavy {
     background: var(--v3-glass-floating-bg) !important;
     backdrop-filter: var(--v3-glass-floating-blur) !important;
     -webkit-backdrop-filter: var(--v3-glass-floating-blur) !important;
@@ -1915,7 +1927,7 @@ button:active:not(:disabled):not(.no-press-scale) {
 }
 
 /* Auth page glass card — centered login/register card on aurora-bg-static */
-.design-strict .auth-glass-card {
+.dark .auth-glass-card {
     background: var(--v3-glass-elevated-bg);
     backdrop-filter: var(--v3-glass-elevated-blur);
     -webkit-backdrop-filter: var(--v3-glass-elevated-blur);
@@ -1925,7 +1937,7 @@ button:active:not(:disabled):not(.no-press-scale) {
 }
 
 /* Documents card grid — hover lift */
-.design-strict .doc-card {
+.dark .doc-card {
     background: var(--v3-glass-surface-bg);
     backdrop-filter: var(--v3-glass-surface-blur);
     -webkit-backdrop-filter: var(--v3-glass-surface-blur);
@@ -1935,32 +1947,32 @@ button:active:not(:disabled):not(.no-press-scale) {
     transition: var(--v3-transition-interactive), transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.design-strict .doc-card:hover {
+.dark .doc-card:hover {
     background: var(--v3-glass-surface-bg-hover);
     transform: translateY(-3px);
     box-shadow: var(--v3-glass-elevated-shadow);
 }
 
 /* Settings / Billing form elements */
-.design-strict input,
-.design-strict textarea,
-.design-strict select {
+.dark input,
+.dark textarea,
+.dark select {
     background: var(--v3-glass-surface-bg) !important;
     border-color: var(--v3-glass-surface-border) !important;
     transition: var(--v3-transition-border), var(--v3-transition-shadow);
 }
 
-.design-strict input:focus-visible,
-.design-strict textarea:focus-visible,
-.design-strict select:focus-visible {
+.dark input:focus-visible,
+.dark textarea:focus-visible,
+.dark select:focus-visible {
     border-color: var(--v3-glass-iris-border) !important;
     box-shadow: 0 0 0 3px rgba(157, 127, 204, 0.40) !important;
     outline: none !important;
 }
 
 /* Primary button — strict design */
-.design-strict button[data-variant="primary"],
-.design-strict .btn-v3-primary {
+.dark button[data-variant="primary"],
+.dark .btn-v3-primary {
     background: var(--v3-btn-primary-bg) !important;
     border: none !important;
     color: #fff !important;
@@ -1968,15 +1980,15 @@ button:active:not(:disabled):not(.no-press-scale) {
     transition: var(--v3-transition-interactive), transform 0.12s ease !important;
 }
 
-.design-strict button[data-variant="primary"]:hover,
-.design-strict .btn-v3-primary:hover {
+.dark button[data-variant="primary"]:hover,
+.dark .btn-v3-primary:hover {
     background: var(--v3-btn-primary-hover-bg) !important;
     box-shadow: 0 0 32px rgba(123, 94, 167, 0.45) !important;
     transform: scale(1.02);
 }
 
 /* Shimmer text gets V3 iris palette */
-.design-strict .shimmer-text {
+.dark .shimmer-text {
     background: linear-gradient(90deg, #7B5EA7 0%, #9D7FCC 40%, #4F8FD4 60%, #7B5EA7 80%);
     background-size: 200% auto;
     -webkit-background-clip: text;
@@ -1986,11 +1998,11 @@ button:active:not(:disabled):not(.no-press-scale) {
 }
 
 /* Auth page wrapper — aurora static backdrop */
-.design-strict .auth-page-wrapper {
+.dark .auth-page-wrapper {
     background: var(--v3-dark-bg);
     position: relative;
 }
 
-.design-strict:not(.dark) .auth-page-wrapper {
+.dark:not(.dark) .auth-page-wrapper {
     background: var(--v3-light-bg);
 }

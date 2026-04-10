@@ -1,8 +1,7 @@
 import type {Metadata} from "next";
 import {Playfair_Display, Inter} from "next/font/google";
 import "./globals.css";
-import {ThemeProvider} from "@/components/theme-provider";
-import {DesignVersionProvider} from "@/lib/design-version";
+import {ColorModeProvider} from "@/lib/color-mode";
 import {TooltipProvider} from "@/components/ui/tooltip";
 import {ToastProvider} from "@/components/ui/toast";
 import {I18nProvider} from "@/lib/i18n";
@@ -36,26 +35,20 @@ export default function RootLayout({
             className={`${playfair.variable} ${inter.variable} h-full antialiased`}
         >
         <head>
-            {/* Inline theme script — runs sync before body paint to prevent FOUC.
-                Mirrors next-themes behaviour (storageKey='theme', attribute='class',
-                defaultTheme='system') now that ThemeProvider uses ssr:false. */}
-            <script dangerouslySetInnerHTML={{__html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(t==='system'||!t)&&window.matchMedia('(prefers-color-scheme: dark)').matches){document.documentElement.classList.add('dark')}}catch(e){}`}} />
-            {/* Inline design-version script — prevents FOUC for saved design version.
-                Must run before paint so CSS tokens load correctly on first frame. */}
-            <script dangerouslySetInnerHTML={{__html: `try{var dv=localStorage.getItem('vitreon-design-version');if(dv==='neon'){document.documentElement.classList.add('design-neon')}else if(dv==='strict'){document.documentElement.classList.add('design-strict')}else{document.documentElement.classList.add('design-neon')}}catch(e){document.documentElement.classList.add('design-neon')}`}} />
+            {/* Unified color-mode FOUC prevention — runs sync before paint.
+                Priority: vitreon-color-mode > vitreon-design-version (migration) > theme (migration) > system */}
+            <script dangerouslySetInnerHTML={{__html: `try{var cm=localStorage.getItem('vitreon-color-mode'),isDark=false;if(cm==='dark'){isDark=true}else if(cm==='light'){isDark=false}else if(cm==='system'||!cm){var dv=localStorage.getItem('vitreon-design-version');if(dv==='strict'){isDark=true;localStorage.setItem('vitreon-color-mode','dark')}else if(dv==='neon'){isDark=false;localStorage.setItem('vitreon-color-mode','light')}else{var th=localStorage.getItem('theme');if(th==='dark'){isDark=true;localStorage.setItem('vitreon-color-mode','dark')}else if(!th||th==='system'){isDark=window.matchMedia('(prefers-color-scheme: dark)').matches}}}if(isDark){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light')}else{document.documentElement.classList.add('light');document.documentElement.classList.remove('dark')}}catch(e){document.documentElement.classList.add('light')}`}} />
         </head>
         <body className="h-full bg-background text-foreground">
-        <ThemeProvider>
-            <DesignVersionProvider>
-                <I18nProvider>
-                    <TooltipProvider>
-                        <ToastProvider>
-                            {children}
-                        </ToastProvider>
-                    </TooltipProvider>
-                </I18nProvider>
-            </DesignVersionProvider>
-        </ThemeProvider>
+        <ColorModeProvider>
+            <I18nProvider>
+                <TooltipProvider>
+                    <ToastProvider>
+                        {children}
+                    </ToastProvider>
+                </TooltipProvider>
+            </I18nProvider>
+        </ColorModeProvider>
         </body>
         </html>
     );

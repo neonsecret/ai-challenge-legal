@@ -1,8 +1,7 @@
 "use client";
 
 import {useEffect, useState, useCallback} from "react";
-import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
+import {useColorMode} from "@/lib/color-mode";
 import {motion} from "motion/react";
 import {V3_CARD_HOVER, V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import Link from "next/link";
@@ -16,8 +15,7 @@ import {useAuth} from "@/lib/use-auth";
 import {useI18n} from "@/lib/i18n";
 
 export default function DocumentsPage() {
-    const {resolvedTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
+    const {isDark} = useColorMode();
     const [mounted, setMounted] = useState(false);
     const {t} = useI18n();
     const {user} = useAuth();
@@ -26,8 +24,7 @@ export default function DocumentsPage() {
         setMounted(true);
     }, []);
 
-    const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "strict";
+    const isV3 = isDark;
     const isFreeTier = !user || user.subscription_status === "free" || user.max_corpora === 0;
 
     const {

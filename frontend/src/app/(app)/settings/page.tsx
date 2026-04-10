@@ -2,9 +2,7 @@
 
 import {useState, useEffect} from "react";
 import {Moon, Sun, Monitor, LogOut, User, Loader2, ChevronDown} from "lucide-react";
-import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
-import {DesignVersionToggle} from "@/components/design-version-toggle";
+import {useColorMode} from "@/lib/color-mode";
 import {motion} from "motion/react";
 import {V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import {useRouter} from "next/navigation";
@@ -28,11 +26,9 @@ interface UserInfo {
 }
 
 export default function SettingsPage() {
-    const {theme, setTheme, resolvedTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
+    const {isDark, mode, setMode} = useColorMode();
     const router = useRouter();
     const {t} = useI18n();
-    const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState<UserInfo | null>(null);
     const [userLoading, setUserLoading] = useState(true);
     const [loggingOut, setLoggingOut] = useState(false);
@@ -40,14 +36,6 @@ export default function SettingsPage() {
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    // isDark is only retained for passing variant to DesignVersionToggle
-    const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "strict";
 
     useEffect(() => {
         fetch(`${API}/auth/me`, {credentials: "include"})
@@ -103,16 +91,13 @@ export default function SettingsPage() {
         {value: "system", labelKey: "settings.system", icon: <Monitor size={16}/>},
     ];
 
-    const glassCard: React.CSSProperties = (isV3 && isDark) ? {
+    const glassCard: React.CSSProperties = isDark ? {
         background: "var(--gm-surface-0)",
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
         border: "1px solid var(--gm-border-outer)",
         borderRadius: "16px",
         boxShadow: "var(--gm-shadow-structural)",
-        overflow: "clip",
-    } : isV3 ? {
-        borderRadius: "16px",
         overflow: "clip",
     } : {
         background: "var(--dt-glass-bg)",
@@ -124,7 +109,7 @@ export default function SettingsPage() {
         overflow: "clip",
     };
 
-    const glassCardClass = isV3 ? "v3-glass-elevated" : "";
+    const glassCardClass = isDark ? "v3-glass-elevated" : "";
 
     const cardHeader: React.CSSProperties = {
         padding: "16px 20px",
@@ -219,19 +204,19 @@ export default function SettingsPage() {
 
             {/* Cards container */}
             <motion.div
-                variants={isV3 ? V3_LIST_VARIANT : undefined}
-                initial={isV3 ? "hidden" : undefined}
-                animate={isV3 ? "visible" : undefined}
+                variants={isDark ? V3_LIST_VARIANT : undefined}
+                initial={isDark ? "hidden" : undefined}
+                animate={isDark ? "visible" : undefined}
                 style={{display: "flex", flexDirection: "column", gap: "20px"}}
             >
                 {/* Account */}
                 <motion.div
-                    variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                    variants={isDark ? V3_ITEM_VARIANT : undefined}
                     className={glassCardClass}
                     style={glassCard}
                 >
                     <div style={cardHeader}>
-                        <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("settings.account")}</h2>
+                        <h2 className={isDark ? "v3-text-aurora" : ""} style={isDark ? undefined : cardHeading}>{t("settings.account")}</h2>
                     </div>
                     <div style={cardBody}>
                         {userLoading ? (
@@ -352,12 +337,12 @@ export default function SettingsPage() {
 
                 {/* Appearance */}
                 <motion.div
-                    variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                    variants={isDark ? V3_ITEM_VARIANT : undefined}
                     className={glassCardClass}
                     style={glassCard}
                 >
                     <div style={cardHeader}>
-                        <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("settings.appearance")}</h2>
+                        <h2 className={isDark ? "v3-text-aurora" : ""} style={isDark ? undefined : cardHeading}>{t("settings.appearance")}</h2>
                     </div>
                     <div style={cardBody}>
                         <div style={{display: "flex", flexDirection: "column", gap: "20px"}}>
@@ -367,20 +352,14 @@ export default function SettingsPage() {
                                     {themeOptions.map((opt) => (
                                         <button
                                             key={opt.value}
-                                            onClick={() => setTheme(opt.value)}
-                                            aria-pressed={theme === opt.value}
-                                            style={themeButton(theme === opt.value)}
+                                            onClick={() => setMode(opt.value)}
+                                            aria-pressed={mode === opt.value}
+                                            style={themeButton(mode === opt.value)}
                                         >
                                             {opt.icon}
                                             {t(opt.labelKey)}
                                         </button>
                                     ))}
-                                </div>
-                            </div>
-                            <div>
-                                <span style={labelStyleDyn}>{t("settings.designVersion")}</span>
-                                <div style={{marginTop: "2px"}}>
-                                    <DesignVersionToggle variant={isDark ? "dark" : "light"} />
                                 </div>
                             </div>
                         </div>
@@ -469,7 +448,7 @@ export default function SettingsPage() {
                                                     transition: "border-color 0.15s ease, box-shadow 0.15s ease",
                                                 }}
                                                 onFocus={(e) => {
-                                                    if (isV3) {
+                                                    if (isDark) {
                                                         e.currentTarget.style.borderColor = "var(--dt-accent-border-color)";
                                                         e.currentTarget.style.boxShadow = "0 0 0 3px var(--dt-accent-tint)";
                                                     }

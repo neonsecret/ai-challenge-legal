@@ -10,8 +10,7 @@ import {
     SidebarFooter,
 } from "@/components/ui/sidebar";
 import {useEffect, useState} from "react";
-import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
+import {useColorMode} from "@/lib/color-mode";
 
 const navItems = [
     {href: "/chat", label: "Chat", icon: MessageSquare},
@@ -23,8 +22,8 @@ const RECENT_QUERIES_KEY = "neolex_recent_queries";
 const MAX_RECENT = 5;
 
 // macOS Tahoe Liquid Glass sidebar — transparent enough to see through, distinct enough to read
-function makeLiquidGlass(isDark: boolean, isStrict: boolean) {
-    if (isDark && isStrict) {
+function makeLiquidGlass(isDark: boolean) {
+    if (isDark) {
         return {
             background: "var(--strict-glass-recessed)",
             backdropFilter: "var(--strict-glass-blur)",
@@ -34,24 +33,7 @@ function makeLiquidGlass(isDark: boolean, isStrict: boolean) {
             boxShadow: "none",
         };
     }
-    if (isDark) {
-        return {
-            background: "rgba(255,255,255,0.07)",
-            backdropFilter: "blur(32px) saturate(180%) brightness(108%)",
-            WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(108%)",
-            borderRadius: "18px",
-            boxShadow: [
-                "inset 0 1.5px 0 rgba(255,255,255,0.10)",
-                "inset 1px 0 0 rgba(255,255,255,0.06)",
-                "inset -1px 0 0 rgba(255,255,255,0.04)",
-                "inset 0 -1px 0 rgba(0,0,0,0.08)",
-                "0 8px 40px rgba(0,0,0,0.40)",
-                "0 1px 3px rgba(0,0,0,0.20)",
-            ].join(", "),
-            border: "0.5px solid rgba(255,255,255,0.14)",
-        };
-    }
-    // Light — cool grey-slate palette, subtler blur (matches .design-neon sidebar tokens)
+    // Light — cool grey-slate palette, subtler blur (matches .light sidebar tokens)
     return {
         background: "rgba(248, 250, 252, 0.88)",
         backdropFilter: "blur(16px) saturate(130%) brightness(103%)",
@@ -70,20 +52,13 @@ function makeLiquidGlass(isDark: boolean, isStrict: boolean) {
 }
 
 // Active item — glass pill inside glass sidebar
-function makeActiveItemStyle(isDark: boolean, isStrict: boolean) {
-    if (isDark && isStrict) {
+function makeActiveItemStyle(isDark: boolean) {
+    if (isDark) {
         return {
             background: "var(--strict-gold-badge-bg)",
             boxShadow: "none",
             border: "1px solid var(--strict-gold-border-active)",
             color: "var(--strict-gold-text)",
-        };
-    }
-    if (isDark) {
-        return {
-            background: "rgba(201,168,76,0.14)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 1px 3px rgba(0,0,0,0.20)",
-            border: "0.5px solid rgba(201,168,76,0.28)",
         };
     }
     // Light — indigo accent
@@ -98,12 +73,7 @@ export function AppSidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const [recentQueries, setRecentQueries] = useState<string[]>([]);
-    const {resolvedTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
-    const isDark = mounted && resolvedTheme === "dark";
-    const isStrict = mounted && designVersion === "strict" && isDark;
+    const {isDark} = useColorMode();
 
     useEffect(() => {
         fetch(`/api/v1/demo/config`).catch(() => {
@@ -133,7 +103,7 @@ export function AppSidebar() {
     return (
         <Sidebar
             className="border-0"
-            style={makeLiquidGlass(isDark, isStrict)}
+            style={makeLiquidGlass(isDark)}
         >
             {/* ── App name ── */}
             <SidebarHeader style={{padding: "16px 14px 12px"}}>
@@ -185,7 +155,7 @@ export function AppSidebar() {
                                     textDecoration: "none",
                                     transition: "all 0.12s ease",
                                     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-                                    ...(isActive ? makeActiveItemStyle(isDark, isStrict) : {}),
+                                    ...(isActive ? makeActiveItemStyle(isDark) : {}),
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {

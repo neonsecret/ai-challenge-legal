@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import {usePathname} from "next/navigation";
-import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
-import {useEffect, useState} from "react";
+import {useColorMode} from "@/lib/color-mode";
 import {MessageSquare, FileText, Settings, CreditCard, Sun, Moon} from "lucide-react";
 import {useIsMobile} from "@/hooks/use-mobile";
 import {useI18n} from "@/lib/i18n";
@@ -19,29 +17,15 @@ const navItemDefs = [
 
 export function BottomNav() {
     const pathname = usePathname();
-    const {resolvedTheme, setTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
-    const [mounted, setMounted] = useState(false);
+    const {isDark, setMode} = useColorMode();
     const isMobile = useIsMobile();
     const {t} = useI18n();
-    useEffect(() => setMounted(true), []);
 
-    const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "strict";
-
-    const pill = (isV3 && isDark) ? {
-        // V3 dark: structural glass tier
+    const pill = isDark ? {
+        // Dark (Strict): structural glass tier
         background: "var(--gm-surface-0)",
         border: "1px solid var(--gm-border-outer)",
         boxShadow: "var(--gm-shadow-structural)",
-    } : isDark ? {
-        background: "rgba(15,22,35,0.80)",
-        border: "0.5px solid rgba(255,255,255,0.12)",
-        boxShadow: [
-            "inset 0 1px 0 rgba(255,255,255,0.08)",
-            "0 8px 40px rgba(0,0,0,0.40)",
-            "0 2px 6px rgba(0,0,0,0.30)",
-        ].join(", "),
     } : {
         // Light — cool grey-slate (matches sidebar token --glass-bg-nav)
         background: "rgba(248,250,252,0.88)",
@@ -55,16 +39,10 @@ export function BottomNav() {
         ].join(", "),
     };
 
-    const activeColor = isV3
-        ? (isDark ? "rgba(139, 111, 212, 0.90)" : "var(--v3-iris)")
-        : (isDark ? "#C9A84C" : "#4F46E5");
-    const inactiveColor = (isV3 && isDark) ? "rgba(255,255,255,0.60)" : isDark ? "rgba(255,255,255,0.42)" : "rgba(30,50,100,0.45)";
-    const activeBg = isV3
-        ? (isDark ? "rgba(139, 111, 212, 0.10)" : "rgba(123,94,167,0.12)")
-        : (isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)");
-    const activeBorder = isV3
-        ? (isDark ? "1px solid rgba(139, 111, 212, 0.18)" : "0.5px solid rgba(123,94,167,0.22)")
-        : (isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)");
+    const activeColor = isDark ? "#C9A84C" : "#4F46E5";
+    const inactiveColor = isDark ? "rgba(255,255,255,0.60)" : "rgba(30,50,100,0.45)";
+    const activeBg = isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)";
+    const activeBorder = isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)";
 
     return (
         <div
@@ -79,8 +57,8 @@ export function BottomNav() {
                 alignItems: "center",
                 gap: "1px",
                 padding: isMobile ? "3px 3px" : "4px 5px",
-                backdropFilter: (isV3 && isDark) ? "blur(10px)" : "blur(32px) saturate(180%)",
-                WebkitBackdropFilter: (isV3 && isDark) ? "blur(10px)" : "blur(32px) saturate(180%)",
+                backdropFilter: isDark ? "blur(10px)" : "blur(32px) saturate(180%)",
+                WebkitBackdropFilter: isDark ? "blur(10px)" : "blur(32px) saturate(180%)",
                 borderRadius: "22px",
                 maxWidth: "calc(100vw - 24px)",
                 ...pill,
@@ -138,7 +116,7 @@ export function BottomNav() {
             {/* Theme toggle */}
             <button
                 type="button"
-                onClick={() => setTheme(isDark ? "light" : "dark")}
+                onClick={() => setMode(isDark ? "light" : "dark")}
                 title={isDark ? "Switch to light mode" : "Switch to dark mode"}
                 style={{
                     display: "flex",

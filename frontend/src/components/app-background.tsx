@@ -1,22 +1,14 @@
 "use client";
 
-import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
-import {useEffect, useState} from "react";
+import {useColorMode} from "@/lib/color-mode";
 import {MotionConfig} from "motion/react";
 import {V3_MOTION_CONFIG} from "@/lib/v3-motion";
 
 export function AppBackground({children}: { children: React.ReactNode }) {
-    const {resolvedTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
+    const {isDark} = useColorMode();
 
-    const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "strict";
-
-    // V3: use aurora-bg-static (CSS-driven, no JS blobs)
-    if (isV3) {
+    // Dark mode (Strict): use aurora-bg-static (CSS-driven, no JS blobs)
+    if (isDark) {
         return (
             <MotionConfig {...V3_MOTION_CONFIG}>
                 <div
