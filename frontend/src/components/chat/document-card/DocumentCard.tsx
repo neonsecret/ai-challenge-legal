@@ -16,7 +16,7 @@ interface DocumentCardProps {
 export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
     const {isDark} = useColorMode()
 
-    const pdfUrl = `${API_BASE}/api/chats/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/pdf`
+    const pdfUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/pdf`
 
     return (
         <div style={{

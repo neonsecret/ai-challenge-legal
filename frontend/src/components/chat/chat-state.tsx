@@ -121,7 +121,7 @@ interface ChatState {
     useInternet: boolean
     setUseInternet: React.Dispatch<React.SetStateAction<boolean>>
     stream: UseQueryStreamReturn
-    handleSend: (question: string) => "ok" | "blocked" | "streaming"
+    handleSend: (question: string, templateSlug?: string) => "ok" | "blocked" | "streaming"
     sessions: ChatSession[]
     currentSessionId: string | null
     currentCorpora: string[]
@@ -626,7 +626,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         }).catch(() => {})
     }, [newChat, stream.isStreaming, stream.abort])
 
-    const handleSend = useCallback((question: string): "ok" | "blocked" | "streaming" => {
+    const handleSend = useCallback((question: string, templateSlug?: string): "ok" | "blocked" | "streaming" => {
         // Block new queries while one is still streaming (use ref to avoid stale closure)
         if (isStreamingRef.current) return "streaming"
 
@@ -677,7 +677,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 } catch { /* invalid JSON, ignore — search all docs */ }
             }
         }
-        stream.sendQuery(question, corpus, convId, laws, useInternet, docIds)
+        stream.sendQuery(question, corpus, convId, laws, useInternet, docIds, templateSlug)
         return "ok" as const
     }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, useInternet])
 

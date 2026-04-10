@@ -36,7 +36,7 @@ export function useTemplates(): UseTemplatesReturn {
             if (category) params.set("category", category)
             const qs = params.toString()
             const res = await fetch(
-                `${API_BASE}/api/templates${qs ? `?${qs}` : ""}`,
+                `${API_BASE}/api/v1/templates${qs ? `?${qs}` : ""}`,
                 {credentials: "include"},
             )
             if (!res.ok) throw new Error(`HTTP ${res.status}`)

@@ -41,7 +41,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
     const [retryKey, setRetryKey] = useState(0)
 
     const pdfUrl = docId
-        ? `${API_BASE}/api/chats/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/pdf`
+        ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/pdf`
         : null
 
     const handleRetry = useCallback(() => {

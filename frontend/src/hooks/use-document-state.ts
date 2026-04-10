@@ -29,7 +29,7 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
 
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(true)
-        fetch(`${API_BASE}/api/chats/${encodeURIComponent(chatId)}/documents`, {
+        fetch(`${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents`, {
             credentials: "include",
         })
             .then((res) => {
