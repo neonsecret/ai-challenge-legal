@@ -436,6 +436,7 @@ async def query_stream(
                             {
                                 "doc_id": doc_payload.get("doc_id", ""),
                                 "template_slug": doc_payload.get("template_slug", ""),
+                                "template_name": doc_payload.get("template_name", ""),
                                 "version": doc_payload.get("version", 1),
                             }
                         ),

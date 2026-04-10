@@ -763,6 +763,7 @@ def build_agent_graph():
                                 "type": "document_generated",
                                 "doc_id": doc_id,
                                 "template_slug": tmpl,
+                                "template_name": state.get("template_name", ""),
                                 "version": version,
                             }
                         )
