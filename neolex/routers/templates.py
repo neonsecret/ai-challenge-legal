@@ -17,10 +17,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from neolex.db.drafting_models import DocumentTemplate
+from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 from neolex.db.postgres import get_db
 from neolex.routers.admin import get_admin
 from neolex.schemas.drafting import TemplateCreate, TemplateDetail, TemplateListItem, TemplateUpdate
+from neolex.services.pdf_generator import invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +129,20 @@ async def update_template(
 
     await db.commit()
     await db.refresh(template)
+
+    # Invalidate cached PDFs for all documents that use this template.
+    # When a template's LaTeX changes, previously-generated PDFs are stale.
+    if "latex_template" in update_data:
+        docs_result = await db.execute(select(ChatDocument.id).where(ChatDocument.template_slug == slug))
+        stale_ids = docs_result.scalars().all()
+        for doc_id in stale_ids:
+            invalidate_cache(doc_id)
+        if stale_ids:
+            logger.info(
+                "Invalidated PDF cache for %d document(s) after template update: slug=%s",
+                len(stale_ids),
+                slug,
+            )
 
     logger.info("Template updated: slug=%s by admin=%s", slug, admin.email)
     return TemplateDetail.model_validate(template)

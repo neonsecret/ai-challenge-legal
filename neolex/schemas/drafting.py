@@ -82,9 +82,20 @@ class DocumentCreate(BaseModel):
 
 
 class DocumentUpdate(BaseModel):
-    """Payload for updating an existing chat document's fields."""
+    """Payload for updating an existing chat document's fields.
+
+    At least one field must be provided — an empty PATCH would silently increment
+    the version counter and invalidate the cached PDF with no content change.
+    """
 
     fields: dict[str, str]
+
+    @field_validator("fields")
+    @classmethod
+    def fields_must_not_be_empty(cls, v: dict[str, str]) -> dict[str, str]:
+        if not v:
+            raise ValueError("fields must contain at least one entry")
+        return v
 
 
 class DocumentResponse(BaseModel):

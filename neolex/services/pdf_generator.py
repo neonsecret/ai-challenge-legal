@@ -41,10 +41,11 @@ else:
 # ---------------------------------------------------------------------------
 
 _CACHE_DIR = Path("/tmp/vitreon_pdf_cache")  # nosec B108 — intentional /tmp usage
+# Ensure cache directory exists at module load time (not on every _cache_path() call).
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _cache_path(doc_id: uuid.UUID, version: int) -> Path:
-    _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     return _CACHE_DIR / f"{doc_id}_{version}.pdf"
 
 
@@ -148,7 +149,10 @@ async def generate_pdf(
         tex_path = Path(tmpdir) / "document.tex"
         tex_path.write_text(filled_tex, encoding="utf-8")
 
-        # Run xelatex twice (resolves cross-references, e.g. \ref) — common practice
+        # Run xelatex twice (resolves cross-references, e.g. \ref) — common practice.
+        # 60-second hard timeout per run prevents a pathological template from
+        # blocking an async worker indefinitely.
+        _XELATEX_TIMEOUT_SECS = 60
         for run in range(2):
             proc = await asyncio.create_subprocess_exec(
                 _XELATEX_BIN,
@@ -161,7 +165,18 @@ async def generate_pdf(
                 stderr=asyncio.subprocess.PIPE,
                 cwd=tmpdir,  # run inside the tmpdir, not the project root
             )
-            stdout, stderr = await proc.communicate()
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(),
+                    timeout=_XELATEX_TIMEOUT_SECS,
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+                raise RuntimeError(
+                    f"PDF compilation timed out after {_XELATEX_TIMEOUT_SECS}s. "
+                    "The template may contain an infinite loop or very large content."
+                )
 
             if proc.returncode != 0:
                 log_output = (stdout + stderr).decode("utf-8", errors="replace")[-3000:]
@@ -198,6 +213,8 @@ async def generate_pdf(
 
 def invalidate_cache(doc_id: uuid.UUID) -> None:
     """Remove all cached PDFs for a given document (call after fields update)."""
+    if not _CACHE_DIR.exists():
+        return
     for path in _CACHE_DIR.glob(f"{doc_id}_*.pdf"):
         try:
             path.unlink()
