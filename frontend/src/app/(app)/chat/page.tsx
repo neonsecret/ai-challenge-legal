@@ -330,15 +330,14 @@ export default function ChatPage() {
     const showFollowUps = !isStreaming && lastAssistant?.role === "assistant" && lastAssistant.content
 
     return (
-        <div className="p-2 sm:p-4" style={{
+        <div className={isStrict ? undefined : "p-2 sm:p-4"} style={{
             height: "100%",
             display: "flex",
             alignItems: "stretch",
-            gap: isMobile ? 0 : SPACE['2'],
+            gap: isStrict ? 0 : (isMobile ? 0 : SPACE['2']),
             overflow: "hidden",
             maxWidth: "100vw",
             position: "relative",
-            ...(isStrict ? {background: "var(--strict-page-bg)"} : {}),
         }}>
             {/* ── History panel (left) — full-screen overlay on mobile ── */}
             <AnimatePresence>
@@ -380,29 +379,21 @@ export default function ChatPage() {
                 )}
             </AnimatePresence>
 
-            {/* ── Main glass pane (sidebar rail + reading area + source panel) ── */}
-            <div className="animate-glass-in" style={{
+            {/* ── Main content area ── */}
+            {/* Dark mode: layout.tsx provides glass pane + sidebar rail, so we just render content */}
+            {/* Light mode: we create our own glass pane */}
+            <div className={isStrict ? undefined : "animate-glass-in"} style={{
                 flex: 1,
                 display: "flex",
-                flexDirection: isStrict && !isMobile ? "row" : "column",
+                flexDirection: "column",
                 minHeight: 0,
                 minWidth: 0,
                 position: "relative",
                 overflow: "hidden",
                 contain: "style",
                 transition: `all ${TIMING.slow} ${EASE.out}`,
-                ...makeGlassPanel(isStrict && !isMobile),
+                ...(isStrict ? {} : makeGlassPanel(false)),
             }}>
-                {/* Sidebar rail — dark mode desktop only */}
-                {isStrict && !isMobile && (
-                    <StrictSidebarRail
-                        onHistoryToggle={() => setHistoryOpen(v => !v)}
-                        onNewChat={newChat}
-                        onDocIndexToggle={() => setIndexOpen(v => !v)}
-                        historyOpen={historyOpen}
-                        docIndexOpen={indexOpen}
-                    />
-                )}
                 {/* Reading area */}
                 <div style={{flex: 1, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, overflow: "hidden"}}>
                 {/* TODO task 3.2 done: inline header replaced by ChatHeader component */}
