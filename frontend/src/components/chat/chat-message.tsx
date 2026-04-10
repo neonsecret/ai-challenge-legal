@@ -1,18 +1,16 @@
 "use client"
 
-import {useState, useRef, useMemo, useEffect, useCallback, memo} from "react"
+import {useMemo, useCallback, memo} from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
 import {findAndReplace} from "mdast-util-find-and-replace"
-import {cn} from "@/lib/utils"
-import {Copy, Check} from "lucide-react"
-import {motion, AnimatePresence} from "motion/react"
 import {FeedbackButtons} from "@/components/chat/feedback-buttons"
+import {Footnotes, type CitedEntry} from "@/components/chat/footnotes"
 import {SourcesPanel} from "@/components/chat/sources-panel"
 import {StreamingStatus} from "@/components/chat/streaming-status"
 import {ConfidenceBadge} from "@/components/chat/confidence-badge"
-import {AgentTrace} from "@/components/chat/agent-trace"
+import {PipelineStatusBar} from "@/components/chat/pipeline-status-bar"
 import {FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
 
 export type {Source} from "@/components/chat/use-query-stream"
@@ -112,26 +110,9 @@ const DARK_PROSE = [
     "prose-blockquote:border-l-[#C9A84C] prose-blockquote:text-[rgba(255,255,255,0.70)] prose-blockquote:bg-[rgba(201,168,76,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
 ].join(" ")
 
-// V3 glassmorphism dark prose — achromatic palette, iris accent replaces gold
-const V3_DARK_PROSE = [
-    "prose prose-sm max-w-none leading-relaxed prose-invert font-sans",
-    "prose-p:text-[var(--gm-text-primary)] prose-p:my-2",
-    "prose-headings:font-sans prose-headings:text-[var(--gm-text-primary)] prose-headings:font-semibold",
-    "prose-strong:text-[var(--gm-text-primary)] prose-strong:font-semibold",
-    "prose-a:text-[var(--gm-accent)] prose-a:no-underline hover:prose-a:underline",
-    "prose-code:bg-[rgba(255,255,255,0.06)] prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-xs prose-code:text-[var(--gm-text-secondary)]",
-    "prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5 prose-li:text-[var(--gm-text-primary)]",
-    "prose-table:text-[var(--gm-text-secondary)] prose-th:text-left prose-th:text-[11px] prose-th:font-semibold prose-th:py-1.5 prose-th:px-2 prose-th:border-b prose-th:border-[rgba(222,222,222,0.12)]",
-    "prose-td:text-[12px] prose-td:py-1.5 prose-td:px-2 prose-td:border-b prose-td:border-[rgba(222,222,222,0.08)]",
-    "prose-hr:border-[rgba(222,222,222,0.10)] prose-hr:my-3",
-    "prose-blockquote:border-l-[var(--gm-accent)] prose-blockquote:text-[var(--gm-text-secondary)] prose-blockquote:bg-[rgba(139,111,212,0.04)] prose-blockquote:rounded-r-lg prose-blockquote:py-1 prose-blockquote:my-2",
-].join(" ")
-
-// Strict (Full Glass Scholar) dark prose — Georgia serif, gold accents
 const STRICT_DARK_PROSE = [
     "prose prose-sm max-w-none prose-invert",
     "prose-p:text-[var(--strict-text-body)] prose-p:my-2",
-    // headings: Georgia serif, no font-family override from Tailwind (inline style handles it)
     "prose-headings:text-[var(--strict-text-primary)] prose-headings:font-normal prose-headings:font-serif",
     "prose-strong:text-[var(--strict-text-primary)] prose-strong:font-semibold",
     "prose-a:text-[var(--strict-citation)] prose-a:no-underline hover:prose-a:underline",
@@ -152,13 +133,6 @@ function toSuperscript(n: number): string {
 }
 
 // ─── Cited source collection ─────────────────────────────────────────────────
-
-interface CitedEntry {
-    footnoteNum: number
-    docId: string
-    title: string
-    page?: number
-}
 
 function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
     const cited = new Map<number, CitedEntry>()
@@ -198,7 +172,7 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
     return [...cited.values()].sort((a, b) => a.footnoteNum - b.footnoteNum)
 }
 
-// ─── Footnote style ──────────────────────────────────────────────────────────
+// ─── Footnote style (light-mode citation pills) ──────────────────────────────
 
 function footnoteStyle(resolvable: boolean): React.CSSProperties {
     return {
@@ -225,14 +199,14 @@ function footnoteStyle(resolvable: boolean): React.CSSProperties {
     }
 }
 
-// ─── Citation button (module scope — stable identity across renders) ──────────
+// ─── Citation button ──────────────────────────────────────────────────────────
 
 interface CitationButtonProps {
     citationkind?: string
     docid?: string
     page?: number
     refindex?: number
-    isStrict: boolean
+    isDark: boolean
     isStreaming: boolean
     sources: Source[]
     content: string | null
@@ -244,7 +218,7 @@ const CitationButton = memo(function CitationButton({
     docid,
     page,
     refindex,
-    isStrict,
+    isDark,
     isStreaming,
     sources,
     content,
@@ -252,8 +226,8 @@ const CitationButton = memo(function CitationButton({
 }: CitationButtonProps) {
     if (isStreaming) return null
 
-    // ── Strict mode: gold superscript, no pill ────────────────────────────
-    if (isStrict) {
+    // ── Dark/Strict mode: gold superscript ───────────────────────────────
+    if (isDark) {
         if (citationkind === "source") {
             const resolvedDocId = docid ?? ""
             const resolvedPage = page ?? 0
@@ -274,13 +248,7 @@ const CitationButton = memo(function CitationButton({
                         ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={{
-                        color: "var(--strict-citation)",
-                        cursor: resolvable ? "pointer" : "not-allowed",
-                        fontSize: "0.7em",
-                        fontFamily: "system-ui",
-                        verticalAlign: "super",
-                    }}
+                    style={{color: "var(--strict-citation)", cursor: resolvable ? "pointer" : "not-allowed", fontSize: "0.7em", fontFamily: "system-ui", verticalAlign: "super"}}
                 >
                     {footnoteNum}
                 </sup>
@@ -301,13 +269,7 @@ const CitationButton = memo(function CitationButton({
                         ? `${matchedSource.title || matchedSource.doc_id}${pageNum ? ` \u00B7 p.${pageNum}` : ""}`
                         : "Source not found in retrieved documents"
                     }
-                    style={{
-                        color: "var(--strict-citation)",
-                        cursor: resolvable ? "pointer" : "not-allowed",
-                        fontSize: "0.7em",
-                        fontFamily: "system-ui",
-                        verticalAlign: "super",
-                    }}
+                    style={{color: "var(--strict-citation)", cursor: resolvable ? "pointer" : "not-allowed", fontSize: "0.7em", fontFamily: "system-ui", verticalAlign: "super"}}
                 >
                     {refindex ?? 0}
                 </sup>
@@ -316,7 +278,7 @@ const CitationButton = memo(function CitationButton({
         return null
     }
 
-    // ── Default: pill button ──────────────────────────────────────────────
+    // ── Light mode: pill button ───────────────────────────────────────────
     const hoverHandlers = {
         onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
             e.currentTarget.style.background = "var(--dt-accent-highlight)"
@@ -398,9 +360,8 @@ interface ChatMessageProps {
     streamingThinkingPreview?: string | null
     trace?: string[]
     onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
-    /** isDark is retained for prose class selection and child components not yet migrated */
     isDark?: boolean
-    /** isStrict — pass from page-level isStrict to avoid per-message subscriptions */
+    /** @deprecated isDark covers this — kept for backward compat with page.tsx until task #16 */
     isStrict?: boolean
     messageId?: string
     traceId?: string | null
@@ -423,14 +384,16 @@ export function ChatMessage({
     trace,
     onSourceClick,
     isDark = false,
-    isStrict = false,
+    isStrict,
     messageId,
     traceId,
     conversationId,
     feedback,
     onFeedback,
 }: ChatMessageProps) {
-    const [copied, setCopied] = useState(false)
+    // After theme migration, isStrict === isDark. Prefer explicitly-passed isStrict.
+    const dark = isStrict ?? isDark
+
     const citedSources = useMemo(
         () => (content && sources.length > 0 && !isStreaming)
             ? collectCitedSources(content, sources)
@@ -438,18 +401,23 @@ export function ChatMessage({
         [content, sources, isStreaming],
     )
 
-    const handleCopy = () => {
-        if (!content) return
-        navigator.clipboard.writeText(content).then(() => {
-            setCopied(true)
-            setTimeout(() => setCopied(false), 1500)
-        })
-    }
+    const citationButtonComponent = useCallback(
+        (props: Record<string, unknown>) => (
+            <CitationButton
+                {...(props as Omit<CitationButtonProps, "isDark" | "sources" | "content" | "onSourceClick" | "isStreaming">)}
+                isDark={dark}
+                sources={sources}
+                content={content}
+                onSourceClick={onSourceClick}
+                isStreaming={isStreaming}
+            />
+        ),
+        [dark, sources, content, onSourceClick, isStreaming],
+    )
 
     // ── User message ──────────────────────────────────────────────────────────
     if (role === "user") {
-        // Strict: inline italic serif question with gold separator — no bubble
-        if (isStrict) {
+        if (dark) {
             return (
                 <div className="mb-5 animate-fade-in-up">
                     <p style={{
@@ -479,11 +447,7 @@ export function ChatMessage({
                     backdropFilter: "blur(15px)",
                     WebkitBackdropFilter: "blur(15px)",
                 }}>
-                    <p style={{
-                        fontSize: "13px", margin: 0, lineHeight: 1.6,
-                        color: "var(--dt-confidence-text)",
-                        fontWeight: 500,
-                    }}>
+                    <p style={{fontSize: "13px", margin: 0, lineHeight: 1.6, color: "var(--dt-confidence-text)", fontWeight: 500}}>
                         {content}
                     </p>
                 </div>
@@ -493,8 +457,7 @@ export function ChatMessage({
 
     // ── Assistant message ─────────────────────────────────────────────────────
 
-    const answerCardStyle: React.CSSProperties = isStrict ? {
-        // Strict: no card — inline serif content in the glass reading area
+    const answerCardStyle: React.CSSProperties = dark ? {
         fontFamily: "var(--strict-prose-font)",
     } : {
         background: "var(--dt-answer-bg)",
@@ -503,171 +466,117 @@ export function ChatMessage({
         fontFamily: FONT.sans,
     }
 
-    const labelStyle = {
-        fontSize: TYPE_SCALE.xs,
-        textTransform: "uppercase" as const,
-        letterSpacing: "0.14em",
-        color: "var(--dt-vote-text)",
-        margin: `0 0 ${SPACE[2]}px`,
-        fontWeight: 600,
-    }
-
-    const citationButtonComponent = useCallback(
-        (props: Record<string, unknown>) => (
-            <CitationButton
-                {...(props as Omit<CitationButtonProps, "isStrict" | "sources" | "content" | "onSourceClick" | "isStreaming">)}
-                isStrict={isStrict}
-                sources={sources}
-                content={content}
-                onSourceClick={onSourceClick}
-                isStreaming={isStreaming}
-            />
-        ),
-        [isStrict, sources, content, onSourceClick, isStreaming],
-    )
-
     return (
         <div className="mb-7 animate-fade-in-up">
-            {!isStrict && <p style={labelStyle}>Answer</p>}
+            {!dark && (
+                <p style={{
+                    fontSize: TYPE_SCALE.xs,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.14em",
+                    color: "var(--dt-vote-text)",
+                    margin: `0 0 ${SPACE[2]}px`,
+                    fontWeight: 600,
+                }}>
+                    Answer
+                </p>
+            )}
+
+            {/* Pipeline status (trace) — above the card */}
+            {trace && trace.length > 0 && !isStreaming && content && (
+                <PipelineStatusBar trace={trace} isStreaming={isStreaming} isDark={dark} />
+            )}
 
             {/* Answer card */}
             <div style={answerCardStyle}>
-                <div style={isStrict ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
+                <div style={dark ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
                     {content === "__polling_pipeline_status__" ? (
                         <StreamingStatus status="Processing..."/>
                     ) : content?.startsWith("__pipeline_status:") ? (
                         <StreamingStatus status={content.slice("__pipeline_status:".length)}/>
-                    ) : content ? (() => {
-                        return (
-                        <div className="group relative">
-                            <div
-                                className={isStrict ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}
-                                style={isStrict ? {
-                                    fontFamily: "var(--strict-prose-font)",
-                                    lineHeight: "var(--strict-prose-lh)",
-                                    letterSpacing: "var(--strict-prose-tracking)",
-                                    fontSize: "var(--strict-prose-size)",
-                                } : undefined}
-                            >
-                                <ReactMarkdown
-                                    remarkPlugins={[remarkGfm, remarkInlineCitations]}
-                                    rehypePlugins={[rehypeInlineCitations]}
-                                    remarkRehypeOptions={{
-                                        passThrough: ["citationRef" as import("mdast").Nodes["type"]],
-                                    }}
-                                    components={{
-                                        h2: ({node: _node, children, ...props}) => (
-                                            <h2 {...props} style={{
-                                                fontSize: TYPE_SCALE.lg,
-                                                fontFamily: isStrict ? "Georgia, serif" : FONT.sans,
-                                                color: isStrict ? "var(--strict-text-primary)" : undefined,
-                                                fontWeight: isStrict ? "normal" : undefined,
-                                            }}>{children}</h2>
-                                        ),
-                                        h3: ({node: _node, children, ...props}) => (
-                                            <h3 {...props} style={{
-                                                fontSize: TYPE_SCALE.md,
-                                                fontFamily: isStrict ? "Georgia, serif" : FONT.sans,
-                                                color: isStrict ? "var(--strict-text-primary)" : undefined,
-                                                fontWeight: isStrict ? "normal" : undefined,
-                                            }}>{children}</h3>
-                                        ),
-                                        strong: ({node: _node, children, ...props}) => (
-                                            <strong {...props}>{children}</strong>
-                                        ),
-                                        a: ({node: _node, children, href, ...props}) => {
-                                            const safe = href && /^https?:\/\//i.test(href) ? href : undefined
-                                            return <a {...props} href={safe} target="_blank" rel="noopener noreferrer">
-                                                {children}
-                                            </a>
-                                        },
-                                        // @ts-expect-error — citationbutton is a custom element from our rehype plugin
-                                        citationbutton: citationButtonComponent,
-                                    }}
-                                >
-                                    {content}
-                                </ReactMarkdown>
-                            </div>
-                            <button
-                                onClick={handleCopy}
-                                className={cn(
-                                    "absolute -top-1 right-0 rounded-lg p-1.5 transition-all",
-                                    "opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                                )}
-                                style={{
-                                    background: "var(--dt-code-bg)",
-                                    border: "1px solid var(--dt-code-border)",
-                                    backdropFilter: "blur(8px)",
-                                    WebkitBackdropFilter: "blur(8px)",
-                                    color: copied ? "var(--dt-color-blue-base)" : "var(--dt-code-copy-color)",
+                    ) : content ? (
+                        <div
+                            className={dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}
+                            style={dark ? {
+                                fontFamily: "var(--strict-prose-font)",
+                                lineHeight: "var(--strict-prose-lh)",
+                                letterSpacing: "var(--strict-prose-tracking)",
+                                fontSize: "var(--strict-prose-size)",
+                            } : undefined}
+                        >
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkInlineCitations]}
+                                rehypePlugins={[rehypeInlineCitations]}
+                                remarkRehypeOptions={{
+                                    passThrough: ["citationRef" as import("mdast").Nodes["type"]],
                                 }}
-                                aria-label="Copy answer"
+                                components={{
+                                    h2: ({node: _node, children, ...props}) => (
+                                        <h2 {...props} style={{
+                                            fontSize: TYPE_SCALE.lg,
+                                            fontFamily: dark ? "Georgia, serif" : FONT.sans,
+                                            color: dark ? "var(--strict-text-primary)" : undefined,
+                                            fontWeight: dark ? "normal" : undefined,
+                                        }}>{children}</h2>
+                                    ),
+                                    h3: ({node: _node, children, ...props}) => (
+                                        <h3 {...props} style={{
+                                            fontSize: TYPE_SCALE.md,
+                                            fontFamily: dark ? "Georgia, serif" : FONT.sans,
+                                            color: dark ? "var(--strict-text-primary)" : undefined,
+                                            fontWeight: dark ? "normal" : undefined,
+                                        }}>{children}</h3>
+                                    ),
+                                    strong: ({node: _node, children, ...props}) => (
+                                        <strong {...props}>{children}</strong>
+                                    ),
+                                    a: ({node: _node, children, href, ...props}) => {
+                                        const safe = href && /^https?:\/\//i.test(href) ? href : undefined
+                                        return <a {...props} href={safe} target="_blank" rel="noopener noreferrer">{children}</a>
+                                    },
+                                    // @ts-expect-error — citationbutton is a custom element from our rehype plugin
+                                    citationbutton: citationButtonComponent,
+                                }}
                             >
-                                {copied ? <Check className="size-3.5"/> : <Copy className="size-3.5"/>}
-                            </button>
+                                {content}
+                            </ReactMarkdown>
                         </div>
-                        )
-                    })() : isStreaming ? (
+                    ) : isStreaming ? (
                         <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview}/>
                     ) : (
-                        <p style={{
-                            fontSize: TYPE_SCALE.sm,
-                            fontStyle: "italic",
-                            color: "var(--dt-vote-text)",
-                            margin: 0,
-                        }}>
+                        <p style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: "var(--dt-vote-text)", margin: 0}}>
                             No response
                         </p>
                     )}
                 </div>
 
-                {/* References — inside the answer card, at the bottom (hidden in Strict) */}
-                {citedSources.length > 0 && !isStrict && (
+                {/* Light-mode cited sources inside the card footer */}
+                {citedSources.length > 0 && !dark && !isStreaming && (
                     <div style={{
                         padding: `${SPACE[3]}px ${SPACE[4]}px ${SPACE[4]}px`,
                         borderTop: "1px solid var(--dt-answer-border)",
                         background: "var(--dt-answer-footnote-bg)",
                         borderRadius: `0 0 ${RADIUS.xl}px ${RADIUS.xl}px`,
                     }}>
-                        <div style={{display: "flex", flexDirection: "column", gap: SPACE[1]}}>
-                            {citedSources.map((entry) => (
-                                <button
-                                    key={entry.footnoteNum}
-                                    onClick={() => onSourceClick?.(
-                                        content ?? "",
-                                        sources,
-                                        entry.docId,
-                                        entry.page,
-                                    )}
-                                    style={{
-                                        display: "block",
-                                        fontSize: TYPE_SCALE.xs,
-                                        color: "var(--dt-text-tertiary)",
-                                        fontFamily: FONT.sans,
-                                        background: "none",
-                                        border: "none",
-                                        padding: 0,
-                                        cursor: "pointer",
-                                        textAlign: "left",
-                                        lineHeight: 1.5,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.color = "var(--dt-accent-color)"
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.color = "var(--dt-text-tertiary)"
-                                    }}
-                                >
-                                    {toSuperscript(entry.footnoteNum)} {entry.title}{entry.page ? ` (p. ${entry.page})` : ""}
-                                </button>
-                            ))}
-                        </div>
+                        <Footnotes
+                            citedSources={citedSources}
+                            onSourceClick={(docId, page) => onSourceClick?.(content ?? "", sources, docId, page)}
+                            isDark={false}
+                        />
                     </div>
                 )}
             </div>
 
-            {/* Source chips — below the answer card (hidden in Strict; sources are in StrictSourceMargin) */}
-            {sources.length > 0 && !isStrict && (
+            {/* Dark-mode: Footnotes below the card */}
+            {dark && citedSources.length > 0 && !isStreaming && (
+                <Footnotes
+                    citedSources={citedSources}
+                    onSourceClick={(docId, page) => onSourceClick?.(content ?? "", sources, docId, page)}
+                    isDark={true}
+                />
+            )}
+
+            {/* Source chips — light mode only (dark uses StrictSourceMargin / SourcePanelV2) */}
+            {sources.length > 0 && !dark && (
                 <div style={{marginTop: SPACE[3]}}>
                     <SourcesPanel
                         sources={sources}
@@ -678,17 +587,13 @@ export function ChatMessage({
 
             {confidence != null && !isStreaming && (
                 <div style={{marginTop: SPACE[2]}} className="animate-fade-in-up">
-                    <ConfidenceBadge confidence={confidence} isDark={isDark} isStrict={isStrict}/>
+                    <ConfidenceBadge confidence={confidence} isDark={dark}/>
                 </div>
             )}
 
-            {trace && trace.length > 0 && !isStreaming && content && (
-                <AgentTrace trace={trace} isDark={isDark} isStrict={isStrict} />
-            )}
-
-            {/* Feedback bar */}
-            {role === "assistant" && !isStreaming && traceId && messageId && conversationId && (
-                <div style={{marginTop: SPACE[2]}}>
+            {/* Feedback: dark = copy+thumbs+comment row; light = thumbs only */}
+            {!isStreaming && traceId && (
+                <div style={{marginTop: dark ? 0 : SPACE[2]}}>
                     <FeedbackButtons
                         messageId={messageId}
                         traceId={traceId}
@@ -696,10 +601,13 @@ export function ChatMessage({
                         content={content}
                         feedback={feedback}
                         onFeedback={onFeedback}
-                        isStrict={isStrict}
+                        isStrict={dark}
                     />
                 </div>
             )}
         </div>
     )
 }
+
+// Keep toSuperscript in module scope so it's accessible if needed elsewhere
+export {toSuperscript}
