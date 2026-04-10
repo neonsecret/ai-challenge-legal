@@ -249,39 +249,48 @@ export default function BillingPage() {
   const darkPlanCard = (isCurrent: boolean): React.CSSProperties => ({
     border: isCurrent
       ? "1px solid rgba(201,168,76,0.20)"
-      : "1px solid rgba(201,168,76,0.06)",
-    borderRadius: "8px",
+      : "1px solid var(--strict-gold-border, rgba(201,168,76,0.08))",
+    borderRadius: "14px",
     padding: "10px 12px",
-    background: isCurrent ? "rgba(201,168,76,0.03)" : "transparent",
-    marginBottom: "8px",
+    background: isCurrent ? "var(--strict-glass-bg)" : "var(--strict-glass-bg)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    marginBottom: "12px",
+    boxShadow: isCurrent ? "0 0 16px rgba(201,168,76,0.04)" : "none",
+    transition: "border-color 0.15s",
   });
 
   const darkPlanName: React.CSSProperties = {
-    fontFamily: "Georgia, 'Times New Roman', serif",
-    fontSize: "10px",
+    fontFamily: fontStack,
+    fontSize: "11px",
     lineHeight: 1,
+    letterSpacing: "0.5px",
+    textTransform: "uppercase" as const,
     color: "var(--strict-text-primary)",
+    opacity: 0.6,
   };
 
   const darkPlanPrice: React.CSSProperties = {
     fontFamily: "Georgia, 'Times New Roman', serif",
-    fontSize: "16px",
+    fontSize: "20px",
     lineHeight: 1.2,
-    color: "rgba(201,168,76,0.7)",
+    color: "var(--strict-text-primary)",
+    opacity: 0.8,
     margin: "4px 0",
   };
 
   const darkPlanPriceSuffix: React.CSSProperties = {
     fontFamily: fontStack,
-    fontSize: "9px",
-    color: "var(--strict-text-dim, rgba(200,210,230,0.22))",
+    fontSize: "12px",
+    color: "var(--strict-text-secondary)",
+    opacity: 0.5,
   };
 
   const darkPlanDetail: React.CSSProperties = {
     fontFamily: fontStack,
     fontSize: "11px",
     lineHeight: 1.4,
-    color: "var(--strict-text-dim, rgba(200,210,230,0.22))",
+    color: "var(--strict-text-dim)",
   };
 
   const darkPlanBadge: React.CSSProperties = {
@@ -302,13 +311,15 @@ export default function BillingPage() {
   const darkUpgradeBtn = (isLoading: boolean): React.CSSProperties => ({
     padding: "5px 10px",
     borderRadius: "5px",
-    background: "rgba(201,168,76,0.06)",
+    background: "var(--strict-glass-bg)",
+    backdropFilter: "blur(8px)",
+    WebkitBackdropFilter: "blur(8px)",
     border: "1px solid rgba(201,168,76,0.12)",
-    borderBottom: "2px solid rgba(201,168,76,0.20)",
+    borderBottom: "2px solid rgba(201,168,76,0.30)",
     fontFamily: fontStack,
     fontSize: "11px",
     lineHeight: 1,
-    color: "rgba(201,168,76,0.7)",
+    color: "var(--strict-gold-text)",
     cursor: isLoading ? "wait" : "pointer",
     marginTop: "6px",
     display: "inline-flex",
@@ -463,7 +474,7 @@ export default function BillingPage() {
       ? "#f87171"
       : isWarning
         ? "#fbbf24"
-        : "linear-gradient(90deg, rgba(201,168,76,0.4), rgba(201,168,76,0.2))";
+        : "linear-gradient(90deg, rgba(201,168,76,0.4), rgba(201,168,76,0.20))";
 
     const usageLabel = billing.is_monthly_limit
       ? t("billing.queries_this_month")
@@ -706,14 +717,14 @@ export default function BillingPage() {
             disabled={actionLoading !== null}
             style={darkUpgradeBtn(actionLoading === plan.tier)}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(201,168,76,0.10)";
-              e.currentTarget.style.borderColor = "rgba(201,168,76,0.20)";
+              e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.50)";
               e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 4px 12px rgba(201,168,76,0.06)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(201,168,76,0.06)";
-              e.currentTarget.style.borderColor = "rgba(201,168,76,0.12)";
+              e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.30)";
               e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
             {actionLoading === plan.tier ? (
@@ -1038,7 +1049,7 @@ export default function BillingPage() {
             variants={isV3 ? V3_LIST_VARIANT : undefined}
             initial={isV3 ? "hidden" : undefined}
             animate={isV3 ? "visible" : undefined}
-            style={{ display: "flex", flexDirection: "column", gap: "0px" }}
+            style={{ display: "flex", flexDirection: "column", gap: "0" }}
           >
             {/* Current plan summary */}
             <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>

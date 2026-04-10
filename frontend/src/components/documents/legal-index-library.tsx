@@ -72,7 +72,7 @@ export function LegalIndexLibrary() {
                         )}
                         <div style={{
                             display: "flex", alignItems: "center", gap: "8px",
-                            padding: "5px 8px", borderRadius: "5px",
+                            padding: "5px 8px", borderRadius: "6px",
                             transition: "background 0.12s",
                         }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.02)"; }}
@@ -83,9 +83,9 @@ export function LegalIndexLibrary() {
                                 {idx.flag}
                             </span>
 
-                            {/* Name + passage count */}
+                            {/* Name */}
                             <span style={{
-                                flex: 1, fontSize: "9px", fontFamily: "Georgia, serif",
+                                flex: 1, font: "11px/1.3 Georgia, serif",
                                 color: "rgba(255,255,255,0.56)",
                                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                             }}>
@@ -94,8 +94,8 @@ export function LegalIndexLibrary() {
 
                             {/* Passage count */}
                             <span style={{
-                                fontSize: "7px", fontFamily: "system-ui, sans-serif",
-                                color: "rgba(200,210,230,0.22)", flexShrink: 0,
+                                font: "9px/1 system-ui, sans-serif",
+                                color: "var(--strict-text-dim)", flexShrink: 0,
                                 fontVariantNumeric: "tabular-nums",
                             }}>
                                 {idx.passages}
@@ -103,12 +103,12 @@ export function LegalIndexLibrary() {
 
                             {/* Active badge */}
                             <span style={{
-                                fontSize: "6px", fontFamily: "system-ui, sans-serif",
-                                textTransform: "uppercase", letterSpacing: "0.5px",
-                                color: "rgba(74,222,128,0.7)",
+                                font: "7px/1 system-ui, sans-serif",
+                                textTransform: "uppercase", letterSpacing: "0.3px",
+                                color: "#4ade80",
                                 background: "rgba(34,197,94,0.08)",
-                                border: "1px solid rgba(34,197,94,0.18)",
-                                borderRadius: "3px", padding: "1px 5px",
+                                border: "1px solid rgba(34,197,94,0.15)",
+                                borderRadius: "3px", padding: "2px 5px",
                                 flexShrink: 0,
                             }}>
                                 {t("documents.index_status_active")}

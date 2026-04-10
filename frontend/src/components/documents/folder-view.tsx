@@ -171,11 +171,19 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                     background: "rgba(201,168,76,0.025)",
                                     border: "1px solid rgba(201,168,76,0.06)",
                                     cursor: "pointer", marginBottom: isExpanded ? "3px" : "0",
-                                    transition: "background 0.12s",
+                                    transition: "background 0.15s, border-color 0.15s, box-shadow 0.15s",
                                 }}
                                 onClick={() => toggleFolder(folder.name)}
-                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.04)"; }}
-                                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.025)"; }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = "rgba(201,168,76,0.04)";
+                                    e.currentTarget.style.borderColor = "rgba(201,168,76,0.12)";
+                                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(201,168,76,0.04)";
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = "rgba(201,168,76,0.025)";
+                                    e.currentTarget.style.borderColor = "rgba(201,168,76,0.06)";
+                                    e.currentTarget.style.boxShadow = "none";
+                                }}
                             >
                                 {/* Folder SVG icon */}
                                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(201,168,76,0.7)" strokeWidth="1.4" style={{flexShrink: 0}}>
@@ -210,13 +218,13 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                         </button>
                                     </div>
                                 ) : (
-                                    <span style={{flex: 1, fontSize: "9px", fontFamily: "system-ui, sans-serif", color: "rgba(255,255,255,0.56)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                    <span style={{flex: 1, font: "11px/1.3 Georgia, serif", color: "rgba(255,255,255,0.56)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                                         {folder.name}
                                     </span>
                                 )}
 
                                 {/* Doc count */}
-                                <span style={{fontSize: "7px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", flexShrink: 0}}>
+                                <span style={{font: "9px/1 system-ui, sans-serif", color: "var(--strict-text-dim)", flexShrink: 0}}>
                                     {folder.docs.length} {folder.docs.length === 1 ? t("documents.document") : t("documents.documents")}
                                 </span>
 
@@ -251,32 +259,32 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 display: "flex", alignItems: "center", gap: "8px",
                                                 padding: "6px 8px", borderRadius: "5px",
                                                 border: "1px solid transparent", marginBottom: "2px",
-                                                background: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.03)" : "transparent",
+                                                background: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.025)" : "transparent",
                                                 borderColor: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.06)" : "transparent",
-                                                transition: "all 0.12s",
+                                                transition: "background 0.12s, border-color 0.12s",
                                             }}
                                         >
                                             {/* PDF badge */}
                                             <div style={{
                                                 width: "22px", height: "22px", borderRadius: "4px",
-                                                background: "rgba(201,168,76,0.05)",
-                                                border: "1px solid rgba(201,168,76,0.08)",
+                                                background: "rgba(201,168,76,0.06)",
+                                                border: "1px solid rgba(201,168,76,0.1)",
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                                 flexShrink: 0,
                                             }}>
-                                                <span style={{fontSize: "6px", fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.7)", lineHeight: 1}}>PDF</span>
+                                                <span style={{font: "8px/1 system-ui, sans-serif", color: "var(--strict-gold-text)"}}>PDF</span>
                                             </div>
 
                                             {/* Name + meta */}
                                             <div style={{flex: 1, minWidth: 0}}>
                                                 <div style={{
-                                                    fontSize: "9px", fontFamily: "Georgia, serif",
-                                                    color: "rgba(255,255,255,0.56)",
+                                                    font: "11px/1.3 Georgia, serif",
+                                                    color: "var(--strict-text-body, rgba(255,255,255,0.56))",
                                                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                                 }} title={doc.filename}>
                                                     {doc.filename}
                                                 </div>
-                                                <div style={{fontSize: "7px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", marginTop: "1px"}}>
+                                                <div style={{font: "9px/1.2 system-ui, sans-serif", color: "var(--strict-text-dim)", marginTop: "1px"}}>
                                                     {formatSize(doc.size_bytes)} · {formatDate(doc.uploaded_at)}
                                                     {doc.indexed && <span style={{marginLeft: "4px", color: "rgba(74,222,128,0.6)"}}>✓</span>}
                                                 </div>

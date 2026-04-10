@@ -180,7 +180,7 @@ export default function DocumentsPage() {
                     variants={V3_LIST_VARIANT}
                     initial="hidden"
                     animate="visible"
-                    style={{display: "flex", flexDirection: "column", gap: "12px"}}
+                    style={{display: "flex", flexDirection: "column", gap: "20px"}}
                 >
                     {/* Upload section — gated by plan */}
                     {isFreeTier ? (
@@ -217,9 +217,9 @@ export default function DocumentsPage() {
                     {/* COLLECTIONS label + folder view */}
                     <motion.div variants={V3_ITEM_VARIANT} style={{display: "flex", flexDirection: "column", gap: "0"}}>
                         <div style={{
-                            fontSize: "7px", fontFamily: "system-ui, sans-serif",
-                            letterSpacing: "1px", textTransform: "uppercase" as const,
-                            color: "rgba(200,210,230,0.22)", marginBottom: "6px",
+                            fontSize: "8px", fontFamily: "system-ui, sans-serif",
+                            letterSpacing: "1.5px", textTransform: "uppercase" as const,
+                            color: "var(--strict-text-dim)", marginBottom: "12px",
                         }}>
                             {t("documents.collections")}
                         </div>

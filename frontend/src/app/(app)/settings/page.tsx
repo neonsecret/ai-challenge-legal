@@ -194,7 +194,7 @@ export default function SettingsPage() {
         lineHeight: 1,
         border: active ? "1px solid rgba(201,168,76,0.15)" : "1px solid transparent",
         background: active ? "rgba(201,168,76,0.08)" : "transparent",
-        color: active ? "rgba(201,168,76,0.7)" : "var(--strict-text-dim, rgba(200,210,230,0.22))",
+        color: active ? "rgba(201,168,76,0.7)" : "var(--strict-text-dim)",
         cursor: "pointer",
         transition: "all 0.12s",
     });
@@ -249,7 +249,7 @@ export default function SettingsPage() {
         borderRadius: "4px",
         background: "rgba(201,168,76,0.05)",
         border: "1px solid rgba(201,168,76,0.10)",
-        fontFamily: fontStack,
+        fontFamily: "Georgia, serif",
         fontSize: "10px",
         color: "rgba(201,168,76,0.7)",
         cursor: "pointer",
@@ -296,10 +296,10 @@ export default function SettingsPage() {
                         </div>
                     )}
                     <div>
-                        <div style={{fontFamily: fontStack, fontSize: "11px", lineHeight: 1.2, color: "var(--strict-text-primary)"}}>
+                        <div style={{fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.2, color: "var(--strict-text-primary)"}}>
                             {user.name || user.email}
                         </div>
-                        <div style={{fontFamily: fontStack, fontSize: "9px", lineHeight: 1.2, color: "var(--strict-text-dim, rgba(200,210,230,0.22))"}}>
+                        <div style={{fontFamily: fontStack, fontSize: "9px", lineHeight: 1.2, color: "var(--strict-text-dim)"}}>
                             {user.email}
                         </div>
                     </div>
@@ -311,7 +311,7 @@ export default function SettingsPage() {
                 {/* Plan row */}
                 <div style={darkSettingRow}>
                     <span style={darkSettingLabel}>{t("settings.plan")}</span>
-                    <span style={darkSettingValue}>{user.subscription_status}</span>
+                    <span style={{...darkSettingValue, fontFamily: "Georgia, serif"}}>{user.subscription_status}</span>
                 </div>
 
                 {/* Sign out */}
@@ -346,12 +346,12 @@ export default function SettingsPage() {
                             fontFamily: fontStack,
                             fontSize: "9px",
                             lineHeight: 1,
-                            color: "rgba(255,255,255,0.16)",
+                            color: "var(--strict-text-ghost, rgba(255,255,255,0.16))",
                             cursor: "pointer",
                             transition: "color 0.15s",
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.30)"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.16)"; }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = "var(--strict-text-dim)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = "var(--strict-text-ghost, rgba(255,255,255,0.16))"; }}
                     >
                         {t("settings.delete_account")} ▾
                     </button>
@@ -541,6 +541,18 @@ export default function SettingsPage() {
                                                 onClick={() => setMode(opt.value)}
                                                 aria-pressed={mode === opt.value}
                                                 style={darkThemePill(mode === opt.value)}
+                                                onMouseEnter={(e) => {
+                                                    if (mode !== opt.value) {
+                                                        e.currentTarget.style.borderColor = "rgba(201,168,76,0.08)";
+                                                        e.currentTarget.style.background = "rgba(201,168,76,0.03)";
+                                                    }
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    if (mode !== opt.value) {
+                                                        e.currentTarget.style.borderColor = "transparent";
+                                                        e.currentTarget.style.background = "transparent";
+                                                    }
+                                                }}
                                             >
                                                 {t(opt.labelKey)}
                                             </button>

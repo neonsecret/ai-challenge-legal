@@ -184,17 +184,17 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
         );
     }
 
-    // Dark mode: mockup-matched minimal design — dashed zone only, no collection header
+    // Dark mode: glass-matched minimal design — dashed zone only, no collection header
     const zoneBg = isDragging
-        ? "rgba(201,168,76,0.03)"
+        ? "var(--strict-glass-bg)"
         : isHovering
-            ? "rgba(201,168,76,0.03)"
+            ? "var(--strict-glass-bg)"
             : "rgba(201,168,76,0.015)";
     const zoneBorder = isDragging
         ? "1px dashed rgba(201,168,76,0.25)"
         : isHovering
-            ? "1px dashed rgba(201,168,76,0.25)"
-            : "1px dashed rgba(201,168,76,0.15)";
+            ? "1px dashed rgba(201,168,76,0.20)"
+            : "1px dashed rgba(201,168,76,0.12)";
 
     return (
         <div style={{display: "flex", flexDirection: "column", gap: "0"}}>
@@ -249,22 +249,33 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                 ) : (
                     /* Idle state */
                     <>
-                        <div style={{fontSize: "18px", color: "rgba(201,168,76,0.3)", marginBottom: "4px", lineHeight: 1}}>↑</div>
-                        <div style={{fontSize: "9px", color: "rgba(200,210,230,0.22)", fontFamily: "system-ui, sans-serif", lineHeight: 1.4, marginBottom: "6px"}}>
+                        <div style={{fontSize: "18px", color: "rgba(201,168,76,0.35)", marginBottom: "4px", lineHeight: 1}}>↑</div>
+                        <div style={{font: "11px/1.5 system-ui, sans-serif", color: "var(--strict-text-dim)", marginBottom: "6px"}}>
                             {t("documents.upload_drop_v2")}
                         </div>
                         <button
                             style={{
                                 display: "inline-block",
                                 padding: "4px 10px",
-                                borderRadius: "5px",
-                                background: "rgba(201,168,76,0.06)",
-                                border: "1px solid rgba(201,168,76,0.12)",
+                                borderRadius: "6px",
+                                background: "var(--strict-glass-bg)",
+                                border: "1px solid var(--strict-gold-border)",
+                                backdropFilter: "blur(8px)",
+                                WebkitBackdropFilter: "blur(8px)",
                                 fontSize: "8px",
-                                color: "rgba(201,168,76,0.7)",
+                                color: "var(--strict-gold-text)",
                                 cursor: "pointer",
                                 fontFamily: "system-ui, sans-serif",
                                 lineHeight: 1,
+                                transition: "border-color 0.15s, transform 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = "rgba(201,168,76,0.25)";
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = "var(--strict-gold-border)";
+                                e.currentTarget.style.transform = "translateY(0)";
                             }}
                             onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
                         >
