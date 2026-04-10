@@ -92,12 +92,12 @@ export default function SettingsPage() {
     ];
 
     const glassCard: React.CSSProperties = isDark ? {
-        background: "var(--gm-surface-0)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        border: "1px solid var(--gm-border-outer)",
-        borderRadius: "16px",
-        boxShadow: "var(--gm-shadow-structural)",
+        background: "rgba(255,255,255, 0.02)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: "1px solid rgba(201,168,76, 0.06)",
+        borderRadius: "14px",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.025)",
         overflow: "clip",
     } : {
         background: "var(--dt-glass-bg)",
@@ -109,14 +109,20 @@ export default function SettingsPage() {
         overflow: "clip",
     };
 
-    const glassCardClass = isDark ? "v3-glass-elevated" : "";
+    const glassCardClass = "";
 
     const cardHeader: React.CSSProperties = {
         padding: "16px 20px",
-        borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+        borderBottom: isDark ? "1px solid rgba(201,168,76, 0.06)" : "0.5px solid var(--dt-glass-border-subtle)",
     };
 
-    const cardHeading: React.CSSProperties = {
+    const cardHeading: React.CSSProperties = isDark ? {
+        fontSize: "14px",
+        fontWeight: 600,
+        color: "var(--strict-text-primary)",
+        fontFamily: "Georgia, serif",
+        margin: 0,
+    } : {
         fontSize: "14px",
         fontWeight: 600,
         color: "var(--dt-text-primary)",
@@ -131,13 +137,29 @@ export default function SettingsPage() {
     const labelStyleDyn: React.CSSProperties = {
         fontSize: "12px",
         fontWeight: 500,
-        color: "var(--dt-text-tertiary)",
+        color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
         fontFamily: fontStack,
         marginBottom: "6px",
         display: "block",
     };
 
-    const themeButton = (active: boolean): React.CSSProperties => ({
+    const themeButton = (active: boolean): React.CSSProperties => isDark ? {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        borderRadius: "10px",
+        padding: "8px 16px",
+        fontSize: "13px",
+        fontWeight: 500,
+        fontFamily: fontStack,
+        cursor: "pointer",
+        transition: "all 0.15s ease",
+        background: active ? "rgba(201,168,76, 0.08)" : "rgba(255,255,255,0.02)",
+        border: active
+            ? "1px solid rgba(201,168,76, 0.15)"
+            : "1px solid rgba(201,168,76, 0.06)",
+        color: active ? "var(--strict-gold-text)" : "var(--strict-text-secondary)",
+    } : {
         display: "inline-flex",
         alignItems: "center",
         gap: "6px",
@@ -153,7 +175,7 @@ export default function SettingsPage() {
             ? "0.5px solid var(--dt-accent-border-color)"
             : "0.5px solid var(--dt-button-border-color)",
         color: active ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
-    });
+    };
 
     const statusBadge = (status: string): React.CSSProperties => {
         const isActive = status === "active" || status === "trial";
@@ -172,7 +194,7 @@ export default function SettingsPage() {
     return (
         <div
             style={{
-                padding: "24px 16px 120px",
+                padding: "24px 16px 24px",
                 maxWidth: "640px",
                 margin: "0 auto",
             }}
@@ -181,10 +203,10 @@ export default function SettingsPage() {
             <div style={{marginBottom: "24px"}}>
                 <h1
                     style={{
-                        fontFamily: "var(--font-heading), Georgia, serif",
+                        fontFamily: isDark ? "Georgia, serif" : "var(--font-heading), Georgia, serif",
                         fontSize: "1.5rem",
                         fontWeight: 700,
-                        color: "var(--dt-text-primary)",
+                        color: isDark ? "var(--strict-text-primary)" : "var(--dt-text-primary)",
                         margin: 0,
                     }}
                 >
@@ -192,7 +214,7 @@ export default function SettingsPage() {
                 </h1>
                 <p
                     style={{
-                        color: "var(--dt-text-tertiary)",
+                        color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                         fontSize: "13px",
                         fontFamily: fontStack,
                         marginTop: "4px",
@@ -216,18 +238,18 @@ export default function SettingsPage() {
                     style={glassCard}
                 >
                     <div style={cardHeader}>
-                        <h2 className={isDark ? "v3-text-aurora" : ""} style={isDark ? undefined : cardHeading}>{t("settings.account")}</h2>
+                        <h2 style={cardHeading}>{t("settings.account")}</h2>
                     </div>
                     <div style={cardBody}>
                         {userLoading ? (
                             <div style={{display: "flex", alignItems: "center", gap: 8}}>
                                 <Loader2 size={16} style={{
-                                    color: "var(--dt-text-tertiary)",
+                                    color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                                     animation: "spin 1s linear infinite"
                                 }}/>
                                 <span style={{
                                     fontSize: 13,
-                                    color: "var(--dt-text-tertiary)",
+                                    color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                                     fontFamily: fontStack
                                 }}>{t("settings.loading")}</span>
                             </div>
@@ -239,33 +261,33 @@ export default function SettingsPage() {
                                             width: 44,
                                             height: 44,
                                             borderRadius: 12,
-                                            border: "0.5px solid var(--dt-glass-border)"
+                                            border: isDark ? "1px solid rgba(201,168,76, 0.12)" : "0.5px solid var(--dt-glass-border)"
                                         }}/>
                                     ) : (
                                         <div style={{
                                             width: 44,
                                             height: 44,
                                             borderRadius: 12,
-                                            background: "var(--dt-accent-tint)",
-                                            border: "0.5px solid var(--dt-accent-border-color)",
+                                            background: isDark ? "rgba(201,168,76, 0.06)" : "var(--dt-accent-tint)",
+                                            border: isDark ? "1px solid rgba(201,168,76, 0.12)" : "0.5px solid var(--dt-accent-border-color)",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: "center"
                                         }}>
-                                            <User size={20} style={{color: "var(--dt-accent-color)"}}/>
+                                            <User size={20} style={{color: isDark ? "var(--strict-gold-text)" : "var(--dt-accent-color)"}}/>
                                         </div>
                                     )}
                                     <div>
                                         <p style={{
                                             fontSize: 15,
                                             fontWeight: 600,
-                                            color: "var(--dt-text-primary)",
+                                            color: isDark ? "var(--strict-text-primary)" : "var(--dt-text-primary)",
                                             fontFamily: fontStack,
                                             margin: 0
                                         }}>{user.name || user.email}</p>
                                         <p style={{
                                             fontSize: 12,
-                                            color: "var(--dt-text-quaternary)",
+                                            color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-quaternary)",
                                             fontFamily: fontStack,
                                             margin: "2px 0 0"
                                         }}>{user.email}</p>
@@ -274,7 +296,7 @@ export default function SettingsPage() {
                                 <div style={{display: "flex", alignItems: "center", justifyContent: "space-between"}}>
                                     <span style={{
                                         fontSize: 12,
-                                        color: "var(--dt-text-quaternary)",
+                                        color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-quaternary)",
                                         fontFamily: fontStack
                                     }}>{t("settings.plan")}</span>
                                     <span style={statusBadge(user.subscription_status)}>{user.subscription_status}</span>
@@ -309,7 +331,7 @@ export default function SettingsPage() {
                             <div style={{textAlign: "center", padding: "12px 0"}}>
                                 <p style={{
                                     fontSize: 13,
-                                    color: "var(--dt-text-tertiary)",
+                                    color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                                     fontFamily: fontStack,
                                     margin: "0 0 12px"
                                 }}>{t("settings.not_signed_in")}</p>
@@ -322,11 +344,11 @@ export default function SettingsPage() {
                                     fontSize: 13,
                                     fontWeight: 600,
                                     fontFamily: fontStack,
-                                    background: "var(--dt-accent-solid)",
-                                    color: isDark ? "#0F1623" : "#fff8ee",
+                                    background: isDark ? "rgba(201,168,76, 0.10)" : "var(--dt-accent-solid)",
+                                    color: isDark ? "var(--strict-gold-text)" : "#fff8ee",
                                     textDecoration: "none",
-                                    boxShadow: "0 2px 12px var(--dt-accent-glow)",
-                                    border: "none"
+                                    boxShadow: isDark ? "0 2px 12px rgba(201,168,76,0.15)" : "0 2px 12px var(--dt-accent-glow)",
+                                    border: isDark ? "1px solid rgba(201,168,76, 0.20)" : "none"
                                 }}>
                                     {t("settings.sign_in")}
                                 </a>
@@ -342,7 +364,7 @@ export default function SettingsPage() {
                     style={glassCard}
                 >
                     <div style={cardHeader}>
-                        <h2 className={isDark ? "v3-text-aurora" : ""} style={isDark ? undefined : cardHeading}>{t("settings.appearance")}</h2>
+                        <h2 style={cardHeading}>{t("settings.appearance")}</h2>
                     </div>
                     <div style={cardBody}>
                         <div style={{display: "flex", flexDirection: "column", gap: "20px"}}>
@@ -387,15 +409,15 @@ export default function SettingsPage() {
                                     fontSize: TYPE_SCALE.xs,
                                     fontFamily: fontStack,
                                     fontWeight: 400,
-                                    color: "var(--dt-text-quaternary)",
+                                    color: isDark ? "var(--strict-text-ghost)" : "var(--dt-text-quaternary)",
                                     cursor: "pointer",
                                     transition: `color ${TIMING.fast}`,
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = "var(--dt-text-tertiary)";
+                                    e.currentTarget.style.color = isDark ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)";
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = "var(--dt-text-quaternary)";
+                                    e.currentTarget.style.color = isDark ? "var(--strict-text-ghost)" : "var(--dt-text-quaternary)";
                                 }}
                             >
                                 {t("settings.delete_account")}
@@ -412,7 +434,7 @@ export default function SettingsPage() {
                                             <p style={{
                                                 fontSize: TYPE_SCALE.sm,
                                                 fontWeight: 500,
-                                                color: "var(--dt-text-tertiary)",
+                                                color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                                                 fontFamily: fontStack,
                                                 margin: 0,
                                                 lineHeight: 1.5,
@@ -440,17 +462,17 @@ export default function SettingsPage() {
                                                     borderRadius: RADIUS.lg,
                                                     fontSize: TYPE_SCALE.sm,
                                                     fontFamily: fontStack,
-                                                    background: "var(--dt-glass-bg-subtle)",
-                                                    border: "0.5px solid var(--dt-glass-border-subtle)",
-                                                    color: "var(--dt-text-primary)",
+                                                    background: isDark ? "rgba(255,255,255,0.03)" : "var(--dt-glass-bg-subtle)",
+                                                    border: isDark ? "1px solid rgba(201,168,76,0.08)" : "0.5px solid var(--dt-glass-border-subtle)",
+                                                    color: isDark ? "var(--strict-text-primary)" : "var(--dt-text-primary)",
                                                     outline: "none",
                                                     boxSizing: "border-box",
                                                     transition: "border-color 0.15s ease, box-shadow 0.15s ease",
                                                 }}
                                                 onFocus={(e) => {
                                                     if (isDark) {
-                                                        e.currentTarget.style.borderColor = "var(--dt-accent-border-color)";
-                                                        e.currentTarget.style.boxShadow = "0 0 0 3px var(--dt-accent-tint)";
+                                                        e.currentTarget.style.borderColor = "rgba(201,168,76,0.25)";
+                                                        e.currentTarget.style.boxShadow = "0 0 0 3px rgba(201,168,76,0.06)";
                                                     }
                                                 }}
                                                 onBlur={(e) => {
@@ -463,7 +485,7 @@ export default function SettingsPage() {
                                         {deleteError && (
                                             <p style={{
                                                 fontSize: TYPE_SCALE.xs,
-                                                color: "var(--dt-text-tertiary)",
+                                                color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                                                 fontFamily: fontStack,
                                                 margin: 0,
                                             }}>
@@ -489,11 +511,15 @@ export default function SettingsPage() {
                                                     fontSize: TYPE_SCALE.sm,
                                                     fontWeight: 600,
                                                     fontFamily: fontStack,
-                                                    background: deleteEmailMatches ? "var(--dt-glass-bg-hover)" : "var(--dt-glass-bg-subtle)",
-                                                    border: deleteEmailMatches
-                                                        ? "0.5px solid var(--dt-glass-border)"
-                                                        : "0.5px solid var(--dt-glass-border-subtle)",
-                                                    color: deleteEmailMatches ? "var(--dt-text-secondary)" : "var(--dt-text-quaternary)",
+                                                    background: isDark
+                                                        ? (deleteEmailMatches ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.02)")
+                                                        : (deleteEmailMatches ? "var(--dt-glass-bg-hover)" : "var(--dt-glass-bg-subtle)"),
+                                                    border: isDark
+                                                        ? (deleteEmailMatches ? "1px solid rgba(201,168,76,0.12)" : "1px solid rgba(201,168,76,0.06)")
+                                                        : (deleteEmailMatches ? "0.5px solid var(--dt-glass-border)" : "0.5px solid var(--dt-glass-border-subtle)"),
+                                                    color: isDark
+                                                        ? (deleteEmailMatches ? "var(--strict-text-primary)" : "var(--strict-text-dim)")
+                                                        : (deleteEmailMatches ? "var(--dt-text-secondary)" : "var(--dt-text-quaternary)"),
                                                     cursor: deleteEmailMatches && !deleting ? "pointer" : "not-allowed",
                                                     opacity: deleting ? 0.5 : 1,
                                                     transition: `all ${TIMING.fast}`,
@@ -524,9 +550,9 @@ export default function SettingsPage() {
                                                     fontSize: TYPE_SCALE.sm,
                                                     fontWeight: 500,
                                                     fontFamily: fontStack,
-                                                    background: "var(--dt-glass-bg-subtle)",
-                                                    border: "0.5px solid var(--dt-glass-border-subtle)",
-                                                    color: "var(--dt-text-tertiary)",
+                                                    background: isDark ? "rgba(255,255,255,0.02)" : "var(--dt-glass-bg-subtle)",
+                                                    border: isDark ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border-subtle)",
+                                                    color: isDark ? "var(--strict-text-secondary)" : "var(--dt-text-tertiary)",
                                                     cursor: deleting ? "not-allowed" : "pointer",
                                                     transition: `opacity ${TIMING.fast}`,
                                                 }}
