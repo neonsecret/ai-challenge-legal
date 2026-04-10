@@ -5,11 +5,12 @@ Every endpoint verifies that chat_document.user_id == current_user.id —
 cross-user access returns 404 (not 403) to avoid leaking existence.
 
 Routes:
-    POST  /api/v1/conversations/{conversation_id}/documents        — create document
-    PATCH /api/v1/conversations/{conversation_id}/documents/{doc_id} — update fields
-    GET   /api/v1/conversations/{conversation_id}/documents        — list documents
-    GET   /api/v1/conversations/{conversation_id}/documents/{doc_id} — get document
-    GET   /api/v1/conversations/{conversation_id}/documents/{doc_id}/pdf — generate PDF
+    POST   /api/v1/conversations/{conversation_id}/documents             — create document
+    PATCH  /api/v1/conversations/{conversation_id}/documents/{doc_id}   — update fields
+    DELETE /api/v1/conversations/{conversation_id}/documents/{doc_id}   — delete document
+    GET    /api/v1/conversations/{conversation_id}/documents             — list documents
+    GET    /api/v1/conversations/{conversation_id}/documents/{doc_id}   — get document
+    GET    /api/v1/conversations/{conversation_id}/documents/{doc_id}/pdf — generate PDF
 """
 
 from __future__ import annotations
@@ -19,13 +20,14 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.middleware import get_api_key
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 from neolex.db.postgres import get_db
 from neolex.schemas.drafting import DocumentCreate, DocumentResponse, DocumentUpdate
+from neolex.services.pdf_generator import _XELATEX_BIN, generate_pdf, invalidate_cache
 
 logger = logging.getLogger(__name__)
 
@@ -114,16 +116,18 @@ async def create_document(
             detail=f"Missing required field(s): {', '.join(missing)}",
         )
 
-    # Enforce max 3 documents per conversation with SELECT FOR UPDATE to prevent races
-    count_result = await db.execute(
-        select(func.count(ChatDocument.id))
+    # Enforce max 3 documents per conversation with SELECT FOR UPDATE to prevent races.
+    # NOTE: SELECT COUNT(*) FOR UPDATE is invalid in PostgreSQL — only row-returning
+    # queries can use FOR UPDATE. We fetch the IDs instead and count in Python.
+    rows_result = await db.execute(
+        select(ChatDocument.id)
         .where(
             ChatDocument.conversation_id == conv_uuid,
             ChatDocument.user_id == user_id,
         )
         .with_for_update()
     )
-    current_count = count_result.scalar_one()
+    current_count = len(rows_result.scalars().all())
     if current_count >= _MAX_DOCS_PER_CONVERSATION:
         raise HTTPException(
             status_code=429,
@@ -184,12 +188,44 @@ async def update_document(
     await db.refresh(doc)
 
     # Invalidate cached PDF for this document (version changed)
-    from neolex.services.pdf_generator import invalidate_cache
-
     invalidate_cache(doc.id)
 
     logger.info("Document updated: id=%s version=%d user=%s", doc.id, doc.version, user_id)
     return DocumentResponse.model_validate(doc)
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/v1/conversations/{conversation_id}/documents/{doc_id}
+# ---------------------------------------------------------------------------
+
+
+@router.delete(
+    "/api/v1/conversations/{conversation_id}/documents/{doc_id}",
+    status_code=204,
+)
+async def delete_document(
+    conversation_id: str,
+    doc_id: str,
+    key_row: dict = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """Delete a draft document and invalidate its cached PDF.
+
+    Returns 404 if the document does not exist or belongs to a different user.
+    """
+    conv_uuid = _parse_conversation_id(conversation_id)
+    doc_uuid = _parse_doc_id(doc_id)
+    user_id = uuid.UUID(key_row["user_id"])
+
+    doc = await _get_owned_document(doc_uuid, conv_uuid, user_id, db)
+    doc_id_for_cache = doc.id
+
+    await db.delete(doc)
+    await db.commit()
+
+    invalidate_cache(doc_id_for_cache)
+
+    logger.info("Document deleted: id=%s conversation=%s user=%s", doc_id_for_cache, conv_uuid, user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -263,8 +299,6 @@ async def get_document_pdf(
     Returns 503 if xelatex is not installed.
     Returns cached PDF if already generated for this (doc_id, version).
     """
-    from neolex.services.pdf_generator import _XELATEX_BIN, generate_pdf
-
     if _XELATEX_BIN is None:
         raise HTTPException(
             status_code=503,

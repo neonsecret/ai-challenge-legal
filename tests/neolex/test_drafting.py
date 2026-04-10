@@ -4,6 +4,7 @@ Coverage:
   - Template list/get with jurisdiction/category filtering
   - Document create: happy path, max-3 enforcement, missing required field → 422
   - Document update: field merging, version increment, cache invalidation
+  - Document delete: happy path, wrong owner, not found
   - Document list/get with ownership enforcement
   - PDF endpoint: 503 when xelatex missing, 200 when mocked
   - LaTeX injection: escape_latex() correctness
@@ -18,17 +19,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.orm import DeclarativeBase
-
-# ---------------------------------------------------------------------------
-# Minimal in-memory SQLite setup for model tests
-# (uses aiosqlite — no real Postgres needed for unit tests)
-# ---------------------------------------------------------------------------
-
-
-class _TestBase(DeclarativeBase):
-    pass
-
 
 # ---------------------------------------------------------------------------
 # escape_latex unit tests (no DB needed)
@@ -371,9 +361,9 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
-        # Second execute: count query (0 existing docs)
+        # Second execute: row-fetch FOR UPDATE (0 existing docs)
         count_result = MagicMock()
-        count_result.scalar_one.return_value = 0
+        count_result.scalars.return_value.all.return_value = []
 
         mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
         mock_session.add = MagicMock()
@@ -451,7 +441,7 @@ class TestDocumentCreate:
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
         count_result = MagicMock()
-        count_result.scalar_one.return_value = 3  # already at the limit
+        count_result.scalars.return_value.all.return_value = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
 
         mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
 
@@ -536,7 +526,7 @@ class TestDocumentUpdate:
 
         app = _make_app_client(user_id_str, mock_session)
 
-        with patch("neolex.services.pdf_generator.invalidate_cache"):
+        with patch("neolex.routers.drafting.invalidate_cache"):
             try:
                 async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                     resp = await client.patch(
@@ -630,7 +620,7 @@ class TestDocumentPdf:
 
         app = _make_app_client(user_id_str, mock_session)
 
-        with patch("neolex.services.pdf_generator._XELATEX_BIN", None):
+        with patch("neolex.routers.drafting._XELATEX_BIN", None):
             try:
                 async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                     resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/pdf")
@@ -691,9 +681,9 @@ class TestDocumentPdf:
         app = _make_app_client(user_id_str, mock_session)
 
         with (
-            patch("neolex.services.pdf_generator._XELATEX_BIN", "/usr/bin/xelatex"),
+            patch("neolex.routers.drafting._XELATEX_BIN", "/usr/bin/xelatex"),
             patch(
-                "neolex.services.pdf_generator.generate_pdf",
+                "neolex.routers.drafting.generate_pdf",
                 new_callable=AsyncMock,
                 return_value=fake_pdf,
             ),
@@ -710,3 +700,115 @@ class TestDocumentPdf:
 
                 app.dependency_overrides.pop(get_api_key, None)
                 app.dependency_overrides.pop(get_db, None)
+
+
+class TestDocumentDelete:
+    def _make_chat_doc(self, user_id_str: str, conv_id: uuid.UUID, doc_id: uuid.UUID):
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import ChatDocument
+
+        doc = ChatDocument()
+        doc.id = doc_id
+        doc.conversation_id = conv_id
+        doc.user_id = uuid.UUID(user_id_str)
+        doc.template_slug = "test_template"
+        doc.fields = {"name": "Test"}
+        doc.version = 1
+        doc.created_at = datetime.now(UTC)
+        doc.updated_at = datetime.now(UTC)
+        return doc
+
+    @pytest.mark.asyncio
+    async def test_delete_document_happy_path(self):
+        """DELETE returns 204 and removes document owned by the authenticated user."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = doc
+        mock_session.execute = AsyncMock(return_value=mock_result)
+        mock_session.delete = AsyncMock()
+        mock_session.commit = AsyncMock()
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        with patch("neolex.routers.drafting.invalidate_cache"):
+            try:
+                async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                    resp = await client.delete(
+                        f"/api/v1/conversations/{conv_id}/documents/{doc_id}",
+                        headers={"X-Requested-With": "XMLHttpRequest"},
+                    )
+                assert resp.status_code == 204
+                mock_session.delete.assert_awaited_once_with(doc)
+                mock_session.commit.assert_awaited_once()
+            finally:
+                from neolex.auth.middleware import get_api_key
+                from neolex.db.postgres import get_db
+
+                app.dependency_overrides.pop(get_api_key, None)
+                app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_delete_document_wrong_owner_returns_404(self):
+        """DELETE returns 404 when the document belongs to a different user."""
+        real_owner = uuid.uuid4()
+        requester = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(str(real_owner), conv_id, doc_id)
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = doc
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        app = _make_app_client(requester, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.delete(
+                    f"/api/v1/conversations/{conv_id}/documents/{doc_id}",
+                    headers={"X-Requested-With": "XMLHttpRequest"},
+                )
+            assert resp.status_code == 404
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_delete_document_not_found(self):
+        """DELETE returns 404 when document does not exist."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        mock_session = AsyncMock()
+        mock_result = MagicMock()
+        mock_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.delete(
+                    f"/api/v1/conversations/{conv_id}/documents/{doc_id}",
+                    headers={"X-Requested-With": "XMLHttpRequest"},
+                )
+            assert resp.status_code == 404
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
