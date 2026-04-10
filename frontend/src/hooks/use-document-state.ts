@@ -34,9 +34,19 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
         })
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)
-                return res.json() as Promise<ChatDocument[]>
+                return res.json() as Promise<Array<Record<string, unknown>>>
             })
-            .then((data) => setDocuments(data))
+            .then((data) => setDocuments(
+                data.map((raw) => ({
+                    // Backend may return id instead of doc_id — map defensively so
+                    // session restore does not silently produce undefined PDF URLs.
+                    doc_id: (raw.doc_id as string) ?? (raw.id as string),
+                    template_slug: (raw.template_slug as string) ?? "",
+                    // template_name may be absent before NEO-894 lands on backend.
+                    template_name: (raw.template_name as string) ?? "",
+                    version: (raw.version as number) ?? 1,
+                }))
+            ))
             .catch(() => setDocuments([]))
             .finally(() => setIsLoading(false))
     }, [chatId])

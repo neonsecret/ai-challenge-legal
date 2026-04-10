@@ -32,12 +32,13 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const [jurisdiction, setJurisdiction] = useState<JurisdictionFilter | null>(null)
     const [category, setCategory] = useState<CategoryFilter | null>(null)
 
-    // Load templates from server when panel opens or jurisdiction changes.
-    // Category is applied client-side via `filtered` to avoid redundant round-trips.
+    // Load all templates once when panel opens; client-side filter handles jurisdiction/category.
+    // Passing jurisdiction to the server caused case-mismatch bugs (DB stores uppercase, "General"
+    // has no jurisdiction value). Filtering is fast client-side given the small template count.
     useEffect(() => {
         if (!open) return
-        load(jurisdiction ? jurisdiction.toLowerCase() : undefined)
-    }, [open, jurisdiction, load])
+        load()
+    }, [open, load])
 
     // Escape key + focus trap
     useEffect(() => {
