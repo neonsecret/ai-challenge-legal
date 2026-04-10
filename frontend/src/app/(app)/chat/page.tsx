@@ -24,6 +24,7 @@ import {DocumentIndex} from "@/components/chat/document-index"
 import {X} from "lucide-react"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {PREVIEW_SCENARIOS_MAP} from "./scenarios"
+import {MobileSourceSheet} from "@/components/chat/mobile-source-sheet"
 
 interface CorpusEntry {
     name: string
@@ -112,7 +113,7 @@ export default function ChatPage() {
         setMessageFeedback,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
-    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, clearError} = stream
+    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, clearError, abort} = stream
 
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[]; focusDocId?: string; focusPage?: number; focusSeq: number }>({answer: "", sources: [], focusSeq: 0})
@@ -502,6 +503,7 @@ export default function ChatPage() {
                                                     streamingThinkingPreview={isStreaming && pair.assistant.id === activeAssistantId.current ? thinkingPreview : null}
                                                     trace={pair.assistant.trace}
                                                     onSourceClick={handleSourceClick}
+                                                    onAbort={abort}
                                                     isDark={isDark}
                                                     isStrict={isStrict}
                                                     messageId={pair.assistant.id}
@@ -590,7 +592,7 @@ export default function ChatPage() {
 
                 {/* Input */}
                 <div style={{
-                    padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px ${SPACE['5']}px` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
+                    padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px env(safe-area-inset-bottom, ${SPACE['5']}px)` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
                     borderTop: isStrict ? "1px solid var(--strict-footer-border)" : "0.5px solid var(--dt-glass-border)",
                     flexShrink: 0,
                     background: isStrict ? "var(--strict-footer-bg)" : "var(--dt-glass-bg-subtle)",
@@ -737,8 +739,20 @@ export default function ChatPage() {
                 )}
             </AnimatePresence>
 
-            {/* ── Strict overlay backdrop — dismiss on click-outside ── */}
-            {isStrict && drawerOpen && (
+            {/* ── Mobile dark mode source bottom sheet (drag gesture, 50%→full) ── */}
+            {isMobile && isStrict && drawerOpen && drawerData.sources.length > 0 && (
+                <MobileSourceSheet
+                    sources={drawerData.sources}
+                    answer={drawerData.answer}
+                    focusDocId={drawerData.focusDocId}
+                    focusPage={drawerData.focusPage}
+                    focusSeq={drawerData.focusSeq}
+                    onClose={() => setDrawerOpen(false)}
+                />
+            )}
+
+            {/* ── Strict overlay backdrop — desktop strict only (mobile handled by MobileSourceSheet) ── */}
+            {isStrict && !isMobile && drawerOpen && (
                 <div
                     onClick={() => setDrawerOpen(false)}
                     style={{position: "fixed", inset: 0, zIndex: 199, background: "rgba(0,0,0,0.4)"}}
@@ -747,8 +761,9 @@ export default function ChatPage() {
 
             {/* ── Source grounding panel ── */}
             {/* In Strict mode: centered overlay. Otherwise: flex sibling beside chat. */}
+            {/* Mobile dark mode is handled above by MobileSourceSheet. */}
             <AnimatePresence>
-                {drawerOpen && drawerData.sources.length > 0 && (
+                {drawerOpen && drawerData.sources.length > 0 && !(isMobile && isStrict) && (
                     <motion.div
                         initial={isMobile ? {y: "100%"} : isStrict ? {opacity: 0, y: 16} : {opacity: 0, width: 0}}
                         animate={isMobile ? {y: 0} : isStrict ? {opacity: 1, y: 0} : {opacity: 1, width: "50%"}}

@@ -360,6 +360,7 @@ interface ChatMessageProps {
     streamingThinkingPreview?: string | null
     trace?: string[]
     onSourceClick?: (answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => void
+    onAbort?: () => void
     isDark?: boolean
     /** @deprecated isDark covers this — kept for backward compat with page.tsx until task #16 */
     isStrict?: boolean
@@ -383,6 +384,7 @@ export function ChatMessage({
     streamingThinkingPreview,
     trace,
     onSourceClick,
+    onAbort,
     isDark = false,
     isStrict,
     messageId,
@@ -539,6 +541,21 @@ export function ChatMessage({
                             >
                                 {content}
                             </ReactMarkdown>
+                            {/* Typewriter cursor — dark mode only, visible while streaming */}
+                            {isStreaming && dark && (
+                                <span
+                                    aria-hidden
+                                    style={{
+                                        display: "inline-block",
+                                        width: "1.5px",
+                                        height: "1em",
+                                        background: "var(--strict-gold-base)",
+                                        verticalAlign: "text-bottom",
+                                        animation: "cursor-blink 0.8s ease-in-out infinite",
+                                        marginLeft: "2px",
+                                    }}
+                                />
+                            )}
                         </div>
                     ) : isStreaming ? (
                         <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview}/>
@@ -565,6 +582,51 @@ export function ChatMessage({
                     </div>
                 )}
             </div>
+
+            {/* Stop button — shown below answer while streaming */}
+            {isStreaming && onAbort && (
+                <button
+                    onClick={onAbort}
+                    aria-label="Stop generating"
+                    style={{
+                        marginTop: 10,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "5px 10px",
+                        borderRadius: 5,
+                        background: dark ? "rgba(201,168,76, 0.06)" : "var(--dt-button-bg-hover)",
+                        border: dark ? "1px solid rgba(201,168,76, 0.15)" : "1px solid var(--dt-glass-border)",
+                        color: dark ? "var(--strict-gold-text)" : "var(--dt-text-secondary)",
+                        cursor: "pointer",
+                        fontSize: 10,
+                        fontFamily: "system-ui, sans-serif",
+                        letterSpacing: "0.01em",
+                        transition: "background 0.15s, border-color 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = dark ? "rgba(201,168,76, 0.1)" : "var(--dt-accent-tint-hover)"
+                        e.currentTarget.style.borderColor = dark ? "rgba(201,168,76, 0.25)" : "var(--dt-accent-border-strong)"
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = dark ? "rgba(201,168,76, 0.06)" : "var(--dt-button-bg-hover)"
+                        e.currentTarget.style.borderColor = dark ? "rgba(201,168,76, 0.15)" : "var(--dt-glass-border)"
+                    }}
+                >
+                    {/* Gold square stop icon */}
+                    <span
+                        aria-hidden
+                        style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 1,
+                            background: dark ? "var(--strict-gold-base)" : "currentColor",
+                            flexShrink: 0,
+                        }}
+                    />
+                    Stop generating
+                </button>
+            )}
 
             {/* Dark-mode: Footnotes below the card */}
             {dark && citedSources.length > 0 && !isStreaming && (
