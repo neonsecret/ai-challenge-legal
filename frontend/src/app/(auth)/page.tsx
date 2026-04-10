@@ -117,7 +117,7 @@ export default function LandingPage() {
        LIGHT THEME — warm Arrakis amber
     ══════════════════════════════════════════════════════════ */
     return (
-        <div className="light" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
+        <div style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
 
             {/* ── HERO ── */}
             <section style={{
@@ -334,7 +334,7 @@ export default function LandingPage() {
                             padding: 16,
                             boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 24px 64px rgba(100,50,0,0.20)"
                         }}>
-                            <div style={{background: "#0d1520", borderRadius: 16, overflow: "hidden"}}><DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
+                            <div className="dark" style={{background: "#0d1520", borderRadius: 16, overflow: "hidden"}}><DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
                             </div>
                         </div>
                     </motion.div>
