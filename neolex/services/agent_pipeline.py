@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from typing import Callable
 
 logger = logging.getLogger(__name__)
@@ -21,6 +22,56 @@ def _log_task_exception(task: asyncio.Task) -> None:
     """Log exceptions from fire-and-forget background tasks."""
     if not task.cancelled() and task.exception():
         logger.error("Background task failed: %s", task.exception())
+
+
+def _make_draft_document_fn(
+    user_uuid: uuid.UUID,
+    conversation_uuid: uuid.UUID,
+) -> Callable:
+    """Build the async callable that the agent uses to create/update documents.
+
+    Returns a closure that accepts (action, fields, document_id, template_slug)
+    and delegates to the internal document service.  Acquires its own DB session
+    per call so it can be awaited safely from within the agent's search_node.
+    """
+
+    async def _draft_fn(
+        action: str,
+        fields: dict[str, str],
+        document_id: str = "",
+        template_slug: str = "",
+    ) -> dict:
+        from neolex.db.postgres import AsyncSessionLocal
+        from neolex.services.document_service import create_draft_document, update_draft_document
+
+        async with AsyncSessionLocal() as db:
+            if action == "update":
+                if not document_id:
+                    return {"error": "document_id is required for action=update"}
+                try:
+                    doc_uuid = uuid.UUID(document_id)
+                except ValueError:
+                    return {"error": f"Invalid document_id: {document_id!r} — must be a UUID"}
+                return await update_draft_document(
+                    db=db,
+                    user_id=user_uuid,
+                    conversation_id=conversation_uuid,
+                    doc_id=doc_uuid,
+                    fields=fields,
+                )
+            else:
+                # Default: create
+                if not template_slug:
+                    return {"error": "template_slug is required"}
+                return await create_draft_document(
+                    db=db,
+                    user_id=user_uuid,
+                    conversation_id=conversation_uuid,
+                    template_slug=template_slug,
+                    fields=fields,
+                )
+
+    return _draft_fn
 
 
 async def run_agent_question(
@@ -34,11 +85,20 @@ async def run_agent_question(
     on_token: Callable[[str], None] | None = None,
     use_internet: bool = True,
     doc_ids: list[str] | None = None,
+    # --- Drafting mode (all optional) ---
+    template_slug: str | None = None,
+    template_name: str = "",
+    template_required_fields: list[str] | None = None,
+    template_field_descriptions: dict[str, str] | None = None,
+    chat_documents: list[dict] | None = None,
 ) -> dict:
     """Run a question through the LangGraph agent.
 
     Multi-turn support: loads accumulated docs from prior turns so the agent
     can answer follow-ups without re-searching. Saves updated docs after.
+
+    When template_slug is set the agent operates in drafting mode: it searches
+    the corpus, fills template fields, and calls document_draft to persist.
     """
     t_start = time.monotonic()
 
@@ -69,6 +129,20 @@ async def run_agent_question(
                 )
             accumulated_docs = same_corpus
 
+    # Build the draft_document_fn callback when in drafting mode
+    draft_document_fn = None
+    if template_slug and user_id and conversation_id:
+        try:
+            user_uuid = uuid.UUID(user_id)
+            conv_uuid = uuid.UUID(conversation_id)
+            draft_document_fn = _make_draft_document_fn(user_uuid, conv_uuid)
+        except ValueError:
+            logger.warning(
+                "[agent-pipeline] could not build draft_document_fn: invalid UUIDs user=%s conv=%s",
+                user_id,
+                conversation_id,
+            )
+
     # Run the agent
     from arlc.agent.graph import run_agent_turn
 
@@ -84,6 +158,12 @@ async def run_agent_question(
         on_token=on_token,
         use_internet=use_internet,
         doc_ids=doc_ids,
+        template_slug=template_slug,
+        template_name=template_name,
+        template_required_fields=template_required_fields,
+        template_field_descriptions=template_field_descriptions,
+        chat_documents=chat_documents,
+        draft_document_fn=draft_document_fn,
     )
 
     # Persist accumulated docs for future turns (non-blocking)

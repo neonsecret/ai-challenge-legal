@@ -58,6 +58,15 @@ class QueryRequest(BaseModel):
     # The tool is still bound to the LLM (graph is a singleton), but the
     # search_node returns a "disabled" message instead of executing the search.
     use_internet: bool = Field(default=True, description="Enable web search tool for the LLM")
+    # Drafting mode: when set, the agent is told to draft a legal document using
+    # this template.  The server fetches template metadata from DB and injects it
+    # into the agent prompt.  Ignored when use_agent=False.
+    template_slug: str | None = Field(
+        default=None,
+        max_length=128,
+        pattern=r"^[a-z0-9_]*$",
+        description="Template slug for drafting mode; activates document_draft tool",
+    )
 
 
 class SourceCitation(BaseModel):

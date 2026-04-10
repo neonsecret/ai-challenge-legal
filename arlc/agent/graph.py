@@ -147,6 +147,36 @@ def search_web(query: str) -> str:
     raise RuntimeError("search_web is schema-only; execution handled by search_node")
 
 
+@tool
+def document_draft(
+    template_slug: str,
+    fields: dict,
+    action: str = "create",
+    document_id: str = "",
+) -> str:
+    """Create or update a legal document draft using the selected template.
+
+    Call this tool ONLY when DRAFTING MODE is active (a DRAFTING MODE section
+    appears in the system prompt). Do NOT call in normal research mode.
+
+    IMPORTANT: Always search the legal corpus before drafting to ground legal
+    claims in real sources. Every field containing legal language must be
+    supported by a [DOC-N] citation in your answer.
+
+    Parameters:
+    - template_slug: the template identifier (always use the one from DRAFTING MODE)
+    - fields: dict mapping field names to their Czech-language values.
+      Only include fields you have enough information to fill accurately.
+      Do NOT invent names, addresses, dates, or case numbers — ask the user first.
+    - action: "create" to create a new document, "update" to revise an existing one
+    - document_id: UUID of the existing document to update (required when action="update")
+
+    Returns: document_id, version number, and confirmation on success.
+    Returns an error message describing what is missing if validation fails.
+    """
+    raise RuntimeError("document_draft is schema-only; execution handled by search_node")
+
+
 # ---------------------------------------------------------------------------
 # Czech statute extraction for auto-enrichment
 # ---------------------------------------------------------------------------
@@ -383,7 +413,7 @@ def _build_llm_pair():
         location=os.environ.get("VERTEX_LOCATION", "us-east5"),
     )
 
-    tools = [search_legal_corpus, search_court_decisions, fetch_court_decision]
+    tools = [search_legal_corpus, search_court_decisions, fetch_court_decision, document_draft]
     if WEB_SEARCH_ENABLED:
         tools.append(search_web)
         logger.info("[agent] web search tool enabled")
@@ -635,6 +665,83 @@ def build_agent_graph():
                 new_web_sources.extend(web_results)
                 continue
 
+            # --- Document draft tool ---
+            if tc["name"] == "document_draft":
+                draft_fn = state.get("_draft_document_fn")
+                if draft_fn is None:
+                    # Drafting not active in this request (no template selected)
+                    results_msgs.append(
+                        ToolMessage(
+                            content=(
+                                "Document drafting is not available in this conversation. "
+                                "Ask the user to select a template first."
+                            ),
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                action = tc["args"].get("action", "create")
+                fields = tc["args"].get("fields") or {}
+                document_id = tc["args"].get("document_id", "") or ""
+                t_slug = tc["args"].get("template_slug", "") or state.get("template_slug", "")
+
+                if not isinstance(fields, dict):
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Error: fields must be a dict mapping field names to string values.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                if on_status:
+                    on_status("drafting:saving document")
+
+                try:
+                    result = await draft_fn(
+                        action=action,
+                        fields=fields,
+                        document_id=document_id,
+                        template_slug=t_slug,
+                    )
+                except Exception:
+                    logger.exception("[agent] document_draft failed: action=%s", action)
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Document save failed due to an internal error. Please try again.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                if "error" in result:
+                    logger.warning("[agent] document_draft validation error: %s", result["error"])
+                    results_msgs.append(ToolMessage(content=result["error"], tool_call_id=tc["id"]))
+                else:
+                    doc_id = result.get("id", "")
+                    version = result.get("version", 1)
+                    tmpl = result.get("template_slug", t_slug)
+                    logger.info(
+                        "[agent] document_draft: action=%s doc_id=%s version=%d",
+                        action,
+                        doc_id,
+                        version,
+                    )
+                    results_msgs.append(
+                        ToolMessage(
+                            content=(
+                                f"Document saved successfully.\n"
+                                f"document_id: {doc_id}\n"
+                                f"template: {tmpl}\n"
+                                f"version: {version}\n"
+                                "The user can now view and download the PDF."
+                            ),
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                continue
+
             # --- Corpus search tool (default) ---
             # Status: user-facing, no internal details
             if on_status:
@@ -855,6 +962,13 @@ async def run_agent_turn(
     on_token: Callable[[str], None] | None = None,
     use_internet: bool = True,
     doc_ids: list[str] | None = None,
+    # --- Drafting mode (all optional — omit for normal research) ---
+    template_slug: str | None = None,
+    template_name: str = "",
+    template_required_fields: list[str] | None = None,
+    template_field_descriptions: dict[str, str] | None = None,
+    chat_documents: list[dict] | None = None,
+    draft_document_fn: Callable | None = None,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -896,6 +1010,13 @@ async def run_agent_turn(
         "use_internet": use_internet,
         "doc_ids": doc_ids,
         "_on_status": on_status,  # passed through state for search_node
+        # Drafting mode — all None/empty when not in drafting mode
+        "template_slug": template_slug,
+        "template_name": template_name,
+        "template_required_fields": template_required_fields or [],
+        "template_field_descriptions": template_field_descriptions or {},
+        "chat_documents": chat_documents or [],
+        "_draft_document_fn": draft_document_fn,
     }
 
     graph = _get_agent_graph()
