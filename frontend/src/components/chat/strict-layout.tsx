@@ -13,6 +13,12 @@ interface StrictLayoutProps {
     sources: StrictSourceMarginSource[]
     onSourceClick?: (id: string) => void
     sourcesVisible?: boolean
+    // Sidebar rail callbacks
+    onHistoryToggle?: () => void
+    onNewChat?: () => void
+    onDocIndexToggle?: () => void
+    historyOpen?: boolean
+    docIndexOpen?: boolean
 }
 
 /**
@@ -32,6 +38,11 @@ export function StrictLayout({
     sources,
     onSourceClick,
     sourcesVisible = false,
+    onHistoryToggle,
+    onNewChat,
+    onDocIndexToggle,
+    historyOpen = false,
+    docIndexOpen = false,
 }: StrictLayoutProps) {
     const isMobile = useIsMobile()
     const [sourcesExpanded, setSourcesExpanded] = useState(false)
@@ -54,7 +65,15 @@ export function StrictLayout({
             }}
         >
             {/* Sidebar rail — desktop only */}
-            {!isMobile && <StrictSidebarRail />}
+            {!isMobile && (
+                <StrictSidebarRail
+                    onHistoryToggle={onHistoryToggle}
+                    onNewChat={onNewChat}
+                    onDocIndexToggle={onDocIndexToggle}
+                    historyOpen={historyOpen}
+                    docIndexOpen={docIndexOpen}
+                />
+            )}
 
             {/* Reading area */}
             <div
