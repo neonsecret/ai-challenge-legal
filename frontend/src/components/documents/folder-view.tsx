@@ -1,7 +1,7 @@
 "use client";
 
 import {useMemo, useState, useCallback} from "react";
-import {useTheme} from "@/lib/theme";
+import {useColorMode} from "@/lib/color-mode";
 import {Folder, FileText, ChevronDown, ChevronRight, Trash2, CheckCircle2, Pencil, Check, X} from "lucide-react";
 import type {Document} from "./use-documents";
 import {useI18n} from "@/lib/i18n";
@@ -36,8 +36,7 @@ function formatDate(iso: string): string {
 }
 
 export function FolderView({documents, loading, onDelete, onRefresh}: FolderViewProps) {
-    const {resolvedTheme} = useTheme();
-    const isDark = resolvedTheme === "dark";
+    const {isDark} = useColorMode();
     const {t} = useI18n();
 
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -48,8 +47,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
     const [renameValue, setRenameValue] = useState("");
 
     const fontStack = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
-    const labelColor = isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)";
-    const textColor = isDark ? "rgba(255,255,255,0.82)" : "#1e1208";
+    const labelColor = isDark ? "var(--strict-text-dim, rgba(255,255,255,0.40))" : "rgba(46,31,8,0.45)";
+    const textColor = isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208";
 
     const folders = useMemo<DocumentFolder[]>(() => {
         const map = new Map<string, DocumentFolder>();
@@ -113,8 +112,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                         key={i}
                         style={{
                             height: "72px",
-                            borderRadius: "14px",
-                            background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.18)",
+                            borderRadius: isDark ? "10px" : "14px",
+                            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.18)",
                             animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
                         }}
                     />
@@ -132,9 +131,9 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                     alignItems: "center",
                     justifyContent: "center",
                     border: isDark
-                        ? "1.5px dashed rgba(255,255,255,0.14)"
+                        ? "1.5px dashed rgba(201,168,76,0.12)"
                         : "1.5px dashed rgba(255,255,255,0.35)",
-                    borderRadius: "14px",
+                    borderRadius: isDark ? "10px" : "14px",
                     padding: "48px 24px",
                     textAlign: "center",
                     fontFamily: fontStack,
@@ -143,7 +142,7 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                 <Folder
                     size={32}
                     style={{
-                        color: isDark ? "rgba(255,255,255,0.22)" : "rgba(46,31,8,0.22)",
+                        color: isDark ? "rgba(201,168,76,0.25)" : "rgba(46,31,8,0.22)",
                         marginBottom: "12px",
                     }}
                 />
@@ -172,11 +171,11 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                     <div
                         key={folder.name}
                         style={{
-                            background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.14)",
+                            background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.14)",
                             border: isDark
-                                ? "0.5px solid rgba(255,255,255,0.10)"
+                                ? "0.5px solid rgba(201,168,76,0.06)"
                                 : "0.5px solid rgba(255,255,255,0.35)",
-                            borderRadius: "14px",
+                            borderRadius: isDark ? "10px" : "14px",
                             overflow: "hidden",
                         }}
                     >
@@ -202,10 +201,10 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                     height: "36px",
                                     borderRadius: "10px",
                                     background: isDark
-                                        ? "rgba(201,168,76,0.10)"
+                                        ? "rgba(201,168,76,0.06)"
                                         : "rgba(201,168,76,0.08)",
                                     border: isDark
-                                        ? "0.5px solid rgba(201,168,76,0.22)"
+                                        ? "0.5px solid rgba(201,168,76,0.18)"
                                         : "0.5px solid rgba(201,168,76,0.28)",
                                     display: "flex",
                                     alignItems: "center",
@@ -231,8 +230,10 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                             }}
                                             style={{
                                                 fontSize: "13px", fontWeight: 600, color: textColor,
-                                                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
-                                                border: "1px solid rgba(201,168,76,0.4)",
+                                                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+                                                border: isDark
+                                                    ? "1px solid rgba(201,168,76,0.30)"
+                                                    : "1px solid rgba(201,168,76,0.4)",
                                                 borderRadius: "6px", padding: "2px 8px", width: "160px",
                                                 outline: "none", fontFamily: fontStack,
                                             }}
@@ -295,7 +296,7 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                             )}
 
                             {/* Expand chevron */}
-                            <div style={{color: labelColor, flexShrink: 0}}>
+                            <div style={{color: isDark ? "#C9A84C" : labelColor, flexShrink: 0}}>
                                 {isExpanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
                             </div>
                         </button>
@@ -305,7 +306,7 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                             <div
                                 style={{
                                     borderTop: isDark
-                                        ? "0.5px solid rgba(255,255,255,0.08)"
+                                        ? "0.5px solid rgba(201,168,76,0.06)"
                                         : "0.5px solid rgba(255,255,255,0.25)",
                                 }}
                             >
@@ -322,13 +323,13 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                             borderBottom:
                                                 idx < folder.docs.length - 1
                                                     ? isDark
-                                                        ? "0.5px solid rgba(255,255,255,0.06)"
+                                                        ? "0.5px solid rgba(201,168,76,0.04)"
                                                         : "0.5px solid rgba(255,255,255,0.18)"
                                                     : "none",
                                             background:
                                                 hoveredRowId === doc.document_id
                                                     ? isDark
-                                                        ? "rgba(255,255,255,0.04)"
+                                                        ? "rgba(201,168,76,0.04)"
                                                         : "rgba(255,255,255,0.10)"
                                                     : "transparent",
                                             transition: "background 0.12s",
@@ -336,7 +337,7 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                     >
                                         <FileText
                                             size={15}
-                                            style={{flexShrink: 0, color: "#c47c00"}}
+                                            style={{flexShrink: 0, color: isDark ? "#C9A84C" : "#c47c00"}}
                                         />
 
                                         {/* Filename */}
@@ -359,14 +360,14 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                         {/* Indexed badge */}
                                         {doc.indexed && (
                                             <span title="Indexed" style={{display: "inline-flex"}}>
-                        <CheckCircle2
-                            size={13}
-                            style={{
-                                flexShrink: 0,
-                                color: isDark ? "#4ade80" : "#16a34a",
-                            }}
-                        />
-                      </span>
+                                                <CheckCircle2
+                                                    size={13}
+                                                    style={{
+                                                        flexShrink: 0,
+                                                        color: isDark ? "#4ade80" : "#16a34a",
+                                                    }}
+                                                />
+                                            </span>
                                         )}
 
                                         {/* Size */}
@@ -381,8 +382,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 fontVariantNumeric: "tabular-nums",
                                             }}
                                         >
-                      {formatSize(doc.size_bytes)}
-                    </span>
+                                            {formatSize(doc.size_bytes)}
+                                        </span>
 
                                         {/* Date */}
                                         <span
@@ -396,8 +397,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 fontVariantNumeric: "tabular-nums",
                                             }}
                                         >
-                      {formatDate(doc.uploaded_at)}
-                    </span>
+                                            {formatDate(doc.uploaded_at)}
+                                        </span>
 
                                         {/* Delete */}
                                         <div

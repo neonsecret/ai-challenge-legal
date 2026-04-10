@@ -2,6 +2,7 @@
 
 import {Library} from "lucide-react";
 import {useI18n} from "@/lib/i18n";
+import {useColorMode} from "@/lib/color-mode";
 
 interface PlannedIndex {
     id: string;
@@ -47,35 +48,32 @@ const PLANNED_INDEXES: PlannedIndex[] = [
     },
 ];
 
-interface LegalIndexLibraryProps {
-    isDark: boolean;
-}
-
-export function LegalIndexLibrary({isDark}: LegalIndexLibraryProps) {
+export function LegalIndexLibrary() {
     const {t} = useI18n();
+    const {isDark} = useColorMode();
     const fontStack =
         "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 
-    const labelColor = isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)";
+    const labelColor = isDark ? "var(--strict-text-dim, rgba(255,255,255,0.40))" : "rgba(46,31,8,0.45)";
 
     const cardHeaderSep: React.CSSProperties = {
         borderBottom: isDark
-            ? "0.5px solid rgba(255,255,255,0.12)"
+            ? "0.5px solid rgba(201,168,76,0.06)"
             : "0.5px solid rgba(255,255,255,0.30)",
     };
 
     const glassCard: React.CSSProperties = {
         background: isDark
-            ? "rgba(255,255,255,0.06)"
+            ? "rgba(255,255,255,0.02)"
             : "rgba(255,250,235,0.22)",
-        backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-        WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        backdropFilter: isDark ? "blur(24px)" : "blur(32px) saturate(180%) brightness(106%)",
+        WebkitBackdropFilter: isDark ? "blur(24px)" : "blur(32px) saturate(180%) brightness(106%)",
         border: isDark
-            ? "0.5px solid rgba(255,255,255,0.12)"
+            ? "0.5px solid rgba(201,168,76,0.06)"
             : "0.5px solid rgba(255,255,255,0.38)",
-        borderRadius: "20px",
+        borderRadius: isDark ? "14px" : "20px",
         boxShadow: isDark
-            ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
+            ? "0 2px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(201,168,76,0.04)"
             : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
         overflow: "clip",
     };
@@ -94,14 +92,14 @@ export function LegalIndexLibrary({isDark}: LegalIndexLibraryProps) {
             >
                 <Library
                     size={16}
-                    style={{color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.45)"}}
+                    style={{color: isDark ? "#C9A84C" : "rgba(46,31,8,0.45)"}}
                 />
                 <div>
                     <h2
                         style={{
                             fontSize: "14px",
                             fontWeight: 600,
-                            color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+                            color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
                             margin: 0,
                             fontFamily: fontStack,
                         }}
@@ -139,15 +137,15 @@ export function LegalIndexLibrary({isDark}: LegalIndexLibraryProps) {
                             alignItems: "center",
                             justifyContent: "space-between",
                             background: isDark
-                                ? "rgba(255,255,255,0.04)"
+                                ? "rgba(255,255,255,0.02)"
                                 : "rgba(255,255,255,0.14)",
                             border: isDark
-                                ? "0.5px solid rgba(255,255,255,0.08)"
+                                ? "0.5px solid rgba(201,168,76,0.06)"
                                 : "0.5px solid rgba(255,255,255,0.28)",
-                            borderRadius: "12px",
+                            borderRadius: isDark ? "10px" : "12px",
                             padding: "12px 16px",
                             gap: "12px",
-                            opacity: 0.72,
+                            opacity: isDark ? 1 : 0.72,
                         }}
                     >
                         {/* Left: flag + text */}
@@ -164,7 +162,7 @@ export function LegalIndexLibrary({isDark}: LegalIndexLibraryProps) {
                                     style={{
                                         fontSize: "13px",
                                         fontWeight: 600,
-                                        color: isDark ? "rgba(255,255,255,0.72)" : "#1e1208",
+                                        color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
                                         whiteSpace: "nowrap",
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",

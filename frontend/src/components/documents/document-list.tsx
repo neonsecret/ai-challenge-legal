@@ -1,8 +1,8 @@
 "use client";
 
-import {useState, useEffect} from "react";
+import {useState} from "react";
 import {FileText, Trash2} from "lucide-react";
-import {useTheme} from "@/lib/theme";
+import {useColorMode} from "@/lib/color-mode";
 import type {Document} from "./use-documents";
 
 function formatSize(bytes: number): string {
@@ -33,10 +33,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
     const [hoveredDeleteId, setHoveredDeleteId] = useState<string | null>(null);
 
-    const {resolvedTheme} = useTheme();
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => setMounted(true), []);
-    const isDark = mounted && resolvedTheme === "dark";
+    const {isDark} = useColorMode();
 
     const handleDeleteClick = (documentId: string) => {
         setConfirmingId(documentId);
@@ -49,10 +46,11 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
         setDeletingId(null);
     };
 
-    const font: React.CSSProperties = {
-        fontFamily:
-            "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
-    };
+    const labelColor = isDark ? "var(--strict-text-dim, rgba(255,255,255,0.40))" : "rgba(46,31,8,0.45)";
+    const textPrimary = isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#2e1f08";
+    const fontFamily = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
+
+    const font: React.CSSProperties = {fontFamily};
 
     if (loading) {
         return (
@@ -62,8 +60,8 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                         key={i}
                         style={{
                             height: "48px",
-                            borderRadius: "8px",
-                            background: isDark ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.20)",
+                            borderRadius: isDark ? "8px" : "8px",
+                            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.20)",
                             animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
                         }}
                     />
@@ -81,9 +79,9 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                     alignItems: "center",
                     justifyContent: "center",
                     border: isDark
-                        ? "1.5px dashed rgba(255,255,255,0.14)"
+                        ? "1.5px dashed rgba(201,168,76,0.12)"
                         : "1.5px dashed rgba(255,255,255,0.35)",
-                    borderRadius: "14px",
+                    borderRadius: isDark ? "10px" : "14px",
                     padding: "48px 24px",
                     textAlign: "center",
                     ...font,
@@ -92,14 +90,14 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                 <FileText
                     size={32}
                     style={{
-                        color: isDark ? "rgba(255,255,255,0.25)" : "rgba(46,31,8,0.25)",
+                        color: isDark ? "rgba(201,168,76,0.25)" : "rgba(46,31,8,0.25)",
                         marginBottom: "12px",
                     }}
                 />
                 <p
                     style={{
                         fontSize: "13px",
-                        color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.45)",
+                        color: labelColor,
                         margin: 0,
                     }}
                 >
@@ -121,9 +119,9 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
     return (
         <div
             style={{
-                borderRadius: "14px",
+                borderRadius: isDark ? "10px" : "14px",
                 border: isDark
-                    ? "0.5px solid rgba(255,255,255,0.12)"
+                    ? "0.5px solid rgba(201,168,76,0.06)"
                     : "0.5px solid rgba(255,255,255,0.35)",
                 overflow: "hidden",
                 ...font,
@@ -135,14 +133,14 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                     display: "grid",
                     gridTemplateColumns: "minmax(0,1fr) auto",
                     gap: "16px",
-                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.15)",
+                    background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.15)",
                     borderBottom: isDark
-                        ? "0.5px solid rgba(255,255,255,0.10)"
+                        ? "0.5px solid rgba(201,168,76,0.06)"
                         : "0.5px solid rgba(255,255,255,0.30)",
                     padding: "8px 16px",
                     fontSize: "10px",
                     fontWeight: 500,
-                    color: isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.45)",
+                    color: labelColor,
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
                 }}
@@ -166,13 +164,13 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                         borderBottom:
                             index < documents.length - 1
                                 ? isDark
-                                    ? "0.5px solid rgba(255,255,255,0.08)"
+                                    ? "0.5px solid rgba(201,168,76,0.04)"
                                     : "0.5px solid rgba(255,255,255,0.20)"
                                 : "none",
                         background:
                             hoveredRowId === doc.document_id
                                 ? isDark
-                                    ? "rgba(255,255,255,0.05)"
+                                    ? "rgba(201,168,76,0.04)"
                                     : "rgba(255,255,255,0.12)"
                                 : "transparent",
                         transition: "background 0.12s",
@@ -190,7 +188,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                     >
                         <FileText
                             size={16}
-                            style={{flexShrink: 0, color: "#c47c00"}}
+                            style={{flexShrink: 0, color: isDark ? "#C9A84C" : "#c47c00"}}
                         />
                         <span
                             style={{
@@ -199,12 +197,12 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                                 whiteSpace: "nowrap",
                                 fontSize: "13px",
                                 fontWeight: 500,
-                                color: isDark ? "rgba(255,255,255,0.80)" : "#2e1f08",
+                                color: textPrimary,
                             }}
                             title={doc.filename}
                         >
-              {doc.filename}
-            </span>
+                            {doc.filename}
+                        </span>
                     </div>
 
                     <span
@@ -213,12 +211,12 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             width: "80px",
                             textAlign: "right",
                             fontSize: "12px",
-                            color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+                            color: labelColor,
                             fontVariantNumeric: "tabular-nums",
                         }}
                     >
-            {formatSize(doc.size_bytes)}
-          </span>
+                        {formatSize(doc.size_bytes)}
+                    </span>
 
                     <span
                         className="hidden sm:block"
@@ -226,12 +224,12 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             width: "144px",
                             textAlign: "right",
                             fontSize: "12px",
-                            color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.50)",
+                            color: labelColor,
                             fontVariantNumeric: "tabular-nums",
                         }}
                     >
-            {formatDate(doc.uploaded_at)}
-          </span>
+                        {formatDate(doc.uploaded_at)}
+                    </span>
 
                     <div
                         style={{
@@ -269,7 +267,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                                         borderRadius: "4px",
                                         padding: "2px 6px",
                                         fontSize: "11px",
-                                        color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.50)",
+                                        color: labelColor,
                                         cursor: "pointer",
                                     }}
                                     onClick={() => setConfirmingId(null)}
@@ -293,9 +291,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                                             ? isDark
                                                 ? "#ff8c7a"
                                                 : "#8b3520"
-                                            : isDark
-                                                ? "rgba(255,255,255,0.35)"
-                                                : "rgba(46,31,8,0.40)",
+                                            : labelColor,
                                     transition: "color 0.12s",
                                 }}
                                 disabled={deletingId === doc.document_id}

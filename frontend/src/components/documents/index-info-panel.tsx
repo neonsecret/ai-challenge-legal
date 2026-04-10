@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {useTheme} from "@/lib/theme";
+import {useColorMode} from "@/lib/color-mode";
 import {Database, Activity, CheckCircle2, AlertCircle, Loader2} from "lucide-react";
 import {useI18n} from "@/lib/i18n";
 
@@ -14,13 +14,8 @@ const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}`;
 
 
 export function IndexInfoPanel() {
-    const {resolvedTheme} = useTheme();
-    const [mounted, setMounted] = useState(false);
+    const {isDark} = useColorMode();
     const [indexStatus, setIndexStatus] = useState<IndexStatus>({status: "loading"});
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -54,31 +49,30 @@ export function IndexInfoPanel() {
         };
     }, []);
 
-    const isDark = mounted && resolvedTheme === "dark";
     const {t} = useI18n();
 
     const glassCard: React.CSSProperties = {
-        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,250,235,0.22)",
-        backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-        WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,250,235,0.22)",
+        backdropFilter: isDark ? "blur(24px)" : "blur(32px) saturate(180%) brightness(106%)",
+        WebkitBackdropFilter: isDark ? "blur(24px)" : "blur(32px) saturate(180%) brightness(106%)",
         border: isDark
-            ? "0.5px solid rgba(255,255,255,0.12)"
+            ? "0.5px solid rgba(201,168,76,0.06)"
             : "0.5px solid rgba(255,255,255,0.38)",
-        borderRadius: "20px",
+        borderRadius: isDark ? "14px" : "20px",
         boxShadow: isDark
-            ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
+            ? "0 2px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(201,168,76,0.04)"
             : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
         overflow: "clip",
     };
 
     const cardHeaderSep: React.CSSProperties = {
         borderBottom: isDark
-            ? "0.5px solid rgba(255,255,255,0.12)"
+            ? "0.5px solid rgba(201,168,76,0.06)"
             : "0.5px solid rgba(255,255,255,0.30)",
     };
 
-    const labelColor = isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.45)";
-    const valueColor = isDark ? "rgba(255,255,255,0.82)" : "#1e1208";
+    const labelColor = isDark ? "var(--strict-text-dim, rgba(255,255,255,0.40))" : "rgba(46,31,8,0.45)";
+    const valueColor = isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208";
     const fontStack = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 
     const statusConfig = {
@@ -113,8 +107,8 @@ export function IndexInfoPanel() {
             icon: <Loader2 size={14} style={{color: labelColor, animation: "spin 1s linear infinite"}}/>,
             label: t("documents.index_status_checking"),
             pill: {
-                background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.18)",
-                border: `0.5px solid ${isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.30)"}`,
+                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.18)",
+                border: `0.5px solid ${isDark ? "rgba(201,168,76,0.06)" : "rgba(255,255,255,0.30)"}`,
                 color: labelColor,
             },
         },
@@ -142,13 +136,13 @@ export function IndexInfoPanel() {
                 <div style={{display: "flex", alignItems: "center", gap: "8px"}}>
                     <Database
                         size={16}
-                        style={{color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.45)"}}
+                        style={{color: isDark ? "#C9A84C" : "rgba(46,31,8,0.45)"}}
                     />
                     <h2
                         style={{
                             fontSize: "14px",
                             fontWeight: 600,
-                            color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
+                            color: valueColor,
                             margin: 0,
                             fontFamily: fontStack,
                         }}
@@ -202,11 +196,11 @@ export function IndexInfoPanel() {
                         <div
                             key={label}
                             style={{
-                                background: isDark ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.18)",
+                                background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.18)",
                                 border: isDark
-                                    ? "0.5px solid rgba(255,255,255,0.08)"
+                                    ? "0.5px solid rgba(201,168,76,0.06)"
                                     : "0.5px solid rgba(255,255,255,0.35)",
-                                borderRadius: "12px",
+                                borderRadius: isDark ? "10px" : "12px",
                                 padding: "10px 14px",
                             }}
                         >
@@ -259,19 +253,19 @@ export function IndexInfoPanel() {
                                     justifyContent: "space-between",
                                     background: idx.active
                                         ? isDark
-                                            ? "rgba(201,168,76,0.08)"
+                                            ? "rgba(201,168,76,0.06)"
                                             : "rgba(201,168,76,0.06)"
                                         : isDark
-                                            ? "rgba(255,255,255,0.04)"
+                                            ? "rgba(255,255,255,0.02)"
                                             : "rgba(255,255,255,0.12)",
                                     border: idx.active
                                         ? isDark
-                                            ? "0.5px solid rgba(201,168,76,0.25)"
+                                            ? "0.5px solid rgba(201,168,76,0.18)"
                                             : "0.5px solid rgba(201,168,76,0.30)"
                                         : isDark
-                                            ? "0.5px solid rgba(255,255,255,0.08)"
+                                            ? "0.5px solid rgba(201,168,76,0.06)"
                                             : "0.5px solid rgba(255,255,255,0.25)",
-                                    borderRadius: "10px",
+                                    borderRadius: isDark ? "10px" : "10px",
                                     padding: "10px 14px",
                                 }}
                             >

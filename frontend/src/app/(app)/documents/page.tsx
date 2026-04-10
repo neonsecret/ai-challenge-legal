@@ -406,7 +406,7 @@ export default function DocumentsPage() {
                 >
                     {t("documents.legal_index_library")}
                 </h2>
-                <LegalIndexLibrary isDark={isDark}/>
+                <LegalIndexLibrary />
             </div>
             </div>{/* end scrollable content wrapper */}
         </div>
