@@ -21,6 +21,9 @@ export function BottomNav() {
     const isMobile = useIsMobile();
     const {t} = useI18n();
 
+    // Dark mode: navigation lives in the sidebar rail
+    if (isDark) return null;
+
     const pill = isDark ? {
         // Dark (Strict): structural glass tier
         background: "var(--gm-surface-0)",

@@ -7,22 +7,9 @@ import {V3_MOTION_CONFIG} from "@/lib/v3-motion";
 export function AppBackground({children}: { children: React.ReactNode }) {
     const {isDark} = useColorMode();
 
-    // Dark mode (Strict): use aurora-bg-static (CSS-driven, no JS blobs)
+    // Dark mode (Strict): pass children through directly — no wrapper div
     if (isDark) {
-        return (
-            <MotionConfig {...V3_MOTION_CONFIG}>
-                <div
-                    className="aurora-bg-static flex h-full w-full relative"
-                    style={{
-                        overflowX: "hidden",
-                        background: isDark ? "#000000" : "var(--v3-light-bg)",
-                        transition: "background 0.4s ease",
-                    }}
-                >
-                    {children}
-                </div>
-            </MotionConfig>
-        );
+        return <>{children}</>;
     }
 
     // V2 / default: original blob background
