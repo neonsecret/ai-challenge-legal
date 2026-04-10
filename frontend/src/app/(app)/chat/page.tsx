@@ -4,9 +4,8 @@ import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, typ
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
 import {V3_SPRING, V3_FADE_UP} from "@/lib/v3-motion"
-import {useDesignVersion} from "@/lib/design-version"
+import {useColorMode} from "@/lib/color-mode"
 import {SquarePen, History, Trash2, BookOpen, Globe} from "lucide-react"
-import {useTheme} from "@/lib/theme"
 import {ChatInput} from "@/components/chat/chat-input"
 import {ChatMessage, type Source} from "@/components/chat/chat-message"
 import {StrictLayout} from "@/components/chat/strict-layout"
@@ -161,12 +160,8 @@ export default function ChatPage() {
     const [hideCorpusWarning, setHideCorpusWarning] = useState(false)
     const [availableCorpora, setAvailableCorpora] = useState<CorpusEntry[]>([])
     const [corporaLoading, setCorporaLoading] = useState(false)
-    const {resolvedTheme} = useTheme()
-    const {version: designVersion} = useDesignVersion()
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => setMounted(true), [])
-    const isDark = mounted && resolvedTheme === "dark"
-    const isStrict = mounted && designVersion === "strict"
+    const {isDark} = useColorMode()
+    const isStrict = isDark
     const isMobile = useIsMobile()
     const documentIndex = useDocumentIndex(messages)
 

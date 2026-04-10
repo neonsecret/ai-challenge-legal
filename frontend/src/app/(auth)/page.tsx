@@ -1,7 +1,7 @@
 "use client";
 
 import {useEffect, useState} from "react";
-import {useTheme} from "@/lib/theme";
+import {useColorMode} from "@/lib/color-mode";
 import {motion, AnimatePresence} from "motion/react";
 import {ArrowRight, FileSearch, Globe, ShieldCheck, Lock, Loader2, Sun, Moon} from "lucide-react";
 import {DemoPanel, SCENARIOS} from "@/components/landing/demo-panel";
@@ -11,8 +11,6 @@ import {TrustSection} from "@/components/landing/trust-section";
 import {CzechCaselawSection} from "@/components/landing/czech-caselaw-section";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
-import {DesignVersionToggle} from "@/components/design-version-toggle";
-import {useDesignVersion} from "@/lib/design-version";
 import {MotionConfig} from "motion/react";
 import {V3_MOTION_CONFIG, V3_FADE_UP, V3_LIST_VARIANT, V3_ITEM_VARIANT, V3_CARD_HOVER, V3_BUTTON_PRESS} from "@/lib/v3-motion";
 import {AuroraBackground} from "@/components/landing/aurora-background";
@@ -66,19 +64,13 @@ const BENCHMARKS: BenchmarkData[] = [
 ];
 
 export default function LandingPage() {
-    const {resolvedTheme, setTheme} = useTheme();
-    const {version: designVersion} = useDesignVersion();
-    const [mounted, setMounted] = useState(false);
+    const {isDark, setMode} = useColorMode();
     const [loading, setLoading] = useState(true);
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { locale, t } = useI18n();
     const isCzech = locale === "cs";
     const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     useEffect(() => {
         // Check if we have a valid session cookie by probing the verify endpoint
@@ -104,16 +96,9 @@ export default function LandingPage() {
         return () => clearInterval(id);
     }, []);
 
-    // Avoid hydration flash — render dark version until mounted
-    const isDark = !mounted || resolvedTheme === "dark";
-
-    if (!mounted || loading) {
-        const skeletonBg = designVersion === "strict"
-            ? (isDark ? "#000000" : "#F0F2F8")
-            : (isDark ? "#0F1623" : "#e8d4b8");
-        const skeletonSpinner = designVersion === "strict"
-            ? (isDark ? "#9D7FCC" : "#9D7FCC")
-            : (isDark ? "#C9A84C" : "#7a4a00");
+    if (loading) {
+        const skeletonBg = isDark ? "#000000" : "#e8d4b8";
+        const skeletonSpinner = isDark ? "#9D7FCC" : "#7a4a00";
         return (
             <div className="flex items-center justify-center min-h-screen" style={{background: skeletonBg}}>
                 <Loader2 className="size-6 animate-spin" style={{color: skeletonSpinner}}/>
@@ -124,251 +109,8 @@ export default function LandingPage() {
     /* ══════════════════════════════════════════════════════════
        STRICT THEME — modular glassmorphism layout
     ══════════════════════════════════════════════════════════ */
-    if (designVersion === "strict") {
-        return <StrictLanding />;
-    }
-
-    /* ══════════════════════════════════════════════════════════
-       DARK THEME — original navy layout
-    ══════════════════════════════════════════════════════════ */
     if (isDark) {
-        return (
-            <div className="dark landing-sections design-neon">
-                <section className="hero-aurora relative min-h-screen flex flex-col overflow-hidden"
-                         style={{color: "rgba(255,255,255,0.9)"}}>
-                    <nav className="sticky top-0 z-50 w-full" style={{
-                        background: "rgba(15,22,35,0.85)",
-                        backdropFilter: "blur(16px)",
-                        WebkitBackdropFilter: "blur(16px)",
-                        borderBottom: "1px solid rgba(255,255,255,0.06)"
-                    }}>
-                        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
-                            <div className="flex items-center gap-2.5">
-                                <div className="flex items-center justify-center size-7 rounded-lg" style={{
-                                    background: "rgba(201,168,76,0.12)",
-                                    border: "1px solid rgba(201,168,76,0.25)"
-                                }}>
-                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                                        <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#C9A84C"
-                                              strokeWidth="1.2" strokeLinejoin="round" fill="rgba(201,168,76,0.15)"/>
-                                    </svg>
-                                </div>
-                                <span className="hidden sm:inline font-heading text-lg font-bold tracking-tight"
-                                      style={{color: "rgba(255,255,255,0.95)"}}>Vitreon Legal</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <LanguageToggle />
-                                <button
-                                    onClick={() => setTheme(isDark ? "light" : "dark")}
-                                    style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        minWidth: 44,
-                                        minHeight: 44,
-                                        borderRadius: 10,
-                                        border: "none",
-                                        background: "transparent",
-                                        cursor: "pointer",
-                                        color: "#C9A84C",
-                                        transition: "background 0.14s ease",
-                                    }}
-                                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)" }}
-                                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
-                                    aria-label="Toggle theme"
-                                >
-                                    {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
-                                </button>
-                                <DesignVersionToggle variant="dark" />
-                                {isAuthenticated ? (
-                                    <a href="/chat"
-                                       className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
-                                       style={{
-                                           background: "rgba(201,168,76,0.12)",
-                                           border: "1px solid rgba(201,168,76,0.3)",
-                                           color: "#C9A84C"
-                                       }}>
-                                        {t("landing.go_to_chat")} <ArrowRight size={13}/>
-                                    </a>
-                                ) : (
-                                    <>
-                                        <a href="/login" className="hidden sm:inline text-sm font-medium transition-colors"
-                                           style={{color: "rgba(255,255,255,0.55)"}}>{t("landing.sign_in")}</a>
-                                        <a href="/login"
-                                           className="inline-flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 rounded-full transition-all min-h-[44px]"
-                                           style={{
-                                               background: "rgba(201,168,76,0.12)",
-                                               border: "1px solid rgba(201,168,76,0.3)",
-                                               color: "#C9A84C"
-                                           }}>
-                                            {t("landing.get_started")}
-                                        </a>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </nav>
-
-                    <div className="flex-1 flex flex-col items-center justify-center px-6 pt-16 sm:pt-12 pb-12 sm:pb-8">
-                        <motion.p initial={{opacity: 0, y: 6}} animate={{opacity: 1, y: 0}}
-                                  transition={{duration: 0.5, delay: 0.1}}
-                                  className="text-[11px] uppercase tracking-[0.2em] font-semibold mb-5"
-                                  style={{color: "rgba(201,168,76,0.75)"}}>{t("landing.tag")}
-                        </motion.p>
-                        <motion.h1 initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
-                                   transition={{duration: 0.6, delay: 0.18}}
-                                   className="font-heading text-center font-bold mb-5 max-w-3xl" style={{
-                            fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
-                            letterSpacing: "-0.03em",
-                            lineHeight: 1.1,
-                            color: "rgba(255,255,255,0.95)"
-                        }}>
-                            {t("landing.hero_title_prefix")}{" "}<span style={{
-                                background: "linear-gradient(90deg, #C9A84C 0%, #e8cc7a 50%, #C9A84C 100%)",
-                                backgroundSize: "200% auto",
-                                WebkitBackgroundClip: "text",
-                                backgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                animation: "shimmer 3s linear infinite"
-                            }}>{t("landing.hero_title_highlight")}</span>
-                        </motion.h1>
-                        <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
-                                  transition={{duration: 0.5, delay: 0.28}}
-                                  className="text-base text-center mb-10 max-w-xl"
-                                  style={{color: "rgba(255,255,255,0.70)", lineHeight: 1.6, whiteSpace: "pre-line"}}>
-                            {t("landing.hero_subtitle")}
-                        </motion.p>
-                        <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0}}
-                                    transition={{duration: 0.7, delay: 0.38}} className="w-full max-w-5xl">
-                            <DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
-                        </motion.div>
-                    </div>
-
-                    <motion.div initial={{opacity: 0}} animate={{opacity: 1}} transition={{delay: 2, duration: 0.8}}
-                                className="flex justify-center pb-8">
-                        <a href="#why"
-                           className="flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-widest"
-                           style={{color: "rgba(255,255,255,0.25)"}}>
-                            {t("landing.scroll_to_explore")}
-                            <svg width="10" height="14" viewBox="0 0 10 14" fill="none" className="animate-float-down">
-                                <path d="M5 1v12M1 9l4 4 4-4" stroke="currentColor" strokeWidth="1.2"
-                                      strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                        </a>
-                    </motion.div>
-
-                    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden"
-                         style={{zIndex: 0}}>
-                        <div className="absolute rounded-full" style={{
-                            width: "600px",
-                            height: "600px",
-                            top: "-200px",
-                            left: "50%",
-                            transform: "translateX(-50%)",
-                            background: "radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%)",
-                            filter: "blur(40px)"
-                        }}/>
-                        <div className="absolute rounded-full" style={{
-                            width: "400px",
-                            height: "400px",
-                            bottom: "-100px",
-                            right: "10%",
-                            background: "radial-gradient(circle, rgba(27,43,75,0.8) 0%, transparent 70%)",
-                            filter: "blur(60px)"
-                        }}/>
-                    </div>
-                </section>
-
-                {isCzech && <CzechCaselawSection/>}
-
-                <div id="why"><ValuePillars/></div>
-                <HowItWorks/>
-                <TrustSection demoMode={false} initialApiKey=""/>
-
-                {/* ── BENCHMARK PERFORMANCE (dark) ── */}
-                <section style={{
-                    padding: "80px 24px",
-                    background: "#0A1120",
-                    position: "relative",
-                    overflow: "hidden"
-                }}>
-                    <div aria-hidden style={{position: "absolute", inset: 0, pointerEvents: "none"}}>
-                        <div style={{
-                            position: "absolute",
-                            width: 600,
-                            height: 600,
-                            top: "50%",
-                            left: "50%",
-                            transform: "translate(-50%,-50%)",
-                            background: "radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%)",
-                            filter: "blur(60px)"
-                        }}/>
-                    </div>
-                    <div className="max-w-5xl mx-auto" style={{position: "relative"}}>
-                        <motion.p initial={{opacity: 0, y: 12}} whileInView={{opacity: 1, y: 0}}
-                                  viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5}}
-                                  className="text-center text-[11px] uppercase tracking-[0.16em] font-semibold mb-2.5"
-                                  style={{color: "rgba(201,168,76,0.60)"}}>
-                            {t("landing.bench_label")}
-                        </motion.p>
-                        <motion.h2 initial={{opacity: 0, y: 12}} whileInView={{opacity: 1, y: 0}}
-                                   viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.08}}
-                                   className="font-heading text-center font-bold mb-2"
-                                   style={{
-                                       fontSize: "clamp(1.8rem,3vw,2.4rem)",
-                                       letterSpacing: "-0.03em",
-                                       color: "rgba(255,255,255,0.90)"
-                                   }}>
-                            {t("landing.bench_heading")}
-                        </motion.h2>
-                        <motion.p initial={{opacity: 0}} whileInView={{opacity: 1}}
-                                  viewport={{once: true, margin: "-80px"}} transition={{duration: 0.5, delay: 0.14}}
-                                  className="text-center text-sm mb-10"
-                                  style={{color: "rgba(255,255,255,0.65)"}}>
-                            {t("landing.bench_subtitle")}
-                        </motion.p>
-                        <div style={{
-                            display: "grid",
-                            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                            gap: 16
-                        }}>
-                            {BENCHMARKS.map((b, i) => (
-                                <motion.div key={b.name} initial={{opacity: 0, y: 24}}
-                                            whileInView={{opacity: 1, y: 0}}
-                                            viewport={{once: true, margin: "-60px"}}
-                                            transition={{duration: 0.5, delay: i * 0.1}}>
-                                    <DarkBenchmarkCard benchmark={b}/>
-                                </motion.div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <footer className="py-8 px-6"
-                        style={{background: "#0A1120", borderTop: "1px solid rgba(255,255,255,0.06)"}}>
-                    <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                            <div className="flex items-center justify-center size-5 rounded"
-                                 style={{background: "rgba(201,168,76,0.12)"}}>
-                                <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
-                                    <path d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z" stroke="#C9A84C"
-                                          strokeWidth="1.2" strokeLinejoin="round"/>
-                                </svg>
-                            </div>
-                            <span className="font-heading text-sm font-semibold"
-                                  style={{color: "rgba(255,255,255,0.6)"}}>Vitreon Legal</span>
-                        </div>
-                        <p className="text-[11px]" style={{color: "rgba(255,255,255,0.28)"}}>
-                            {new Date().getFullYear()} Vitreon Legal
-                            <span className="mx-2" style={{color: "rgba(255,255,255,0.15)"}}>·</span>
-                            <a href="/privacy" className="hover:text-white/50 transition-colors">{t("landing.privacy")}</a>
-                            <span className="mx-2" style={{color: "rgba(255,255,255,0.15)"}}>·</span>
-                            <a href="/terms" className="hover:text-white/50 transition-colors">{t("landing.terms")}</a>
-                        </p>
-                    </div>
-                </footer>
-            </div>
-        );
+        return <StrictLanding />;
     }
 
     /* ══════════════════════════════════════════════════════════
@@ -464,7 +206,7 @@ export default function LandingPage() {
                         <div style={{display: "flex", alignItems: "center", gap: 12}}>
                             <LanguageToggle />
                             <button
-                                onClick={() => setTheme(isDark ? "light" : "dark")}
+                                onClick={() => setMode(isDark ? "light" : "dark")}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -482,9 +224,8 @@ export default function LandingPage() {
                                 onMouseLeave={(e) => { e.currentTarget.style.background = "transparent" }}
                                 aria-label="Toggle theme"
                             >
-                                {mounted ? (isDark ? <Sun size={15} strokeWidth={2} /> : <Moon size={15} strokeWidth={2} />) : <Moon size={15} strokeWidth={2} />}
+                                <Moon size={15} strokeWidth={2} />
                             </button>
-                            <DesignVersionToggle variant="light" />
                             {isAuthenticated ? (
                                 <a href="/chat" style={{
                                     display: "inline-flex",

@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {useTheme} from "@/lib/theme";
-import {useDesignVersion} from "@/lib/design-version";
+import {useColorMode} from "@/lib/color-mode";
 import {motion} from "motion/react";
 import {V3_CARD_HOVER, V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import { useI18n } from "@/lib/i18n";
@@ -58,10 +57,8 @@ interface PlanConfig {
 }
 
 export default function BillingPage() {
-  const { resolvedTheme } = useTheme();
-  const { version: designVersion } = useDesignVersion();
+  const { isDark } = useColorMode();
   const { t } = useI18n();
-  const [mounted, setMounted] = useState(false);
   const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,12 +66,7 @@ export default function BillingPage() {
   const [interval, setInterval_] = useState<BillingInterval>("monthly");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const isDark = mounted && resolvedTheme === "dark";
-  const isV3 = mounted && designVersion === "strict";
+  const isV3 = isDark;
 
   useEffect(() => {
     async function fetchBilling() {

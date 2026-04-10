@@ -2,10 +2,9 @@
 
 import {useState, useEffect, Suspense} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
-import {useTheme} from "@/lib/theme";
+import {useColorMode} from "@/lib/color-mode";
 import {motion, AnimatePresence} from "motion/react";
 import {useAuth} from "@/lib/use-auth";
-import {useDesignVersion} from "@/lib/design-version";
 
 const fontStack =
     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
@@ -39,12 +38,10 @@ type Mode = "login" | "register";
 function LoginPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const {resolvedTheme} = useTheme();
+    const {isDark} = useColorMode();
     const {user, login, loginWithGoogle, register, error, clearError} =
         useAuth();
 
-    const {version: designVersion} = useDesignVersion();
-    const [mounted, setMounted] = useState(false);
     const [mode, setMode] = useState<Mode>("login");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -58,10 +55,6 @@ function LoginPageContent() {
         ? "Google sign-in was cancelled. Please try again."
         : null;
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
     // Redirect when user is already logged in
     useEffect(() => {
         if (user) {
@@ -69,8 +62,7 @@ function LoginPageContent() {
         }
     }, [user, router]);
 
-    const isDark = mounted && resolvedTheme === "dark";
-    const isV3 = mounted && designVersion === "strict";
+    const isV3 = isDark;
 
     /* ── Shared glass styles ── */
     const glassCard: React.CSSProperties = isV3 ? {

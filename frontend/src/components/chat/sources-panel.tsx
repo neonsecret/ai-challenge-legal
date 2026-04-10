@@ -5,8 +5,7 @@ import {Globe} from "lucide-react"
 import {motion} from "motion/react"
 import {FONT, TYPE_SCALE, SPACE, TIMING, EASE, RADIUS} from "@/lib/tokens"
 import {V3_BUTTON_PRESS} from "@/lib/v3-motion"
-import {useDesignVersion} from "@/lib/design-version"
-import {useEffect, useState} from "react"
+import {useColorMode} from "@/lib/color-mode"
 
 /** Cubic-bezier values from EASE.out as a tuple for motion/react */
 const MOTION_EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1]
@@ -40,10 +39,7 @@ interface SourcesPanelProps {
 }
 
 export function SourcesPanel({sources, onSourceClick}: SourcesPanelProps) {
-    const {version: designVersion} = useDesignVersion()
-    const [mounted, setMounted] = useState(false)
-    useEffect(() => { setMounted(true) }, [])
-    const isV3 = mounted && designVersion === "strict"
+    const {isDark: isV3} = useColorMode()
 
     if (!sources || sources.length === 0) return null
 

@@ -48,7 +48,7 @@ export default function DocumentsPage() {
         fetchDocuments();
     }, [fetchDocuments]);
 
-    const glassCard: React.CSSProperties = (isV3 && isDark) ? {
+    const glassCard: React.CSSProperties = isDark ? {
         background: "var(--gm-surface-0)",
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
@@ -56,26 +56,17 @@ export default function DocumentsPage() {
         borderRadius: "16px",
         boxShadow: "var(--gm-shadow-structural)",
         overflow: "clip",
-    } : isV3 ? {
-        borderRadius: "16px",
-        overflow: "clip",
     } : {
-        background: isDark
-            ? "rgba(255,255,255,0.06)"
-            : "rgba(255,250,235,0.22)",
+        background: "rgba(255,250,235,0.22)",
         backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
         WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-        border: isDark
-            ? "0.5px solid rgba(255,255,255,0.12)"
-            : "0.5px solid rgba(255,255,255,0.38)",
+        border: "0.5px solid rgba(255,255,255,0.38)",
         borderRadius: "20px",
-        boxShadow: isDark
-            ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
-            : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
+        boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
         overflow: "clip",
     };
 
-    const glassCardClass = isV3 ? "v3-glass-panel" : "";
+    const glassCardClass = isDark ? "v3-glass-panel" : "";
 
     const cardHeaderSep: React.CSSProperties = {
         borderBottom: isDark
@@ -143,18 +134,18 @@ export default function DocumentsPage() {
 
             {/* Section divider: Your Documents */}
             <motion.div
-                variants={isV3 ? V3_LIST_VARIANT : undefined}
-                initial={isV3 ? "hidden" : undefined}
-                animate={isV3 ? "visible" : undefined}
+                variants={isDark ? V3_LIST_VARIANT : undefined}
+                initial={isDark ? "hidden" : undefined}
+                animate={isDark ? "visible" : undefined}
             >
                 <h2
-                    className={isV3 ? "v3-text-aurora" : ""}
+                    className={isDark ? "v3-text-aurora" : ""}
                     style={{
                         fontSize: "11px",
                         fontWeight: 600,
                         textTransform: "uppercase" as const,
                         letterSpacing: "0.08em",
-                        color: isV3 ? undefined : (isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)"),
+                        color: isDark ? undefined : "rgba(46,31,8,0.40)",
                         margin: "0 0 12px",
                         fontFamily: fontStack,
                     }}
@@ -165,10 +156,10 @@ export default function DocumentsPage() {
                 {/* Upload section — gated by plan */}
                 {isFreeTier ? (
                     <motion.div
-                        variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                        variants={isDark ? V3_ITEM_VARIANT : undefined}
                         className={glassCardClass}
                         style={{...glassCard, marginBottom: "16px"}}
-                        {...(isV3 ? V3_CARD_HOVER : {})}
+                        {...(isDark ? V3_CARD_HOVER : {})}
                     >
                         <div style={{padding: "24px 20px", textAlign: "center"}}>
                             <div
@@ -266,10 +257,10 @@ export default function DocumentsPage() {
                     </motion.div>
                 ) : (
                     <motion.div
-                        variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                        variants={isDark ? V3_ITEM_VARIANT : undefined}
                         className={glassCardClass}
                         style={{...glassCard, marginBottom: "16px"}}
-                        {...(isV3 ? V3_CARD_HOVER : {})}
+                        {...(isDark ? V3_CARD_HOVER : {})}
                     >
                         <div style={{...cardHeaderSep, padding: "16px 20px"}}>
                             <h3
@@ -292,10 +283,10 @@ export default function DocumentsPage() {
 
                 {/* Collections / folder view */}
                 <motion.div
-                    variants={isV3 ? V3_ITEM_VARIANT : undefined}
+                    variants={isDark ? V3_ITEM_VARIANT : undefined}
                     className={glassCardClass}
                     style={glassCard}
-                    {...(isV3 ? V3_CARD_HOVER : {})}
+                    {...(isDark ? V3_CARD_HOVER : {})}
                 >
                     <div
                         style={{
@@ -357,13 +348,13 @@ export default function DocumentsPage() {
             {/* Section divider: Legal Index Library */}
             <div>
                 <h2
-                    className={isV3 ? "v3-text-aurora" : ""}
+                    className={isDark ? "v3-text-aurora" : ""}
                     style={{
                         fontSize: "11px",
                         fontWeight: 600,
                         textTransform: "uppercase" as const,
                         letterSpacing: "0.08em",
-                        color: isV3 ? undefined : (isDark ? "rgba(255,255,255,0.38)" : "rgba(46,31,8,0.40)"),
+                        color: isDark ? undefined : "rgba(46,31,8,0.40)",
                         margin: "0 0 12px",
                         fontFamily: fontStack,
                     }}

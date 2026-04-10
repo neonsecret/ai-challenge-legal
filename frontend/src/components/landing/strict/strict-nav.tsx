@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { LanguageToggle } from "@/components/language-toggle";
-import { DesignVersionToggle } from "@/components/design-version-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_LINKS = [
   { href: "#features", label: "Features" },
@@ -54,7 +54,7 @@ export function StrictNav() {
         </div>
 
         <div className="hidden sm:flex items-center">
-          <DesignVersionToggle variant="dark" />
+          <ThemeToggle />
         </div>
 
         <Link
