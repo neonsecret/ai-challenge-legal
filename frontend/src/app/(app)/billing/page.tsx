@@ -682,13 +682,12 @@ export default function BillingPage() {
 
   const renderDarkPlanCard = (plan: PlanConfig) => {
     const isCurrent = billing?.plan === plan.tier;
-    const price = interval === "monthly" ? plan.monthlyPrice : plan.biweeklyPrice;
     const priceLabel = plan.monthlyPrice === 0
       ? t("billing.price_free")
-      : `$${price}`;
+      : `$${plan.monthlyPrice}`;
     const suffix = plan.monthlyPrice === 0
       ? null
-      : `/${interval === "monthly" ? t("billing.interval_mo") : t("billing.interval_2wk")}`;
+      : `/${t("billing.interval_mo")}`;
 
     if (isCurrent) return null; // current plan shown in summary above
 
@@ -1045,22 +1044,6 @@ export default function BillingPage() {
             <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
               {renderDarkCurrentPlan()}
             </motion.div>
-
-            {/* Divider + interval toggle */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 0 6px",
-                borderTop: "1px solid rgba(201,168,76,0.04)",
-              }}
-            >
-              <span style={{ fontFamily: fontStack, fontSize: "9px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--strict-text-dim, rgba(200,210,230,0.22))" }}>
-                {t("billing.choose_plan")}
-              </span>
-              {renderDarkIntervalToggle()}
-            </div>
 
             {/* Plan cards */}
             {plans.map((plan) => (
