@@ -179,74 +179,52 @@ export default function BillingPage() {
 
   // -- Styles --
 
-  const glassCard: React.CSSProperties = (isV3 && isDark) ? {
-    background: "var(--gm-surface-0)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    border: "1px solid var(--gm-border-outer)",
-    borderRadius: "16px",
-    boxShadow: "var(--gm-shadow-structural)",
-    overflow: "clip",
-  } : isV3 ? {
-    borderRadius: "16px",
+  const glassCard: React.CSSProperties = isDark ? {
+    background: "rgba(255,255,255, 0.02)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(201,168,76, 0.06)",
+    borderRadius: "14px",
+    boxShadow: "0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.025)",
     overflow: "clip",
   } : {
-    background: isDark
-      ? "rgba(255,255,255,0.06)"
-      : "rgba(255,250,235,0.22)",
+    background: "rgba(255,250,235,0.22)",
     backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
     WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-    border: isDark
-      ? "0.5px solid rgba(255,255,255,0.12)"
-      : "0.5px solid rgba(255,255,255,0.38)",
+    border: "0.5px solid rgba(255,255,255,0.38)",
     borderRadius: "20px",
-    boxShadow: isDark
-      ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
-      : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
+    boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
     overflow: "clip",
   };
 
-  const glassCardClass = isV3 ? "v3-glass-panel" : "";
+  const glassCardClass = "";
 
-  const goldGlassCard: React.CSSProperties = (isV3 && isDark) ? {
-    background: "rgba(9, 9, 9, 0.73)",
-    backdropFilter: "blur(10px)",
-    WebkitBackdropFilter: "blur(10px)",
-    border: "1px solid rgba(139, 111, 212, 0.35)",
-    borderRadius: "16px",
-    boxShadow: [
-      "0 10px 14px 4px rgba(0, 0, 0, 0.23)",
-      "0 10px 19px 1px rgba(0, 0, 0, 0.27)",
-      "inset -2px 0 10px 10px rgba(67, 67, 67, 0.15)",
-      "inset 0 0 2px 1px rgba(139, 111, 212, 0.20)",
-    ].join(", "),
+  const goldGlassCard: React.CSSProperties = isDark ? {
+    background: "rgba(201,168,76, 0.03)",
+    backdropFilter: "blur(24px)",
+    WebkitBackdropFilter: "blur(24px)",
+    border: "1px solid rgba(201,168,76, 0.20)",
+    borderRadius: "14px",
+    boxShadow: "0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.025)",
     overflow: "clip",
-  } : isV3 ? {
-    borderRadius: "16px",
-    overflow: "clip",
-    border: isDark ? "1px solid rgba(157,127,204,0.35)" : "1px solid rgba(123,94,167,0.25)",
   } : {
     ...glassCard,
-    border: isDark
-      ? "1px solid rgba(201,168,76,0.35)"
-      : "1px solid rgba(92,46,8,0.25)",
-    boxShadow: isDark
-      ? "inset 0 1px 0 rgba(201,168,76,0.15), 0 8px 32px rgba(0,0,0,0.30), 0 0 0 0.5px rgba(201,168,76,0.20)"
-      : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.16), 0 0 0 0.5px rgba(92,46,8,0.15)",
+    border: "1px solid rgba(92,46,8,0.25)",
+    boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.16), 0 0 0 0.5px rgba(92,46,8,0.15)",
   };
 
   const cardHeader: React.CSSProperties = {
     padding: "16px 20px",
     borderBottom: isDark
-      ? "0.5px solid rgba(255,255,255,0.12)"
+      ? "0.5px solid rgba(201,168,76, 0.08)"
       : "0.5px solid rgba(255,255,255,0.30)",
   };
 
   const cardHeading: React.CSSProperties = {
     fontSize: "14px",
     fontWeight: 600,
-    color: isDark ? "rgba(255,255,255,0.88)" : "#1e1208",
-    fontFamily: fontStack,
+    color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.90))" : "#1e1208",
+    fontFamily: isDark ? "Georgia, 'Times New Roman', serif" : fontStack,
     margin: 0,
   };
 
@@ -256,30 +234,29 @@ export default function BillingPage() {
 
   const mutedText: React.CSSProperties = {
     fontSize: "12px",
-    color: isDark ? "rgba(255,255,255,0.40)" : "rgba(46,31,8,0.55)",
+    color: isDark ? "var(--strict-text-dim, rgba(255,255,255,0.38))" : "rgba(46,31,8,0.55)",
     fontFamily: fontStack,
   };
 
   const primaryButton = (
     isLoading: boolean
   ): React.CSSProperties => ({
-    background: isV3
-      ? "var(--v3-btn-primary-bg)"
-      : isDark
-        ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
-        : "#5c2e08",
-    color: isV3 ? "#fff" : (isDark ? "#0F1623" : "#fff8ee"),
+    background: isDark
+      ? "rgba(201,168,76, 0.1)"
+      : "#5c2e08",
+    color: isDark ? "#C9A84C" : "#fff8ee",
     borderRadius: "10px",
     padding: "10px 22px",
     fontSize: "13px",
     fontWeight: 600,
     fontFamily: fontStack,
-    boxShadow: isV3
-      ? "0 0 20px rgba(123,94,167,0.35)"
-      : isDark
-        ? "0 2px 12px rgba(201,168,76,0.30)"
+    boxShadow: isDark
+      ? "0 2px 12px rgba(201,168,76,0.15)"
       : "0 2px 12px rgba(92,46,8,0.30)",
-    border: "none",
+    border: isDark
+      ? "1px solid rgba(201,168,76, 0.2)"
+      : "none",
+    borderBottom: isDark ? "2px solid rgba(201,168,76, 0.5)" : undefined,
     cursor: isLoading ? "wait" : "pointer",
     display: "inline-flex",
     alignItems: "center",
@@ -294,17 +271,18 @@ export default function BillingPage() {
     isLoading: boolean
   ): React.CSSProperties => ({
     background: isDark
-      ? "rgba(255,255,255,0.08)"
+      ? "rgba(255,255,255,0.04)"
       : "rgba(255,255,255,0.35)",
     border: isDark
-      ? "0.5px solid rgba(255,255,255,0.14)"
+      ? "1px solid rgba(201,168,76, 0.1)"
       : "0.5px solid rgba(255,255,255,0.50)",
+    borderBottom: isDark ? "2px solid rgba(201,168,76, 0.25)" : undefined,
     borderRadius: "10px",
     padding: "10px 22px",
     fontSize: "13px",
     fontWeight: 500,
     fontFamily: fontStack,
-    color: isDark ? "rgba(255,255,255,0.70)" : "#2e1f08",
+    color: isDark ? "var(--strict-text-body, rgba(255,255,255,0.65))" : "#2e1f08",
     cursor: isLoading ? "wait" : "pointer",
     display: "inline-flex",
     alignItems: "center",
@@ -322,7 +300,7 @@ export default function BillingPage() {
   const featureText: React.CSSProperties = {
     fontSize: "13px",
     fontWeight: 500,
-    color: isDark ? "rgba(255,255,255,0.72)" : "#2e1f08",
+    color: isDark ? "var(--strict-text-body, rgba(255,255,255,0.65))" : "#2e1f08",
     fontFamily: fontStack,
   };
 
@@ -348,11 +326,11 @@ export default function BillingPage() {
     if (tier === "pro") {
       return {
         background: isDark
-          ? "rgba(99,102,241,0.15)"
+          ? "rgba(201,168,76,0.12)"
           : "rgba(99,102,241,0.10)",
-        color: isDark ? "#a5b4fc" : "#4f46e5",
+        color: isDark ? "#C9A84C" : "#4f46e5",
         border: isDark
-          ? "0.5px solid rgba(99,102,241,0.30)"
+          ? "0.5px solid rgba(201,168,76,0.28)"
           : "0.5px solid rgba(99,102,241,0.25)",
         borderRadius: "9999px",
         padding: "3px 12px",
@@ -596,7 +574,7 @@ export default function BillingPage() {
         animate={isV3 ? "visible" : undefined}
       >
         <div style={cardHeader}>
-          <h2 className={isV3 ? "v3-text-aurora" : ""} style={isV3 ? undefined : cardHeading}>{t("billing.current_plan")}</h2>
+          <h2 style={cardHeading}>{t("billing.current_plan")}</h2>
         </div>
         <div style={cardBody}>
           {/* Plan name + badge */}
@@ -625,8 +603,8 @@ export default function BillingPage() {
                 style={{
                   fontSize: "16px",
                   fontWeight: 700,
-                  color: isDark ? "rgba(255,255,255,0.90)" : "#1e1208",
-                  fontFamily: fontStack,
+                  color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
+                  fontFamily: isDark ? "Georgia, 'Times New Roman', serif" : fontStack,
                 }}
               >
                 {planNames[billing.plan] ?? billing.plan}
@@ -939,15 +917,15 @@ export default function BillingPage() {
       borderRadius: "9999px",
       padding: "3px",
       background: isDark
-        ? "rgba(255,255,255,0.06)"
+        ? "rgba(255,255,255,0.03)"
         : "rgba(255,250,235,0.22)",
-      backdropFilter: "blur(32px) saturate(180%)",
-      WebkitBackdropFilter: "blur(32px) saturate(180%)",
+      backdropFilter: "blur(24px)",
+      WebkitBackdropFilter: "blur(24px)",
       border: isDark
-        ? "0.5px solid rgba(255,255,255,0.12)"
+        ? "1px solid rgba(201,168,76, 0.08)"
         : "0.5px solid rgba(255,255,255,0.38)",
       boxShadow: isDark
-        ? "inset 0 1px 0 rgba(255,255,255,0.06)"
+        ? "inset 0 1px 0 rgba(255,255,255,0.025)"
         : "inset 0 1px 0 rgba(255,255,255,0.60)",
     };
 
@@ -964,15 +942,15 @@ export default function BillingPage() {
       transition: "all 0.2s ease",
       background: active
         ? isDark
-          ? "rgba(255,255,255,0.12)"
+          ? "rgba(201,168,76, 0.1)"
           : "rgba(255,255,255,0.60)"
         : "transparent",
       color: active
         ? isDark
-          ? "rgba(255,255,255,0.90)"
+          ? "#C9A84C"
           : "#1e1208"
         : isDark
-          ? "rgba(255,255,255,0.40)"
+          ? "var(--strict-text-dim, rgba(255,255,255,0.38))"
           : "rgba(46,31,8,0.50)",
       boxShadow: active
         ? isDark
@@ -1040,9 +1018,12 @@ export default function BillingPage() {
     return (
       <motion.div
         key={plan.tier}
-        className={isV3 ? (isEnterprise ? "v3-glass-elevated" : "v3-glass-panel") : ""}
         style={{
           ...card,
+          ...(isCurrent && isDark ? {
+            border: "1px solid rgba(201,168,76, 0.2)",
+            boxShadow: "0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(201,168,76,0.05)",
+          } : {}),
           flex: "1 1 0",
           minWidth: "220px",
           display: "flex",
@@ -1092,8 +1073,8 @@ export default function BillingPage() {
               style={{
                 fontSize: "15px",
                 fontWeight: 700,
-                color: isDark ? "rgba(255,255,255,0.90)" : "#1e1208",
-                fontFamily: fontStack,
+                color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.90))" : "#1e1208",
+                fontFamily: isDark ? "Georgia, 'Times New Roman', serif" : fontStack,
               }}
             >
               {plan.name}
@@ -1118,8 +1099,8 @@ export default function BillingPage() {
                 style={{
                   fontSize: "28px",
                   fontWeight: 700,
-                  color: isDark ? "rgba(255,255,255,0.80)" : "#1e1208",
-                  fontFamily: fontStack,
+                  color: isDark ? "var(--strict-text-secondary, rgba(255,255,255,0.75))" : "#1e1208",
+                  fontFamily: isDark ? "Georgia, 'Times New Roman', serif" : fontStack,
                 }}
               >
                 {t("billing.price_free")}
@@ -1130,8 +1111,8 @@ export default function BillingPage() {
                   style={{
                     fontSize: "28px",
                     fontWeight: 700,
-                    color: isDark ? "#C9A84C" : "#5c2e08",
-                    fontFamily: fontStack,
+                    color: isDark ? "rgba(201,168,76, 0.7)" : "#5c2e08",
+                    fontFamily: isDark ? "Georgia, 'Times New Roman', serif" : fontStack,
                   }}
                 >
                   ${price}
@@ -1141,7 +1122,7 @@ export default function BillingPage() {
                     fontSize: "12px",
                     fontWeight: 400,
                     color: isDark
-                      ? "rgba(255,255,255,0.40)"
+                      ? "var(--strict-text-dim, rgba(255,255,255,0.38))"
                       : "rgba(46,31,8,0.55)",
                     fontFamily: fontStack,
                   }}
@@ -1194,13 +1175,13 @@ export default function BillingPage() {
                   fontWeight: 600,
                   fontFamily: fontStack,
                   color: isDark
-                    ? "rgba(255,255,255,0.40)"
+                    ? "rgba(201,168,76, 0.7)"
                     : "rgba(46,31,8,0.50)",
                   background: isDark
-                    ? "rgba(255,255,255,0.04)"
+                    ? "rgba(201,168,76, 0.06)"
                     : "rgba(0,0,0,0.03)",
                   border: isDark
-                    ? "0.5px solid rgba(255,255,255,0.08)"
+                    ? "1px solid rgba(201,168,76, 0.15)"
                     : "0.5px solid rgba(0,0,0,0.06)",
                 }}
               >
@@ -1258,10 +1239,10 @@ export default function BillingPage() {
             padding: "10px 14px",
             borderRadius: "12px",
             background: isDark
-              ? "rgba(255,255,255,0.03)"
+              ? "rgba(201,168,76, 0.02)"
               : "rgba(0,0,0,0.02)",
             border: isDark
-              ? "0.5px solid rgba(255,255,255,0.06)"
+              ? "0.5px solid rgba(201,168,76, 0.06)"
               : "0.5px solid rgba(0,0,0,0.04)",
           }}
         >
@@ -1269,7 +1250,7 @@ export default function BillingPage() {
             size={14}
             style={{
               color: isDark
-                ? "rgba(255,255,255,0.30)"
+                ? "rgba(201,168,76, 0.35)"
                 : "rgba(46,31,8,0.40)",
               flexShrink: 0,
               marginTop: "1px",
@@ -1279,7 +1260,7 @@ export default function BillingPage() {
             style={{
               fontSize: "12px",
               color: isDark
-                ? "rgba(255,255,255,0.40)"
+                ? "var(--strict-text-dim, rgba(255,255,255,0.38))"
                 : "rgba(46,31,8,0.55)",
               fontFamily: fontStack,
               lineHeight: 1.4,
@@ -1329,7 +1310,7 @@ export default function BillingPage() {
   return (
     <div
       style={{
-        padding: "24px 16px 120px",
+        padding: "24px 16px 24px",
         maxWidth: "1100px",
         margin: "0 auto",
       }}
@@ -1341,7 +1322,7 @@ export default function BillingPage() {
             fontFamily: "var(--font-heading), Georgia, serif",
             fontSize: "1.5rem",
             fontWeight: 700,
-            color: isDark ? "rgba(255,255,255,0.90)" : "#1e1208",
+            color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
             margin: 0,
           }}
         >
@@ -1350,7 +1331,7 @@ export default function BillingPage() {
         <p
           style={{
             color: isDark
-              ? "rgba(255,255,255,0.45)"
+              ? "var(--strict-text-secondary, rgba(255,255,255,0.50))"
               : "rgba(46,31,8,0.55)",
             fontSize: "13px",
             fontFamily: fontStack,
@@ -1440,12 +1421,11 @@ export default function BillingPage() {
               }}
             >
               <h2
-                className={isV3 ? "v3-text-aurora" : ""}
                 style={{
                   fontFamily: "var(--font-heading), Georgia, serif",
                   fontSize: "1.1rem",
                   fontWeight: 700,
-                  color: isV3 ? undefined : (isDark ? "rgba(255,255,255,0.85)" : "#1e1208"),
+                  color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.90))" : "#1e1208",
                   margin: 0,
                 }}
               >
