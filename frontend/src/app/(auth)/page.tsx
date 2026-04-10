@@ -117,7 +117,7 @@ export default function LandingPage() {
        LIGHT THEME — warm Arrakis amber
     ══════════════════════════════════════════════════════════ */
     return (
-        <div className="design-neon" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
+        <div className="light" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
 
             {/* ── HERO ── */}
             <section style={{

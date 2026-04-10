@@ -24,7 +24,7 @@ export function ThemeToggle() {
 
     return (
         <Tooltip>
-            <TooltipTrigger asChild>
+            <TooltipTrigger>
                 <button
                     onClick={() => setMode(CYCLE[mode])}
                     aria-label={`Switch theme (currently ${LABELS[mode]})`}
