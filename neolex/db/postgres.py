@@ -45,6 +45,7 @@ async def init_db() -> None:
     from neolex.db import (
         chunks,  # noqa: F401 — registers chunk/vector model
         court_decisions,  # noqa: F401 — registers court decisions model
+        drafting_models,  # noqa: F401 — registers document_templates, chat_documents
         models,  # noqa: F401 — registers auth/billing models
         operational_models,  # noqa: F401 — registers operational models
     )
