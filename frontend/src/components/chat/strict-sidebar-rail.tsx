@@ -203,39 +203,37 @@ export function StrictSidebarRail({
                 <CreditCard size={14} strokeWidth={1.8} />
             </RailNavLink>
 
-            {/* Gold divider */}
-            <div
-                style={{
-                    width: 18,
-                    height: 1,
-                    background: "var(--strict-gold-border)",
-                    margin: "2px 0",
-                    flexShrink: 0,
-                }}
-            />
-
-            {/* History toggle */}
-            <RailButton
-                onClick={onHistoryToggle}
-                active={historyOpen}
-                title="Chat history"
-            >
-                <Menu size={14} strokeWidth={1.8} />
-            </RailButton>
-
-            {/* New chat */}
-            <RailButton onClick={onNewChat} title="New chat">
-                <SquarePen size={14} strokeWidth={1.8} />
-            </RailButton>
-
-            {/* Document index */}
-            <RailButton
-                onClick={onDocIndexToggle}
-                active={docIndexOpen}
-                title="Document index"
-            >
-                <LayoutList size={14} strokeWidth={1.8} />
-            </RailButton>
+            {/* Chat-specific actions — only show on /chat */}
+            {pathname.startsWith("/chat") && (
+                <>
+                    <div
+                        style={{
+                            width: 18,
+                            height: 1,
+                            background: "var(--strict-gold-border)",
+                            margin: "2px 0",
+                            flexShrink: 0,
+                        }}
+                    />
+                    <RailButton
+                        onClick={onHistoryToggle}
+                        active={historyOpen}
+                        title="Chat history"
+                    >
+                        <Menu size={14} strokeWidth={1.8} />
+                    </RailButton>
+                    <RailButton onClick={onNewChat} title="New chat">
+                        <SquarePen size={14} strokeWidth={1.8} />
+                    </RailButton>
+                    <RailButton
+                        onClick={onDocIndexToggle}
+                        active={docIndexOpen}
+                        title="Document index"
+                    >
+                        <LayoutList size={14} strokeWidth={1.8} />
+                    </RailButton>
+                </>
+            )}
 
             {/* Spacer */}
             <div style={{ flex: 1 }} />
