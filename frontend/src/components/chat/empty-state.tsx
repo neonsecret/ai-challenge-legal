@@ -106,6 +106,7 @@ interface EmptyStateProps {
     onPreviewQuestion: (index: number | null) => void
     previewIndex: number | null
     isDark?: boolean
+    /** @deprecated isDark now covers both dark and strict modes */
     isStrict?: boolean
     jurisdiction?: Jurisdiction
 }
@@ -115,15 +116,16 @@ export function EmptyState({
                                onPreviewQuestion,
                                previewIndex,
                                isDark = false,
-                               isStrict = false,
+                               isStrict,
                                jurisdiction = "difc"
                            }: EmptyStateProps) {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
     const {t} = useI18n()
     const questions = getPresetQuestions(jurisdiction)
+    const dark = isDark || !!isStrict
 
-    // Strict: gold glass pills with serif text
-    if (isStrict) {
+    // Dark mode (= Strict): gold glass pills with serif text
+    if (dark) {
         return (
             <div style={{
                 display: "flex",
@@ -205,11 +207,7 @@ export function EmptyState({
         )
     }
 
-    const headingColor = isDark ? "rgba(255,255,255,0.90)" : "#1a0e04"
-    const lawColor = isDark ? "#C9A84C" : "#c47c00"
-    const textColor = isDark ? "rgba(255,255,255,0.75)" : "rgba(46,31,8,0.72)"
-    const activeTextColor = isDark ? "rgba(255,255,255,0.95)" : "#1a0e04"
-
+    // Light mode: warm-tinted glass pills
     return (
         <div style={{
             display: "flex",
@@ -222,10 +220,9 @@ export function EmptyState({
                 fontFamily: "Georgia, 'Times New Roman', serif",
                 fontSize: "1.5rem",
                 fontWeight: 700,
-                color: headingColor,
+                color: "#1a0e04",
                 letterSpacing: "-0.03em",
                 margin: "0 0 24px",
-                transition: "color 0.3s ease",
             }}>
                 {t("chat.what_can_i_help")}
             </h2>
@@ -242,13 +239,6 @@ export function EmptyState({
                     const isOpen = previewIndex === i
                     const active = isOpen || isHovered
 
-                    const btnBg = active
-                        ? isDark ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.42)"
-                        : isDark ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.28)"
-                    const btnBorder = active
-                        ? isDark ? "0.5px solid rgba(255,255,255,0.28)" : "0.5px solid rgba(255,255,255,0.70)"
-                        : isDark ? "0.5px solid rgba(255,255,255,0.16)" : "0.5px solid rgba(255,255,255,0.55)"
-
                     return (
                         <button
                             key={`${jurisdiction}-${i}`}
@@ -260,35 +250,34 @@ export function EmptyState({
                                 textAlign: "left",
                                 padding: "13px 16px",
                                 borderRadius: "14px",
-                                background: btnBg,
-                                borderTop: btnBorder,
-                                borderRight: btnBorder,
-                                borderBottom: btnBorder,
-                                borderLeft: btnBorder,
+                                background: active ? "rgba(255,255,255,0.42)" : "rgba(255,255,255,0.28)",
+                                border: active
+                                    ? "0.5px solid rgba(255,255,255,0.70)"
+                                    : "0.5px solid rgba(255,255,255,0.55)",
                                 cursor: "pointer",
                                 transition: "all 0.16s ease",
-                                boxShadow: isDark
-                                    ? active ? "inset 0 1px 0 rgba(255,255,255,0.15)" : "none"
-                                    : active ? "inset 0 1px 0 rgba(255,255,255,0.80)" : "inset 0 1px 0 rgba(255,255,255,0.55)",
+                                boxShadow: active
+                                    ? "inset 0 1px 0 rgba(255,255,255,0.80)"
+                                    : "inset 0 1px 0 rgba(255,255,255,0.55)",
                             }}
                         >
                             <p style={{
                                 fontSize: "13px",
                                 lineHeight: 1.5,
-                                color: active ? activeTextColor : textColor,
+                                color: active ? "#1a0e04" : "rgba(46,31,8,0.72)",
                                 margin: 0,
                                 fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
                                 transition: "color 0.16s ease",
                             }}>
                                 {q.before}
                                 <span style={{
-                                    color: lawColor,
+                                    color: "#c47c00",
                                     textDecoration: active ? "underline" : "none",
                                     textUnderlineOffset: "2px",
                                     fontWeight: 500,
                                 }}>
-                  {q.law}
-                </span>
+                                    {q.law}
+                                </span>
                                 {q.after}
                             </p>
                         </button>
