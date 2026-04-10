@@ -25,21 +25,19 @@ const CUSTOM_SLUG = "__custom__"
 
 export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const isMobile = useIsMobile()
-    const {templates, isLoading, error, load} = useTemplates()
+    const {templates, isLoading, hasAttempted, error, load} = useTemplates()
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
 
     const [jurisdiction, setJurisdiction] = useState<JurisdictionFilter | null>(null)
     const [category, setCategory] = useState<CategoryFilter | null>(null)
 
-    // Single effect — handles both first open and filter changes
+    // Load templates from server when panel opens or jurisdiction changes.
+    // Category is applied client-side via `filtered` to avoid redundant round-trips.
     useEffect(() => {
         if (!open) return
-        load(
-            jurisdiction ? jurisdiction.toLowerCase() : undefined,
-            category ? category.toLowerCase() : undefined,
-        )
-    }, [open, jurisdiction, category, load])
+        load(jurisdiction ? jurisdiction.toLowerCase() : undefined)
+    }, [open, jurisdiction, load])
 
     // Escape key + focus trap
     useEffect(() => {
@@ -256,7 +254,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                             </button>
 
                             {/* Template cards */}
-                            {isLoading ? (
+                            {isLoading || !hasAttempted ? (
                                 <SkeletonList />
                             ) : error ? (
                                 <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: "var(--doc-text-secondary)", textAlign: "center", padding: SPACE[8]}}>

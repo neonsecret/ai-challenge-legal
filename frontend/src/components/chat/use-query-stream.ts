@@ -369,7 +369,10 @@ export function useQueryStream(): UseQueryStreamReturn {
                         }
                     } else if (eventType === "document_generated") {
                         const parsed = JSON.parse(data)
-                        const doc: import("@/types/documents").ChatDocument = {
+                        // Guard: doc_id must be a valid UUID — drop malformed events
+                        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                        if (typeof parsed.doc_id !== "string" || !UUID_RE.test(parsed.doc_id)) return
+                        const doc: ChatDocument = {
                             doc_id: parsed.doc_id,
                             template_slug: parsed.template_slug,
                             template_name: parsed.template_name,
