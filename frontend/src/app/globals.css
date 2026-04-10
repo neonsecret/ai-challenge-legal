@@ -319,7 +319,6 @@ textarea::placeholder { color: #b29254; }
     --doc-count-badge-maxed-bg: rgba(196,124,0,0.12);
     --doc-count-badge-maxed-border: 0.5px solid rgba(196,124,0,0.38);
     --doc-count-badge-maxed-color: #7a4a00;
-    --doc-btn-glass-bg: rgba(255,255,255,0.40);
 }
 
 /* ============================================================
@@ -930,7 +929,6 @@ textarea::placeholder { color: #b29254; }
   --doc-count-badge-maxed-bg: rgba(201,168,76,0.12);
   --doc-count-badge-maxed-border: 0.5px solid rgba(201,168,76,0.35);
   --doc-count-badge-maxed-color: var(--strict-gold-text);
-  --doc-btn-glass-bg: rgba(255,255,255,0.04);
 }
 
 /* ── Strict scrollbar + overscroll ───────────────────────── */
