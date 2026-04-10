@@ -16,15 +16,9 @@ import {useI18n} from "@/lib/i18n";
 
 export default function DocumentsPage() {
     const {isDark} = useColorMode();
-    const [mounted, setMounted] = useState(false);
     const {t} = useI18n();
     const {user} = useAuth();
 
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    const isV3 = isDark;
     const isFreeTier = !user || user.subscription_status === "free" || user.max_corpora === 0;
 
     const {
