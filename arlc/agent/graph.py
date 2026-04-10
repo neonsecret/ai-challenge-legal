@@ -686,6 +686,20 @@ def build_agent_graph():
                 document_id = tc["args"].get("document_id", "") or ""
                 t_slug = tc["args"].get("template_slug", "") or state.get("template_slug", "")
 
+                # Custom documents have no template in the DB — guide the agent.
+                if t_slug == "__custom__":
+                    results_msgs.append(
+                        ToolMessage(
+                            content=(
+                                "Custom documents do not use a fixed template. "
+                                "Describe the document structure you need and I will help draft it as free-form text. "
+                                "Do NOT call document_draft for custom documents."
+                            ),
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
                 if not isinstance(fields, dict):
                     results_msgs.append(
                         ToolMessage(
@@ -740,6 +754,18 @@ def build_agent_graph():
                             tool_call_id=tc["id"],
                         ),
                     )
+                    # Emit document_generated SSE event so the frontend can render
+                    # the document panel without waiting for the agent's text answer.
+                    on_document = state.get("_on_document")
+                    if on_document:
+                        on_document(
+                            {
+                                "type": "document_generated",
+                                "doc_id": doc_id,
+                                "template_slug": tmpl,
+                                "version": version,
+                            }
+                        )
                 continue
 
             # --- Corpus search tool (default) ---
@@ -960,6 +986,7 @@ async def run_agent_turn(
     conversation_id: str = "",
     on_status: Callable[[str], None] | None = None,
     on_token: Callable[[str], None] | None = None,
+    on_document: Callable[[dict], None] | None = None,
     use_internet: bool = True,
     doc_ids: list[str] | None = None,
     # --- Drafting mode (all optional — omit for normal research) ---
@@ -1010,6 +1037,7 @@ async def run_agent_turn(
         "use_internet": use_internet,
         "doc_ids": doc_ids,
         "_on_status": on_status,  # passed through state for search_node
+        "_on_document": on_document,  # emitted after successful document_draft tool call
         # Drafting mode — all None/empty when not in drafting mode
         "template_slug": template_slug,
         "template_name": template_name,

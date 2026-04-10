@@ -119,6 +119,7 @@ class AgentState(TypedDict):
     cached_target_docs: NotRequired[list[str] | None]
     doc_ids: NotRequired[list[str] | None]
     _on_status: NotRequired[Callable[[str], None] | None]
+    _on_document: NotRequired[Callable[[dict], None] | None]
     # --- Drafting mode (injected when template_slug is present in the request) ---
     # When template_slug is set the agent operates in drafting mode: it searches
     # the corpus to ground legal content, then calls document_draft to persist the

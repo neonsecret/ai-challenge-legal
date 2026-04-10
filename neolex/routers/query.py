@@ -318,6 +318,9 @@ async def query_stream(
         def on_token(text: str):
             _enqueue(("token", text))
 
+        def on_document(payload: dict):
+            _enqueue(("document", payload))
+
         # Emit initial connection status
         yield {"event": "status", "data": json.dumps({"status": "processing"})}
         await asyncio.sleep(0)
@@ -373,6 +376,7 @@ async def query_stream(
                             selected_laws=body.laws,
                             on_status=on_status,
                             on_token=on_token,
+                            on_document=on_document,
                             use_internet=body.use_internet,
                             doc_ids=body.doc_ids,
                             template_slug=body.template_slug,
@@ -423,6 +427,19 @@ async def query_stream(
                     await asyncio.sleep(0)
                 elif item[0] == "token":
                     yield {"event": "token", "data": json.dumps({"text": item[1]})}
+                    await asyncio.sleep(0)
+                elif item[0] == "document":
+                    doc_payload = item[1]
+                    yield {
+                        "event": "document_generated",
+                        "data": json.dumps(
+                            {
+                                "doc_id": doc_payload.get("doc_id", ""),
+                                "template_slug": doc_payload.get("template_slug", ""),
+                                "version": doc_payload.get("version", 1),
+                            }
+                        ),
+                    }
                     await asyncio.sleep(0)
                 elif item[0] == "done":
                     break

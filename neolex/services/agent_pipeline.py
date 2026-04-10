@@ -83,6 +83,7 @@ async def run_agent_question(
     selected_laws: list[str] | None = None,
     on_status: Callable[[str], None] | None = None,
     on_token: Callable[[str], None] | None = None,
+    on_document: Callable[[dict], None] | None = None,
     use_internet: bool = True,
     doc_ids: list[str] | None = None,
     # --- Drafting mode (all optional) ---
@@ -156,6 +157,7 @@ async def run_agent_question(
         conversation_id=conversation_id or "",
         on_status=on_status,
         on_token=on_token,
+        on_document=on_document,
         use_internet=use_internet,
         doc_ids=doc_ids,
         template_slug=template_slug,
