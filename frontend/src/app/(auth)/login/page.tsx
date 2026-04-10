@@ -62,7 +62,8 @@ function LoginPageContent() {
         }
     }, [user, router]);
 
-    const isV3 = isDark;
+    // dark mode always uses gold "strict" palette — iris/V3 removed
+    const isV3 = false;
 
     /* ── Shared glass styles ── */
     const glassCard: React.CSSProperties = isV3 ? {
@@ -328,54 +329,77 @@ function LoginPageContent() {
                         padding: "32px 32px 0",
                     }}
                 >
-                    <div
-                        style={{
-                            width: 44,
-                            height: 44,
-                            borderRadius: 13,
-                            background: isV3 && isDark
-                                ? "rgba(123,94,167,0.12)"
-                                : isDark
-                                    ? "rgba(201,168,76,0.12)"
-                                    : "rgba(196,124,0,0.18)",
-                            border: isV3 && isDark
-                                ? "1px solid rgba(157,127,204,0.25)"
-                                : isDark
-                                    ? "1px solid rgba(201,168,76,0.25)"
-                                    : "0.5px solid rgba(196,124,0,0.38)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            boxShadow: isDark
-                                ? undefined
-                                : "inset 0 1px 0 rgba(255,255,255,0.65)",
-                            marginBottom: 12,
-                        }}
-                    >
-                        <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
-                            <path
-                                d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z"
-                                stroke={isV3 && isDark ? "var(--v3-iris-bright)" : isDark ? "#C9A84C" : "#7a4a00"}
-                                strokeWidth="1.2"
-                                strokeLinejoin="round"
-                                fill={isV3 && isDark
-                                    ? "rgba(123,94,167,0.15)"
-                                    : isDark ? "rgba(201,168,76,0.15)" : "rgba(196,124,0,0.10)"
-                                }
-                            />
-                        </svg>
-                    </div>
+                    {isDark ? (
+                        /* Dark mode: 32px circle logo with gold "V" */
+                        <div
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: "50%",
+                                background: "rgba(201,168,76,0.04)",
+                                border: "1px solid rgba(201,168,76,0.30)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                marginBottom: 8,
+                            }}
+                        >
+                            <span style={{
+                                fontFamily: "Georgia, serif",
+                                fontSize: 13,
+                                fontWeight: 700,
+                                color: "#C9A84C",
+                                lineHeight: 1,
+                            }}>V</span>
+                        </div>
+                    ) : (
+                        /* Light mode: original square logo with shield */
+                        <div
+                            style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 13,
+                                background: "rgba(196,124,0,0.18)",
+                                border: "0.5px solid rgba(196,124,0,0.38)",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.65)",
+                                marginBottom: 12,
+                            }}
+                        >
+                            <svg width="20" height="20" viewBox="0 0 14 14" fill="none">
+                                <path
+                                    d="M7 1L2 4v3c0 3 2.2 5.4 5 6 2.8-.6 5-3 5-6V4L7 1z"
+                                    stroke="#7a4a00"
+                                    strokeWidth="1.2"
+                                    strokeLinejoin="round"
+                                    fill="rgba(196,124,0,0.10)"
+                                />
+                            </svg>
+                        </div>
+                    )}
                     <span
                         style={{
                             fontFamily: "var(--font-heading), Georgia, serif",
-                            fontSize: "18px",
-                            fontWeight: 700,
-                            color: isDark ? "rgba(255,255,255,0.95)" : "#1a0e04",
-                            letterSpacing: "-0.03em",
+                            fontSize: isDark ? "16px" : "18px",
+                            fontWeight: isDark ? 400 : 700,
+                            color: isDark ? "rgba(230,235,245,0.88)" : "#1a0e04",
+                            letterSpacing: isDark ? "0" : "-0.03em",
                         }}
                     >
-            Vitreon Legal
-          </span>
+                        {isDark ? "Welcome to Vitreon" : "Vitreon Legal"}
+                    </span>
+                    {isDark ? (
+                        <span style={{
+                            fontSize: "11px",
+                            color: mutedText,
+                            marginTop: 3,
+                            display: "block",
+                        }}>
+                            Legal research, reimagined
+                        </span>
+                    ) : (
                     <AnimatePresence mode="wait">
                         <motion.span
                             key={mode + "-subtitle"}
@@ -395,6 +419,7 @@ function LoginPageContent() {
                                 : "Create your account"}
                         </motion.span>
                     </AnimatePresence>
+                    )}
                 </div>
 
                 {/* Tab switch */}
@@ -726,24 +751,36 @@ function LoginPageContent() {
                                 marginTop: 20,
                                 padding: "12px 0",
                                 borderRadius: "10px",
-                                fontSize: "14px",
+                                fontSize: isDark ? "13px" : "14px",
                                 fontWeight: 600,
-                                fontFamily: fontStack,
+                                fontFamily: isDark ? "Georgia, serif" : fontStack,
                                 cursor: submitting ? "default" : "pointer",
-                                border: "none",
                                 transition: "all 0.15s ease",
-                                background: isV3
-                                    ? "var(--v3-btn-primary-bg)"
-                                    : isDark
-                                        ? "linear-gradient(135deg, #C9A84C, #e8cc7a)"
-                                        : "#5c2e08",
-                                color: isV3 ? "#fff" : isDark ? "#0F1623" : "#fff8ee",
-                                boxShadow: isV3
-                                    ? "0 0 20px rgba(123,94,167,0.35)"
-                                    : isDark
-                                        ? "0 2px 12px rgba(201,168,76,0.30)"
-                                        : "0 2px 12px rgba(92,46,8,0.30)",
+                                // Dark: gold underbar glass button; Light: solid amber
+                                background: isDark
+                                    ? "linear-gradient(135deg, rgba(201,168,76,0.20), rgba(201,168,76,0.10))"
+                                    : "#5c2e08",
+                                backdropFilter: isDark ? "blur(8px)" : undefined,
+                                WebkitBackdropFilter: isDark ? "blur(8px)" : undefined,
+                                border: isDark ? "1px solid rgba(201,168,76,0.25)" : "none",
+                                borderBottom: isDark ? "2px solid rgba(201,168,76,0.35)" : "none",
+                                color: isDark ? "#C9A84C" : "#fff8ee",
+                                boxShadow: isDark ? "none" : "0 2px 12px rgba(92,46,8,0.30)",
                                 opacity: submitting ? 0.7 : 1,
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!isDark || submitting) return;
+                                e.currentTarget.style.background = "linear-gradient(135deg, rgba(201,168,76,0.28), rgba(201,168,76,0.15))";
+                                e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.5)";
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow = "0 4px 16px rgba(201,168,76,0.10)";
+                            }}
+                            onMouseLeave={(e) => {
+                                if (!isDark) return;
+                                e.currentTarget.style.background = "linear-gradient(135deg, rgba(201,168,76,0.20), rgba(201,168,76,0.10))";
+                                e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.35)";
+                                e.currentTarget.style.transform = "none";
+                                e.currentTarget.style.boxShadow = "none";
                             }}
                         >
                             {submitting
