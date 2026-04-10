@@ -2,10 +2,12 @@ import asyncio
 import json
 import logging
 import re
+import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -13,7 +15,7 @@ from neolex.auth.middleware import get_api_key
 from neolex.config import settings
 from neolex.db.audit import get_audit_db
 from neolex.db.models import User
-from neolex.db.postgres import get_db
+from neolex.db.postgres import AsyncSessionLocal, get_db
 from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_response
 from neolex.services.pipeline import run_single_question
 
@@ -28,6 +30,99 @@ def _log_task_exception(task: asyncio.Task) -> None:
     """Log exceptions from fire-and-forget background tasks."""
     if not task.cancelled() and task.exception():
         logger.error("Background task failed: %s", task.exception())
+
+
+# ---------------------------------------------------------------------------
+# Document drafting — pipeline integration
+# ---------------------------------------------------------------------------
+
+# Slug the frontend sends for a blank/freeform document.  There is no DB
+# template row for this value; it is resolved to the existing freeform
+# template so the FK constraint on chat_documents.template_slug is satisfied.
+_PIPELINE_CUSTOM_SLUG = "__custom__"
+_PIPELINE_FREEFORM_SLUG = "vlastni_dokument"
+
+# Maximum documents per conversation (kept in sync with drafting.py).
+_MAX_DOCS_PER_CONVERSATION = 3
+
+
+async def _create_pipeline_document(
+    template_slug: str,
+    conversation_id: str,
+    user_id: str,
+) -> dict | None:
+    """Create a ChatDocument triggered by the query pipeline and return the SSE payload.
+
+    Called after the answer event is yielded when the query body includes a
+    template_slug.  Opens its own DB session so the call is independent of
+    the request-scoped session used for rate-limiting.
+
+    Returns a dict with doc_id / template_slug / template_name on success,
+    or None when document creation is not possible (template missing, limit
+    reached, bad IDs).  Errors are non-fatal — the caller logs and continues.
+    """
+    from neolex.db.drafting_models import ChatDocument, DocumentTemplate
+
+    try:
+        conv_uuid = uuid.UUID(conversation_id)
+        user_uuid = uuid.UUID(user_id)
+    except ValueError:
+        logger.error(
+            "Pipeline document creation skipped: invalid conversation_id=%r or user_id=%r",
+            conversation_id,
+            user_id,
+        )
+        return None
+
+    effective_slug = _PIPELINE_FREEFORM_SLUG if template_slug == _PIPELINE_CUSTOM_SLUG else template_slug
+
+    async with AsyncSessionLocal() as session:
+        # Verify the template exists before creating the document.
+        tmpl_result = await session.execute(select(DocumentTemplate).where(DocumentTemplate.slug == effective_slug))
+        template = tmpl_result.scalar_one_or_none()
+        if template is None:
+            logger.warning(
+                "Pipeline document creation skipped: template '%s' not found (has seed_templates.py been run?)",
+                effective_slug,
+            )
+            return None
+
+        # Respect the per-conversation document cap.
+        count_result = await session.execute(
+            select(ChatDocument.id).where(
+                ChatDocument.conversation_id == conv_uuid,
+                ChatDocument.user_id == user_uuid,
+            )
+        )
+        if len(count_result.scalars().all()) >= _MAX_DOCS_PER_CONVERSATION:
+            logger.info(
+                "Pipeline document creation skipped: conversation %s already at limit",
+                conv_uuid,
+            )
+            return None
+
+        doc = ChatDocument(
+            conversation_id=conv_uuid,
+            user_id=user_uuid,
+            template_slug=effective_slug,
+            fields={},
+            version=1,
+        )
+        session.add(doc)
+        await session.commit()
+        await session.refresh(doc)
+
+    logger.info(
+        "Pipeline document created: id=%s template=%s conversation=%s",
+        doc.id,
+        effective_slug,
+        conv_uuid,
+    )
+    return {
+        "doc_id": str(doc.id),
+        "template_slug": template_slug,  # Return the slug the client sent, not effective_slug
+        "template_name": template.name,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -535,6 +630,28 @@ async def query_stream(
             except (asyncio.TimeoutError, Exception):
                 # Non-fatal — frontend falls back to static suggestions
                 pass
+
+            # Emit document_generated when the query included a template_slug.
+            # The document is created as a stub (empty fields) that the user
+            # fills via the DocumentCard UI.  Non-fatal if creation fails.
+            if body.template_slug and conversation_id:
+                try:
+                    doc_payload = await _create_pipeline_document(
+                        template_slug=body.template_slug,
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                    )
+                    if doc_payload is not None:
+                        yield {
+                            "event": "document_generated",
+                            "data": json.dumps(doc_payload),
+                        }
+                except Exception:
+                    logger.exception(
+                        "Pipeline document creation failed for template_slug=%s conversation=%s",
+                        body.template_slug,
+                        conversation_id,
+                    )
 
         except Exception as exc:
             logger.exception("SSE post-processing error: %s", exc)

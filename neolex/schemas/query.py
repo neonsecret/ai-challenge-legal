@@ -58,6 +58,13 @@ class QueryRequest(BaseModel):
     # The tool is still bound to the LLM (graph is a singleton), but the
     # search_node returns a "disabled" message instead of executing the search.
     use_internet: bool = Field(default=True, description="Enable web search tool for the LLM")
+    # Optional template slug for document drafting integration.
+    # When set, the pipeline emits a document_generated SSE event after answering.
+    # The special value "__custom__" triggers a blank freeform document.
+    template_slug: str | None = Field(
+        default=None,
+        pattern=r"^[a-z0-9_]{1,128}$",
+    )
 
 
 class SourceCitation(BaseModel):

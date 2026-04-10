@@ -37,6 +37,12 @@ router = APIRouter(tags=["drafting"])
 # Maximum number of draft documents per conversation
 _MAX_DOCS_PER_CONVERSATION = 3
 
+# Slug sent by the frontend for a blank/freeform custom document.
+# There is no DB template row for this slug — it maps to the existing
+# freeform template so the FK constraint is satisfied.
+_CUSTOM_SLUG = "__custom__"
+_FREEFORM_SLUG = "vlastni_dokument"
+
 
 def _parse_conversation_id(conversation_id: str) -> uuid.UUID:
     """Parse conversation_id path param, returning 400 on malformed input."""
@@ -104,20 +110,25 @@ async def create_document(
     conv_uuid = _parse_conversation_id(conversation_id)
     user_id = uuid.UUID(key_row["user_id"])
 
+    # __custom__ maps to the freeform template — no DB row exists for that slug
+    # so we resolve it before the FK-constrained lookup.
+    effective_slug = _FREEFORM_SLUG if payload.template_slug == _CUSTOM_SLUG else payload.template_slug
+
     # Resolve template
-    tmpl_result = await db.execute(select(DocumentTemplate).where(DocumentTemplate.slug == payload.template_slug))
+    tmpl_result = await db.execute(select(DocumentTemplate).where(DocumentTemplate.slug == effective_slug))
     template = tmpl_result.scalar_one_or_none()
     if template is None:
         raise HTTPException(status_code=404, detail=f"Template '{payload.template_slug}' not found")
 
-    # Validate required fields
-    required = template.required_fields or []
-    missing = [f for f in required if f not in payload.fields]
-    if missing:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Missing required field(s): {', '.join(missing)}",
-        )
+    # Validate required fields — skip for __custom__ (freeform: no required fields)
+    if payload.template_slug != _CUSTOM_SLUG:
+        required = template.required_fields or []
+        missing = [f for f in required if f not in payload.fields]
+        if missing:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Missing required field(s): {', '.join(missing)}",
+            )
 
     # Acquire a transaction-level advisory lock on (conversation_id, user_id) before
     # counting so that concurrent first-insert requests don't all read count=0 and
@@ -149,7 +160,7 @@ async def create_document(
     doc = ChatDocument(
         conversation_id=conv_uuid,
         user_id=user_id,
-        template_slug=payload.template_slug,
+        template_slug=effective_slug,
         fields=payload.fields,
         version=1,
     )
