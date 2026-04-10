@@ -469,6 +469,7 @@ export default function ChatPage() {
                     showCorpusBlocked={showCorpusBlocked}
                     availableCorpora={availableCorpora}
                     corporaLoading={corporaLoading}
+                    documentCount={docState.count}
                 />
                 {/* Messages */}
                 <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? `${SPACE['4']}px ${SPACE['3']}px 90px` : `${SPACE['6']}px ${SPACE['6']}px`, minHeight: 0}}>
