@@ -65,18 +65,18 @@ export function StrictSourceMargin({ sources, onSourceClick, visible = false, mo
                     <div key={src.id}>
                         <motion.div
                             initial={mobile
-                                ? { opacity: 0, scale: 0.95, y: 8 }
-                                : { opacity: 0, scale: 0.95, x: 12 }
+                                ? { opacity: 0, scale: 0.96, y: 10 }
+                                : { opacity: 0, scale: 0.97, y: 6, x: 8 }
                             }
                             animate={
                                 visible
                                     ? { opacity: 1, scale: 1, x: 0, y: 0 }
                                     : mobile
-                                        ? { opacity: 0, scale: 0.95, y: 8 }
-                                        : { opacity: 0, scale: 0.95, x: 12 }
+                                        ? { opacity: 0, scale: 0.96, y: 10 }
+                                        : { opacity: 0, scale: 0.97, y: 6, x: 8 }
                             }
                             transition={{
-                                ...V3_SPRING.standard,
+                                ...V3_SPRING.gentle,
                                 delay: visible ? idx * (STRICT_SOURCES.stagger / 1000) : 0,
                             }}
                             onClick={() => onSourceClick?.(src.id)}

@@ -78,6 +78,25 @@ export function StrictPreview() {
     }
   }, [typingDone, isMobile]);
 
+  // ── Citation click handler (event delegation on answerRef) ────────────────
+  useEffect(() => {
+    if (!typingDone || !answerRef.current) return;
+    const container = answerRef.current;
+
+    const handleCitationClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName !== "SUP") return;
+      target.classList.remove("citation-pulse");
+      void target.offsetWidth; // force reflow to restart animation
+      target.classList.add("citation-pulse");
+      const timer = setTimeout(() => target.classList.remove("citation-pulse"), 600);
+      return () => clearTimeout(timer);
+    };
+
+    container.addEventListener("click", handleCitationClick);
+    return () => container.removeEventListener("click", handleCitationClick);
+  }, [typingDone, answerRef]);
+
   return (
     <section
       id="features"
@@ -162,8 +181,31 @@ export function StrictPreview() {
           </p>
 
           {/* Step 3 — typewriter answer (innerHTML set imperatively via answerRef) */}
+          <style>{`
+            .strict-answer-body sup {
+              cursor: pointer;
+              color: var(--strict-citation);
+              font-size: 0.72em;
+              vertical-align: super;
+              padding: 0 2px;
+              border-radius: 3px;
+              transition: background 0.12s ease;
+            }
+            .strict-answer-body sup:hover {
+              background: rgba(180,150,60,0.12);
+            }
+            @keyframes citationPulse {
+              0%   { background: transparent; box-shadow: 0 0 0 0 rgba(180,150,60,0.5); }
+              40%  { background: rgba(180,150,60,0.18); box-shadow: 0 0 0 6px rgba(180,150,60,0); }
+              100% { background: transparent; box-shadow: 0 0 0 0 rgba(180,150,60,0); }
+            }
+            .strict-answer-body sup.citation-pulse {
+              animation: citationPulse 0.55s ease-out forwards;
+            }
+          `}</style>
           <div
             ref={answerRef}
+            className="strict-answer-body"
             style={{
               fontFamily: "Georgia, serif",
               fontSize: isMobile ? 12 : 12.5,
