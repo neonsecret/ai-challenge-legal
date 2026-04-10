@@ -21,14 +21,14 @@ export function BottomNav() {
     const isMobile = useIsMobile();
     const {t} = useI18n();
 
-    // Dark mode: navigation lives in the sidebar rail
-    if (isDark) return null;
+    // Dark desktop: navigation lives in the sidebar rail
+    if (isDark && !isMobile) return null;
 
     const pill = isDark ? {
-        // Dark (Strict): structural glass tier
-        background: "var(--gm-surface-0)",
-        border: "1px solid var(--gm-border-outer)",
-        boxShadow: "var(--gm-shadow-structural)",
+        // Dark (Strict): glass with gold border — mobile only
+        background: "rgba(13,10,18,0.85)",
+        border: "1px solid rgba(201,168,76,0.08)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
     } : {
         // Light — cool grey-slate (matches sidebar token --glass-bg-nav)
         background: "rgba(248,250,252,0.88)",

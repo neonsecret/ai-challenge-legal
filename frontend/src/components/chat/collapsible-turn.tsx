@@ -47,10 +47,10 @@ export function CollapsibleTurn({ question, sourceCount, isLatest, children }: C
                         e.currentTarget.style.borderColor = "rgba(201,168,76, 0.05)";
                     }}
                 >
-                    <span style={{ color: "var(--strict-text-dim)", fontSize: 10, flexShrink: 0 }}>›</span>
+                    <span style={{ color: "var(--strict-text-dim)", fontSize: 11, flexShrink: 0 }}>›</span>
                     <span style={{
                         flex: 1,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontFamily: "Georgia, serif",
                         fontStyle: "italic",
                         color: "var(--strict-text-secondary)",
@@ -61,7 +61,7 @@ export function CollapsibleTurn({ question, sourceCount, isLatest, children }: C
                         {question}
                     </span>
                     {sourceCount > 0 && (
-                        <span style={{ fontSize: 9, color: "var(--strict-text-dim)", flexShrink: 0, fontFamily: "system-ui" }}>
+                        <span style={{ fontSize: 10, color: "var(--strict-text-dim)", flexShrink: 0, fontFamily: "system-ui" }}>
                             {sourceCount} {sourceCount === 1 ? "source" : "sources"}
                         </span>
                     )}
@@ -83,7 +83,7 @@ export function CollapsibleTurn({ question, sourceCount, isLatest, children }: C
                                 display: "flex", alignItems: "center", gap: 6,
                                 padding: "4px 10px 8px", width: "100%",
                                 background: "none", border: "none", cursor: "pointer",
-                                color: "var(--strict-text-dim)", fontSize: 9, fontFamily: "system-ui",
+                                color: "var(--strict-text-dim)", fontSize: 10, fontFamily: "system-ui",
                             }}
                         >
                             ‹ Collapse

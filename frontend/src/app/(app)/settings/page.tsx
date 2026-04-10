@@ -6,7 +6,7 @@ import {useColorMode} from "@/lib/color-mode";
 import {motion} from "motion/react";
 import {V3_LIST_VARIANT, V3_ITEM_VARIANT} from "@/lib/v3-motion";
 import {useRouter} from "next/navigation";
-import {useI18n} from "@/lib/i18n";
+import {useI18n, LOCALES, type Locale} from "@/lib/i18n";
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/tokens";
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
@@ -28,7 +28,7 @@ interface UserInfo {
 export default function SettingsPage() {
     const {isDark, mode, setMode} = useColorMode();
     const router = useRouter();
-    const {t} = useI18n();
+    const {t, locale, setLocale} = useI18n();
     const [user, setUser] = useState<UserInfo | null>(null);
     const [userLoading, setUserLoading] = useState(true);
     const [loggingOut, setLoggingOut] = useState(false);
@@ -154,12 +154,12 @@ export default function SettingsPage() {
     // Compact setting group label
     const darkGroupLabel: React.CSSProperties = {
         fontFamily: fontStack,
-        fontSize: "7px",
+        fontSize: "9px",
         lineHeight: 1,
-        letterSpacing: "1px",
+        letterSpacing: "1.2px",
         textTransform: "uppercase" as const,
-        color: "var(--strict-text-dim, rgba(200,210,230,0.22))",
-        marginBottom: "6px",
+        color: "rgba(201,168,76,0.4)",
+        marginBottom: "8px",
     };
 
     // Setting row: label + value side by side
@@ -167,43 +167,43 @@ export default function SettingsPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "7px 0",
-        borderBottom: "1px solid rgba(201,168,76,0.03)",
+        padding: "10px 0",
+        borderBottom: "1px solid rgba(201,168,76,0.04)",
     };
 
     const darkSettingLabel: React.CSSProperties = {
         fontFamily: fontStack,
-        fontSize: "11px",
+        fontSize: "12px",
         lineHeight: 1.3,
         color: "var(--strict-text-body, rgba(255,255,255,0.56))",
     };
 
     const darkSettingValue: React.CSSProperties = {
         fontFamily: fontStack,
-        fontSize: "11px",
+        fontSize: "12px",
         lineHeight: 1,
         color: "rgba(200,210,230,0.42)",
     };
 
     // Small gold pill theme button
     const darkThemePill = (active: boolean): React.CSSProperties => ({
-        padding: "2px 6px",
-        borderRadius: "3px",
+        padding: "4px 10px",
+        borderRadius: "5px",
         fontFamily: fontStack,
-        fontSize: "9px",
+        fontSize: "10px",
         lineHeight: 1,
         border: active ? "1px solid rgba(201,168,76,0.15)" : "1px solid transparent",
         background: active ? "rgba(201,168,76,0.08)" : "transparent",
-        color: active ? "rgba(201,168,76,0.7)" : "var(--strict-text-dim)",
+        color: active ? "rgba(201,168,76,0.7)" : "rgba(200,210,230,0.35)",
         cursor: "pointer",
         transition: "all 0.12s",
     });
 
     // Compact avatar circle
     const darkAvatar: React.CSSProperties = {
-        width: "24px",
-        height: "24px",
-        borderRadius: "6px",
+        width: "32px",
+        height: "32px",
+        borderRadius: "8px",
         background: "rgba(201,168,76,0.06)",
         border: "1px solid rgba(201,168,76,0.12)",
         display: "flex",
@@ -217,12 +217,12 @@ export default function SettingsPage() {
         display: "inline-flex",
         alignItems: "center",
         gap: "4px",
-        padding: "4px 8px",
-        borderRadius: "5px",
-        background: "rgba(239,68,68,0.08)",
-        border: "1px solid rgba(239,68,68,0.18)",
+        padding: "6px 12px",
+        borderRadius: "6px",
+        background: "rgba(239,68,68,0.06)",
+        border: "1px solid rgba(239,68,68,0.12)",
         fontFamily: fontStack,
-        fontSize: "9px",
+        fontSize: "10px",
         lineHeight: 1,
         color: "#f87171",
         cursor: "pointer",
@@ -230,12 +230,12 @@ export default function SettingsPage() {
 
     // Active badge (green)
     const darkActiveBadge: React.CSSProperties = {
-        padding: "2px 5px",
-        borderRadius: "3px",
-        background: "rgba(34,197,94,0.10)",
-        border: "1px solid rgba(34,197,94,0.20)",
+        padding: "3px 8px",
+        borderRadius: "4px",
+        background: "rgba(34,197,94,0.08)",
+        border: "1px solid rgba(34,197,94,0.15)",
         fontFamily: fontStack,
-        fontSize: "7px",
+        fontSize: "9px",
         lineHeight: 1,
         color: "#4ade80",
         textTransform: "uppercase" as const,
@@ -245,12 +245,12 @@ export default function SettingsPage() {
 
     // Language select
     const darkSelect: React.CSSProperties = {
-        padding: "3px 8px",
-        borderRadius: "4px",
+        padding: "4px 10px",
+        borderRadius: "5px",
         background: "rgba(201,168,76,0.05)",
         border: "1px solid rgba(201,168,76,0.10)",
         fontFamily: "Georgia, serif",
-        fontSize: "10px",
+        fontSize: "11px",
         color: "rgba(201,168,76,0.7)",
         cursor: "pointer",
         outline: "none",
@@ -261,17 +261,17 @@ export default function SettingsPage() {
     const renderDarkAccount = () => {
         if (userLoading) {
             return (
-                <div style={{display: "flex", alignItems: "center", gap: 6, padding: "6px 0"}}>
-                    <Loader2 size={12} style={{color: "var(--strict-text-dim)", animation: "spin 1s linear infinite"}}/>
-                    <span style={{...darkSettingLabel, fontSize: "10px"}}>{t("settings.loading")}</span>
+                <div style={{display: "flex", alignItems: "center", gap: 8, padding: "10px 0"}}>
+                    <Loader2 size={14} style={{color: "var(--strict-text-dim)", animation: "spin 1s linear infinite"}}/>
+                    <span style={{...darkSettingLabel, fontSize: "12px"}}>{t("settings.loading")}</span>
                 </div>
             );
         }
 
         if (!user) {
             return (
-                <div style={{padding: "6px 0", textAlign: "center"}}>
-                    <a href="/login" style={{fontFamily: fontStack, fontSize: "10px", color: "rgba(201,168,76,0.7)", textDecoration: "underline"}}>
+                <div style={{padding: "10px 0", textAlign: "center"}}>
+                    <a href="/login" style={{fontFamily: fontStack, fontSize: "12px", color: "rgba(201,168,76,0.7)", textDecoration: "underline"}}>
                         {t("settings.sign_in")}
                     </a>
                 </div>
@@ -283,23 +283,23 @@ export default function SettingsPage() {
         return (
             <div style={{display: "flex", flexDirection: "column", gap: 0}}>
                 {/* Avatar + name + email + active badge row */}
-                <div style={{display: "flex", alignItems: "center", gap: "8px", padding: "6px 0 8px"}}>
+                <div style={{display: "flex", alignItems: "center", gap: "10px", padding: "8px 0 10px"}}>
                     {user.avatar_url ? (
                         <img
                             src={user.avatar_url}
                             alt={user.name || user.email}
-                            style={{...darkAvatar, borderRadius: "6px", objectFit: "cover"}}
+                            style={{...darkAvatar, borderRadius: "8px", objectFit: "cover"}}
                         />
                     ) : (
                         <div style={darkAvatar}>
-                            <User size={10} style={{color: "rgba(201,168,76,0.7)"}}/>
+                            <User size={14} style={{color: "rgba(201,168,76,0.7)"}}/>
                         </div>
                     )}
                     <div>
-                        <div style={{fontFamily: "Georgia, serif", fontSize: "11px", lineHeight: 1.2, color: "var(--strict-text-primary)"}}>
+                        <div style={{fontFamily: "Georgia, serif", fontSize: "13px", lineHeight: 1.2, color: "rgba(230,235,245,0.88)"}}>
                             {user.name || user.email}
                         </div>
-                        <div style={{fontFamily: fontStack, fontSize: "9px", lineHeight: 1.2, color: "var(--strict-text-dim)"}}>
+                        <div style={{fontFamily: fontStack, fontSize: "10px", lineHeight: 1.2, color: "rgba(200,210,230,0.30)"}}>
                             {user.email}
                         </div>
                     </div>
@@ -311,17 +311,17 @@ export default function SettingsPage() {
                 {/* Plan row */}
                 <div style={darkSettingRow}>
                     <span style={darkSettingLabel}>{t("settings.plan")}</span>
-                    <span style={{...darkSettingValue, fontFamily: "Georgia, serif"}}>{user.subscription_status}</span>
+                    <span style={{...darkSettingValue, fontFamily: "Georgia, serif", color: "rgba(201,168,76,0.7)"}}>{user.subscription_status}</span>
                 </div>
 
                 {/* Sign out */}
-                <div style={{paddingTop: "8px"}}>
+                <div style={{paddingTop: "10px"}}>
                     <button
                         onClick={handleLogout}
                         disabled={loggingOut}
                         style={{...darkSignOutBtn, opacity: loggingOut ? 0.5 : 1, cursor: loggingOut ? "default" : "pointer"}}
                     >
-                        <LogOut size={8}/>
+                        <LogOut size={10}/>
                         {loggingOut ? t("settings.signing_out") : t("settings.sign_out")}
                     </button>
                 </div>
@@ -336,7 +336,7 @@ export default function SettingsPage() {
 
         if (!showDeleteConfirm) {
             return (
-                <div style={{textAlign: "center", paddingTop: "6px"}}>
+                <div style={{textAlign: "center", paddingTop: "8px"}}>
                     <button
                         onClick={() => setShowDeleteConfirm(true)}
                         style={{
@@ -344,7 +344,7 @@ export default function SettingsPage() {
                             border: "none",
                             padding: "4px 8px",
                             fontFamily: fontStack,
-                            fontSize: "9px",
+                            fontSize: "10px",
                             lineHeight: 1,
                             color: "var(--strict-text-ghost, rgba(255,255,255,0.16))",
                             cursor: "pointer",
@@ -368,10 +368,10 @@ export default function SettingsPage() {
                     background: "rgba(248,113,113,0.03)",
                 }}
             >
-                <p style={{fontFamily: fontStack, fontSize: "10px", lineHeight: 1.5, color: "var(--strict-text-dim, rgba(200,210,230,0.22))", margin: "0 0 8px"}}>
+                <p style={{fontFamily: fontStack, fontSize: "10px", lineHeight: 1.5, color: "var(--strict-text-dim, rgba(200,210,230,0.22))", margin: "0 0 10px"}}>
                     {t("settings.delete_irreversible")}
                 </p>
-                <label style={{fontFamily: fontStack, fontSize: "9px", color: "var(--strict-text-dim, rgba(200,210,230,0.22))", display: "block", marginBottom: "4px"}}>
+                <label style={{fontFamily: fontStack, fontSize: "10px", color: "var(--strict-text-dim, rgba(200,210,230,0.22))", display: "block", marginBottom: "5px"}}>
                     {t("settings.delete_type_email")}
                 </label>
                 <input
@@ -401,7 +401,7 @@ export default function SettingsPage() {
                     onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(201,168,76,0.08)"; }}
                 />
                 {deleteError && (
-                    <p style={{fontFamily: fontStack, fontSize: "9px", color: "#f87171", margin: "0 0 6px"}}>
+                    <p style={{fontFamily: fontStack, fontSize: "10px", color: "#f87171", margin: "0 0 8px"}}>
                         {deleteError}
                     </p>
                 )}
@@ -413,10 +413,10 @@ export default function SettingsPage() {
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "4px",
-                            padding: "4px 10px",
+                            padding: "5px 10px",
                             borderRadius: "5px",
                             fontFamily: fontStack,
-                            fontSize: "9px",
+                            fontSize: "10px",
                             background: deleteEmailMatches ? "rgba(248,113,113,0.10)" : "rgba(255,255,255,0.02)",
                             border: deleteEmailMatches ? "1px solid rgba(248,113,113,0.25)" : "1px solid rgba(201,168,76,0.06)",
                             color: deleteEmailMatches ? "#f87171" : "var(--strict-text-dim)",
@@ -436,7 +436,7 @@ export default function SettingsPage() {
                             border: "none",
                             padding: "4px 8px",
                             fontFamily: fontStack,
-                            fontSize: "9px",
+                            fontSize: "10px",
                             color: "var(--strict-text-dim, rgba(200,210,230,0.22))",
                             cursor: deleting ? "not-allowed" : "pointer",
                         }}
@@ -502,8 +502,8 @@ export default function SettingsPage() {
                 ...(isDark ? {
                     flex: 1,
                     overflowY: "auto" as const,
-                    padding: "16px 20px",
-                    maxWidth: 640,
+                    padding: "20px 28px",
+                    maxWidth: 600,
                     width: "100%",
                     marginLeft: "auto",
                     marginRight: "auto",
@@ -520,21 +520,24 @@ export default function SettingsPage() {
                     >
                         {/* Account group */}
                         <motion.div variants={V3_ITEM_VARIANT}>
-                            <div style={{marginBottom: "12px"}}>
+                            <div>
                                 <div style={darkGroupLabel}>{t("settings.account")}</div>
                                 {renderDarkAccount()}
                             </div>
                         </motion.div>
 
+                        {/* Gold separator */}
+                        <div style={{height: "1px", background: "linear-gradient(90deg, rgba(201,168,76,0.12), rgba(201,168,76,0.03))", margin: "24px 0"}} />
+
                         {/* Appearance group */}
                         <motion.div variants={V3_ITEM_VARIANT}>
-                            <div style={{marginBottom: "12px"}}>
+                            <div>
                                 <div style={darkGroupLabel}>{t("settings.appearance")}</div>
 
                                 {/* Theme row */}
                                 <div style={darkSettingRow}>
                                     <span style={darkSettingLabel}>{t("settings.theme")}</span>
-                                    <div style={{display: "flex", gap: "3px"}}>
+                                    <div style={{display: "flex", gap: "4px"}}>
                                         {themeOptions.map((opt) => (
                                             <button
                                                 key={opt.value}
@@ -563,12 +566,23 @@ export default function SettingsPage() {
                                 {/* Language row */}
                                 <div style={{...darkSettingRow, borderBottom: "none"}}>
                                     <span style={darkSettingLabel}>{t("settings.language")}</span>
-                                    <select style={darkSelect} defaultValue="en">
-                                        <option value="en">English ▾</option>
+                                    <select
+                                        style={darkSelect}
+                                        value={locale}
+                                        onChange={(e) => setLocale(e.target.value as Locale)}
+                                    >
+                                        {LOCALES.map((l) => (
+                                            <option key={l.code} value={l.code}>
+                                                {l.flag} {l.label}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
                         </motion.div>
+
+                        {/* Gold separator */}
+                        <div style={{height: "1px", background: "linear-gradient(90deg, rgba(201,168,76,0.12), rgba(201,168,76,0.03))", margin: "24px 0"}} />
 
                         {/* Delete account (ghost link at bottom) */}
                         <motion.div variants={V3_ITEM_VARIANT}>

@@ -193,8 +193,8 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
     const zoneBorder = isDragging
         ? "1px dashed rgba(201,168,76,0.25)"
         : isHovering
-            ? "1px dashed rgba(201,168,76,0.20)"
-            : "1px dashed rgba(201,168,76,0.12)";
+            ? "1px dashed rgba(201,168,76,0.25)"
+            : "1px dashed rgba(201,168,76,0.15)";
 
     return (
         <div style={{display: "flex", flexDirection: "column", gap: "0"}}>
@@ -203,10 +203,10 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                 style={{
                     position: "relative",
                     border: zoneBorder,
-                    borderRadius: "8px",
-                    padding: isUploading ? "20px 16px" : "16px",
+                    borderRadius: "12px",
+                    padding: isUploading ? "24px" : "24px",
                     textAlign: "center",
-                    background: zoneBg,
+                    background: isHovering ? "rgba(201,168,76,0.02)" : zoneBg,
                     cursor: isUploading ? "default" : "pointer",
                     transition: "background 0.2s, border-color 0.2s",
                     opacity: isUploading ? 0.75 : 1,
@@ -249,38 +249,19 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                 ) : (
                     /* Idle state */
                     <>
-                        <div style={{fontSize: "18px", color: "rgba(201,168,76,0.35)", marginBottom: "4px", lineHeight: 1}}>↑</div>
-                        <div style={{font: "11px/1.5 system-ui, sans-serif", color: "var(--strict-text-dim)", marginBottom: "6px"}}>
-                            {t("documents.upload_drop_v2")}
+                        <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "6px", lineHeight: 1}}>↑</div>
+                        <div style={{fontSize: "13px", fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.56)", marginBottom: "4px", lineHeight: 1.4}}>
+                            Drop folders or files here{" "}
+                            <span
+                                style={{color: "rgba(201,168,76,0.5)", cursor: "pointer"}}
+                                onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
+                            >
+                                or click to upload
+                            </span>
                         </div>
-                        <button
-                            style={{
-                                display: "inline-block",
-                                padding: "4px 10px",
-                                borderRadius: "6px",
-                                background: "var(--strict-glass-bg)",
-                                border: "1px solid var(--strict-gold-border)",
-                                backdropFilter: "blur(8px)",
-                                WebkitBackdropFilter: "blur(8px)",
-                                fontSize: "8px",
-                                color: "var(--strict-gold-text)",
-                                cursor: "pointer",
-                                fontFamily: "system-ui, sans-serif",
-                                lineHeight: 1,
-                                transition: "border-color 0.15s, transform 0.15s",
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = "rgba(201,168,76,0.25)";
-                                e.currentTarget.style.transform = "translateY(-1px)";
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = "var(--strict-gold-border)";
-                                e.currentTarget.style.transform = "translateY(0)";
-                            }}
-                            onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }}
-                        >
-                            {t("documents.upload_browse")}
-                        </button>
+                        <div style={{fontSize: "10px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.30)", lineHeight: 1.4}}>
+                            PDF, TXT, DOCX — folders or individual files up to 50MB
+                        </div>
                     </>
                 )}
 

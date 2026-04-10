@@ -230,5 +230,27 @@
   "landing.light_pillar3_title": "Ověřeno benchmarky",
   "landing.light_pillar3_body": "Nezávisle ověřeno na GaRAGe (ACL 2025). Naše přesnost vyhledávání překonává každý publikovaný systém o 36 %.",
 
-  "landing.light_why_heading": "Navrženo pro právní přesnost"
+  "landing.light_why_heading": "Navrženo pro právní přesnost",
+
+  "strict.nav_features": "Funkce",
+  "strict.pricing_label": "Ceník",
+  "strict.citation_detail": "Každé tvrzení podloženo zdrojovým právem",
+  "strict.preview_label": "Náhled",
+  "strict.preview_heading": "Jak probíhá výzkum",
+  "strict.preview_question": "Jaká je výpovědní lhůta při skončení pracovního poměru podle zákonů DIFC?",
+  "strict.preview_input": "Pokračujte ve výzkumu...",
+  "strict.subscribe": "Předplatit",
+  "strict.plan_free_sub": "3 dotazy / den",
+  "strict.plan_starter_sub": "30 dotazů / den",
+  "strict.plan_pro_sub": "200 dotazů / den",
+  "strict.plan_enterprise_sub": "Neomezené dotazy",
+  "strict.feature_all_jurisdictions": "Všechny jurisdikce",
+  "strict.feature_source_citations": "Citace zdrojů",
+  "strict.feature_basic_export": "Základní export",
+  "strict.feature_everything_free": "Vše z Free",
+  "strict.feature_doc_upload": "Nahrání dokumentů",
+  "strict.feature_priority_support": "Prioritní podpora",
+  "strict.feature_everything_starter": "Vše ze Starter",
+  "strict.feature_team_workspace": "Týmový prostor",
+  "strict.feature_everything_pro": "Vše z Pro"
 }

@@ -2,6 +2,7 @@
 
 import { SquarePen, Trash2, X } from "lucide-react";
 import { FONT, TYPE_SCALE, SPACE, RADIUS, TIMING } from "@/lib/tokens";
+import { useColorMode } from "@/lib/color-mode";
 import type { ChatSession } from "@/components/chat/chat-state";
 
 interface HistoryPanelProps {
@@ -28,26 +29,27 @@ export function HistoryPanel({
     onClose,
     isMobile,
 }: HistoryPanelProps) {
+    const {isDark} = useColorMode();
     return (
         <>
             {/* Header */}
             <div style={{
                 padding: `${SPACE["4"]}px ${SPACE["4"]}px`,
                 paddingTop: isMobile ? `max(${SPACE["4"]}px, env(safe-area-inset-top))` : SPACE["4"],
-                borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+                borderBottom: isDark ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 flexShrink: 0,
-                background: "var(--dt-glass-bg-subtle)",
+                background: isDark ? "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
             }}>
                 <span style={{
-                    fontSize: TYPE_SCALE.xs,
-                    fontWeight: 700,
+                    fontSize: isDark ? 9 : TYPE_SCALE.xs,
+                    fontWeight: isDark ? 400 : 700,
                     textTransform: "uppercase",
-                    letterSpacing: "0.12em",
-                    color: "var(--dt-text-quaternary)",
-                    fontFamily: FONT.sans,
+                    letterSpacing: isDark ? "1.2px" : "0.12em",
+                    color: isDark ? "var(--strict-source-label)" : "var(--dt-text-quaternary)",
+                    fontFamily: isDark ? "system-ui" : FONT.sans,
                 }}>
                     Chats
                 </span>
@@ -60,19 +62,19 @@ export function HistoryPanel({
                             display: "flex",
                             alignItems: "center",
                             gap: SPACE["1"],
-                            padding: `${SPACE["1"]}px ${SPACE["2"]}px`,
-                            borderRadius: RADIUS.md,
-                            fontSize: TYPE_SCALE.xs,
+                            padding: isDark ? "4px 10px" : `${SPACE["1"]}px ${SPACE["2"]}px`,
+                            borderRadius: isDark ? 5 : RADIUS.md,
+                            fontSize: isDark ? 10 : TYPE_SCALE.xs,
                             fontWeight: 500,
-                            background: "var(--dt-glass-bg)",
-                            border: "0.5px solid var(--dt-glass-border)",
-                            color: "var(--dt-text-tertiary)",
+                            background: isDark ? "var(--strict-gold-badge-bg)" : "var(--dt-glass-bg)",
+                            border: isDark ? "1px solid var(--strict-gold-badge-border)" : "0.5px solid var(--dt-glass-border)",
+                            color: isDark ? "var(--strict-gold-text)" : "var(--dt-text-tertiary)",
                             cursor: "pointer",
                             transition: `all ${TIMING.instant}`,
-                            fontFamily: FONT.sans,
+                            fontFamily: isDark ? "system-ui" : FONT.sans,
                         }}
                     >
-                        <SquarePen size={TYPE_SCALE.xs} strokeWidth={1.8} />
+                        <SquarePen size={isDark ? 10 : TYPE_SCALE.xs} strokeWidth={1.8} />
                         New
                     </button>
 
@@ -102,15 +104,21 @@ export function HistoryPanel({
             {/* Sessions list */}
             <div style={{ flex: 1, overflowY: "auto", padding: SPACE["2"] }}>
                 {sessions.length === 0 ? (
-                    <p style={{
-                        fontSize: TYPE_SCALE.sm,
-                        textAlign: "center",
-                        padding: `${SPACE["6"]}px ${SPACE["3"]}px`,
-                        color: "var(--dt-text-quaternary)",
-                        fontFamily: FONT.sans,
+                    <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        height: "100%", padding: "24px 12px",
                     }}>
-                        No chats yet
-                    </p>
+                        <p style={{
+                            fontSize: isDark ? 12 : TYPE_SCALE.sm,
+                            textAlign: "center",
+                            color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-quaternary)",
+                            fontFamily: isDark ? "Georgia, serif" : FONT.sans,
+                            fontStyle: isDark ? "italic" : undefined,
+                            margin: 0,
+                        }}>
+                            No chats yet
+                        </p>
+                    </div>
                 ) : (
                     sessions.map((s) => {
                         const isActive = s.id === currentSessionId;
@@ -124,34 +132,45 @@ export function HistoryPanel({
                                         textAlign: "left",
                                         padding: `${SPACE["2"]}px ${SPACE["8"]}px ${SPACE["2"]}px ${SPACE["3"]}px`,
                                         borderRadius: RADIUS.lg,
-                                        fontSize: TYPE_SCALE.sm,
-                                        color: isActive ? "var(--dt-text-primary)" : "var(--dt-text-secondary)",
-                                        background: isActive ? "var(--dt-active-item-bg)" : "transparent",
-                                        border: isActive
-                                            ? "0.5px solid var(--dt-accent-border-color)"
-                                            : "0.5px solid transparent",
+                                        fontSize: isDark ? 12 : TYPE_SCALE.sm,
+                                        color: isDark
+                                            ? (isActive ? "var(--strict-text-primary)" : "var(--strict-text-secondary)")
+                                            : (isActive ? "var(--dt-text-primary)" : "var(--dt-text-secondary)"),
+                                        background: isDark
+                                            ? (isActive ? "var(--strict-gold-badge-bg)" : "transparent")
+                                            : (isActive ? "var(--dt-active-item-bg)" : "transparent"),
+                                        border: isDark
+                                            ? (isActive ? "1px solid var(--strict-gold-border)" : "1px solid transparent")
+                                            : (isActive ? "0.5px solid var(--dt-accent-border-color)" : "0.5px solid transparent"),
                                         cursor: "pointer",
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
                                         whiteSpace: "nowrap",
-                                        fontFamily: FONT.sans,
-                                        fontWeight: isActive ? 600 : 400,
+                                        fontFamily: isDark ? "system-ui, sans-serif" : FONT.sans,
+                                        fontWeight: isDark ? (isActive ? 500 : 400) : (isActive ? 600 : 400),
                                         transition: `background ${TIMING.instant}, border-color ${TIMING.instant}, box-shadow ${TIMING.instant}, color ${TIMING.instant}`,
                                     }}
                                     onMouseEnter={e => {
                                         if (!isActive) {
-                                            e.currentTarget.style.background = "var(--dt-glass-bg)";
-                                            e.currentTarget.style.borderColor = "var(--dt-glass-border-subtle)";
-                                            e.currentTarget.style.boxShadow = "var(--dt-glass-inner-glow), 0 2px 8px rgba(0,0,0,0.15)";
-                                            e.currentTarget.style.backdropFilter = "var(--dt-glass-blur-light)";
+                                            if (isDark) {
+                                                e.currentTarget.style.background = "var(--strict-glass-bg)";
+                                                e.currentTarget.style.borderColor = "var(--strict-gold-border)";
+                                            } else {
+                                                e.currentTarget.style.background = "var(--dt-glass-bg)";
+                                                e.currentTarget.style.borderColor = "var(--dt-glass-border-subtle)";
+                                                e.currentTarget.style.boxShadow = "var(--dt-glass-inner-glow), 0 2px 8px rgba(0,0,0,0.15)";
+                                                e.currentTarget.style.backdropFilter = "var(--dt-glass-blur-light)";
+                                            }
                                         }
                                     }}
                                     onMouseLeave={e => {
                                         if (!isActive) {
                                             e.currentTarget.style.background = "transparent";
                                             e.currentTarget.style.borderColor = "transparent";
-                                            e.currentTarget.style.boxShadow = "none";
-                                            e.currentTarget.style.backdropFilter = "none";
+                                            if (!isDark) {
+                                                e.currentTarget.style.boxShadow = "none";
+                                                e.currentTarget.style.backdropFilter = "none";
+                                            }
                                         }
                                     }}
                                 >
@@ -179,22 +198,22 @@ export function HistoryPanel({
                                         width: 22,
                                         height: 22,
                                         borderRadius: RADIUS.sm,
-                                        background: "var(--dt-glass-bg)",
-                                        border: "0.5px solid var(--dt-glass-border)",
+                                        background: isDark ? "rgba(239,68,68,0.04)" : "var(--dt-glass-bg)",
+                                        border: isDark ? "1px solid rgba(239,68,68,0.08)" : "0.5px solid var(--dt-glass-border)",
                                         cursor: "pointer",
-                                        color: "var(--dt-text-quaternary)",
+                                        color: isDark ? "rgba(248,113,113,0.5)" : "var(--dt-text-quaternary)",
                                         padding: 0,
                                         zIndex: 1,
                                         flexShrink: 0,
                                         transition: `opacity ${TIMING.instant}, background ${TIMING.instant}, color ${TIMING.instant}`,
                                     }}
                                     onMouseEnter={e => {
-                                        e.currentTarget.style.background = "var(--dt-error-bg-interactive)";
-                                        e.currentTarget.style.color = "var(--dt-error-text-hover)";
+                                        e.currentTarget.style.background = isDark ? "rgba(239,68,68,0.08)" : "var(--dt-error-bg-interactive)";
+                                        e.currentTarget.style.color = isDark ? "#f87171" : "var(--dt-error-text-hover)";
                                     }}
                                     onMouseLeave={e => {
-                                        e.currentTarget.style.background = "var(--dt-glass-bg)";
-                                        e.currentTarget.style.color = "var(--dt-text-quaternary)";
+                                        e.currentTarget.style.background = isDark ? "rgba(239,68,68,0.04)" : "var(--dt-glass-bg)";
+                                        e.currentTarget.style.color = isDark ? "rgba(248,113,113,0.5)" : "var(--dt-text-quaternary)";
                                     }}
                                 >
                                     <Trash2 size={11} strokeWidth={1.8} />

@@ -136,11 +136,11 @@ export function EmptyState({
             }}>
                 <h2 style={{
                     fontFamily: "Georgia, serif",
-                    fontSize: "1.3rem",
+                    fontSize: "1.4rem",
                     fontWeight: "normal",
                     color: "var(--strict-text-primary)",
                     letterSpacing: "0.01em",
-                    margin: "0 0 24px",
+                    margin: "0 0 28px",
                     opacity: 0.75,
                 }}>
                     {t("chat.what_can_i_help")}
@@ -180,12 +180,11 @@ export function EmptyState({
                                 }}
                             >
                                 <p style={{
-                                    fontSize: "12.5px",
+                                    fontSize: "13px",
                                     lineHeight: 1.6,
                                     color: "var(--strict-text-secondary)",
                                     margin: 0,
-                                    fontFamily: "Georgia, serif",
-                                    fontStyle: "italic",
+                                    fontFamily: "system-ui, sans-serif",
                                     transition: "color 0.16s ease",
                                 }}>
                                     {q.before}
@@ -193,7 +192,6 @@ export function EmptyState({
                                         color: "var(--strict-gold-text)",
                                         textDecoration: active ? "underline" : "none",
                                         textUnderlineOffset: "2px",
-                                        fontStyle: "normal",
                                     }}>
                                         {q.law}
                                     </span>

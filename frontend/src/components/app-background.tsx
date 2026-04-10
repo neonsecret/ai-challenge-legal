@@ -7,7 +7,7 @@ import {V3_MOTION_CONFIG} from "@/lib/v3-motion";
 export function AppBackground({children}: { children: React.ReactNode }) {
     const {isDark} = useColorMode();
 
-    // Dark mode (Strict): pass children through directly — no wrapper div
+    // Dark mode (Strict): pass children through — blobs rendered inside layout
     if (isDark) {
         return <>{children}</>;
     }

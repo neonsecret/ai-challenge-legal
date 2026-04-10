@@ -2,8 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import { STRICT_HIW } from "@/lib/strict-tokens";
+import { useI18n } from "@/lib/i18n";
+
+const RESULT_BY_LOCALE: Record<string, { header: string; page: string; body: string; quote: string }> = {
+  en: {
+    header: "Article 58 §2 · DIFC Law No. 4 of 2005",
+    page: "Page 34",
+    body: "The minimum notice period varies based on length of continuous service with the employer.",
+    quote: "\u201c...the employer shall provide not less than thirty days\u2019 written notice to the employee, or payment in lieu thereof, where the employee has completed one year of continuous service...\u201d",
+  },
+  cs: {
+    header: "§ 52 písm. c) · Zákoník práce č. 262/2006 Sb.",
+    page: "Str. 52",
+    body: "Zaměstnavatel může dát zaměstnanci výpověď, stane-li se nadbytečným.",
+    quote: "\u201e...zaměstnavatel může dát zaměstnanci výpověď, stane-li se zaměstnanec nadbytečným vzhledem k rozhodnutí zaměstnavatele o změně jeho úkolů, technického vybavení nebo o snížení stavu zaměstnanců...\u201c",
+  },
+};
 
 export function ResultVisual({ active }: { active: boolean }) {
+  const { locale } = useI18n();
+  const result = RESULT_BY_LOCALE[locale] ?? RESULT_BY_LOCALE.en;
   const [highlightVisible, setHighlightVisible] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -42,8 +60,8 @@ export function ResultVisual({ active }: { active: boolean }) {
           marginBottom: "8px",
         }}
       >
-        <span>Article 58 §2 · DIFC Law No. 4 of 2005</span>
-        <span>Page 34</span>
+        <span>{result.header}</span>
+        <span>{result.page}</span>
       </div>
       {/* Body text */}
       <p
@@ -56,8 +74,7 @@ export function ResultVisual({ active }: { active: boolean }) {
           margin: 0,
         }}
       >
-        The minimum notice period varies based on length of continuous service
-        with the employer.
+        {result.body}
       </p>
       {/* Highlighted quote */}
       <div
@@ -82,9 +99,7 @@ export function ResultVisual({ active }: { active: boolean }) {
             margin: 0,
           }}
         >
-          &ldquo;...the employer shall provide not less than thirty days&rsquo;
-          written notice to the employee, or payment in lieu thereof, where the
-          employee has completed one year of continuous service...&rdquo;
+          {result.quote}
         </p>
       </div>
     </div>

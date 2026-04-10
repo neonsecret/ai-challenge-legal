@@ -146,13 +146,20 @@ export function ChatHeader({
     });
 
     const pillStyle = (active: boolean) => ({
-        fontSize: TYPE_SCALE.sm, fontWeight: active ? 700 : 500,
+        fontSize: isStrict ? TYPE_SCALE.xs : TYPE_SCALE.sm,
+        fontWeight: isStrict ? (active ? 400 : 400) : (active ? 700 : 500),
         padding: `${SPACE["1"]}px ${SPACE["3"]}px`, borderRadius: RADIUS.sm,
         cursor: "pointer" as const, whiteSpace: "nowrap" as const, flexShrink: 0,
         userSelect: "none" as const, WebkitUserSelect: "none" as const,
-        background: active ? "var(--dt-color-gold-solid)" : "var(--dt-pill-bg-subtle)",
-        border: active ? "0.5px solid var(--dt-color-gold-border)" : "0.5px solid var(--dt-pill-border-color)",
-        color: active ? "var(--dt-text-primary)" : "var(--dt-text-tertiary)",
+        background: active
+            ? (isStrict ? "var(--strict-pill-active-bg)" : "var(--dt-color-gold-solid)")
+            : (isStrict ? "var(--strict-glass-bg)" : "var(--dt-pill-bg-subtle)"),
+        border: active
+            ? (isStrict ? "1px solid var(--strict-pill-active-border)" : "0.5px solid var(--dt-color-gold-border)")
+            : (isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-pill-border-color)"),
+        color: active
+            ? (isStrict ? "var(--strict-text-primary)" : "var(--dt-text-primary)")
+            : (isStrict ? "var(--strict-gold-text)" : "var(--dt-text-tertiary)"),
         fontFamily: FONT.sans,
         transition: `all ${TIMING.fast} ${EASE.spring}`,
     });
@@ -160,14 +167,14 @@ export function ChatHeader({
     const pillHover = (active: boolean) => ({
         onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
             if (!active) {
-                e.currentTarget.style.background = "var(--dt-glass-bg-hover)";
-                e.currentTarget.style.borderColor = "var(--dt-glass-border)";
+                e.currentTarget.style.background = isStrict ? "var(--strict-gold-badge-bg)" : "var(--dt-glass-bg-hover)";
+                e.currentTarget.style.borderColor = isStrict ? "var(--strict-gold-border-active)" : "var(--dt-glass-border)";
             }
         },
         onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
             if (!active) {
-                e.currentTarget.style.background = "var(--dt-pill-bg-subtle)";
-                e.currentTarget.style.borderColor = "var(--dt-pill-border-color)";
+                e.currentTarget.style.background = isStrict ? "var(--strict-glass-bg)" : "var(--dt-pill-bg-subtle)";
+                e.currentTarget.style.borderColor = isStrict ? "var(--strict-gold-border)" : "var(--dt-pill-border-color)";
             }
         },
     });
@@ -320,25 +327,23 @@ export function ChatHeader({
                     </button>
                 </div>
 
-                {/* History toggle */}
-                <button
-                    onClick={onToggleHistory}
-                    title="Chat history"
-                    style={btnStyle(historyOpen)}
-                    onMouseEnter={e => { if (!historyOpen && isStrict) e.currentTarget.style.borderColor = "var(--strict-btn-border-hover)"; }}
-                    onMouseLeave={e => { if (!historyOpen && isStrict) e.currentTarget.style.borderColor = "var(--strict-btn-border)"; }}
-                >
-                    <History size={TYPE_SCALE.sm} strokeWidth={1.8} />
-                </button>
+                {/* History toggle — strict mode uses sidebar rail (desktop) or bottom nav (mobile) */}
+                {!isStrict && (
+                    <button
+                        onClick={onToggleHistory}
+                        title="Chat history"
+                        style={btnStyle(historyOpen)}
+                    >
+                        <History size={TYPE_SCALE.sm} strokeWidth={1.8} />
+                    </button>
+                )}
 
-                {/* Document index toggle */}
-                {documentIndexCount > 0 && (
+                {/* Document index toggle — hidden in strict desktop (sidebar rail has it) */}
+                {documentIndexCount > 0 && !(isStrict && !isMobile) && (
                     <button
                         onClick={onToggleIndex}
                         title="Document sources index"
                         style={{ ...btnStyle(indexOpen), position: "relative" }}
-                        onMouseEnter={e => { if (!indexOpen && isStrict) e.currentTarget.style.borderColor = "var(--strict-btn-border-hover)"; }}
-                        onMouseLeave={e => { if (!indexOpen && isStrict) e.currentTarget.style.borderColor = "var(--strict-btn-border)"; }}
                     >
                         <BookOpen size={TYPE_SCALE.sm} strokeWidth={1.8} />
                         <span style={{
@@ -355,19 +360,19 @@ export function ChatHeader({
                     </button>
                 )}
 
-                {/* New chat */}
-                {hasMessages && (
+                {/* New chat — hidden in strict desktop (sidebar rail has it) */}
+                {hasMessages && !(isStrict && !isMobile) && (
                     <button
                         onClick={() => { onNewChat(); onSetPreviewIndex(null); }}
                         title="New chat"
                         style={btnStyle(false)}
                         onMouseEnter={e => {
-                            if (isStrict) { e.currentTarget.style.borderColor = "var(--strict-btn-border-hover)"; e.currentTarget.style.color = "var(--strict-text-secondary)"; }
-                            else { e.currentTarget.style.background = "var(--dt-button-bg-hover)"; e.currentTarget.style.color = "var(--dt-text-primary)"; }
+                            e.currentTarget.style.background = "var(--dt-button-bg-hover)";
+                            e.currentTarget.style.color = "var(--dt-text-primary)";
                         }}
                         onMouseLeave={e => {
-                            if (isStrict) { e.currentTarget.style.borderColor = "var(--strict-btn-border)"; e.currentTarget.style.color = "var(--strict-btn-text)"; }
-                            else { e.currentTarget.style.background = "var(--dt-button-bg)"; e.currentTarget.style.color = "var(--dt-text-tertiary)"; }
+                            e.currentTarget.style.background = "var(--dt-button-bg)";
+                            e.currentTarget.style.color = "var(--dt-text-tertiary)";
                         }}
                     >
                         <SquarePen size={TYPE_SCALE.sm} strokeWidth={1.8} />
@@ -540,15 +545,20 @@ export function ChatHeader({
             {jurisdiction === "custom" && (
                 <div style={{
                     padding: isMobile ? `${SPACE["2"]}px ${SPACE["3"]}px` : `${SPACE["2"]}px ${SPACE["6"]}px`,
-                    borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+                    borderBottom: isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
                     display: "flex", alignItems: "center", gap: SPACE["2"],
                     overflowX: "auto", flexShrink: 0, scrollbarWidth: "none",
-                    WebkitOverflowScrolling: "touch", background: "var(--dt-glass-bg-subtle)",
+                    WebkitOverflowScrolling: "touch",
+                    background: isStrict ? "transparent" : "var(--dt-glass-bg-subtle)",
                 }}>
                     <span style={{
-                        fontSize: TYPE_SCALE.xs, fontWeight: 600, textTransform: "uppercase",
-                        letterSpacing: "0.08em", whiteSpace: "nowrap", flexShrink: 0,
-                        color: "var(--dt-text-quaternary)", fontFamily: FONT.sans,
+                        fontSize: isStrict ? 9 : TYPE_SCALE.xs,
+                        fontWeight: isStrict ? 400 : 600,
+                        textTransform: "uppercase",
+                        letterSpacing: isStrict ? "1.2px" : "0.08em",
+                        whiteSpace: "nowrap", flexShrink: 0,
+                        color: isStrict ? "var(--strict-source-label)" : "var(--dt-text-quaternary)",
+                        fontFamily: isStrict ? "system-ui" : FONT.sans,
                     }}>
                         Collections
                     </span>
@@ -604,9 +614,8 @@ export function ChatHeader({
                     })() : (
                         <button
                             onClick={() => router.push("/documents")}
-                            style={{ ...pillStyle(false), background: "var(--dt-pill-bg-subtle)", border: "0.5px solid var(--dt-pill-border-color)", color: "var(--dt-text-tertiary)" }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--dt-glass-bg-hover)"; e.currentTarget.style.borderColor = "var(--dt-glass-border)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "var(--dt-pill-bg-subtle)"; e.currentTarget.style.borderColor = "var(--dt-pill-border-color)"; }}
+                            style={pillStyle(false)}
+                            {...pillHover(false)}
                         >
                             Upload documents to get started
                         </button>

@@ -57,69 +57,64 @@ export function LegalIndexLibrary() {
             <div style={{display: "flex", flexDirection: "column", gap: "0"}}>
                 {/* Section label */}
                 <div style={{
-                    fontSize: "7px", fontFamily: "system-ui, sans-serif",
-                    letterSpacing: "1px", textTransform: "uppercase",
-                    color: "rgba(200,210,230,0.22)", marginBottom: "6px",
+                    fontSize: "9px", fontFamily: "system-ui, sans-serif",
+                    letterSpacing: "1.2px", textTransform: "uppercase",
+                    color: "rgba(201,168,76,0.4)", marginBottom: "14px",
                 }}>
                     {t("documents.library_title")}
                 </div>
 
-                {PLANNED_INDEXES.map((idx, i) => (
-                    <div key={idx.id}>
-                        {/* Subtle separator between items */}
-                        {i > 0 && (
-                            <div style={{height: "1px", background: "rgba(201,168,76,0.03)", margin: "0 4px"}} />
-                        )}
-                        <div style={{
-                            display: "flex", alignItems: "center", gap: "8px",
-                            padding: "5px 8px", borderRadius: "6px",
-                            transition: "background 0.12s",
-                        }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.02)"; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                {/* Cards — flex wrap */}
+                <div style={{display: "flex", flexWrap: "wrap", gap: "8px"}}>
+                    {PLANNED_INDEXES.map((idx) => (
+                        <div
+                            key={idx.id}
+                            style={{
+                                padding: "8px 14px",
+                                borderRadius: "8px",
+                                border: "1px solid rgba(201,168,76,0.06)",
+                                background: "rgba(255,255,255,0.015)",
+                                display: "flex", alignItems: "center", gap: "8px",
+                                transition: "background 0.12s, border-color 0.12s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(201,168,76,0.02)";
+                                e.currentTarget.style.borderColor = "rgba(201,168,76,0.12)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.015)";
+                                e.currentTarget.style.borderColor = "rgba(201,168,76,0.06)";
+                            }}
                         >
                             {/* Flag */}
-                            <span style={{fontSize: "13px", lineHeight: 1, flexShrink: 0}} role="img" aria-label={idx.jurisdiction}>
+                            <span style={{fontSize: "14px", lineHeight: 1, flexShrink: 0}} role="img" aria-label={idx.jurisdiction}>
                                 {idx.flag}
                             </span>
 
                             {/* Name */}
                             <span style={{
-                                flex: 1, font: "11px/1.3 Georgia, serif",
-                                color: "rgba(255,255,255,0.56)",
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                fontSize: "12px", lineHeight: 1.3, fontFamily: "Georgia, serif",
+                                color: "rgba(230,235,245,0.88)", opacity: 0.7,
+                                whiteSpace: "nowrap",
                             }}>
                                 {idx.name}
                             </span>
 
                             {/* Passage count */}
                             <span style={{
-                                font: "9px/1 system-ui, sans-serif",
-                                color: "var(--strict-text-dim)", flexShrink: 0,
+                                fontSize: "9px", lineHeight: 1, fontFamily: "system-ui, sans-serif",
+                                color: "rgba(200,210,230,0.22)", flexShrink: 0,
                                 fontVariantNumeric: "tabular-nums",
                             }}>
                                 {idx.passages}
                             </span>
-
-                            {/* Active badge */}
-                            <span style={{
-                                font: "7px/1 system-ui, sans-serif",
-                                textTransform: "uppercase", letterSpacing: "0.3px",
-                                color: "#4ade80",
-                                background: "rgba(34,197,94,0.08)",
-                                border: "1px solid rgba(34,197,94,0.15)",
-                                borderRadius: "3px", padding: "2px 5px",
-                                flexShrink: 0,
-                            }}>
-                                {t("documents.index_status_active")}
-                            </span>
                         </div>
-                    </div>
-                ))}
+                    ))}
+                </div>
 
                 <div style={{
-                    fontSize: "7px", fontFamily: "system-ui, sans-serif",
-                    color: "rgba(200,210,230,0.16)", marginTop: "6px", lineHeight: 1.5,
+                    fontSize: "9px", fontFamily: "system-ui, sans-serif",
+                    color: "rgba(200,210,230,0.22)", marginTop: "10px", lineHeight: 1.5,
                 }}>
                     {t("documents.library_footer")}
                 </div>

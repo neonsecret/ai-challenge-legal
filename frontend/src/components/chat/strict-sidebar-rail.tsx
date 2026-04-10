@@ -12,7 +12,7 @@ import { useState } from "react";
 import { Menu, SquarePen, LayoutList, Settings, Sun, Moon, MessageSquare, FileText, CreditCard } from "lucide-react";
 import { useColorMode } from "@/lib/color-mode";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export interface StrictSidebarRailProps {
     onHistoryToggle?: () => void;
@@ -143,6 +143,23 @@ export function StrictSidebarRail({
     const pathname = usePathname();
 
     const isDark = resolvedMode === "dark";
+    const router = useRouter();
+    const isOnChat = pathname.startsWith("/chat");
+
+    // Bridge sidebar buttons to chat page via custom events when no callbacks are provided.
+    // On non-chat pages, set a sessionStorage flag and navigate — chat page reads it on mount.
+    const handleHistoryToggle = onHistoryToggle ?? (() => {
+        if (!isOnChat) { sessionStorage.setItem("vitreon:pending-action", "history-toggle"); router.push("/chat"); }
+        else window.dispatchEvent(new CustomEvent("vitreon:history-toggle"));
+    });
+    const handleNewChat = onNewChat ?? (() => {
+        if (!isOnChat) router.push("/chat");
+        else window.dispatchEvent(new CustomEvent("vitreon:new-chat"));
+    });
+    const handleDocIndexToggle = onDocIndexToggle ?? (() => {
+        if (!isOnChat) { sessionStorage.setItem("vitreon:pending-action", "doc-index-toggle"); router.push("/chat"); }
+        else window.dispatchEvent(new CustomEvent("vitreon:doc-index-toggle"));
+    });
 
     return (
         <div
@@ -190,10 +207,10 @@ export function StrictSidebarRail({
                 V
             </Link>
 
-            {/* App navigation: Chat, Documents, Billing */}
-            <RailNavLink href="/chat" title="Chat" active={pathname.startsWith("/chat")}>
-                <MessageSquare size={14} strokeWidth={1.8} />
-            </RailNavLink>
+            {/* App navigation: New Chat, Documents, Billing */}
+            <RailButton onClick={handleNewChat} title="New chat">
+                <SquarePen size={14} strokeWidth={1.8} />
+            </RailButton>
 
             <RailNavLink href="/documents" title="Documents" active={pathname.startsWith("/documents")}>
                 <FileText size={14} strokeWidth={1.8} />
@@ -203,8 +220,8 @@ export function StrictSidebarRail({
                 <CreditCard size={14} strokeWidth={1.8} />
             </RailNavLink>
 
-            {/* Chat-specific actions — only show on /chat */}
-            {pathname.startsWith("/chat") && (
+            {/* Chat actions — always visible */}
+            {(
                 <>
                     <div
                         style={{
@@ -216,17 +233,14 @@ export function StrictSidebarRail({
                         }}
                     />
                     <RailButton
-                        onClick={onHistoryToggle}
+                        onClick={handleHistoryToggle}
                         active={historyOpen}
                         title="Chat history"
                     >
                         <Menu size={14} strokeWidth={1.8} />
                     </RailButton>
-                    <RailButton onClick={onNewChat} title="New chat">
-                        <SquarePen size={14} strokeWidth={1.8} />
-                    </RailButton>
                     <RailButton
-                        onClick={onDocIndexToggle}
+                        onClick={handleDocIndexToggle}
                         active={docIndexOpen}
                         title="Document index"
                     >

@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { STRICT_HIW } from "@/lib/strict-tokens";
+import { useI18n } from "@/lib/i18n";
 
-const SCAN_ITEMS = [
-  "Scanning 4,800+ documents",
-  "Located Article 58 §2",
-  "Ranked 5 passages",
-] as const;
+const SCAN_ITEMS_BY_LOCALE: Record<string, readonly string[]> = {
+  en: ["Scanning 4,800+ documents", "Located Article 58 §2", "Ranked 5 passages"],
+  cs: ["Prohledávání 6 800+ dokumentů", "Nalezen § 52 písm. c) ZP", "Seřazeno 5 pasáží"],
+};
 
 interface ScanItemState {
   visible: boolean;
@@ -15,6 +15,8 @@ interface ScanItemState {
 }
 
 export function ScanningVisual({ active }: { active: boolean }) {
+  const { locale } = useI18n();
+  const SCAN_ITEMS = SCAN_ITEMS_BY_LOCALE[locale] ?? SCAN_ITEMS_BY_LOCALE.en;
   const [items, setItems] = useState<ScanItemState[]>([
     { visible: false, done: false },
     { visible: false, done: false },

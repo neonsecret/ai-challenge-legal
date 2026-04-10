@@ -144,11 +144,11 @@ export default function DocumentsPage() {
                 ...(isDark ? {
                     flex: 1,
                     overflowY: "auto" as const,
-                    padding: "20px 24px",
+                    padding: "28px 32px",
                     display: "flex",
                     flexDirection: "column" as const,
-                    gap: 20,
-                    maxWidth: 800,
+                    gap: 24,
+                    maxWidth: 700,
                     width: "100%",
                     marginLeft: "auto",
                     marginRight: "auto",
@@ -180,28 +180,28 @@ export default function DocumentsPage() {
                     variants={V3_LIST_VARIANT}
                     initial="hidden"
                     animate="visible"
-                    style={{display: "flex", flexDirection: "column", gap: "20px"}}
+                    style={{display: "flex", flexDirection: "column", gap: "24px"}}
                 >
                     {/* Upload section — gated by plan */}
                     {isFreeTier ? (
                         <motion.div variants={V3_ITEM_VARIANT}>
-                            <div style={{padding: "16px", textAlign: "center", border: "1px dashed rgba(201,168,76,0.12)", borderRadius: "8px"}}>
+                            <div style={{padding: "24px", textAlign: "center", border: "1px dashed rgba(201,168,76,0.15)", borderRadius: "12px"}}>
                                 <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "8px"}}>↑</div>
-                                <p style={{fontSize: "11px", fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.56)", margin: "0 0 6px"}}>
+                                <p style={{fontSize: "13px", fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.56)", margin: "0 0 8px"}}>
                                     {t("documents.upgrade_required")}
                                 </p>
-                                <p style={{fontSize: "9px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", margin: "0 0 10px", lineHeight: 1.5}}>
+                                <p style={{fontSize: "10px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.30)", margin: "0 0 12px", lineHeight: 1.5}}>
                                     {t("documents.upgrade_description")}
                                 </p>
                                 <Link
                                     href="/billing"
                                     style={{
                                         display: "inline-flex", alignItems: "center", gap: "4px",
-                                        padding: "4px 12px", fontSize: "9px", fontFamily: "system-ui, sans-serif",
+                                        padding: "5px 14px", fontSize: "10px", fontFamily: "system-ui, sans-serif",
                                         color: "rgba(201,168,76,0.7)",
                                         background: "rgba(201,168,76,0.06)",
                                         border: "1px solid rgba(201,168,76,0.12)",
-                                        borderRadius: "5px", textDecoration: "none", cursor: "pointer",
+                                        borderRadius: "6px", textDecoration: "none", cursor: "pointer",
                                     }}
                                 >
                                     {t("documents.upgrade_button")}
@@ -214,12 +214,19 @@ export default function DocumentsPage() {
                         </motion.div>
                     )}
 
+                    {/* Gold separator between upload and collections */}
+                    <div style={{
+                        height: "1px",
+                        background: "linear-gradient(90deg, rgba(201,168,76,0.12), rgba(201,168,76,0.03))",
+                        margin: "0",
+                    }} />
+
                     {/* COLLECTIONS label + folder view */}
                     <motion.div variants={V3_ITEM_VARIANT} style={{display: "flex", flexDirection: "column", gap: "0"}}>
                         <div style={{
-                            fontSize: "8px", fontFamily: "system-ui, sans-serif",
-                            letterSpacing: "1.5px", textTransform: "uppercase" as const,
-                            color: "var(--strict-text-dim)", marginBottom: "12px",
+                            fontSize: "9px", fontFamily: "system-ui, sans-serif",
+                            letterSpacing: "1.2px", textTransform: "uppercase" as const,
+                            color: "rgba(201,168,76,0.4)", marginBottom: "14px",
                         }}>
                             {t("documents.collections")}
                         </div>

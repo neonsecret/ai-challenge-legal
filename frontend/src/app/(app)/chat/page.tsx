@@ -1,6 +1,7 @@
 "use client"
 
 import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, type ReactNode} from "react"
+import {createPortal} from "react-dom"
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
 import {V3_FADE_UP} from "@/lib/v3-motion"
@@ -323,6 +324,28 @@ export default function ChatPage() {
         return () => window.removeEventListener("keydown", handler)
     }, [])
 
+    // Listen for sidebar rail custom events (bridge between layout-level sidebar and page-level state)
+    useEffect(() => {
+        const onHistoryToggle = () => setHistoryOpen(v => !v)
+        const onNewChatEvent = () => { newChat(); setPreviewIndex(null) }
+        const onDocIndexToggle = () => setIndexOpen(v => !v)
+        window.addEventListener("vitreon:history-toggle", onHistoryToggle)
+        window.addEventListener("vitreon:new-chat", onNewChatEvent)
+        window.addEventListener("vitreon:doc-index-toggle", onDocIndexToggle)
+        // Check for pending sidebar action from navigation (sessionStorage handoff)
+        const pending = sessionStorage.getItem("vitreon:pending-action")
+        if (pending) {
+            sessionStorage.removeItem("vitreon:pending-action")
+            if (pending === "history-toggle") setHistoryOpen(true)
+            else if (pending === "doc-index-toggle") setIndexOpen(true)
+        }
+        return () => {
+            window.removeEventListener("vitreon:history-toggle", onHistoryToggle)
+            window.removeEventListener("vitreon:new-chat", onNewChatEvent)
+            window.removeEventListener("vitreon:doc-index-toggle", onDocIndexToggle)
+        }
+    }, [newChat])
+
     const previewScenarios = PREVIEW_SCENARIOS_MAP[jurisdiction] ?? []
     const presetQuestions = getPresetQuestions(jurisdiction)
     const showPreview = messages.length === 0 && previewIndex !== null && previewIndex < previewScenarios.length
@@ -344,7 +367,7 @@ export default function ChatPage() {
                 {historyOpen && (
                     <motion.div
                         initial={isMobile ? {x: "-100%"} : {opacity: 0, width: 0}}
-                        animate={isMobile ? {x: 0} : {opacity: 1, width: 260}}
+                        animate={isMobile ? {x: 0} : {opacity: 1, width: 280}}
                         exit={isMobile ? {x: "-100%"} : {opacity: 0, width: 0}}
                         transition={isMobile ? {type: "spring", damping: 30, stiffness: 300} : {duration: 0.25, ease: [0.32, 0.72, 0, 1]}}
                         className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
@@ -385,13 +408,13 @@ export default function ChatPage() {
             <div className={isStrict ? undefined : "animate-glass-in"} style={{
                 flex: 1,
                 display: "flex",
-                flexDirection: "column",
+                flexDirection: isStrict && !isMobile && drawerOpen && drawerData.sources.length > 0 ? "row" : "column",
                 minHeight: 0,
                 minWidth: 0,
                 position: "relative",
                 overflow: "hidden",
                 contain: "style",
-                transition: `all ${TIMING.slow} ${EASE.out}`,
+                transition: `border-color ${TIMING.slow} ${EASE.out}, box-shadow ${TIMING.slow} ${EASE.out}, background ${TIMING.slow} ${EASE.out}`,
                 ...(isStrict ? {} : makeGlassPanel(false)),
             }}>
                 {/* Reading area */}
@@ -665,26 +688,28 @@ export default function ChatPage() {
                         {/* Panel header */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+                            borderBottom: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
+                            flexShrink: 0, background: isStrict ? "transparent" : "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
-                  fontSize: TYPE_SCALE.sm, fontWeight: 600,
-                  color: "var(--dt-text-tertiary)",
-                  fontFamily: FONT.sans,
-                  textTransform: "uppercase", letterSpacing: "0.10em"
+                  fontSize: isStrict ? 9 : TYPE_SCALE.sm,
+                  fontWeight: isStrict ? 400 : 600,
+                  color: isStrict ? "rgba(201,168,76,0.4)" : "var(--dt-text-tertiary)",
+                  fontFamily: isStrict ? "system-ui" : FONT.sans,
+                  textTransform: "uppercase",
+                  letterSpacing: isStrict ? "1.2px" : "0.10em",
               }}>
                 Source Document
               </span>
                             <button
                                 onClick={() => setPreviewIndex(null)}
                                 style={{
-                                    background: "var(--dt-glass-bg)",
-                                    border: "0.5px solid var(--dt-glass-border)",
+                                    background: isStrict ? "rgba(201,168,76,0.04)" : "var(--dt-glass-bg)",
+                                    border: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border)",
                                     cursor: "pointer",
                                     padding: isMobile ? SPACE['2'] : SPACE['1'],
-                                    color: "var(--dt-text-tertiary)",
+                                    color: isStrict ? "rgba(201,168,76,0.5)" : "var(--dt-text-tertiary)",
                                     borderRadius: RADIUS.md,
                                     display: "flex"
                                 }}
@@ -699,6 +724,7 @@ export default function ChatPage() {
                                 <FakePdf
                                     scenario={previewScenarios[previewIndex!]}
                                     showHighlights={true}
+                                    isDark={isStrict}
                                 />
                             </div>
                         </div>
@@ -706,12 +732,24 @@ export default function ChatPage() {
                         {/* Ask button */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['5']}px 80px` : `${SPACE['3']}px ${SPACE['5']}px ${SPACE['4']}px`,
-                            borderTop: "0.5px solid var(--dt-glass-border)",
-                            flexShrink: 0, background: "var(--dt-glass-bg-subtle)",
+                            borderTop: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border)",
+                            flexShrink: 0, background: isStrict ? "transparent" : "var(--dt-glass-bg-subtle)",
                         }}>
                             <button
                                 onClick={() => onSend(presetQuestions[previewIndex!].full)}
-                                style={{
+                                style={isStrict ? {
+                                    width: "100%", padding: 10, borderRadius: 8,
+                                    background: "rgba(255,255,255,0.025)",
+                                    color: "rgba(230,235,245,0.88)",
+                                    border: "1px solid rgba(255,255,255,0.04)",
+                                    borderBottom: "1px solid rgba(201,168,76,0.3)",
+                                    cursor: "pointer",
+                                    fontSize: 10, fontWeight: 400,
+                                    fontFamily: "system-ui",
+                                    boxShadow: "none",
+                                    opacity: 0.7,
+                                    transition: `opacity ${TIMING.fast}, border-color ${TIMING.fast}`,
+                                } : {
                                     width: "100%", padding: SPACE['3'], borderRadius: RADIUS.xl,
                                     background: "var(--dt-preview-btn-bg)", color: "var(--dt-preview-btn-text)",
                                     border: "none", cursor: "pointer",
@@ -720,8 +758,22 @@ export default function ChatPage() {
                                     boxShadow: "0 2px 12px var(--dt-preview-btn-shadow)",
                                     transition: `opacity ${TIMING.fast}`,
                                 }}
-                                onMouseEnter={e => (e.currentTarget.style.opacity = "0.88")}
-                                onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+                                onMouseEnter={e => {
+                                    if (isStrict) {
+                                        e.currentTarget.style.opacity = "1";
+                                        e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.5)";
+                                    } else {
+                                        e.currentTarget.style.opacity = "0.88";
+                                    }
+                                }}
+                                onMouseLeave={e => {
+                                    if (isStrict) {
+                                        e.currentTarget.style.opacity = "0.7";
+                                        e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.3)";
+                                    } else {
+                                        e.currentTarget.style.opacity = "1";
+                                    }
+                                }}
                             >
                                 Ask this question →
                             </button>
@@ -730,8 +782,8 @@ export default function ChatPage() {
                 )}
             </AnimatePresence>
 
-            {/* ── Mobile dark mode source bottom sheet (drag gesture, 50%→full) ── */}
-            {isMobile && isStrict && drawerOpen && drawerData.sources.length > 0 && (
+            {/* ── Mobile dark mode source bottom sheet — portaled to escape glass pane stacking context ── */}
+            {isMobile && isStrict && drawerOpen && drawerData.sources.length > 0 && typeof document !== "undefined" && createPortal(
                 <MobileSourceSheet
                     sources={drawerData.sources}
                     answer={drawerData.answer}
@@ -739,26 +791,20 @@ export default function ChatPage() {
                     focusPage={drawerData.focusPage}
                     focusSeq={drawerData.focusSeq}
                     onClose={() => setDrawerOpen(false)}
-                />
-            )}
-
-            {/* ── Strict overlay backdrop — desktop strict only (mobile handled by MobileSourceSheet) ── */}
-            {isStrict && !isMobile && drawerOpen && (
-                <div
-                    onClick={() => setDrawerOpen(false)}
-                    style={{position: "fixed", inset: 0, zIndex: 199, background: "rgba(0,0,0,0.4)"}}
-                />
+                />,
+                document.body,
             )}
 
             {/* ── Source grounding panel ── */}
-            {/* In Strict mode: centered overlay. Otherwise: flex sibling beside chat. */}
-            {/* Mobile dark mode is handled above by MobileSourceSheet. */}
+            {/* Strict desktop: handled by SourcePanelV2 inside main pane (above). */}
+            {/* Strict mobile: handled by MobileSourceSheet (above). */}
+            {/* Light mode: flex sibling beside chat (below). */}
             <AnimatePresence>
-                {drawerOpen && drawerData.sources.length > 0 && !(isMobile && isStrict) && (
+                {drawerOpen && drawerData.sources.length > 0 && !isStrict && (
                     <motion.div
-                        initial={isMobile ? {y: "100%"} : isStrict ? {opacity: 0, y: 16} : {opacity: 0, width: 0}}
-                        animate={isMobile ? {y: 0} : isStrict ? {opacity: 1, y: 0} : {opacity: 1, width: "50%"}}
-                        exit={isMobile ? {y: "100%"} : isStrict ? {opacity: 0, y: 16} : {opacity: 0, width: 0}}
+                        initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
+                        animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
+                        exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
                         style={{
                             ...(isMobile ? {
@@ -775,21 +821,6 @@ export default function ChatPage() {
                                 WebkitBackdropFilter: "var(--dt-glass-blur-light)",
                                 border: "0.5px solid var(--dt-panel-border-color)",
                                 boxShadow: "var(--dt-panel-shadow)",
-                            } : isStrict ? {
-                                // Strict: centered glass overlay — doesn't compress StrictLayout
-                                position: "fixed",
-                                left: "8%",
-                                right: "8%",
-                                top: "6%",
-                                bottom: "6%",
-                                zIndex: 200,
-                                borderRadius: 16,
-                                background: "var(--strict-glass-bg)",
-                                backdropFilter: "var(--strict-glass-blur)",
-                                WebkitBackdropFilter: "var(--strict-glass-blur)",
-                                border: "1px solid var(--strict-glass-border)",
-                                boxShadow: "var(--strict-glass-shadow)",
-                                willChange: "transform, opacity",
                             } : {
                                 flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
                                 position: "relative",
@@ -812,21 +843,21 @@ export default function ChatPage() {
                                 }}/>
                             </div>
                         )}
-                        {/* Panel header */}
+                        {/* Panel header — light mode only (strict uses SourcePanelV2) */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                            borderBottom: isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
+                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isStrict ? "var(--strict-drawer-header-bg)" : "var(--dt-glass-bg-subtle)",
+                            background: "var(--dt-glass-bg-subtle)",
                         }}>
               <span style={{
-                  fontSize: isStrict ? "var(--strict-label-size)" : TYPE_SCALE.sm,
-                  fontWeight: isStrict ? 400 : 700,
+                  fontSize: TYPE_SCALE.sm,
+                  fontWeight: 700,
                   textTransform: "uppercase",
-                  letterSpacing: isStrict ? "var(--strict-label-tracking)" : "0.12em",
-                  color: isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)",
-                  fontFamily: isStrict ? "system-ui" : FONT.sans,
+                  letterSpacing: "0.12em",
+                  color: "var(--dt-accent-color)",
+                  fontFamily: FONT.sans,
               }}>
                 Source Grounding
               </span>
@@ -904,7 +935,7 @@ export default function ChatPage() {
                 {indexOpen && (
                     <motion.div
                         initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
-                        animate={isMobile ? {y: 0} : {opacity: 1, width: 300}}
+                        animate={isMobile ? {y: 0} : {opacity: 1, width: 280}}
                         exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={isMobile
                             ? {type: "spring", damping: 30, stiffness: 300}
@@ -944,16 +975,18 @@ export default function ChatPage() {
                         {/* Panel header */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['4']}px`,
-                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
+                            borderBottom: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: "var(--dt-glass-bg-subtle)",
+                            background: isStrict ? "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                         }}>
                             <span style={{
-                                fontSize: TYPE_SCALE.xs, fontWeight: 700, textTransform: "uppercase",
-                                letterSpacing: "0.12em",
-                                color: "var(--dt-accent-color)",
-                                fontFamily: FONT.sans,
+                                fontSize: isStrict ? 9 : TYPE_SCALE.xs,
+                                fontWeight: isStrict ? 400 : 700,
+                                textTransform: "uppercase",
+                                letterSpacing: isStrict ? "1.2px" : "0.12em",
+                                color: isStrict ? "rgba(201,168,76,0.4)" : "var(--dt-accent-color)",
+                                fontFamily: isStrict ? "system-ui" : FONT.sans,
                             }}>
                                 Sources ({documentIndex.length})
                             </span>
@@ -963,10 +996,10 @@ export default function ChatPage() {
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
                                     borderRadius: RADIUS.md,
-                                    background: "var(--dt-glass-bg)",
-                                    border: "0.5px solid var(--dt-glass-border)",
+                                    background: isStrict ? "rgba(201,168,76,0.04)" : "var(--dt-glass-bg)",
+                                    border: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border)",
                                     cursor: "pointer",
-                                    color: "var(--dt-text-tertiary)",
+                                    color: isStrict ? "rgba(201,168,76,0.5)" : "var(--dt-text-tertiary)",
                                 }}
                             >
                                 <X size={isMobile ? 16 : 14} strokeWidth={2}/>

@@ -243,99 +243,8 @@ export default function BillingPage() {
     justifyContent: "center",
   });
 
-  // -- Dark mode (mockup-matched) styles --
-
-  // Compact plan card — gold border when active
-  const darkPlanCard = (isCurrent: boolean): React.CSSProperties => ({
-    border: isCurrent
-      ? "1px solid rgba(201,168,76,0.20)"
-      : "1px solid var(--strict-gold-border, rgba(201,168,76,0.08))",
-    borderRadius: "14px",
-    padding: "10px 12px",
-    background: isCurrent ? "var(--strict-glass-bg)" : "var(--strict-glass-bg)",
-    backdropFilter: "blur(12px)",
-    WebkitBackdropFilter: "blur(12px)",
-    marginBottom: "12px",
-    boxShadow: isCurrent ? "0 0 16px rgba(201,168,76,0.04)" : "none",
-    transition: "border-color 0.15s",
-  });
-
-  const darkPlanName: React.CSSProperties = {
-    fontFamily: fontStack,
-    fontSize: "11px",
-    lineHeight: 1,
-    letterSpacing: "0.5px",
-    textTransform: "uppercase" as const,
-    color: "var(--strict-text-primary)",
-    opacity: 0.6,
-  };
-
-  const darkPlanPrice: React.CSSProperties = {
-    fontFamily: "Georgia, 'Times New Roman', serif",
-    fontSize: "20px",
-    lineHeight: 1.2,
-    color: "var(--strict-text-primary)",
-    opacity: 0.8,
-    margin: "4px 0",
-  };
-
-  const darkPlanPriceSuffix: React.CSSProperties = {
-    fontFamily: fontStack,
-    fontSize: "12px",
-    color: "var(--strict-text-secondary)",
-    opacity: 0.5,
-  };
-
-  const darkPlanDetail: React.CSSProperties = {
-    fontFamily: fontStack,
-    fontSize: "11px",
-    lineHeight: 1.4,
-    color: "var(--strict-text-dim)",
-  };
-
-  const darkPlanBadge: React.CSSProperties = {
-    display: "inline-block",
-    padding: "2px 6px",
-    borderRadius: "3px",
-    background: "rgba(201,168,76,0.08)",
-    border: "1px solid rgba(201,168,76,0.15)",
-    fontFamily: fontStack,
-    fontSize: "7px",
-    lineHeight: 1,
-    color: "rgba(201,168,76,0.7)",
-    textTransform: "uppercase",
-    letterSpacing: "0.5px",
-    marginLeft: "6px",
-  };
-
-  const darkUpgradeBtn = (isLoading: boolean): React.CSSProperties => ({
-    padding: "5px 10px",
-    borderRadius: "5px",
-    background: "var(--strict-glass-bg)",
-    backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
-    border: "1px solid rgba(201,168,76,0.12)",
-    borderBottom: "2px solid rgba(201,168,76,0.30)",
-    fontFamily: fontStack,
-    fontSize: "11px",
-    lineHeight: 1,
-    color: "var(--strict-gold-text)",
-    cursor: isLoading ? "wait" : "pointer",
-    marginTop: "6px",
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "4px",
-    opacity: isLoading ? 0.7 : 1,
-    transition: "all 0.15s",
-  });
-
-  const darkUsageBarTrack: React.CSSProperties = {
-    height: "4px",
-    borderRadius: "2px",
-    background: "rgba(201,168,76,0.06)",
-    marginTop: "6px",
-    overflow: "hidden",
-  };
+  // -- Dark mode (strict-pricing matched) styles --
+  // All card/button styles inlined in render functions to match landing page spec exactly
 
   // -- Plan configs --
 
@@ -449,7 +358,7 @@ export default function BillingPage() {
 
   // -- Dark mode rendering --
 
-  const renderDarkCurrentPlan = () => {
+  const renderDarkUsageStats = () => {
     if (!billing) return null;
 
     const planNames: Record<string, string> = {
@@ -457,13 +366,6 @@ export default function BillingPage() {
       starter: t("billing.plan_name_starter"),
       pro: t("billing.plan_name_pro"),
       enterprise: t("billing.plan_name_enterprise"),
-    };
-
-    const planPrices: Record<string, string> = {
-      free: "Free",
-      starter: "$29",
-      pro: "$179",
-      enterprise: "$499",
     };
 
     const percent = usagePercent();
@@ -474,144 +376,377 @@ export default function BillingPage() {
       ? "#f87171"
       : isWarning
         ? "#fbbf24"
-        : "linear-gradient(90deg, rgba(201,168,76,0.4), rgba(201,168,76,0.20))";
+        : "linear-gradient(90deg, rgba(201,168,76,0.4), rgba(201,168,76,0.2))";
 
     const usageLabel = billing.is_monthly_limit
       ? t("billing.queries_this_month")
       : t("billing.todays_queries");
 
     return (
-      <div style={darkPlanCard(true)}>
-        {/* Plan name + badge */}
-        <div style={{ marginBottom: "4px" }}>
-          <span style={darkPlanName}>
-            {planNames[billing.plan] ?? billing.plan}
+      <div style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
+        {/* Section label */}
+        <div style={{
+          fontFamily: "system-ui, sans-serif",
+          fontSize: "9px",
+          textTransform: "uppercase",
+          letterSpacing: "1.2px",
+          color: "rgba(201,168,76,0.4)",
+          marginBottom: "14px",
+        }}>
+          {planNames[billing.plan] ?? billing.plan}
+        </div>
+
+        {/* Usage row — queries */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+          <span style={{
+            fontFamily: "system-ui, sans-serif",
+            fontSize: "10px",
+            color: "rgba(200,210,230,0.35)",
+          }}>
+            {usageLabel}
           </span>
-          <span style={darkPlanBadge}>{t("billing.current_plan")}</span>
+          <span style={{
+            fontFamily: "system-ui, sans-serif",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: "10px",
+            color: "rgba(200,210,230,0.42)",
+          }}>
+            {usageCounts()}
+          </span>
         </div>
 
-        {/* Price */}
-        <div style={darkPlanPrice}>
-          {planPrices[billing.plan] ?? "—"}
-          {billing.plan !== "free" && (
-            <span style={darkPlanPriceSuffix}>/month</span>
-          )}
-        </div>
-
-        {/* Usage detail */}
-        <div style={darkPlanDetail}>
-          {usageLabel}: {usageCounts()}
-        </div>
-
-        {/* Thin usage bar */}
+        {/* Usage bar */}
         {(billing.is_monthly_limit
           ? billing.monthly_queries_limit > 0
           : billing.daily_queries_limit > 0) && (
-          <div style={darkUsageBarTrack}>
-            <div
-              style={{
-                height: "100%",
-                borderRadius: "2px",
-                width: `${percent}%`,
-                background: barFillColor,
-                transition: "width 0.4s ease",
-              }}
-            />
+          <div style={{
+            height: "3px",
+            borderRadius: "2px",
+            background: "rgba(201,168,76,0.08)",
+            overflow: "hidden",
+            marginBottom: "16px",
+          }}>
+            <div style={{
+              height: "100%",
+              borderRadius: "2px",
+              width: `${percent}%`,
+              background: barFillColor,
+              transition: "width 0.4s ease",
+            }} />
           </div>
         )}
 
-        {/* Corpus row */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "5px",
-            marginTop: "8px",
-          }}
-        >
-          <Database size={10} style={{ color: "rgba(201,168,76,0.5)", flexShrink: 0 }} />
-          <span style={darkPlanDetail}>
-            {t("billing.corpus_uploads_label")}: {billing.corpora_used}/{billing.corpora_limit}
+        {/* Usage row — corpus */}
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+          <span style={{
+            fontFamily: "system-ui, sans-serif",
+            fontSize: "10px",
+            color: "rgba(200,210,230,0.35)",
+          }}>
+            {t("billing.corpus_uploads_label")}
+          </span>
+          <span style={{
+            fontFamily: "system-ui, sans-serif",
+            fontVariantNumeric: "tabular-nums",
+            fontSize: "10px",
+            color: "rgba(200,210,230,0.42)",
+          }}>
+            {billing.corpora_used}/{billing.corpora_limit}
           </span>
         </div>
 
         {/* Exhausted warning */}
         {isExhausted && (
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              marginTop: "8px",
-              padding: "6px 8px",
-              borderRadius: "5px",
-              background: "rgba(248,113,113,0.08)",
-              border: "1px solid rgba(248,113,113,0.20)",
-            }}
-          >
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            marginTop: "10px",
+            padding: "6px 8px",
+            borderRadius: "5px",
+            background: "rgba(248,113,113,0.08)",
+            border: "1px solid rgba(248,113,113,0.20)",
+          }}>
             <AlertTriangle size={11} style={{ color: "#f87171", flexShrink: 0 }} />
-            <span style={{ ...darkPlanDetail, color: "#f87171" }}>
+            <span style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#f87171",
+            }}>
               {t("billing.queries_exhausted")}
             </span>
           </div>
         )}
 
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "8px" }}>
-          {billing.plan === "free" && isExhausted && (
-            <button
-              onClick={() => handleUpgrade("starter")}
-              disabled={actionLoading !== null}
-              style={darkUpgradeBtn(actionLoading === "starter")}
-            >
-              {actionLoading === "starter" ? (
-                <Loader2 size={10} className="animate-spin" />
-              ) : (
-                <Zap size={10} />
-              )}
-              {t("billing.upgrade_now")}
-            </button>
-          )}
-          {billing.plan !== "free" && billing.has_stripe_customer && (
-            <button
-              onClick={handleManage}
-              disabled={actionLoading !== null}
-              style={darkUpgradeBtn(actionLoading === "manage")}
-            >
-              {actionLoading === "manage" ? (
-                <Loader2 size={10} className="animate-spin" />
-              ) : (
-                <CreditCard size={10} />
-              )}
-              {t("billing.manage_subscription")}
-            </button>
+        {/* Gold separator */}
+        <div style={{
+          height: "1px",
+          background: "linear-gradient(90deg, rgba(201,168,76,0.12), rgba(201,168,76,0.03))",
+          margin: "28px auto",
+        }} />
+      </div>
+    );
+  };
+
+  const renderDarkPlanCard = (plan: PlanConfig) => {
+    const isCurrent = billing?.plan === plan.tier;
+    const isFeatured = plan.highlighted ?? false;
+    const price = interval === "monthly" ? plan.monthlyPrice : plan.biweeklyPrice;
+    const priceLabel = price === 0 ? t("billing.price_free") : `$${price}`;
+    const suffix = price === 0 ? null : `/${interval === "monthly" ? t("billing.interval_mo") : t("billing.interval_2wk")}`;
+
+    return (
+      <div
+        key={plan.tier}
+        style={{
+          flex: "1 1 180px",
+          minWidth: 180,
+          background: "var(--strict-glass-bg)",
+          backdropFilter: "var(--strict-glass-blur)",
+          border: `1px solid ${isCurrent ? "rgba(201,168,76,0.2)" : isFeatured ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.04)"}`,
+          borderRadius: "14px",
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column" as const,
+          gap: "12px",
+          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+        }}
+        onMouseEnter={(e) => {
+          if (!isCurrent) {
+            e.currentTarget.style.borderColor = isFeatured ? "rgba(201,168,76,0.25)" : "rgba(201,168,76,0.10)";
+            e.currentTarget.style.boxShadow = isFeatured
+              ? "0 0 20px rgba(201,168,76,0.08)"
+              : "0 8px 24px rgba(0,0,0,0.2)";
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!isCurrent) {
+            e.currentTarget.style.borderColor = isFeatured ? "rgba(201,168,76,0.15)" : "rgba(255,255,255,0.04)";
+            e.currentTarget.style.boxShadow = isFeatured ? "0 0 20px rgba(201,168,76,0.03)" : "none";
+          }
+        }}
+      >
+        {/* Plan name */}
+        <p style={{
+          fontFamily: "system-ui, sans-serif",
+          fontSize: "11px",
+          textTransform: "uppercase" as const,
+          letterSpacing: "0.5px",
+          color: "var(--strict-text-primary)",
+          opacity: 0.6,
+          margin: 0,
+        }}>
+          {plan.name}
+        </p>
+
+        {/* Price */}
+        <div style={{ display: "flex", alignItems: "baseline", gap: "2px" }}>
+          <span style={{
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            fontSize: "20px",
+            color: "var(--strict-text-primary)",
+            opacity: 0.8,
+          }}>
+            {priceLabel}
+          </span>
+          {suffix && (
+            <span style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "12px",
+              color: "var(--strict-text-secondary)",
+              opacity: 0.5,
+            }}>
+              {suffix}
+            </span>
           )}
         </div>
 
-        {/* Cancel subscription */}
-        {billing.plan !== "free" && billing.has_stripe_customer && (
-          <div style={{ marginTop: "8px" }}>
-            {billing.cancel_at_period_end ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "5px",
-                  padding: "5px 7px",
-                  borderRadius: "4px",
-                  background: "rgba(251,191,36,0.06)",
-                  border: "0.5px solid rgba(251,191,36,0.15)",
-                }}
-              >
-                <AlertTriangle size={10} style={{ color: "#fbbf24", flexShrink: 0 }} />
-                <span style={{ ...darkPlanDetail, color: "#fbbf24" }}>
-                  {t("billing.cancel_pending").replace(
-                    "{date}",
-                    formatPeriodEnd(billing.current_period_end)
-                  )}
-                </span>
-              </div>
-            ) : !showCancelConfirm ? (
+        {/* Sub label */}
+        <p style={{
+          fontFamily: "system-ui, sans-serif",
+          fontSize: "9px",
+          color: "var(--strict-text-dim)",
+          margin: 0,
+        }}>
+          {plan.dailyQueries}
+        </p>
+
+        {/* Feature list */}
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column" as const }}>
+          {plan.features.map((feature) => (
+            <li key={feature} style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "4px",
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "9.5px",
+              color: "var(--strict-text-secondary)",
+              opacity: 0.35,
+              lineHeight: 1.8,
+            }}>
+              <span style={{
+                color: "var(--strict-gold-text)",
+                opacity: 1,
+                flexShrink: 0,
+              }}>·</span>
+              {feature}
+            </li>
+          ))}
+        </ul>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* CTA button */}
+        {isCurrent ? (
+          <div style={{
+            fontFamily: "system-ui, sans-serif",
+            fontSize: "10px",
+            background: "rgba(255,255,255,0.025)",
+            backdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.04)",
+            borderBottom: "1px solid var(--strict-gold-underbar)",
+            borderRadius: "8px",
+            padding: "10px 16px",
+            color: "var(--strict-text-primary)",
+            opacity: 0.4,
+            textAlign: "center" as const,
+            minHeight: "36px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "default",
+          }}>
+            {t("billing.current_plan")}
+          </div>
+        ) : price > 0 ? (
+          <button
+            onClick={() => handleUpgrade(plan.tier)}
+            disabled={actionLoading !== null}
+            style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              background: "rgba(255,255,255,0.025)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255,255,255,0.04)",
+              borderBottom: "1px solid var(--strict-gold-underbar)",
+              borderRadius: "8px",
+              padding: "10px 16px",
+              color: "var(--strict-text-primary)",
+              opacity: isFeatured ? 0.8 : 0.7,
+              textAlign: "center" as const,
+              minHeight: "36px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: actionLoading ? "wait" : "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "1";
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = "0 2px 8px rgba(201,168,76,0.08)";
+              e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.5)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = isFeatured ? "0.8" : "0.7";
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = "none";
+              e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.3)";
+            }}
+          >
+            {actionLoading === plan.tier && <Loader2 size={12} className="animate-spin" style={{ marginRight: "6px" }} />}
+            {plan.tier === "enterprise" ? t("billing.contact_us") : `${billing?.plan === "free" ? t("billing.upgrade") : t("billing.switch")} ${t("billing.to")} ${plan.name}`}
+          </button>
+        ) : null}
+      </div>
+    );
+  };
+
+  const renderDarkIntervalToggle = () => (
+    <div style={{ display: "flex", justifyContent: "center", marginBottom: "20px" }}>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+        <div style={{
+          display: "inline-flex",
+          borderRadius: "6px",
+          padding: "2px",
+          background: "rgba(255,255,255,0.02)",
+          border: "1px solid rgba(201,168,76,0.08)",
+        }}>
+          {(["monthly", "biweekly"] as BillingInterval[]).map((opt) => (
+            <button
+              key={opt}
+              onClick={() => setInterval_(opt)}
+              style={{
+                padding: "4px 10px",
+                borderRadius: "5px",
+                fontFamily: "system-ui, sans-serif",
+                fontSize: "10px",
+                lineHeight: 1,
+                border: interval === opt ? "1px solid rgba(201,168,76,0.15)" : "1px solid transparent",
+                background: interval === opt ? "rgba(201,168,76,0.08)" : "transparent",
+                color: interval === opt ? "rgba(201,168,76,0.7)" : "var(--strict-text-dim)",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              {opt === "monthly" ? t("billing.monthly") : t("billing.biweekly")}
+            </button>
+          ))}
+        </div>
+        {interval === "biweekly" && (
+          <span style={{
+            fontFamily: "system-ui, sans-serif",
+            fontSize: "9px",
+            fontWeight: 700,
+            color: "#4ade80",
+            background: "rgba(74,222,128,0.12)",
+            border: "0.5px solid rgba(74,222,128,0.25)",
+            borderRadius: "5px",
+            padding: "4px 10px",
+            whiteSpace: "nowrap",
+          }}>
+            {t("billing.save_percent")}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDarkSubscriptionActions = () => {
+    if (!billing || billing.plan === "free") return null;
+    if (!billing.has_stripe_customer) return null;
+
+    return (
+      <div style={{ textAlign: "center" as const, marginTop: "20px" }}>
+        {/* Inline action links */}
+        <div style={{ display: "inline-flex", gap: "16px", alignItems: "center" }}>
+          <button
+            onClick={handleManage}
+            disabled={actionLoading !== null}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: actionLoading === "manage" ? "wait" : "pointer",
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "rgba(200,210,230,0.45)",
+              transition: "color 0.15s ease",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.35)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.16)"; }}
+          >
+            {actionLoading === "manage" && <Loader2 size={10} className="animate-spin" />}
+            {t("billing.manage_subscription")}
+          </button>
+
+          {!billing.cancel_at_period_end && !showCancelConfirm && (
+            <>
+              <span style={{ color: "rgba(255,255,255,0.08)", fontSize: "10px" }}>·</span>
               <button
                 onClick={() => setShowCancelConfirm(true)}
                 style={{
@@ -619,175 +754,120 @@ export default function BillingPage() {
                   border: "none",
                   padding: 0,
                   cursor: "pointer",
-                  fontFamily: fontStack,
+                  fontFamily: "system-ui, sans-serif",
                   fontSize: "10px",
-                  color: "rgba(255,255,255,0.20)",
-                  textDecoration: "underline",
-                  textUnderlineOffset: "2px",
+                  color: "rgba(200,210,230,0.45)",
                   transition: "color 0.15s ease",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.40)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.20)"; }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.35)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.16)"; }}
               >
                 {t("billing.cancel_subscription")}
               </button>
-            ) : (
-              <div
+            </>
+          )}
+        </div>
+
+        {/* Cancel confirmation dialog */}
+        {showCancelConfirm && !billing.cancel_at_period_end && (
+          <div style={{
+            maxWidth: 400,
+            margin: "12px auto 0",
+            padding: "8px 10px",
+            borderRadius: "6px",
+            background: "rgba(248,113,113,0.06)",
+            border: "0.5px solid rgba(248,113,113,0.15)",
+            textAlign: "left" as const,
+          }}>
+            <p style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "var(--strict-text-primary)",
+              margin: "0 0 6px",
+            }}>
+              {t("billing.cancel_confirm_title")}
+            </p>
+            <p style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "var(--strict-text-dim)",
+              margin: "0 0 8px",
+              lineHeight: 1.4,
+            }}>
+              {t("billing.cancel_confirm_body").replace(
+                "{date}",
+                formatPeriodEnd(billing.current_period_end)
+              )}
+            </p>
+            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+              <button
+                onClick={handleCancelSubscription}
+                disabled={actionLoading !== null}
                 style={{
-                  padding: "8px 10px",
-                  borderRadius: "6px",
-                  background: "rgba(248,113,113,0.06)",
-                  border: "0.5px solid rgba(248,113,113,0.15)",
+                  padding: "5px 10px",
+                  borderRadius: "5px",
+                  background: "rgba(248,113,113,0.10)",
+                  border: "0.5px solid rgba(248,113,113,0.25)",
+                  borderBottom: "1px solid rgba(248,113,113,0.35)",
+                  fontFamily: "system-ui, sans-serif",
+                  fontSize: "10px",
+                  color: "#f87171",
+                  cursor: actionLoading === "cancel" ? "wait" : "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "4px",
                 }}
               >
-                <p style={{ ...darkPlanDetail, color: "var(--strict-text-primary)", marginBottom: "6px" }}>
-                  {t("billing.cancel_confirm_title")}
-                </p>
-                <p style={{ ...darkPlanDetail, marginBottom: "8px", lineHeight: 1.4 }}>
-                  {t("billing.cancel_confirm_body").replace(
-                    "{date}",
-                    formatPeriodEnd(billing.current_period_end)
-                  )}
-                </p>
-                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  <button
-                    onClick={handleCancelSubscription}
-                    disabled={actionLoading !== null}
-                    style={{
-                      ...darkUpgradeBtn(actionLoading === "cancel"),
-                      background: "rgba(248,113,113,0.10)",
-                      border: "0.5px solid rgba(248,113,113,0.25)",
-                      borderBottom: "1px solid rgba(248,113,113,0.35)",
-                      color: "#f87171",
-                      marginTop: 0,
-                    }}
-                  >
-                    {actionLoading === "cancel" && (
-                      <Loader2 size={10} className="animate-spin" />
-                    )}
-                    {t("billing.cancel_confirm_yes")}
-                  </button>
-                  <button
-                    onClick={() => setShowCancelConfirm(false)}
-                    disabled={actionLoading !== null}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      padding: "5px 8px",
-                      fontFamily: fontStack,
-                      fontSize: "10px",
-                      color: "var(--strict-text-dim, rgba(200,210,230,0.22))",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("billing.cancel_confirm_no")}
-                  </button>
-                </div>
-              </div>
-            )}
+                {actionLoading === "cancel" && <Loader2 size={10} className="animate-spin" />}
+                {t("billing.cancel_confirm_yes")}
+              </button>
+              <button
+                onClick={() => setShowCancelConfirm(false)}
+                disabled={actionLoading !== null}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: "5px 8px",
+                  fontFamily: "system-ui, sans-serif",
+                  fontSize: "10px",
+                  color: "var(--strict-text-dim)",
+                  cursor: "pointer",
+                }}
+              >
+                {t("billing.cancel_confirm_no")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Cancel pending notice */}
+        {billing.cancel_at_period_end && (
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+            marginTop: "12px",
+            padding: "5px 7px",
+            borderRadius: "4px",
+            background: "rgba(251,191,36,0.06)",
+            border: "0.5px solid rgba(251,191,36,0.15)",
+          }}>
+            <AlertTriangle size={10} style={{ color: "#fbbf24", flexShrink: 0 }} />
+            <span style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#fbbf24",
+            }}>
+              {t("billing.cancel_pending").replace(
+                "{date}",
+                formatPeriodEnd(billing.current_period_end)
+              )}
+            </span>
           </div>
         )}
       </div>
     );
   };
-
-  const renderDarkPlanCard = (plan: PlanConfig) => {
-    const isCurrent = billing?.plan === plan.tier;
-    const priceLabel = plan.monthlyPrice === 0
-      ? t("billing.price_free")
-      : `$${plan.monthlyPrice}`;
-    const suffix = plan.monthlyPrice === 0
-      ? null
-      : `/${t("billing.interval_mo")}`;
-
-    if (isCurrent) return null; // current plan shown in summary above
-
-    return (
-      <div key={plan.tier} style={darkPlanCard(false)}>
-        <div style={darkPlanName}>{plan.name}</div>
-        <div style={darkPlanPrice}>
-          {priceLabel}
-          {suffix && <span style={darkPlanPriceSuffix}>{suffix}</span>}
-        </div>
-        <div style={darkPlanDetail}>{plan.tagline}</div>
-
-        {plan.monthlyPrice > 0 && (
-          <button
-            onClick={() => handleUpgrade(plan.tier)}
-            disabled={actionLoading !== null}
-            style={darkUpgradeBtn(actionLoading === plan.tier)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.50)";
-              e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow = "0 4px 12px rgba(201,168,76,0.06)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderBottomColor = "rgba(201,168,76,0.30)";
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >
-            {actionLoading === plan.tier ? (
-              <Loader2 size={10} className="animate-spin" />
-            ) : null}
-            {plan.tier === "enterprise" ? t("billing.contact_us") : t("billing.upgrade")}
-          </button>
-        )}
-      </div>
-    );
-  };
-
-  const renderDarkIntervalToggle = () => (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-      <div
-        style={{
-          display: "inline-flex",
-          borderRadius: "4px",
-          padding: "2px",
-          background: "rgba(255,255,255,0.02)",
-          border: "1px solid rgba(201,168,76,0.08)",
-        }}
-      >
-        {(["monthly", "biweekly"] as BillingInterval[]).map((opt) => (
-          <button
-            key={opt}
-            onClick={() => setInterval_(opt)}
-            style={{
-              padding: "3px 8px",
-              borderRadius: "3px",
-              fontFamily: fontStack,
-              fontSize: "10px",
-              lineHeight: 1,
-              border: interval === opt ? "1px solid rgba(201,168,76,0.15)" : "1px solid transparent",
-              background: interval === opt ? "rgba(201,168,76,0.08)" : "transparent",
-              color: interval === opt ? "rgba(201,168,76,0.7)" : "var(--strict-text-dim, rgba(200,210,230,0.22))",
-              cursor: "pointer",
-              transition: "all 0.15s",
-            }}
-          >
-            {opt === "monthly" ? t("billing.monthly") : t("billing.biweekly")}
-          </button>
-        ))}
-      </div>
-      {interval === "biweekly" && (
-        <span
-          style={{
-            fontFamily: fontStack,
-            fontSize: "9px",
-            fontWeight: 700,
-            color: "#4ade80",
-            background: "rgba(74,222,128,0.12)",
-            border: "0.5px solid rgba(74,222,128,0.25)",
-            borderRadius: "3px",
-            padding: "2px 6px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {t("billing.save_percent")}
-        </span>
-      )}
-    </div>
-  );
 
   // -- Light mode rendering (unchanged structure) --
 
@@ -1021,8 +1101,8 @@ export default function BillingPage() {
         ...(isDark ? {
           flex: 1,
           overflowY: "auto" as const,
-          padding: "16px 20px",
-          maxWidth: 640,
+          padding: "28px 32px",
+          maxWidth: 960,
           width: "100%",
           marginLeft: "auto",
           marginRight: "auto",
@@ -1049,31 +1129,48 @@ export default function BillingPage() {
             variants={isV3 ? V3_LIST_VARIANT : undefined}
             initial={isV3 ? "hidden" : undefined}
             animate={isV3 ? "visible" : undefined}
-            style={{ display: "flex", flexDirection: "column", gap: "0" }}
+            style={{ display: "flex", flexDirection: "column" }}
           >
-            {/* Current plan summary */}
+            {/* Usage stats */}
             <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
-              {renderDarkCurrentPlan()}
+              {renderDarkUsageStats()}
             </motion.div>
 
-            {/* Plan cards */}
-            {plans.map((plan) => (
-              <motion.div key={plan.tier} variants={isV3 ? V3_ITEM_VARIANT : undefined}>
-                {renderDarkPlanCard(plan)}
-              </motion.div>
-            ))}
+            {/* Interval toggle */}
+            <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
+              {renderDarkIntervalToggle()}
+            </motion.div>
+
+            {/* Plan cards row */}
+            <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
+              <div style={{
+                maxWidth: 880,
+                margin: "0 auto",
+                width: "100%",
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "14px",
+              }}>
+                {plans.map((plan) => renderDarkPlanCard(plan))}
+              </div>
+            </motion.div>
+
+            {/* Subscription actions (manage / cancel) */}
+            <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
+              {renderDarkSubscriptionActions()}
+            </motion.div>
 
             {/* Notes */}
             <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
-              <div style={{ paddingTop: "8px", borderTop: "1px solid rgba(201,168,76,0.04)" }}>
+              <div style={{ maxWidth: 880, margin: "20px auto 0", width: "100%", paddingTop: "8px", borderTop: "1px solid rgba(201,168,76,0.04)" }}>
                 {[t("billing.note_cancel"), t("billing.note_downgrade")].map((note, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "6px", padding: "5px 0" }}>
                     <Info size={10} style={{ color: "rgba(201,168,76,0.35)", flexShrink: 0, marginTop: "1px" }} />
-                    <span style={{ ...darkPlanDetail, lineHeight: 1.5 }}>{note}</span>
+                    <span style={{ fontFamily: fontStack, fontSize: "11px", lineHeight: 1.5, color: "var(--strict-text-dim)" }}>{note}</span>
                   </div>
                 ))}
                 <div style={{ textAlign: "center", marginTop: "8px" }}>
-                  <span style={{ fontFamily: fontStack, fontSize: "10px", color: "var(--strict-text-dim, rgba(200,210,230,0.22))" }}>
+                  <span style={{ fontFamily: fontStack, fontSize: "10px", color: "var(--strict-text-dim)" }}>
                     {t("billing.need_more")}{" "}
                     <a href="mailto:hello@vitreon.app" style={{ color: "rgba(201,168,76,0.6)", textDecoration: "underline", textUnderlineOffset: "2px" }}>
                       {t("billing.contact_us")}

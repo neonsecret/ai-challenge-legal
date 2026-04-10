@@ -57,7 +57,8 @@ function readStoredMode(): ColorMode {
     } catch {
         // localStorage unavailable
     }
-    return "system";
+    // Default to dark (strict) — light only via explicit toggle
+    return "dark";
 }
 
 function applyMode(resolved: "light" | "dark") {
@@ -79,9 +80,9 @@ function migrateOldKeys() {
 
 function getInitialResolved(): "light" | "dark" {
     if (typeof document !== "undefined") {
-        return document.documentElement.classList.contains("dark") ? "dark" : "light";
+        return document.documentElement.classList.contains("light") ? "light" : "dark";
     }
-    return "light";
+    return "dark";
 }
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
@@ -133,5 +134,5 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
 
 export function useColorMode(): ColorModeContextValue {
     const ctx = useContext(ColorModeContext);
-    return ctx ?? { mode: "system", resolvedMode: "light", setMode: () => {}, isDark: false };
+    return ctx ?? { mode: "dark", resolvedMode: "dark", setMode: () => {}, isDark: true };
 }

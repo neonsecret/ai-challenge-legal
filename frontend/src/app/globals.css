@@ -698,8 +698,8 @@ textarea::placeholder { color: #b29254; }
   --strict-input-glow: inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(180,150,60,0.06);
   /* Prose typography */
   --strict-prose-font: Georgia, serif;
-  --strict-prose-size: 12.5px;
-  --strict-prose-lh: 1.8;
+  --strict-prose-size: 14px;
+  --strict-prose-lh: 1.75;
   --strict-prose-tracking: 0.01em;
   /* Strict prose markdown elements (light) */
   --strict-table-border: rgba(20,22,30,0.1);
@@ -794,8 +794,8 @@ textarea::placeholder { color: #b29254; }
   --strict-input-glow: inset 0 1px 0 rgba(255,255,255,0.06), 0 0 0 2px rgba(201,168,76,0.08), 0 4px 24px rgba(0,0,0,0.35);
   /* Prose typography */
   --strict-prose-font: Georgia, serif;
-  --strict-prose-size: 12.5px;
-  --strict-prose-lh: 1.8;
+  --strict-prose-size: 14px;
+  --strict-prose-lh: 1.75;
   --strict-prose-tracking: 0.01em;
   /* Strict prose markdown elements (dark) */
   --strict-table-border: rgba(255,255,255,0.1);
@@ -838,7 +838,12 @@ textarea::placeholder { color: #b29254; }
 .dark::-webkit-scrollbar-track { background: transparent; }
 .dark::-webkit-scrollbar-thumb { background: var(--strict-scrollbar); border-radius: 3px; }
 .dark::-webkit-scrollbar-thumb:hover { background: var(--strict-scrollbar-hover); }
-html.dark { background: var(--strict-bg-html); overscroll-behavior: none; }
+html.dark { background: var(--strict-bg-html); overscroll-behavior: none; color-scheme: dark; }
+html.light { color-scheme: light; }
+
+/* Block dark-mode browser extensions (Dark Reader, etc.) from inverting our managed colors */
+html[data-darkreader-mode] { filter: none !important; }
+html[data-darkreader-scheme] { filter: none !important; }
 
 /* ============================================================
    V3 GLASSMORPHISM — utility classes + aurora suppression

@@ -2,11 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { STRICT_TYPEWRITER } from "@/lib/strict-tokens";
+import { useI18n } from "@/lib/i18n";
 
-const TYPING_QUESTION =
-  "What are the indemnification obligations under Section 9?";
+const TYPING_QUESTIONS: Record<string, string> = {
+  en: "What are the indemnification obligations under Section 9?",
+  cs: "Může zaměstnavatel dát výpověď z důvodu nadbytečnosti?",
+};
 
 export function TypingVisual({ active }: { active: boolean }) {
+  const { locale } = useI18n();
+  const question = TYPING_QUESTIONS[locale] ?? TYPING_QUESTIONS.en;
   const [displayText, setDisplayText] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const indexRef = useRef(0);
@@ -16,14 +21,14 @@ export function TypingVisual({ active }: { active: boolean }) {
     setDisplayText("");
     indexRef.current = 0;
     intervalRef.current = setInterval(() => {
-      if (indexRef.current >= TYPING_QUESTION.length) {
+      if (indexRef.current >= question.length) {
         clearInterval(intervalRef.current!);
         return;
       }
-      setDisplayText(TYPING_QUESTION.slice(0, indexRef.current + 1));
+      setDisplayText(question.slice(0, indexRef.current + 1));
       indexRef.current += 1;
     }, STRICT_TYPEWRITER.hiw);
-  }, []);
+  }, [question]);
 
   useEffect(() => {
     if (active) {

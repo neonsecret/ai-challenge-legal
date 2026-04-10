@@ -6,6 +6,7 @@ import type {DemoScenario, SourceCard} from "./demo-panel";
 interface FakePdfProps {
     scenario: DemoScenario;
     showHighlights: boolean;
+    isDark?: boolean;
 }
 
 function SingleSourceCard({
@@ -18,18 +19,30 @@ function SingleSourceCard({
     type,
     showHighlights,
     compact = false,
-}: SourceCard & { showHighlights: boolean; compact?: boolean }) {
+    isDark = false,
+}: SourceCard & { showHighlights: boolean; compact?: boolean; isDark?: boolean }) {
     const isCourtDecision = type === "court_decision";
 
     return (
         <div
-            className="relative bg-white rounded-xl shadow-lg overflow-hidden"
-            style={{fontFamily: "Georgia, serif", flex: compact ? "1 1 0%" : undefined}}
+            className={`relative rounded-xl overflow-hidden ${isDark ? "" : "bg-white shadow-lg"}`}
+            style={{
+                fontFamily: "Georgia, serif",
+                flex: compact ? "1 1 0%" : undefined,
+                ...(isDark ? {
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid var(--strict-gold-border)",
+                } : {}),
+            }}
         >
-            <div className={compact ? "p-3 h-full overflow-hidden text-[#1a1a1a]" : "p-5 h-full overflow-hidden text-[#1a1a1a]"}>
+            <div className={compact ? "p-3 h-full overflow-hidden" : "p-5 h-full overflow-hidden"}
+                 style={{color: isDark ? "var(--strict-text-body)" : "#1a1a1a"}}
+            >
                 {/* Document title */}
                 <div className="text-center mb-3">
-                    <p className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold tracking-widest text-[#333] uppercase mb-1`}>
+                    <p className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold tracking-widest uppercase mb-1`}
+                       style={{color: isDark ? "var(--strict-text-primary)" : "#333"}}
+                    >
                         {isCourtDecision && (
                             <span
                                 style={{
@@ -38,8 +51,8 @@ function SingleSourceCard({
                                     fontWeight: 700,
                                     padding: "1px 4px",
                                     borderRadius: 3,
-                                    background: "var(--dt-landing-bubble-bg)",
-                                    color: "#8B6914",
+                                    background: isDark ? "var(--strict-gold-badge-bg)" : "var(--dt-landing-bubble-bg)",
+                                    color: isDark ? "var(--strict-gold-text)" : "#8B6914",
                                     marginRight: 4,
                                     verticalAlign: "middle",
                                     letterSpacing: 0,
@@ -50,11 +63,13 @@ function SingleSourceCard({
                         )}
                         {title}
                     </p>
-                    <div className="w-10 h-px bg-[#ccc] mx-auto"/>
+                    <div className="w-10 h-px mx-auto" style={{background: isDark ? "var(--strict-gold-border)" : "#ccc"}} />
                 </div>
 
                 {/* Article header */}
-                <p className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold text-[#1B2B4B] mb-2 uppercase tracking-wide`}>
+                <p className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold mb-2 uppercase tracking-wide`}
+                   style={{color: isDark ? "var(--strict-text-primary)" : "#1B2B4B"}}
+                >
                     {articleHeader}
                 </p>
 
@@ -63,7 +78,9 @@ function SingleSourceCard({
                     const isHighlighted = i >= highlightRange[0] && i <= highlightRange[1];
                     return (
                         <div key={clause.id} className="relative mb-1.5">
-                            <p className={`${compact ? "text-[9px] leading-[1.45]" : "text-[10px] leading-[1.55]"} text-[#333] relative z-10`}>
+                            <p className={`${compact ? "text-[9px] leading-[1.45]" : "text-[10px] leading-[1.55]"} relative z-10`}
+                               style={{color: isDark ? "var(--strict-text-body)" : "#333"}}
+                            >
                                 <span className="font-semibold">{clause.id}</span>{" "}
                                 {clause.text}
                             </p>
@@ -74,9 +91,11 @@ function SingleSourceCard({
                                     transition={{duration: 0.4, delay: (i - highlightRange[0]) * 0.15}}
                                     className="absolute inset-0 rounded-sm pointer-events-none"
                                     style={{
-                                        backgroundColor: isCourtDecision
-                                            ? "var(--dt-landing-highlight-strong)"
-                                            : "var(--dt-landing-highlight)",
+                                        backgroundColor: isDark
+                                            ? "rgba(201,168,76,0.12)"
+                                            : isCourtDecision
+                                                ? "var(--dt-landing-highlight-strong)"
+                                                : "var(--dt-landing-highlight)",
                                         zIndex: 0,
                                     }}
                                 />
@@ -106,7 +125,7 @@ function SingleSourceCard({
     );
 }
 
-export function FakePdf({scenario, showHighlights}: FakePdfProps) {
+export function FakePdf({scenario, showHighlights, isDark = false}: FakePdfProps) {
     const hasMultipleSources = scenario.sources && scenario.sources.length > 0;
 
     if (hasMultipleSources) {
@@ -126,6 +145,7 @@ export function FakePdf({scenario, showHighlights}: FakePdfProps) {
                             {...source}
                             showHighlights={showHighlights}
                             compact={true}
+                            isDark={isDark}
                         />
                     ))}
                 </motion.div>
@@ -148,18 +168,22 @@ export function FakePdf({scenario, showHighlights}: FakePdfProps) {
                 <div className="absolute top-3 right-3 z-10 text-white text-[10px] font-mono px-2 py-0.5 rounded" style={{backgroundColor: "var(--dt-landing-pdf-badge-bg)"}}>
                     {pageBadge}
                 </div>
-                <div className="relative flex-1 bg-white rounded-xl shadow-lg overflow-hidden" style={{fontFamily: "Georgia, serif"}}>
-                    <div className="p-5 h-full overflow-hidden text-[#1a1a1a]">
+                <div className={`relative flex-1 rounded-xl overflow-hidden ${isDark ? "" : "bg-white shadow-lg"}`}
+                     style={{
+                         fontFamily: "Georgia, serif",
+                         ...(isDark ? { background: "rgba(255,255,255,0.03)", border: "1px solid var(--strict-gold-border)" } : {}),
+                     }}>
+                    <div className="p-5 h-full overflow-hidden" style={{color: isDark ? "var(--strict-text-body)" : "#1a1a1a"}}>
                         <div className="text-center mb-4">
-                            <p className="text-[10px] font-bold tracking-widest text-[#333] uppercase mb-1">{pdfTitle}</p>
-                            <div className="w-12 h-px bg-[#ccc] mx-auto"/>
+                            <p className="text-[10px] font-bold tracking-widest uppercase mb-1" style={{color: isDark ? "var(--strict-text-primary)" : "#333"}}>{pdfTitle}</p>
+                            <div className="w-12 h-px mx-auto" style={{background: isDark ? "var(--strict-gold-border)" : "#ccc"}} />
                         </div>
-                        <p className="text-[10px] font-bold text-[#1B2B4B] mb-2 uppercase tracking-wide">{pdfArticleHeader}</p>
+                        <p className="text-[10px] font-bold mb-2 uppercase tracking-wide" style={{color: isDark ? "var(--strict-text-primary)" : "#1B2B4B"}}>{pdfArticleHeader}</p>
                         {pdfClauses.map((clause, i) => {
                             const isHighlighted = i >= highlightRange[0] && i <= highlightRange[1];
                             return (
                                 <div key={clause.id} className="relative mb-2">
-                                    <p className="text-[10px] leading-[1.55] text-[#333] relative z-10">
+                                    <p className="text-[10px] leading-[1.55] relative z-10" style={{color: isDark ? "var(--strict-text-body)" : "#333"}}>
                                         <span className="font-semibold">{clause.id}</span>{" "}{clause.text}
                                     </p>
                                     {isHighlighted && (
@@ -168,7 +192,7 @@ export function FakePdf({scenario, showHighlights}: FakePdfProps) {
                                             animate={{opacity: showHighlights ? 1 : 0}}
                                             transition={{duration: 0.4, delay: (i - highlightRange[0]) * 0.15}}
                                             className="absolute inset-0 rounded-sm pointer-events-none"
-                                            style={{backgroundColor: "var(--dt-landing-highlight)", zIndex: 0}}
+                                            style={{backgroundColor: isDark ? "rgba(201,168,76,0.12)" : "var(--dt-landing-highlight)", zIndex: 0}}
                                         />
                                     )}
                                 </div>

@@ -424,7 +424,7 @@ export function ChatMessage({
                 <div className="mb-5 animate-fade-in-up">
                     <p style={{
                         fontFamily: "Georgia, serif",
-                        fontSize: "12px",
+                        fontSize: "14px",
                         fontStyle: "italic",
                         color: "var(--strict-text-question)",
                         margin: 0,
@@ -483,9 +483,9 @@ export function ChatMessage({
                 </p>
             )}
 
-            {/* Pipeline status (trace) — above the card */}
-            {trace && trace.length > 0 && !isStreaming && content && (
-                <PipelineStatusBar trace={trace} isStreaming={isStreaming} isDark={dark} />
+            {/* Pipeline status (trace) — horizontal bar, visible during and after streaming */}
+            {trace && trace.length > 0 && (
+                <PipelineStatusBar trace={trace} isStreaming={isStreaming} isDark={dark} onAbort={isStreaming ? onAbort : undefined} />
             )}
 
             {/* Answer card */}
@@ -497,7 +497,7 @@ export function ChatMessage({
                         <StreamingStatus status={content.slice("__pipeline_status:".length)}/>
                     ) : content ? (
                         <div
-                            className={dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}
+                            className={`${dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}${dark && isStreaming ? " strict-streaming-cursor" : ""}`}
                             style={dark ? {
                                 fontFamily: "var(--strict-prose-font)",
                                 lineHeight: "var(--strict-prose-lh)",
@@ -541,24 +541,30 @@ export function ChatMessage({
                             >
                                 {content}
                             </ReactMarkdown>
-                            {/* Typewriter cursor — dark mode only, visible while streaming */}
+                            {/* Typewriter cursor — dark mode only, injected via CSS ::after on last inline element */}
                             {isStreaming && dark && (
-                                <span
-                                    aria-hidden
-                                    style={{
-                                        display: "inline-block",
-                                        width: "1.5px",
-                                        height: "1em",
-                                        background: "var(--strict-gold-base)",
-                                        verticalAlign: "text-bottom",
-                                        animation: "cursor-blink 0.8s ease-in-out infinite",
-                                        marginLeft: "2px",
-                                    }}
-                                />
+                                <style>{`
+                                    .strict-streaming-cursor > p:last-child::after,
+                                    .strict-streaming-cursor > h2:last-child::after,
+                                    .strict-streaming-cursor > h3:last-child::after,
+                                    .strict-streaming-cursor > h4:last-child::after,
+                                    .strict-streaming-cursor > blockquote:last-child > p:last-child::after,
+                                    .strict-streaming-cursor > ul:last-child > li:last-child::after,
+                                    .strict-streaming-cursor > ol:last-child > li:last-child::after {
+                                        content: "";
+                                        display: inline-block;
+                                        width: 1.5px;
+                                        height: 1em;
+                                        background: var(--strict-gold-base);
+                                        vertical-align: text-bottom;
+                                        margin-left: 2px;
+                                        animation: cursor-blink 0.8s ease-in-out infinite;
+                                    }
+                                `}</style>
                             )}
                         </div>
                     ) : isStreaming ? (
-                        <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview}/>
+                        dark ? null : <StreamingStatus status={streamingStatus} progress={streamingProgress} thinkingPreview={streamingThinkingPreview}/>
                     ) : (
                         <p style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: "var(--dt-vote-text)", margin: 0}}>
                             No response
@@ -583,8 +589,8 @@ export function ChatMessage({
                 )}
             </div>
 
-            {/* Stop button — shown below answer while streaming */}
-            {isStreaming && onAbort && (
+            {/* Stop button — light mode only (dark mode uses inline stop in pipeline bar) */}
+            {isStreaming && onAbort && !dark && (
                 <button
                     onClick={onAbort}
                     aria-label="Stop generating"

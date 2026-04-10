@@ -10,6 +10,7 @@ import {
   STRICT_GLOW_PULSE,
 } from "@/lib/strict-tokens";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useI18n } from "@/lib/i18n";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,7 @@ function JurisdictionPills() {
 
 function CtaButton() {
   const [hovered, setHovered] = useState(false);
+  const { t } = useI18n();
   return (
     <a
       href="/login"
@@ -100,7 +102,7 @@ function CtaButton() {
         justifyContent: "center",
       }}
     >
-      Start Researching
+      {t("landing.get_started")}
     </a>
   );
 }
@@ -182,6 +184,7 @@ function StatRow({
 // ─── 100% citation accuracy stat (animated counter + gold glow) ───────────────
 
 function CitationStat() {
+  const { t } = useI18n();
   const [count, setCount] = useState(0);
   const [glowVisible, setGlowVisible] = useState(false);
   const [pulsing, setPulsing] = useState(false);
@@ -250,11 +253,11 @@ function CitationStat() {
           className="text-[10px] leading-snug"
           style={{ color: "var(--strict-text-secondary)", opacity: 0.35 }}
         >
-          Citation accuracy
+          {t("landing.light_pillar2_stat_label")}
         </span>
       </div>
       <p className="text-[9px] mt-0.5" style={{ color: "var(--strict-text-dim)" }}>
-        Every claim grounded in source law
+        {t("strict.citation_detail")}
       </p>
     </motion.div>
   );
@@ -263,6 +266,7 @@ function CitationStat() {
 // ─── Stats block (shared between desktop right column and mobile bottom) ──────
 
 function StatsBlock() {
+  const { t } = useI18n();
   return (
     <div className="flex flex-col gap-4">
       <motion.p
@@ -276,7 +280,7 @@ function StatsBlock() {
           marginBottom: "4px",
         }}
       >
-        Benchmark Performance
+        {t("landing.bench_heading")}
       </motion.p>
 
       {STATS.map((stat, i) => (
@@ -301,6 +305,7 @@ function StatsBlock() {
 
 export function StrictHero() {
   const isMobile = useIsMobile();
+  const { t } = useI18n();
 
   return (
     <section
@@ -337,9 +342,9 @@ export function StrictHero() {
               color: "var(--strict-text-primary)",
             }}
           >
-            Legal Research,
+            {t("landing.hero_title_prefix")}
             <br />
-            <span style={goldGradientText}>Reimagined</span>
+            <span style={goldGradientText}>{t("landing.hero_title_highlight")}</span>
           </motion.h1>
 
           <motion.p
@@ -347,11 +352,9 @@ export function StrictHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...V3_SPRING.gentle, delay: 0.25 }}
             className="text-[13px] leading-[1.6] mb-[18px]"
-            style={{ color: "var(--strict-text-secondary)" }}
+            style={{ color: "var(--strict-text-secondary)", whiteSpace: "pre-line" }}
           >
-            AI-powered analysis across four jurisdictions.
-            <br />
-            Every answer grounded in source law.
+            {t("landing.hero_subtitle")}
           </motion.p>
 
           <motion.div

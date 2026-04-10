@@ -124,14 +124,14 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
             return (
                 <div style={{
                     display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    border: "1px dashed rgba(201,168,76,0.12)", borderRadius: "8px", padding: "32px 16px",
+                    border: "1px dashed rgba(201,168,76,0.15)", borderRadius: "12px", padding: "36px 20px",
                     textAlign: "center",
                 }}>
-                    <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "8px"}}>⬚</div>
-                    <p style={{fontSize: "11px", color: "rgba(200,210,230,0.22)", margin: 0, fontFamily: "system-ui, sans-serif"}}>
+                    <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "10px"}}>⬚</div>
+                    <p style={{fontSize: "13px", fontFamily: "Georgia, serif", color: "rgba(255,255,255,0.56)", margin: 0}}>
                         {t("documents.no_documents")}
                     </p>
-                    <p style={{fontSize: "9px", color: "rgba(200,210,230,0.16)", marginTop: "3px", fontFamily: "system-ui, sans-serif"}}>
+                    <p style={{fontSize: "10px", color: "rgba(200,210,230,0.30)", marginTop: "4px", fontFamily: "system-ui, sans-serif"}}>
                         {t("documents.upload_to_start")}
                     </p>
                 </div>
@@ -218,13 +218,13 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                         </button>
                                     </div>
                                 ) : (
-                                    <span style={{flex: 1, font: "11px/1.3 Georgia, serif", color: "rgba(255,255,255,0.56)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
+                                    <span style={{flex: 1, fontSize: "13px", lineHeight: 1.3, fontFamily: "Georgia, serif", color: "rgba(230,235,245,0.66)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                                         {folder.name}
                                     </span>
                                 )}
 
                                 {/* Doc count */}
-                                <span style={{font: "9px/1 system-ui, sans-serif", color: "var(--strict-text-dim)", flexShrink: 0}}>
+                                <span style={{fontSize: "9px", lineHeight: 1, fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", flexShrink: 0}}>
                                     {folder.docs.length} {folder.docs.length === 1 ? t("documents.document") : t("documents.documents")}
                                 </span>
 
@@ -256,35 +256,34 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                             onMouseEnter={() => setHoveredRowId(doc.document_id)}
                                             onMouseLeave={() => setHoveredRowId(null)}
                                             style={{
-                                                display: "flex", alignItems: "center", gap: "8px",
-                                                padding: "6px 8px", borderRadius: "5px",
-                                                border: "1px solid transparent", marginBottom: "2px",
-                                                background: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.025)" : "transparent",
-                                                borderColor: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.06)" : "transparent",
-                                                transition: "background 0.12s, border-color 0.12s",
+                                                display: "flex", alignItems: "center", gap: "10px",
+                                                padding: "8px 0",
+                                                borderBottom: "1px solid rgba(201,168,76,0.04)",
+                                                background: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.015)" : "transparent",
+                                                transition: "background 0.12s",
                                             }}
                                         >
                                             {/* PDF badge */}
                                             <div style={{
-                                                width: "22px", height: "22px", borderRadius: "4px",
-                                                background: "rgba(201,168,76,0.06)",
-                                                border: "1px solid rgba(201,168,76,0.1)",
+                                                width: "28px", height: "28px", borderRadius: "6px",
+                                                background: "rgba(201,168,76,0.04)",
+                                                border: "1px solid rgba(201,168,76,0.06)",
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                                 flexShrink: 0,
                                             }}>
-                                                <span style={{font: "8px/1 system-ui, sans-serif", color: "var(--strict-gold-text)"}}>PDF</span>
+                                                <span style={{fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.4)"}}>PDF</span>
                                             </div>
 
                                             {/* Name + meta */}
                                             <div style={{flex: 1, minWidth: 0}}>
                                                 <div style={{
-                                                    font: "11px/1.3 Georgia, serif",
-                                                    color: "var(--strict-text-body, rgba(255,255,255,0.56))",
+                                                    fontSize: "12px", lineHeight: 1.3, fontFamily: "Georgia, serif",
+                                                    color: "rgba(230,235,245,0.66)",
                                                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                                                 }} title={doc.filename}>
                                                     {doc.filename}
                                                 </div>
-                                                <div style={{font: "9px/1.2 system-ui, sans-serif", color: "var(--strict-text-dim)", marginTop: "1px"}}>
+                                                <div style={{fontSize: "9px", lineHeight: 1.2, fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.3)", marginTop: "2px"}}>
                                                     {formatSize(doc.size_bytes)} · {formatDate(doc.uploaded_at)}
                                                     {doc.indexed && <span style={{marginLeft: "4px", color: "rgba(74,222,128,0.6)"}}>✓</span>}
                                                 </div>
@@ -315,14 +314,14 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                             background: "transparent", border: "none",
                                                             cursor: deletingId === doc.document_id ? "default" : "pointer",
                                                             padding: "4px", display: "flex", alignItems: "center", justifyContent: "center",
-                                                            color: hoveredRowId === doc.document_id ? "#ff8c7a" : "rgba(200,210,230,0.22)",
+                                                            color: hoveredRowId === doc.document_id ? "#f87171" : "rgba(200,210,230,0.22)",
                                                             transition: "color 0.12s",
                                                         }}
                                                     >
                                                         {deletingId === doc.document_id ? (
                                                             <span style={{display: "inline-block", width: "10px", height: "10px", borderRadius: "50%", border: "1.5px solid currentColor", borderTopColor: "transparent", animation: "spin 0.6s linear infinite"}} />
                                                         ) : (
-                                                            <Trash2 size={11}/>
+                                                            <Trash2 size={11} strokeWidth={1.8} />
                                                         )}
                                                     </button>
                                                 )}

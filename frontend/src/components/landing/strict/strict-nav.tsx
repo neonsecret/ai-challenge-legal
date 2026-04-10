@@ -5,13 +5,15 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useI18n } from "@/lib/i18n";
 
 const NAV_LINKS = [
-  { href: "#features", label: "Features" },
-  { href: "#pricing", label: "Pricing" },
+  { href: "#features", labelKey: "strict.nav_features" },
+  { href: "#pricing", labelKey: "strict.pricing_label" },
 ] as const;
 
 export function StrictNav() {
+  const { t } = useI18n();
   const [hoveredLink, setHoveredLink] = useState<string | null>(null);
   const [signInHovered, setSignInHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,7 +50,7 @@ export function StrictNav() {
               onMouseEnter={() => setHoveredLink(link.href)}
               onMouseLeave={() => setHoveredLink(null)}
             >
-              {link.label}
+              {t(link.labelKey)}
             </a>
           ))}
 
@@ -73,7 +75,7 @@ export function StrictNav() {
             onMouseEnter={() => setSignInHovered(true)}
             onMouseLeave={() => setSignInHovered(false)}
           >
-            Sign In
+            {t("landing.sign_in")}
           </Link>
 
           {/* Hamburger — mobile only */}
@@ -159,7 +161,7 @@ export function StrictNav() {
                   }}
                   onClick={() => setMenuOpen(false)}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </a>
               ))}
 
@@ -179,7 +181,7 @@ export function StrictNav() {
                   className="text-[11px]"
                   style={{ color: "var(--strict-text-dim)" }}
                 >
-                  Language
+                  {t("settings.language")}
                 </span>
                 <LanguageToggle />
               </div>
@@ -192,7 +194,7 @@ export function StrictNav() {
                   className="text-[11px]"
                   style={{ color: "var(--strict-text-dim)" }}
                 >
-                  Theme
+                  {t("settings.theme")}
                 </span>
                 <ThemeToggle />
               </div>

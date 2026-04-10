@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { V3_FADE_UP } from "@/lib/v3-motion";
 import { STRICT_HIW } from "@/lib/strict-tokens";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useI18n } from "@/lib/i18n";
 import { TypingVisual } from "./strict-hiw-typing-visual";
 import { ScanningVisual } from "./strict-hiw-scanning-visual";
 import { ResultVisual } from "./strict-hiw-result-visual";
@@ -13,21 +14,9 @@ import { StepItem } from "./strict-hiw-step-item";
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
 const STEPS = [
-  {
-    num: "01",
-    title: "Ask in plain language",
-    sub: "No query syntax, no boolean operators. Type your question the way you'd ask a colleague.",
-  },
-  {
-    num: "02",
-    title: "AI searches statutes & case law",
-    sub: "Searches across legislation and court decisions, ranks passages by relevance, extracts the precise answer.",
-  },
-  {
-    num: "03",
-    title: "Every answer cites sources",
-    sub: "Exact page numbers, article references, and case citations so you can verify instantly.",
-  },
+  { num: "01", titleKey: "landing.step1_title", subKey: "landing.step1_body" },
+  { num: "02", titleKey: "landing.step2_title", subKey: "landing.step2_body" },
+  { num: "03", titleKey: "landing.step3_title", subKey: "landing.step3_body" },
 ] as const;
 
 // ─── Right panel visuals ──────────────────────────────────────────────────────
@@ -72,6 +61,7 @@ function HiwVisualPanel({ activeStep }: { activeStep: number }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function StrictHowItWorks() {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
   const [activeStep, setActiveStep] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
@@ -153,7 +143,7 @@ export function StrictHowItWorks() {
           marginBottom: "8px",
         }}
       >
-        HOW IT WORKS
+        {t("landing.how_label")}
       </motion.p>
 
       {/* Title */}
@@ -171,7 +161,7 @@ export function StrictHowItWorks() {
           marginBottom: "32px",
         }}
       >
-        See it in action
+        {t("landing.how_heading")}
       </motion.h2>
 
       {/* Layout: mobile = visual on top + step tabs below; desktop = steps left + visual right */}
@@ -261,7 +251,7 @@ export function StrictHowItWorks() {
                     transition: "color 0.3s ease",
                   }}
                 >
-                  {step.title}
+                  {t(step.titleKey)}
                 </div>
               </button>
             ))}
@@ -280,8 +270,8 @@ export function StrictHowItWorks() {
               <StepItem
                 key={step.num}
                 num={step.num}
-                title={step.title}
-                sub={step.sub}
+                title={t(step.titleKey)}
+                sub={t(step.subKey)}
                 active={activeStep === idx}
                 index={idx}
                 onClick={() => handleStepClick(idx)}

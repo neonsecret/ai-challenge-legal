@@ -35,9 +35,9 @@ export function Footnotes({ citedSources, onSourceClick, isDark }: FootnotesProp
                 gap: 4,
             }}>
                 <span style={{
-                    font: "6px/1 system-ui, sans-serif",
+                    font: "9px/1 system-ui, sans-serif",
                     textTransform: "uppercase",
-                    letterSpacing: "1px",
+                    letterSpacing: "1.2px",
                     color: "var(--strict-text-dim)",
                     marginBottom: 2,
                 }}>
@@ -50,7 +50,7 @@ export function Footnotes({ citedSources, onSourceClick, isDark }: FootnotesProp
                         style={{
                             display: "flex",
                             alignItems: "baseline",
-                            gap: 4,
+                            gap: 5,
                             background: "none",
                             border: "none",
                             padding: 0,
@@ -64,10 +64,10 @@ export function Footnotes({ citedSources, onSourceClick, isDark }: FootnotesProp
                             (e.currentTarget.lastChild as HTMLElement).style.color = "var(--strict-text-secondary)";
                         }}
                     >
-                        <span style={{ font: "8px/1 Georgia, serif", color: "var(--strict-gold-accent)", flexShrink: 0 }}>
+                        <span style={{ font: "10px/1 Georgia, serif", color: "var(--strict-gold-accent)", flexShrink: 0 }}>
                             {toSuperscript(entry.footnoteNum)}
                         </span>
-                        <span style={{ font: "8px/1.4 system-ui, sans-serif", color: "var(--strict-text-secondary)" }}>
+                        <span style={{ font: "10px/1.4 system-ui, sans-serif", color: "var(--strict-text-secondary)" }}>
                             {entry.title}{entry.page ? ` · p.${entry.page}` : ""}
                         </span>
                     </button>

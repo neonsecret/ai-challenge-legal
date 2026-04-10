@@ -4,59 +4,70 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useI18n } from "@/lib/i18n";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const PLANS = [
+const PLAN_DEFS = [
   {
     name: "FREE",
     price: "$0",
     priceSuffix: undefined,
-    sub: "3 queries / day",
-    features: ["All jurisdictions", "Source citations", "Basic export"],
-    cta: "Get Started",
+    subKey: "strict.plan_free_sub",
+    featureKeys: ["strict.feature_all_jurisdictions", "strict.feature_source_citations", "strict.feature_basic_export"],
+    ctaKey: "landing.get_started",
     featured: false,
   },
   {
     name: "STARTER",
     price: "$29",
     priceSuffix: "/mo",
-    sub: "30 queries / day",
-    features: ["Everything in Free", "Document upload", "Priority support"],
-    cta: "Subscribe",
+    subKey: "strict.plan_starter_sub",
+    featureKeys: ["strict.feature_everything_free", "strict.feature_doc_upload", "strict.feature_priority_support"],
+    ctaKey: "strict.subscribe",
     featured: true,
   },
   {
     name: "PRO",
     price: "$179",
     priceSuffix: "/mo",
-    sub: "200 queries / day",
-    features: ["Everything in Starter", "API access", "Team workspace"],
-    cta: "Subscribe",
+    subKey: "strict.plan_pro_sub",
+    featureKeys: ["strict.feature_everything_starter", "billing.feature_pro_5", "strict.feature_team_workspace"],
+    ctaKey: "strict.subscribe",
     featured: false,
   },
   {
     name: "ENTERPRISE",
     price: "$499",
     priceSuffix: "/mo",
-    sub: "Unlimited queries",
-    features: [
-      "Everything in Pro",
-      "Dedicated support",
-      "Custom integrations",
+    subKey: "strict.plan_enterprise_sub",
+    featureKeys: [
+      "strict.feature_everything_pro",
+      "billing.feature_enterprise_3",
+      "billing.feature_enterprise_4",
     ],
-    cta: "Subscribe",
+    ctaKey: "strict.subscribe",
     featured: false,
   },
 ] as const;
 
 // ─── Card component ───────────────────────────────────────────────────────────
 
+type ResolvedPlan = {
+  name: string;
+  price: string;
+  priceSuffix?: string;
+  sub: string;
+  features: string[];
+  cta: string;
+  featured: boolean;
+};
+
 function PricingCard({
   plan,
   index,
 }: {
-  plan: (typeof PLANS)[number];
+  plan: ResolvedPlan;
   index: number;
 }) {
   const [isHovered, setIsHovered] = useState(false);
@@ -207,7 +218,18 @@ function PricingCard({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function StrictPricing() {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
+
+  const plans: ResolvedPlan[] = PLAN_DEFS.map((def) => ({
+    name: def.name,
+    price: def.price,
+    priceSuffix: def.priceSuffix,
+    sub: t(def.subKey),
+    features: def.featureKeys.map((k) => t(k)),
+    cta: t(def.ctaKey),
+    featured: def.featured,
+  }));
 
   return (
     <section
@@ -234,7 +256,7 @@ export function StrictPricing() {
               color: "var(--strict-gold-text)",
             }}
           >
-            PRICING
+            {t("strict.pricing_label")}
           </p>
           <h2
             className="font-serif font-normal"
@@ -243,7 +265,7 @@ export function StrictPricing() {
               color: "var(--strict-text-primary)",
             }}
           >
-            Choose your plan
+            {t("billing.choose_plan")}
           </h2>
         </motion.div>
 
@@ -275,7 +297,7 @@ export function StrictPricing() {
                 msOverflowStyle: "none",
               }}
             >
-              {PLANS.map((plan, index) => (
+              {plans.map((plan, index) => (
                 <div
                   key={plan.name}
                   style={{
@@ -301,7 +323,7 @@ export function StrictPricing() {
                 marginTop: "16px",
               }}
             >
-              {PLANS.map((plan) => (
+              {plans.map((plan) => (
                 <div
                   key={plan.name}
                   style={{
@@ -338,7 +360,7 @@ export function StrictPricing() {
             className="flex"
             style={{ gap: "14px" }}
           >
-            {PLANS.map((plan, index) => (
+            {plans.map((plan, index) => (
               <PricingCard key={plan.name} plan={plan} index={index} />
             ))}
           </motion.div>

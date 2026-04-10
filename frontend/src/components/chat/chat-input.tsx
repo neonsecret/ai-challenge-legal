@@ -105,7 +105,7 @@ export function ChatInput({onSend, disabled, onFocusRef}: ChatInputProps) {
                 style={isGlassmorphic ? {
                     color: "var(--strict-text-body)",
                     caretColor: "var(--strict-gold-base)",
-                    font: "11px/1 Georgia, serif",
+                    font: "14px/1.5 Georgia, serif",
                     letterSpacing: "0.01em",
                 } : {
                     color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",

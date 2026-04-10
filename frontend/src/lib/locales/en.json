@@ -244,5 +244,27 @@
   "landing.light_pillar3_title": "Benchmark Proven",
   "landing.light_pillar3_body": "Independently verified on GaRAGe (ACL 2025). Our retrieval accuracy exceeds every published system by 36%.",
 
-  "landing.light_why_heading": "Built for legal precision"
+  "landing.light_why_heading": "Built for legal precision",
+
+  "strict.nav_features": "Features",
+  "strict.pricing_label": "Pricing",
+  "strict.citation_detail": "Every claim grounded in source law",
+  "strict.preview_label": "Preview",
+  "strict.preview_heading": "The research experience",
+  "strict.preview_question": "What is the notice period for termination of employment under DIFC law?",
+  "strict.preview_input": "Continue your research...",
+  "strict.subscribe": "Subscribe",
+  "strict.plan_free_sub": "3 queries / day",
+  "strict.plan_starter_sub": "30 queries / day",
+  "strict.plan_pro_sub": "200 queries / day",
+  "strict.plan_enterprise_sub": "Unlimited queries",
+  "strict.feature_all_jurisdictions": "All jurisdictions",
+  "strict.feature_source_citations": "Source citations",
+  "strict.feature_basic_export": "Basic export",
+  "strict.feature_everything_free": "Everything in Free",
+  "strict.feature_doc_upload": "Document upload",
+  "strict.feature_priority_support": "Priority support",
+  "strict.feature_everything_starter": "Everything in Starter",
+  "strict.feature_team_workspace": "Team workspace",
+  "strict.feature_everything_pro": "Everything in Pro"
 }

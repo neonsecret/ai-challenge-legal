@@ -5,15 +5,13 @@ import { motion } from "motion/react";
 import { STRICT_SOURCES, STRICT_PREVIEW } from "@/lib/strict-tokens";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useI18n } from "@/lib/i18n";
 import { useStrictTypewriter } from "@/lib/useStrictTypewriter";
 import { StrictSidebarRail } from "@/components/chat/strict-sidebar-rail";
 import { StrictSourceMargin } from "@/components/chat/strict-source-margin";
 import type { StrictSourceMarginSource } from "@/components/chat/strict-source-margin";
 
 // ─── Static content constants ─────────────────────────────────────────────────
-
-const QUESTION =
-  "What is the notice period for termination of employment under DIFC law?";
 
 const ANSWER_HTML =
   "The notice period under DIFC Employment Law No. 4 of 2005 varies based on the length of continuous service<sup>1</sup>. For employees with less than one year of service, the minimum notice period is seven days. For those with one to five years, the period extends to thirty days<sup>2</sup>.<br><br>In cases where the employment contract specifies a longer notice period, the contractual term prevails<sup>3</sup>.";
@@ -27,6 +25,7 @@ const SOURCES_DATA: StrictSourceMarginSource[] = [
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function StrictPreview() {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
 
   // Intersection visibility — trigger once, then unobserve
@@ -117,7 +116,7 @@ export function StrictPreview() {
           textTransform: "uppercase",
         }}
       >
-        PREVIEW
+        {t("strict.preview_label")}
       </p>
       <h2
         className="text-center mb-8"
@@ -129,7 +128,7 @@ export function StrictPreview() {
           opacity: 0.75,
         }}
       >
-        The research experience
+        {t("strict.preview_heading")}
       </h2>
 
       {/* Step 1 — glass pane fades up on inView */}
@@ -177,7 +176,7 @@ export function StrictPreview() {
               transition: "opacity 0.5s ease, transform 0.5s ease",
             }}
           >
-            {QUESTION}
+            {t("strict.preview_question")}
           </p>
 
           {/* Step 3 — typewriter answer (innerHTML set imperatively via answerRef) */}
@@ -234,7 +233,7 @@ export function StrictPreview() {
                 flex: 1,
               }}
             >
-              Continue your research...
+              {t("strict.preview_input")}
             </span>
             <span
               style={{

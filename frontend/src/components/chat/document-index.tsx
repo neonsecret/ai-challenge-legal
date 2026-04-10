@@ -43,15 +43,17 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
     if (entries.length === 0) {
         return (
             <div style={{
-                display: "flex", flexDirection: "column", alignItems: "center",
-                justifyContent: "center", height: "100%", padding: 32, gap: 12,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                height: "100%", padding: "24px 12px",
             }}>
-                <FileText size={28} strokeWidth={1.2} style={{color: mutedText, opacity: 0.5}} />
                 <p style={{
-                    fontSize: 13, color: mutedText, textAlign: "center",
-                    fontFamily: font, lineHeight: 1.5, margin: 0,
+                    fontSize: 12, color: isDark ? "var(--strict-text-dim)" : mutedText,
+                    textAlign: "center",
+                    fontFamily: isDark ? "Georgia, serif" : font,
+                    fontStyle: isDark ? "italic" : undefined,
+                    lineHeight: 1.5, margin: 0,
                 }}>
-                    Sources will appear here as the conversation progresses.
+                    No sources yet
                 </p>
             </div>
         )
@@ -89,10 +91,10 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                 borderRadius: 14,
                                 background: isHighlighted
                                     ? isDark ? "rgba(201,168,76,0.12)" : "rgba(233,196,106,0.18)"
-                                    : isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.18)",
+                                    : isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.18)",
                                 border: isHighlighted
                                     ? isDark ? "0.5px solid rgba(201,168,76,0.35)" : "0.5px solid rgba(196,124,0,0.30)"
-                                    : isDark ? "0.5px solid rgba(255,255,255,0.08)" : "0.5px solid rgba(255,255,255,0.45)",
+                                    : isDark ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid rgba(255,255,255,0.45)",
                                 backdropFilter: "blur(8px)",
                                 WebkitBackdropFilter: "blur(8px)",
                                 overflow: "hidden",
@@ -145,10 +147,10 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                     {/* Section number */}
                                     {entry.sectionNumber && (
                                         <p style={{
-                                            fontSize: 14, fontWeight: 600,
+                                            fontSize: isDark ? 12 : 14, fontWeight: isDark ? 500 : 600,
                                             color: isDark ? "rgba(255,255,255,0.88)" : "#1a0e04",
+                                            fontFamily: isDark ? "system-ui" : "Georgia, 'Times New Roman', serif",
                                             margin: "0 0 4px",
-                                            fontFamily: "Georgia, 'Times New Roman', serif",
                                         }}>
                                             {entry.sectionNumber}
                                         </p>

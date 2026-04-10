@@ -7,6 +7,7 @@ interface PipelineStatusBarProps {
     trace: string[]
     isStreaming: boolean
     isDark: boolean
+    onAbort?: () => void
 }
 
 // Parse raw trace strings into display labels
@@ -65,7 +66,7 @@ function LightTrace({ trace }: { trace: string[] }) {
     )
 }
 
-export function PipelineStatusBar({ trace, isStreaming, isDark }: PipelineStatusBarProps) {
+export function PipelineStatusBar({ trace, isStreaming, isDark, onAbort }: PipelineStatusBarProps) {
     if (!trace || trace.length === 0) return null
 
     if (!isDark) return <LightTrace trace={trace} />
@@ -96,14 +97,14 @@ export function PipelineStatusBar({ trace, isStreaming, isDark }: PipelineStatus
                     <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                         {i > 0 && (
                             <span aria-hidden style={{
-                                fontSize: "8.5px",
-                                color: "rgba(201,168,76, 0.15)",
+                                fontSize: "10px",
+                                color: "rgba(201,168,76, 0.2)",
                                 margin: "0 1px",
                             }}>›</span>
                         )}
                         <Dot active={isActive} />
                         <span style={{
-                            font: "8.5px/1 system-ui, sans-serif",
+                            font: "10px/1 system-ui, sans-serif",
                             color: isActive ? "var(--strict-gold-text)" : "var(--strict-text-dim)",
                             letterSpacing: "0.01em",
                             transition: "color 0.2s ease",
@@ -113,6 +114,42 @@ export function PipelineStatusBar({ trace, isStreaming, isDark }: PipelineStatus
                     </span>
                 )
             })}
+            {/* Inline stop button during streaming */}
+            {isStreaming && onAbort && (
+                <>
+                    <span style={{ flex: 1 }} />
+                    <button
+                        onClick={onAbort}
+                        aria-label="Stop generating"
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "2px 8px",
+                            borderRadius: 4,
+                            background: "transparent",
+                            border: "1px solid rgba(201,168,76, 0.1)",
+                            color: "var(--strict-gold-text)",
+                            cursor: "pointer",
+                            fontSize: 9,
+                            fontFamily: "system-ui, sans-serif",
+                            transition: "background 0.15s, border-color 0.15s",
+                            flexShrink: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = "rgba(201,168,76, 0.06)"
+                            e.currentTarget.style.borderColor = "rgba(201,168,76, 0.2)"
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = "transparent"
+                            e.currentTarget.style.borderColor = "rgba(201,168,76, 0.1)"
+                        }}
+                    >
+                        <span aria-hidden style={{ width: 5, height: 5, borderRadius: 1, background: "var(--strict-gold-base)", flexShrink: 0 }} />
+                        Stop
+                    </button>
+                </>
+            )}
         </div>
     )
 }
