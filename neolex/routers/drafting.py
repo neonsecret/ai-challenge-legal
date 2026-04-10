@@ -130,7 +130,7 @@ async def create_document(
     current_count = len(rows_result.scalars().all())
     if current_count >= _MAX_DOCS_PER_CONVERSATION:
         raise HTTPException(
-            status_code=429,
+            status_code=409,
             detail=f"Maximum of {_MAX_DOCS_PER_CONVERSATION} documents per conversation reached. "
             "Delete an existing document to create a new one.",
         )
