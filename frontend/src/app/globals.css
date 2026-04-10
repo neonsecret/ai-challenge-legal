@@ -268,6 +268,47 @@ textarea::placeholder { color: #b29254; }
     --dt-panel-overlay-bg: rgba(255,252,242,0.95);
     --dt-panel-border-color: rgba(255,255,255,0.55);
     --dt-panel-shadow: 0 -12px 48px rgba(100,50,0,0.15), inset 0 1.5px 0 rgba(255,255,255,0.85);
+
+    /* Document drafting panel chrome — light mode */
+    --doc-panel-bg: rgba(255,250,235,0.94);
+    --doc-panel-border: rgba(255,255,255,0.55);
+    --doc-panel-shadow: 0 16px 64px rgba(80,40,0,0.22), inset 0 1.5px 0 rgba(255,255,255,0.85);
+    --doc-panel-header-bg: rgba(255,255,255,0.12);
+    --doc-panel-header-border: rgba(255,255,255,0.45);
+    --doc-overlay-bg: rgba(60,30,0,0.18);
+    --doc-gold-card-bg: rgba(196,124,0,0.04);
+    --doc-gold-card-border: rgba(196,124,0,0.18);
+    --doc-gold-card-bg-hover: rgba(196,124,0,0.08);
+    --doc-gold-icon-bg: rgba(196,124,0,0.08);
+    --doc-gold-icon-border: rgba(196,124,0,0.22);
+    --doc-btn-glass-bg: rgba(255,255,255,0.55);
+    --doc-btn-glass-border: rgba(255,255,255,0.60);
+    --doc-close-btn-bg: rgba(255,255,255,0.35);
+    --doc-close-btn-border: rgba(255,255,255,0.55);
+    --doc-close-btn-color: rgba(46,31,8,0.45);
+    --doc-gold-action-bg: rgba(196,124,0,0.06);
+    --doc-gold-action-border: rgba(196,124,0,0.18);
+    --doc-gold-action-color: #7a4a00;
+    --doc-gold-action-hover-bg: rgba(196,124,0,0.10);
+    --doc-gold-action-hover-border: rgba(196,124,0,0.28);
+    --doc-retry-btn-bg: rgba(196,124,0,0.08);
+    --doc-retry-btn-border: rgba(196,124,0,0.22);
+    --doc-text-primary: #1a1006;
+    --doc-text-secondary: #5c3d1a;
+    --doc-text-label: #7a4a00;
+    --doc-pill-active-bg: rgba(196,124,0,0.10);
+    --doc-pill-active-border: rgba(196,124,0,0.28);
+    --doc-pill-active-color: #7a4a00;
+    --doc-pill-inactive-bg: rgba(255,255,255,0.45);
+    --doc-pill-inactive-border: rgba(255,255,255,0.55);
+    --doc-pill-inactive-color: #5c3d1a;
+    --doc-custom-btn-bg: rgba(196,124,0,0.05);
+    --doc-custom-btn-border: rgba(196,124,0,0.22);
+    --doc-custom-btn-hover-bg: rgba(196,124,0,0.08);
+    --doc-card-bg: rgba(255,255,255,0.55);
+    --doc-card-border: rgba(255,255,255,0.60);
+    --doc-card-hover-bg: rgba(201,168,76,0.06);
+    --doc-card-hover-border: rgba(196,124,0,0.25);
 }
 
 /* ============================================================
@@ -827,6 +868,47 @@ textarea::placeholder { color: #b29254; }
   --dt-text-secondary: var(--strict-text-secondary);
   --dt-accent-color: var(--strict-gold-base);
   --dt-color-gold-base: var(--strict-gold-base);
+
+  /* Document drafting panel chrome — dark mode */
+  --doc-panel-bg: rgba(15,21,32,0.92);
+  --doc-panel-border: rgba(255,255,255,0.10);
+  --doc-panel-shadow: 0 20px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06);
+  --doc-panel-header-bg: rgba(255,255,255,0.02);
+  --doc-panel-header-border: rgba(201,168,76,0.08);
+  --doc-overlay-bg: rgba(0,0,0,0.55);
+  --doc-gold-card-bg: rgba(201,168,76,0.04);
+  --doc-gold-card-border: rgba(201,168,76,0.12);
+  --doc-gold-card-bg-hover: rgba(201,168,76,0.10);
+  --doc-gold-icon-bg: rgba(201,168,76,0.10);
+  --doc-gold-icon-border: rgba(201,168,76,0.18);
+  --doc-btn-glass-bg: rgba(255,255,255,0.04);
+  --doc-btn-glass-border: rgba(255,255,255,0.08);
+  --doc-close-btn-bg: rgba(255,255,255,0.06);
+  --doc-close-btn-border: rgba(255,255,255,0.10);
+  --doc-close-btn-color: rgba(255,255,255,0.45);
+  --doc-gold-action-bg: rgba(201,168,76,0.06);
+  --doc-gold-action-border: rgba(201,168,76,0.12);
+  --doc-gold-action-color: var(--strict-gold-text);
+  --doc-gold-action-hover-bg: rgba(201,168,76,0.12);
+  --doc-gold-action-hover-border: rgba(201,168,76,0.22);
+  --doc-retry-btn-bg: rgba(201,168,76,0.08);
+  --doc-retry-btn-border: rgba(201,168,76,0.18);
+  --doc-text-primary: var(--strict-text-primary);
+  --doc-text-secondary: var(--strict-text-secondary);
+  --doc-text-label: var(--strict-gold-text);
+  --doc-pill-active-bg: var(--strict-pill-active-bg);
+  --doc-pill-active-border: var(--strict-pill-active-border);
+  --doc-pill-active-color: var(--strict-text-primary);
+  --doc-pill-inactive-bg: rgba(255,255,255,0.04);
+  --doc-pill-inactive-border: rgba(255,255,255,0.06);
+  --doc-pill-inactive-color: var(--strict-text-secondary);
+  --doc-custom-btn-bg: rgba(201,168,76,0.05);
+  --doc-custom-btn-border: rgba(201,168,76,0.15);
+  --doc-custom-btn-hover-bg: rgba(201,168,76,0.10);
+  --doc-card-bg: rgba(255,255,255,0.03);
+  --doc-card-border: rgba(201,168,76,0.06);
+  --doc-card-hover-bg: rgba(201,168,76,0.07);
+  --doc-card-hover-border: rgba(201,168,76,0.18);
 }
 
 /* ── Strict scrollbar + overscroll ───────────────────────── */

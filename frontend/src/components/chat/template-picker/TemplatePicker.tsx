@@ -1,6 +1,5 @@
 "use client"
 
-import {useColorMode} from "@/lib/color-mode"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {FileText} from "lucide-react"
 
@@ -11,8 +10,6 @@ interface TemplatePickerProps {
 }
 
 export function TemplatePicker({onOpen, disabled}: TemplatePickerProps) {
-    const {isDark} = useColorMode()
-
     return (
         <button
             onClick={onOpen}
@@ -27,11 +24,9 @@ export function TemplatePicker({onOpen, disabled}: TemplatePickerProps) {
                 borderRadius: RADIUS.md,
                 cursor: disabled ? "not-allowed" : "pointer",
                 opacity: disabled ? 0.38 : 1,
-                background: isDark ? "rgba(201,168,76,0.06)" : "rgba(196,124,0,0.06)",
-                border: isDark
-                    ? "1px solid rgba(201,168,76,0.12)"
-                    : "0.5px solid rgba(196,124,0,0.18)",
-                color: isDark ? "var(--strict-gold-text)" : "#7a4a00",
+                background: "var(--doc-gold-action-bg)",
+                border: "1px solid var(--doc-gold-action-border)",
+                color: "var(--doc-gold-action-color)",
                 fontFamily: FONT.sans,
                 fontSize: TYPE_SCALE.xs,
                 transition: `all ${TIMING.fast} ${EASE.out}`,
@@ -39,20 +34,12 @@ export function TemplatePicker({onOpen, disabled}: TemplatePickerProps) {
             }}
             onMouseEnter={(e) => {
                 if (disabled) return
-                e.currentTarget.style.background = isDark
-                    ? "rgba(201,168,76,0.12)"
-                    : "rgba(196,124,0,0.10)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.22)"
-                    : "rgba(196,124,0,0.28)"
+                e.currentTarget.style.background = "var(--doc-gold-action-hover-bg)"
+                e.currentTarget.style.borderColor = "var(--doc-gold-action-hover-border)"
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDark
-                    ? "rgba(201,168,76,0.06)"
-                    : "rgba(196,124,0,0.06)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.12)"
-                    : "rgba(196,124,0,0.18)"
+                e.currentTarget.style.background = "var(--doc-gold-action-bg)"
+                e.currentTarget.style.borderColor = "var(--doc-gold-action-border)"
             }}
         >
             <FileText size={12} strokeWidth={1.8} />

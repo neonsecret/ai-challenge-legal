@@ -1,6 +1,5 @@
 "use client"
 
-import {useColorMode} from "@/lib/color-mode"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {Eye, Download} from "lucide-react"
 import type {ChatDocument} from "@/types/documents"
@@ -14,8 +13,6 @@ interface DocumentCardProps {
 }
 
 export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
-    const {isDark} = useColorMode()
-
     const pdfUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/pdf`
 
     return (
@@ -25,10 +22,8 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
             gap: SPACE[3],
             padding: `${SPACE[3]}px ${SPACE[4]}px`,
             borderRadius: RADIUS.lg,
-            background: isDark ? "rgba(201,168,76,0.04)" : "rgba(196,124,0,0.04)",
-            border: isDark
-                ? "1px solid rgba(201,168,76,0.12)"
-                : "0.5px solid rgba(196,124,0,0.18)",
+            background: "var(--doc-gold-card-bg)",
+            border: "1px solid var(--doc-gold-card-border)",
             backdropFilter: "blur(8px)",
             WebkitBackdropFilter: "blur(8px)",
         }}>
@@ -37,15 +32,13 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                 width: 32,
                 height: 32,
                 borderRadius: RADIUS.md,
-                background: isDark ? "rgba(201,168,76,0.10)" : "rgba(196,124,0,0.08)",
-                border: isDark
-                    ? "1px solid rgba(201,168,76,0.18)"
-                    : "0.5px solid rgba(196,124,0,0.22)",
+                background: "var(--doc-gold-icon-bg)",
+                border: "1px solid var(--doc-gold-icon-border)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
-                color: isDark ? "var(--strict-gold-text)" : "#7a4a00",
+                color: "var(--doc-text-label)",
             }}>
                 <span style={{fontSize: TYPE_SCALE.md}}>⊞</span>
             </div>
@@ -55,7 +48,7 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                 <span style={{
                     fontFamily: "Georgia, serif",
                     fontSize: TYPE_SCALE.sm,
-                    color: isDark ? "var(--strict-text-primary)" : "#1a1006",
+                    color: "var(--doc-text-primary)",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
@@ -65,7 +58,7 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                 <span style={{
                     fontFamily: FONT.sans,
                     fontSize: TYPE_SCALE.xs,
-                    color: isDark ? "var(--strict-text-secondary)" : "#5c3d1a",
+                    color: "var(--doc-text-secondary)",
                 }}>
                     v{doc.version}
                 </span>
@@ -76,7 +69,6 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                 <ActionButton
                     label="Preview"
                     icon={<Eye size={13} strokeWidth={1.8} />}
-                    isDark={isDark}
                     onClick={() => onPreview(doc.doc_id)}
                 />
                 <a
@@ -89,11 +81,9 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                         gap: SPACE[1],
                         padding: `${SPACE[1]}px ${SPACE[2]}px`,
                         borderRadius: RADIUS.sm,
-                        background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.55)",
-                        border: isDark
-                            ? "1px solid rgba(255,255,255,0.08)"
-                            : "0.5px solid rgba(255,255,255,0.60)",
-                        color: isDark ? "var(--strict-text-secondary)" : "#5c3d1a",
+                        background: "var(--doc-btn-glass-bg)",
+                        border: "1px solid var(--doc-btn-glass-border)",
+                        color: "var(--doc-text-secondary)",
                         fontFamily: FONT.sans,
                         fontSize: TYPE_SCALE.xs,
                         textDecoration: "none",
@@ -109,7 +99,7 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
     )
 }
 
-function ActionButton({label, icon, isDark, onClick}: {label: string; icon: React.ReactNode; isDark: boolean; onClick: () => void}) {
+function ActionButton({label, icon, onClick}: {label: string; icon: React.ReactNode; onClick: () => void}) {
     return (
         <button
             onClick={onClick}
@@ -122,30 +112,20 @@ function ActionButton({label, icon, isDark, onClick}: {label: string; icon: Reac
                 padding: `${SPACE[1]}px ${SPACE[2]}px`,
                 borderRadius: RADIUS.sm,
                 cursor: "pointer",
-                background: isDark ? "rgba(201,168,76,0.06)" : "rgba(196,124,0,0.06)",
-                border: isDark
-                    ? "1px solid rgba(201,168,76,0.12)"
-                    : "0.5px solid rgba(196,124,0,0.18)",
-                color: isDark ? "var(--strict-gold-text)" : "#7a4a00",
+                background: "var(--doc-gold-action-bg)",
+                border: "1px solid var(--doc-gold-action-border)",
+                color: "var(--doc-gold-action-color)",
                 fontFamily: FONT.sans,
                 fontSize: TYPE_SCALE.xs,
                 transition: `all ${TIMING.fast} ${EASE.out}`,
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                    ? "rgba(201,168,76,0.12)"
-                    : "rgba(196,124,0,0.10)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.22)"
-                    : "rgba(196,124,0,0.28)"
+                e.currentTarget.style.background = "var(--doc-gold-action-hover-bg)"
+                e.currentTarget.style.borderColor = "var(--doc-gold-action-hover-border)"
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDark
-                    ? "rgba(201,168,76,0.06)"
-                    : "rgba(196,124,0,0.06)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.12)"
-                    : "rgba(196,124,0,0.18)"
+                e.currentTarget.style.background = "var(--doc-gold-action-bg)"
+                e.currentTarget.style.borderColor = "var(--doc-gold-action-border)"
             }}
         >
             {icon}

@@ -1,24 +1,22 @@
 "use client"
 
-import {useCallback, useState} from "react"
+import {useCallback, useState, useEffect, useRef, useId} from "react"
 import dynamic from "next/dynamic"
 import {motion, AnimatePresence} from "motion/react"
 import {X, Download, MessageSquare, Loader2, RotateCcw} from "lucide-react"
-import {useColorMode} from "@/lib/color-mode"
 import {useIsMobile} from "@/hooks/use-mobile"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/tokens"
 import type {DocPdfViewerProps} from "./DocPdfViewerImpl"
 
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
-// Dynamically import to avoid SSR issues with pdfjs-dist
 const DocPdfViewer = dynamic<DocPdfViewerProps>(
     () => import("./DocPdfViewerImpl"),
     {
         ssr: false,
         loading: () => (
             <div style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}>
-                <Loader2 size={20} style={{color: "var(--strict-gold-text)", animation: "spin 1s linear infinite"}} />
+                <Loader2 size={20} style={{color: "var(--doc-text-label)", animation: "spin 1s linear infinite"}} />
             </div>
         ),
     },
@@ -27,7 +25,6 @@ const DocPdfViewer = dynamic<DocPdfViewerProps>(
 interface DocumentViewerProps {
     open: boolean
     onClose: () => void
-    /** Called when user clicks "Ask AI to modify" — closes viewer and focuses chat input */
     onAskToModify?: () => void
     chatId: string
     docId: string | null
@@ -35,14 +32,41 @@ interface DocumentViewerProps {
 }
 
 export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, docName}: DocumentViewerProps) {
-    const {isDark} = useColorMode()
     const isMobile = useIsMobile()
     const [pdfError, setPdfError] = useState(false)
     const [retryKey, setRetryKey] = useState(0)
+    const panelRef = useRef<HTMLDivElement>(null)
+    const titleId = useId()
 
     const pdfUrl = docId
         ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/pdf`
         : null
+
+    // Escape key + focus trap
+    useEffect(() => {
+        if (!open) return
+        const el = panelRef.current
+        if (!el) return
+
+        const focusable = el.querySelectorAll<HTMLElement>(
+            "button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])"
+        )
+        focusable[0]?.focus()
+
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") { e.preventDefault(); onClose(); return }
+            if (e.key !== "Tab") return
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            if (e.shiftKey) {
+                if (document.activeElement === first) { e.preventDefault(); last?.focus() }
+            } else {
+                if (document.activeElement === last) { e.preventDefault(); first?.focus() }
+            }
+        }
+        document.addEventListener("keydown", handleKey)
+        return () => document.removeEventListener("keydown", handleKey)
+    }, [open, onClose])
 
     const handleRetry = useCallback(() => {
         setPdfError(false)
@@ -65,11 +89,12 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                         exit={{opacity: 0}}
                         transition={{duration: 0.2}}
                         onClick={onClose}
+                        aria-hidden="true"
                         style={{
                             position: "fixed",
                             inset: 0,
                             zIndex: 60,
-                            background: isDark ? "rgba(0,0,0,0.55)" : "rgba(60,30,0,0.18)",
+                            background: "var(--doc-overlay-bg)",
                             backdropFilter: "blur(4px)",
                             WebkitBackdropFilter: "blur(4px)",
                         }}
@@ -77,6 +102,10 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
 
                     {/* Panel */}
                     <motion.div
+                        ref={panelRef}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby={titleId}
                         initial={isMobile ? {y: "100%", opacity: 0.5} : {x: "100%", opacity: 0.5}}
                         animate={isMobile ? {y: 0, opacity: 1} : {x: 0, opacity: 1}}
                         exit={isMobile ? {y: "100%", opacity: 0} : {x: "100%", opacity: 0}}
@@ -90,42 +119,32 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                             display: "flex",
                             flexDirection: "column",
                             overflow: "clip",
-                            background: isDark
-                                ? "rgba(15,21,32,0.92)"
-                                : "rgba(255,250,235,0.94)",
+                            background: "var(--doc-panel-bg)",
                             backdropFilter: "blur(32px) saturate(160%)",
                             WebkitBackdropFilter: "blur(32px) saturate(160%)",
-                            border: isDark
-                                ? "0.5px solid rgba(255,255,255,0.10)"
-                                : "0.5px solid rgba(255,255,255,0.55)",
-                            boxShadow: isDark
-                                ? "0 20px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)"
-                                : "0 16px 64px rgba(80,40,0,0.22), inset 0 1.5px 0 rgba(255,255,255,0.85)",
+                            border: "0.5px solid var(--doc-panel-border)",
+                            boxShadow: "var(--doc-panel-shadow)",
                             willChange: "transform",
                         }}
                     >
                         {/* Header */}
                         <div style={{
                             padding: "14px 20px",
-                            borderBottom: isDark
-                                ? "0.5px solid rgba(201,168,76,0.08)"
-                                : "0.5px solid rgba(255,255,255,0.45)",
+                            borderBottom: "0.5px solid var(--doc-panel-header-border)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
                             gap: SPACE[3],
                             flexShrink: 0,
-                            background: isDark
-                                ? "rgba(255,255,255,0.02)"
-                                : "rgba(255,255,255,0.12)",
+                            background: "var(--doc-panel-header-bg)",
                         }}>
                             <div style={{display: "flex", flexDirection: "column", gap: 2, minWidth: 0}}>
-                                <span style={{
+                                <span id={titleId} style={{
                                     fontSize: 11,
                                     fontWeight: 700,
                                     textTransform: "uppercase",
                                     letterSpacing: "0.12em",
-                                    color: isDark ? "rgba(201,168,76,0.70)" : "#7a4a00",
+                                    color: "var(--doc-text-label)",
                                     fontFamily: FONT.sans,
                                 }}>
                                     Document Preview
@@ -134,7 +153,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                     <span style={{
                                         fontFamily: "Georgia, serif",
                                         fontSize: TYPE_SCALE.xs,
-                                        color: isDark ? "var(--strict-text-secondary)" : "#5c3d1a",
+                                        color: "var(--doc-text-secondary)",
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
                                         whiteSpace: "nowrap",
@@ -155,14 +174,20 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                         padding: `${SPACE[1]}px ${SPACE[2]}px`,
                                         borderRadius: RADIUS.sm,
                                         cursor: "pointer",
-                                        background: isDark ? "rgba(201,168,76,0.06)" : "rgba(196,124,0,0.06)",
-                                        border: isDark
-                                            ? "1px solid rgba(201,168,76,0.12)"
-                                            : "0.5px solid rgba(196,124,0,0.18)",
-                                        color: isDark ? "var(--strict-gold-text)" : "#7a4a00",
+                                        background: "var(--doc-gold-action-bg)",
+                                        border: "1px solid var(--doc-gold-action-border)",
+                                        color: "var(--doc-gold-action-color)",
                                         fontFamily: FONT.sans,
                                         fontSize: TYPE_SCALE.xs,
                                         transition: `all ${TIMING.fast}`,
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "var(--doc-gold-action-hover-bg)"
+                                        e.currentTarget.style.borderColor = "var(--doc-gold-action-hover-border)"
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "var(--doc-gold-action-bg)"
+                                        e.currentTarget.style.borderColor = "var(--doc-gold-action-border)"
                                     }}
                                 >
                                     <MessageSquare size={12} strokeWidth={1.8} />
@@ -182,11 +207,9 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                             width: 28,
                                             height: 28,
                                             borderRadius: 8,
-                                            background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.35)",
-                                            border: isDark
-                                                ? "0.5px solid rgba(255,255,255,0.10)"
-                                                : "0.5px solid rgba(255,255,255,0.55)",
-                                            color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.45)",
+                                            background: "var(--doc-close-btn-bg)",
+                                            border: "0.5px solid var(--doc-close-btn-border)",
+                                            color: "var(--doc-close-btn-color)",
                                         }}
                                     >
                                         <Download size={13} strokeWidth={1.8} />
@@ -204,12 +227,10 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                         width: 28,
                                         height: 28,
                                         borderRadius: 8,
-                                        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.35)",
-                                        border: isDark
-                                            ? "0.5px solid rgba(255,255,255,0.10)"
-                                            : "0.5px solid rgba(255,255,255,0.55)",
+                                        background: "var(--doc-close-btn-bg)",
+                                        border: "0.5px solid var(--doc-close-btn-border)",
                                         cursor: "pointer",
-                                        color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.45)",
+                                        color: "var(--doc-close-btn-color)",
                                         transition: `all ${TIMING.instant}`,
                                     }}
                                 >
@@ -232,7 +253,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                 <p style={{
                                     fontFamily: FONT.sans,
                                     fontSize: TYPE_SCALE.sm,
-                                    color: isDark ? "var(--strict-text-secondary)" : "#5c3d1a",
+                                    color: "var(--doc-text-secondary)",
                                     margin: 0,
                                     textAlign: "center",
                                 }}>
@@ -247,11 +268,9 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                         padding: `${SPACE[2]}px ${SPACE[4]}px`,
                                         borderRadius: RADIUS.md,
                                         cursor: "pointer",
-                                        background: isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.08)",
-                                        border: isDark
-                                            ? "1px solid rgba(201,168,76,0.18)"
-                                            : "0.5px solid rgba(196,124,0,0.22)",
-                                        color: isDark ? "var(--strict-gold-text)" : "#7a4a00",
+                                        background: "var(--doc-retry-btn-bg)",
+                                        border: "1px solid var(--doc-retry-btn-border)",
+                                        color: "var(--doc-gold-action-color)",
                                         fontFamily: FONT.sans,
                                         fontSize: TYPE_SCALE.sm,
                                     }}
@@ -264,12 +283,11 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                             <DocPdfViewer
                                 key={retryKey}
                                 pdfUrl={pdfUrl}
-                                isDark={isDark}
                                 onError={() => setPdfError(true)}
                             />
                         ) : (
                             <div style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center"}}>
-                                <Loader2 size={20} style={{color: "var(--strict-gold-text)", animation: "spin 1s linear infinite"}} />
+                                <Loader2 size={20} style={{color: "var(--doc-text-label)", animation: "spin 1s linear infinite"}} />
                             </div>
                         )}
                     </motion.div>

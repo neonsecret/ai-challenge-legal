@@ -1,6 +1,5 @@
 "use client"
 
-import {useColorMode} from "@/lib/color-mode"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import type {Template} from "@/types/documents"
 
@@ -10,8 +9,6 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({template, onSelect}: TemplateCardProps) {
-    const {isDark} = useColorMode()
-
     return (
         <button
             onClick={() => onSelect(template.slug)}
@@ -25,31 +22,19 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 width: "100%",
                 textAlign: "left",
                 cursor: "pointer",
-                background: isDark
-                    ? "rgba(255,255,255,0.03)"
-                    : "rgba(255,255,255,0.55)",
-                border: isDark
-                    ? "1px solid rgba(201,168,76,0.06)"
-                    : "0.5px solid rgba(255,255,255,0.60)",
+                background: "var(--doc-card-bg)",
+                border: "1px solid var(--doc-card-border)",
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
                 transition: `all ${TIMING.fast} ${EASE.out}`,
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.background = isDark
-                    ? "rgba(201,168,76,0.07)"
-                    : "rgba(201,168,76,0.06)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.18)"
-                    : "rgba(196,124,0,0.25)"
+                e.currentTarget.style.background = "var(--doc-card-hover-bg)"
+                e.currentTarget.style.borderColor = "var(--doc-card-hover-border)"
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = isDark
-                    ? "rgba(255,255,255,0.03)"
-                    : "rgba(255,255,255,0.55)"
-                e.currentTarget.style.borderColor = isDark
-                    ? "rgba(201,168,76,0.06)"
-                    : "rgba(255,255,255,0.60)"
+                e.currentTarget.style.background = "var(--doc-card-bg)"
+                e.currentTarget.style.borderColor = "var(--doc-card-border)"
             }}
         >
             {/* Name */}
@@ -57,7 +42,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 fontFamily: "Georgia, serif",
                 fontSize: TYPE_SCALE.sm,
                 fontWeight: "normal",
-                color: isDark ? "var(--strict-text-primary)" : "#1a1006",
+                color: "var(--doc-text-primary)",
                 lineHeight: 1.4,
             }}>
                 {template.name}
@@ -68,7 +53,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 <span style={{
                     fontFamily: FONT.sans,
                     fontSize: TYPE_SCALE.xs,
-                    color: isDark ? "var(--strict-text-secondary)" : "#5c3d1a",
+                    color: "var(--doc-text-secondary)",
                     lineHeight: 1.5,
                 }}>
                     {template.description}
@@ -77,14 +62,14 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
 
             {/* Badges */}
             <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: SPACE[1]}}>
-                <Badge label={template.jurisdiction} isDark={isDark} variant="jurisdiction" />
-                <Badge label={template.category} isDark={isDark} variant="category" />
+                <Badge label={template.jurisdiction} variant="jurisdiction" />
+                <Badge label={template.category} variant="category" />
             </div>
         </button>
     )
 }
 
-function Badge({label, isDark, variant}: {label: string; isDark: boolean; variant: "jurisdiction" | "category"}) {
+function Badge({label, variant}: {label: string; variant: "jurisdiction" | "category"}) {
     const isJurisdiction = variant === "jurisdiction"
     return (
         <span style={{
@@ -93,15 +78,11 @@ function Badge({label, isDark, variant}: {label: string; isDark: boolean; varian
             fontWeight: 500,
             padding: `1px ${SPACE[2]}px`,
             borderRadius: RADIUS.full,
-            background: isJurisdiction
-                ? (isDark ? "rgba(201,168,76,0.08)" : "rgba(196,124,0,0.08)")
-                : (isDark ? "rgba(255,255,255,0.05)" : "rgba(92,46,8,0.06)"),
+            background: isJurisdiction ? "var(--doc-gold-card-bg)" : "var(--doc-pill-inactive-bg)",
             border: isJurisdiction
-                ? (isDark ? "1px solid rgba(201,168,76,0.15)" : "0.5px solid rgba(196,124,0,0.20)")
-                : (isDark ? "1px solid rgba(255,255,255,0.08)" : "0.5px solid rgba(92,46,8,0.12)"),
-            color: isJurisdiction
-                ? (isDark ? "var(--strict-gold-text)" : "#7a4a00")
-                : (isDark ? "var(--strict-text-secondary)" : "#5c3d1a"),
+                ? "1px solid var(--doc-gold-card-border)"
+                : "1px solid var(--doc-pill-inactive-border)",
+            color: isJurisdiction ? "var(--doc-text-label)" : "var(--doc-text-secondary)",
             textTransform: "uppercase" as const,
             letterSpacing: "0.06em",
         }}>

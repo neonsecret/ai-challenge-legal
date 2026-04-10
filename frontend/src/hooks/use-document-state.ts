@@ -23,11 +23,11 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
         prevChatIdRef.current = chatId
 
         if (!chatId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setDocuments([])
             return
         }
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(true)
         fetch(`${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents`, {
             credentials: "include",

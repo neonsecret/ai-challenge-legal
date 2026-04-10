@@ -4,7 +4,7 @@ import {useState, useCallback} from "react"
 import {Document, Page, pdfjs} from "react-pdf"
 import "react-pdf/dist/Page/AnnotationLayer.css"
 import "react-pdf/dist/Page/TextLayer.css"
-import {Loader2, FileX, ChevronLeft, ChevronRight} from "lucide-react"
+import {FileX, ChevronLeft, ChevronRight} from "lucide-react"
 import {FONT, TYPE_SCALE, SPACE, RADIUS} from "@/lib/tokens"
 
 // Use locally-bundled worker — avoids CDN latency (same as grounding viewer)
@@ -14,11 +14,10 @@ if (typeof pdfjs !== "undefined") {
 
 export interface DocPdfViewerProps {
     pdfUrl: string
-    isDark: boolean
     onError?: () => void
 }
 
-export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewerProps) {
+export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
     const [numPages, setNumPages] = useState<number | null>(null)
     const [page, setPage] = useState(1)
     const [error, setError] = useState(false)
@@ -33,8 +32,6 @@ export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewer
         onError?.()
     }, [onError])
 
-    const textColor = isDark ? "var(--strict-text-secondary)" : "#5c3d1a"
-
     if (error) {
         return (
             <div style={{
@@ -46,8 +43,8 @@ export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewer
                 gap: SPACE[3],
                 padding: SPACE[8],
             }}>
-                <FileX size={32} style={{color: textColor, opacity: 0.5}} />
-                <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: textColor, margin: 0}}>
+                <FileX size={32} style={{color: "var(--doc-text-secondary)", opacity: 0.5}} />
+                <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: "var(--doc-text-secondary)", margin: 0}}>
                     Failed to load document
                 </p>
             </div>
@@ -64,9 +61,7 @@ export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewer
                     justifyContent: "center",
                     gap: SPACE[2],
                     padding: `${SPACE[2]}px ${SPACE[4]}px`,
-                    borderBottom: isDark
-                        ? "0.5px solid rgba(255,255,255,0.05)"
-                        : "0.5px solid rgba(255,255,255,0.40)",
+                    borderBottom: "var(--doc-page-nav-border)",
                     flexShrink: 0,
                 }}>
                     <button
@@ -79,12 +74,17 @@ export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewer
                             border: "none",
                             cursor: page <= 1 ? "not-allowed" : "pointer",
                             opacity: page <= 1 ? 0.3 : 1,
-                            color: textColor,
+                            color: "var(--doc-text-secondary)",
+                            minHeight: 44,
+                            minWidth: 44,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                         }}
                     >
                         <ChevronLeft size={16} />
                     </button>
-                    <span style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.xs, color: textColor}}>
+                    <span style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.xs, color: "var(--doc-text-secondary)"}}>
                         {page} / {numPages}
                     </span>
                     <button
@@ -97,7 +97,12 @@ export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewer
                             border: "none",
                             cursor: page >= numPages ? "not-allowed" : "pointer",
                             opacity: page >= numPages ? 0.3 : 1,
-                            color: textColor,
+                            color: "var(--doc-text-secondary)",
+                            minHeight: 44,
+                            minWidth: 44,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                         }}
                     >
                         <ChevronRight size={16} />
@@ -111,11 +116,7 @@ export default function DocPdfViewerImpl({pdfUrl, isDark, onError}: DocPdfViewer
                     file={pdfUrl}
                     onLoadSuccess={handleLoadSuccess}
                     onLoadError={handleLoadError}
-                    loading={
-                        <div style={{display: "flex", alignItems: "center", justifyContent: "center", padding: SPACE[8]}}>
-                            <Loader2 size={20} style={{color: "var(--strict-gold-text)", animation: "spin 1s linear infinite"}} />
-                        </div>
-                    }
+                    loading={null}
                 >
                     <Page
                         pageNumber={page}
