@@ -119,3 +119,14 @@ class AgentState(TypedDict):
     cached_target_docs: NotRequired[list[str] | None]
     doc_ids: NotRequired[list[str] | None]
     _on_status: NotRequired[Callable[[str], None] | None]
+    # --- Drafting mode (injected when template_slug is present in the request) ---
+    # When template_slug is set the agent operates in drafting mode: it searches
+    # the corpus to ground legal content, then calls document_draft to persist the
+    # filled-in document.  All drafting state is NotRequired so existing code
+    # that builds AgentState without these fields continues to work unchanged.
+    template_slug: NotRequired[str | None]  # e.g. "cz_zaloba_obecna"
+    template_name: NotRequired[str]  # human-readable e.g. "Obecná žaloba"
+    template_required_fields: NotRequired[list[str]]  # fields LLM must NOT invent
+    template_field_descriptions: NotRequired[dict[str, str]]  # field hints for prompt
+    chat_documents: NotRequired[list[dict]]  # existing docs [{id, template_slug, fields, version}]
+    _draft_document_fn: NotRequired[Callable | None]  # async (action, fields, doc_id) -> dict

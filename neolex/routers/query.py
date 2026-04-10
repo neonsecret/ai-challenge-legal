@@ -334,6 +334,35 @@ async def query_stream(
                     from arlc.agent.config import AGENT_TIMEOUT_SECONDS
                     from neolex.services.agent_pipeline import run_agent_question
 
+                    # Resolve drafting context when template_slug is set
+                    template_name: str = ""
+                    template_required_fields: list[str] | None = None
+                    template_field_descriptions: dict[str, str] | None = None
+                    chat_documents: list[dict] | None = None
+
+                    if body.template_slug and conversation_id:
+                        import uuid as _uuid
+
+                        from neolex.services.document_service import (
+                            get_template_by_slug,
+                            list_conversation_documents,
+                        )
+
+                        tmpl = await get_template_by_slug(db, body.template_slug)
+                        if tmpl:
+                            template_name = tmpl["name"]
+                            template_required_fields = tmpl["required_fields"]
+                            template_field_descriptions = tmpl["field_descriptions"]
+
+                        try:
+                            chat_documents = await list_conversation_documents(
+                                db,
+                                user_id=_uuid.UUID(user_id),
+                                conversation_id=_uuid.UUID(conversation_id),
+                            )
+                        except (ValueError, Exception):
+                            chat_documents = []
+
                     pipeline_result = await asyncio.wait_for(
                         run_agent_question(
                             question=body.question,
@@ -346,6 +375,11 @@ async def query_stream(
                             on_token=on_token,
                             use_internet=body.use_internet,
                             doc_ids=body.doc_ids,
+                            template_slug=body.template_slug,
+                            template_name=template_name,
+                            template_required_fields=template_required_fields,
+                            template_field_descriptions=template_field_descriptions,
+                            chat_documents=chat_documents,
                         ),
                         timeout=AGENT_TIMEOUT_SECONDS,
                     )
