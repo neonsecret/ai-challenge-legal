@@ -338,7 +338,10 @@ async def get_document_pdf(
         )
     except RuntimeError as exc:
         logger.error("PDF generation failed for doc_id=%s: %s", doc.id, exc)
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500,
+            detail="PDF generation failed. Contact support if this persists.",
+        ) from exc
 
     return Response(
         content=pdf_bytes,

@@ -106,7 +106,7 @@ class DocumentResponse(BaseModel):
     id: uuid.UUID
     conversation_id: uuid.UUID
     template_slug: str
-    fields: dict
+    fields: dict[str, str]
     version: int
     created_at: datetime
     updated_at: datetime

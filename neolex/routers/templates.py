@@ -18,6 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
+from neolex.db.models import User
 from neolex.db.postgres import get_db
 from neolex.routers.admin import get_admin
 from neolex.schemas.drafting import TemplateCreate, TemplateDetail, TemplateListItem, TemplateUpdate
@@ -78,7 +79,7 @@ async def get_template(
 @router.post("/api/v1/admin/templates", response_model=TemplateDetail, status_code=201)
 async def create_template(
     payload: TemplateCreate,
-    admin=Depends(get_admin),
+    admin: User = Depends(get_admin),
     db: AsyncSession = Depends(get_db),
 ) -> TemplateDetail:
     """Create a new document template (admin only)."""
@@ -114,7 +115,7 @@ async def create_template(
 async def update_template(
     slug: str,
     payload: TemplateUpdate,
-    admin=Depends(get_admin),
+    admin: User = Depends(get_admin),
     db: AsyncSession = Depends(get_db),
 ) -> TemplateDetail:
     """Update an existing template (admin only). Only provided fields are updated."""
