@@ -2,7 +2,7 @@
 
 import {useMemo, useState, useCallback} from "react";
 import {useColorMode} from "@/lib/color-mode";
-import {Folder, FileText, ChevronDown, ChevronRight, Trash2, CheckCircle2, Pencil, Check, X} from "lucide-react";
+import {Folder, ChevronDown, ChevronRight, Trash2, CheckCircle2, Pencil, Check, X} from "lucide-react";
 import type {Document} from "./use-documents";
 import {useI18n} from "@/lib/i18n";
 
@@ -31,7 +31,6 @@ function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
-        year: "numeric",
     });
 }
 
@@ -54,9 +53,7 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
         const map = new Map<string, DocumentFolder>();
         for (const doc of documents) {
             const name = doc.collection ?? "My Documents";
-            if (!map.has(name)) {
-                map.set(name, {name, docs: [], totalBytes: 0});
-            }
+            if (!map.has(name)) map.set(name, {name, docs: [], totalBytes: 0});
             const folder = map.get(name)!;
             folder.docs.push(doc);
             folder.totalBytes += doc.size_bytes;
@@ -88,11 +85,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
     const toggleFolder = (name: string) => {
         setExpandedFolders((prev) => {
             const next = new Set(prev);
-            if (next.has(name)) {
-                next.delete(name);
-            } else {
-                next.add(name);
-            }
+            if (next.has(name)) next.delete(name);
+            else next.add(name);
             return next;
         });
     };
@@ -104,122 +98,93 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
         setDeletingId(null);
     };
 
+    // ── Loading skeleton ──────────────────────────────────────────────────────
     if (loading) {
+        if (isDark) {
+            return (
+                <div style={{display: "flex", flexDirection: "column", gap: "6px"}}>
+                    {[...Array(2)].map((_, i) => (
+                        <div key={i} style={{height: "34px", borderRadius: "5px", background: "rgba(201,168,76,0.04)", animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite"}} />
+                    ))}
+                </div>
+            );
+        }
         return (
             <div style={{display: "flex", flexDirection: "column", gap: "10px", fontFamily: fontStack}}>
                 {[...Array(2)].map((_, i) => (
-                    <div
-                        key={i}
-                        style={{
-                            height: "72px",
-                            borderRadius: isDark ? "10px" : "14px",
-                            background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.18)",
-                            animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite",
-                        }}
-                    />
+                    <div key={i} style={{height: "72px", borderRadius: "14px", background: "rgba(255,255,255,0.18)", animation: "pulse 2s cubic-bezier(0.4,0,0.6,1) infinite"}} />
                 ))}
             </div>
         );
     }
 
+    // ── Empty state ───────────────────────────────────────────────────────────
     if (documents.length === 0) {
-        return (
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: isDark
-                        ? "1.5px dashed rgba(201,168,76,0.12)"
-                        : "1.5px dashed rgba(255,255,255,0.35)",
-                    borderRadius: isDark ? "10px" : "14px",
-                    padding: "48px 24px",
+        if (isDark) {
+            return (
+                <div style={{
+                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                    border: "1px dashed rgba(201,168,76,0.12)", borderRadius: "8px", padding: "32px 16px",
                     textAlign: "center",
-                    fontFamily: fontStack,
-                }}
-            >
-                <Folder
-                    size={32}
-                    style={{
-                        color: isDark ? "rgba(201,168,76,0.25)" : "rgba(46,31,8,0.22)",
-                        marginBottom: "12px",
-                    }}
-                />
-                <p style={{fontSize: "13px", color: labelColor, margin: 0}}>
-                    {t("documents.no_documents")}
-                </p>
-                <p
-                    style={{
-                        fontSize: "11px",
-                        color: isDark ? "rgba(255,255,255,0.25)" : "rgba(46,31,8,0.35)",
-                        marginTop: "4px",
-                    }}
-                >
-                    {t("documents.upload_to_start")}
-                </p>
+                }}>
+                    <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "8px"}}>⬚</div>
+                    <p style={{fontSize: "11px", color: "rgba(200,210,230,0.22)", margin: 0, fontFamily: "system-ui, sans-serif"}}>
+                        {t("documents.no_documents")}
+                    </p>
+                    <p style={{fontSize: "9px", color: "rgba(200,210,230,0.16)", marginTop: "3px", fontFamily: "system-ui, sans-serif"}}>
+                        {t("documents.upload_to_start")}
+                    </p>
+                </div>
+            );
+        }
+        return (
+            <div style={{display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1.5px dashed rgba(255,255,255,0.35)", borderRadius: "14px", padding: "48px 24px", textAlign: "center", fontFamily: fontStack}}>
+                <Folder size={32} style={{color: "rgba(46,31,8,0.22)", marginBottom: "12px"}} />
+                <p style={{fontSize: "13px", color: labelColor, margin: 0}}>{t("documents.no_documents")}</p>
+                <p style={{fontSize: "11px", color: "rgba(46,31,8,0.35)", marginTop: "4px"}}>{t("documents.upload_to_start")}</p>
             </div>
         );
     }
 
-    return (
-        <div style={{display: "flex", flexDirection: "column", gap: "8px", fontFamily: fontStack}}>
-            {folders.map((folder) => {
-                const isExpanded = expandedFolders.has(folder.name);
+    // ── Dark mode: mockup-matched folder rows ─────────────────────────────────
+    if (isDark) {
+        return (
+            <div style={{display: "flex", flexDirection: "column", gap: "0"}}>
+                {folders.map((folder, fi) => {
+                    const isExpanded = expandedFolders.has(folder.name);
+                    return (
+                        <div key={folder.name}>
+                            {/* Gold gradient separator between folders */}
+                            {fi > 0 && (
+                                <div style={{
+                                    height: "1px",
+                                    background: "linear-gradient(90deg, rgba(201,168,76,0.12), rgba(201,168,76,0.02))",
+                                    margin: "4px 8px 4px",
+                                }} />
+                            )}
 
-                return (
-                    <div
-                        key={folder.name}
-                        style={{
-                            background: isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.14)",
-                            border: isDark
-                                ? "0.5px solid rgba(201,168,76,0.06)"
-                                : "0.5px solid rgba(255,255,255,0.35)",
-                            borderRadius: isDark ? "10px" : "14px",
-                            overflow: "hidden",
-                        }}
-                    >
-                        {/* Folder header row */}
-                        <button
-                            onClick={() => toggleFolder(folder.name)}
-                            style={{
-                                width: "100%",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "12px",
-                                padding: "14px 16px",
-                                background: "transparent",
-                                border: "none",
-                                cursor: "pointer",
-                                textAlign: "left",
-                            }}
-                        >
-                            {/* Folder icon */}
+                            {/* Folder header row */}
                             <div
                                 style={{
-                                    width: "36px",
-                                    height: "36px",
-                                    borderRadius: "10px",
-                                    background: isDark
-                                        ? "rgba(201,168,76,0.06)"
-                                        : "rgba(201,168,76,0.08)",
-                                    border: isDark
-                                        ? "0.5px solid rgba(201,168,76,0.18)"
-                                        : "0.5px solid rgba(201,168,76,0.28)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    flexShrink: 0,
+                                    display: "flex", alignItems: "center", gap: "6px",
+                                    padding: "5px 8px", borderRadius: "5px",
+                                    background: "rgba(201,168,76,0.025)",
+                                    border: "1px solid rgba(201,168,76,0.06)",
+                                    cursor: "pointer", marginBottom: isExpanded ? "3px" : "0",
+                                    transition: "background 0.12s",
                                 }}
+                                onClick={() => toggleFolder(folder.name)}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.04)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.025)"; }}
                             >
-                                <Folder size={18} style={{color: "#C9A84C"}}/>
-                            </div>
+                                {/* Folder SVG icon */}
+                                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="rgba(201,168,76,0.7)" strokeWidth="1.4" style={{flexShrink: 0}}>
+                                    <path d="M2 4.5V13a1 1 0 001 1h10a1 1 0 001-1V6a1 1 0 00-1-1H8L6.5 3H3a1 1 0 00-1 1.5z"/>
+                                </svg>
 
-                            {/* Folder name + meta */}
-                            <div style={{flex: 1, minWidth: 0}}>
+                                {/* Folder name */}
                                 {renamingFolder === folder.name ? (
-                                    <div style={{display: "flex", alignItems: "center", gap: "6px"}}
-                                         onClick={(e) => e.stopPropagation()}>
+                                    <div style={{flex: 1, display: "flex", alignItems: "center", gap: "4px"}} onClick={(e) => e.stopPropagation()}>
                                         <input
                                             autoFocus
                                             value={renameValue}
@@ -229,248 +194,222 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 if (e.key === "Escape") setRenamingFolder(null);
                                             }}
                                             style={{
-                                                fontSize: "13px", fontWeight: 600, color: textColor,
-                                                background: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
-                                                border: isDark
-                                                    ? "1px solid rgba(201,168,76,0.30)"
-                                                    : "1px solid rgba(201,168,76,0.4)",
-                                                borderRadius: "6px", padding: "2px 8px", width: "160px",
-                                                outline: "none", fontFamily: fontStack,
+                                                flex: 1, fontSize: "9px", color: "rgba(230,235,245,0.88)",
+                                                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(201,168,76,0.30)",
+                                                borderRadius: "4px", padding: "2px 6px", outline: "none",
+                                                fontFamily: "system-ui, sans-serif",
                                             }}
                                         />
                                         <button onClick={(e) => { e.stopPropagation(); handleRename(folder.name, renameValue); }}
-                                                style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}>
-                                            <Check size={14} style={{color: "#4ade80"}}/>
+                                            style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}>
+                                            <Check size={11} style={{color: "#4ade80"}}/>
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); setRenamingFolder(null); }}
-                                                style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}>
-                                            <X size={14} style={{color: isDark ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.3)"}}/>
+                                            style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}>
+                                            <X size={11} style={{color: "rgba(255,255,255,0.4)"}}/>
                                         </button>
                                     </div>
                                 ) : (
-                                    <div
-                                        style={{
-                                            fontSize: "13px",
-                                            fontWeight: 600,
-                                            color: textColor,
-                                            overflow: "hidden",
-                                            textOverflow: "ellipsis",
-                                            whiteSpace: "nowrap",
-                                        }}
-                                    >
+                                    <span style={{flex: 1, fontSize: "9px", fontFamily: "system-ui, sans-serif", color: "rgba(255,255,255,0.56)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>
                                         {folder.name}
-                                    </div>
+                                    </span>
                                 )}
-                                <div
-                                    style={{
-                                        fontSize: "11px",
-                                        color: labelColor,
-                                        marginTop: "2px",
-                                    }}
-                                >
+
+                                {/* Doc count */}
+                                <span style={{fontSize: "7px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", flexShrink: 0}}>
                                     {folder.docs.length} {folder.docs.length === 1 ? t("documents.document") : t("documents.documents")}
-                                    {" · "}
-                                    {formatSize(folder.totalBytes)}
+                                </span>
+
+                                {/* Rename button */}
+                                {renamingFolder !== folder.name && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setRenamingFolder(folder.name); setRenameValue(folder.name); }}
+                                        title="Rename collection"
+                                        style={{background: "none", border: "none", cursor: "pointer", padding: "2px", color: "rgba(200,210,230,0.22)", flexShrink: 0, display: "flex", alignItems: "center"}}
+                                        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(201,168,76,0.7)"; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.22)"; }}
+                                    >
+                                        <Pencil size={9}/>
+                                    </button>
+                                )}
+
+                                {/* Chevron */}
+                                <div style={{color: "rgba(201,168,76,0.5)", flexShrink: 0, display: "flex", alignItems: "center"}}>
+                                    {isExpanded ? <ChevronDown size={10}/> : <ChevronRight size={10}/>}
                                 </div>
                             </div>
 
-                            {/* Rename button */}
+                            {/* Expanded PDF items */}
+                            {isExpanded && (
+                                <div style={{paddingLeft: "18px", marginBottom: "2px"}}>
+                                    {folder.docs.map((doc) => (
+                                        <div
+                                            key={doc.document_id}
+                                            onMouseEnter={() => setHoveredRowId(doc.document_id)}
+                                            onMouseLeave={() => setHoveredRowId(null)}
+                                            style={{
+                                                display: "flex", alignItems: "center", gap: "8px",
+                                                padding: "6px 8px", borderRadius: "5px",
+                                                border: "1px solid transparent", marginBottom: "2px",
+                                                background: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.03)" : "transparent",
+                                                borderColor: hoveredRowId === doc.document_id ? "rgba(201,168,76,0.06)" : "transparent",
+                                                transition: "all 0.12s",
+                                            }}
+                                        >
+                                            {/* PDF badge */}
+                                            <div style={{
+                                                width: "22px", height: "22px", borderRadius: "4px",
+                                                background: "rgba(201,168,76,0.05)",
+                                                border: "1px solid rgba(201,168,76,0.08)",
+                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                flexShrink: 0,
+                                            }}>
+                                                <span style={{fontSize: "6px", fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.7)", lineHeight: 1}}>PDF</span>
+                                            </div>
+
+                                            {/* Name + meta */}
+                                            <div style={{flex: 1, minWidth: 0}}>
+                                                <div style={{
+                                                    fontSize: "9px", fontFamily: "Georgia, serif",
+                                                    color: "rgba(255,255,255,0.56)",
+                                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                                }} title={doc.filename}>
+                                                    {doc.filename}
+                                                </div>
+                                                <div style={{fontSize: "7px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.22)", marginTop: "1px"}}>
+                                                    {formatSize(doc.size_bytes)} · {formatDate(doc.uploaded_at)}
+                                                    {doc.indexed && <span style={{marginLeft: "4px", color: "rgba(74,222,128,0.6)"}}>✓</span>}
+                                                </div>
+                                            </div>
+
+                                            {/* Delete */}
+                                            <div style={{flexShrink: 0}}>
+                                                {confirmingId === doc.document_id ? (
+                                                    <div style={{display: "flex", gap: "2px", alignItems: "center"}}>
+                                                        <button
+                                                            style={{background: "transparent", border: "none", cursor: "pointer", padding: "2px 5px", fontSize: "9px", color: "#ff8c7a", fontFamily: "system-ui, sans-serif"}}
+                                                            onClick={() => handleDelete(doc.document_id)}
+                                                        >
+                                                            {t("documents.confirm_yes")}
+                                                        </button>
+                                                        <button
+                                                            style={{background: "transparent", border: "none", cursor: "pointer", padding: "2px 5px", fontSize: "9px", color: "rgba(200,210,230,0.22)", fontFamily: "system-ui, sans-serif"}}
+                                                            onClick={() => setConfirmingId(null)}
+                                                        >
+                                                            {t("documents.confirm_no")}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <button
+                                                        disabled={deletingId === doc.document_id}
+                                                        onClick={() => setConfirmingId(doc.document_id)}
+                                                        style={{
+                                                            background: "transparent", border: "none",
+                                                            cursor: deletingId === doc.document_id ? "default" : "pointer",
+                                                            padding: "4px", display: "flex", alignItems: "center", justifyContent: "center",
+                                                            color: hoveredRowId === doc.document_id ? "#ff8c7a" : "rgba(200,210,230,0.22)",
+                                                            transition: "color 0.12s",
+                                                        }}
+                                                    >
+                                                        {deletingId === doc.document_id ? (
+                                                            <span style={{display: "inline-block", width: "10px", height: "10px", borderRadius: "50%", border: "1.5px solid currentColor", borderTopColor: "transparent", animation: "spin 0.6s linear infinite"}} />
+                                                        ) : (
+                                                            <Trash2 size={11}/>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
+
+    // ── Light mode: original design unchanged ─────────────────────────────────
+    return (
+        <div style={{display: "flex", flexDirection: "column", gap: "8px", fontFamily: fontStack}}>
+            {folders.map((folder) => {
+                const isExpanded = expandedFolders.has(folder.name);
+                return (
+                    <div
+                        key={folder.name}
+                        style={{
+                            background: "rgba(255,255,255,0.14)",
+                            border: "0.5px solid rgba(255,255,255,0.35)",
+                            borderRadius: "14px",
+                            overflow: "hidden",
+                        }}
+                    >
+                        <button
+                            onClick={() => toggleFolder(folder.name)}
+                            style={{width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "14px 16px", background: "transparent", border: "none", cursor: "pointer", textAlign: "left"}}
+                        >
+                            <div style={{width: "36px", height: "36px", borderRadius: "10px", background: "rgba(201,168,76,0.08)", border: "0.5px solid rgba(201,168,76,0.28)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0}}>
+                                <Folder size={18} style={{color: "#C9A84C"}}/>
+                            </div>
+                            <div style={{flex: 1, minWidth: 0}}>
+                                {renamingFolder === folder.name ? (
+                                    <div style={{display: "flex", alignItems: "center", gap: "6px"}} onClick={(e) => e.stopPropagation()}>
+                                        <input autoFocus value={renameValue} onChange={(e) => setRenameValue(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === "Enter") handleRename(folder.name, renameValue); if (e.key === "Escape") setRenamingFolder(null); }}
+                                            style={{fontSize: "13px", fontWeight: 600, color: textColor, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(201,168,76,0.4)", borderRadius: "6px", padding: "2px 8px", width: "160px", outline: "none", fontFamily: fontStack}} />
+                                        <button onClick={(e) => { e.stopPropagation(); handleRename(folder.name, renameValue); }} style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}><Check size={14} style={{color: "#4ade80"}}/></button>
+                                        <button onClick={(e) => { e.stopPropagation(); setRenamingFolder(null); }} style={{background: "none", border: "none", cursor: "pointer", padding: "2px"}}><X size={14} style={{color: "rgba(0,0,0,0.3)"}}/></button>
+                                    </div>
+                                ) : (
+                                    <div style={{fontSize: "13px", fontWeight: 600, color: textColor, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"}}>{folder.name}</div>
+                                )}
+                                <div style={{fontSize: "11px", color: labelColor, marginTop: "2px"}}>
+                                    {folder.docs.length} {folder.docs.length === 1 ? t("documents.document") : t("documents.documents")} · {formatSize(folder.totalBytes)}
+                                </div>
+                            </div>
                             {renamingFolder !== folder.name && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setRenamingFolder(folder.name);
-                                        setRenameValue(folder.name);
-                                    }}
-                                    title="Rename collection"
-                                    style={{
-                                        background: "none", border: "none", cursor: "pointer",
-                                        color: labelColor, padding: "4px", flexShrink: 0,
-                                        opacity: 0.6, transition: "opacity 0.15s",
-                                    }}
+                                <button onClick={(e) => { e.stopPropagation(); setRenamingFolder(folder.name); setRenameValue(folder.name); }} title="Rename collection"
+                                    style={{background: "none", border: "none", cursor: "pointer", color: labelColor, padding: "4px", flexShrink: 0, opacity: 0.6, transition: "opacity 0.15s"}}
                                     onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
-                                >
+                                    onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}>
                                     <Pencil size={14}/>
                                 </button>
                             )}
-
-                            {/* Expand chevron */}
-                            <div style={{color: isDark ? "#C9A84C" : labelColor, flexShrink: 0}}>
+                            <div style={{color: labelColor, flexShrink: 0}}>
                                 {isExpanded ? <ChevronDown size={16}/> : <ChevronRight size={16}/>}
                             </div>
                         </button>
-
-                        {/* Expanded document list */}
                         {isExpanded && (
-                            <div
-                                style={{
-                                    borderTop: isDark
-                                        ? "0.5px solid rgba(201,168,76,0.06)"
-                                        : "0.5px solid rgba(255,255,255,0.25)",
-                                }}
-                            >
+                            <div style={{borderTop: "0.5px solid rgba(255,255,255,0.25)"}}>
                                 {folder.docs.map((doc, idx) => (
                                     <div
                                         key={doc.document_id}
                                         onMouseEnter={() => setHoveredRowId(doc.document_id)}
                                         onMouseLeave={() => setHoveredRowId(null)}
                                         style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "12px",
+                                            display: "flex", alignItems: "center", gap: "12px",
                                             padding: "11px 16px 11px 24px",
-                                            borderBottom:
-                                                idx < folder.docs.length - 1
-                                                    ? isDark
-                                                        ? "0.5px solid rgba(201,168,76,0.04)"
-                                                        : "0.5px solid rgba(255,255,255,0.18)"
-                                                    : "none",
-                                            background:
-                                                hoveredRowId === doc.document_id
-                                                    ? isDark
-                                                        ? "rgba(201,168,76,0.04)"
-                                                        : "rgba(255,255,255,0.10)"
-                                                    : "transparent",
+                                            borderBottom: idx < folder.docs.length - 1 ? "0.5px solid rgba(255,255,255,0.18)" : "none",
+                                            background: hoveredRowId === doc.document_id ? "rgba(255,255,255,0.10)" : "transparent",
                                             transition: "background 0.12s",
                                         }}
                                     >
-                                        <FileText
-                                            size={15}
-                                            style={{flexShrink: 0, color: isDark ? "#C9A84C" : "#c47c00"}}
-                                        />
-
-                                        {/* Filename */}
-                                        <div
-                                            style={{
-                                                flex: 1,
-                                                minWidth: 0,
-                                                overflow: "hidden",
-                                                textOverflow: "ellipsis",
-                                                whiteSpace: "nowrap",
-                                                fontSize: "13px",
-                                                fontWeight: 500,
-                                                color: textColor,
-                                            }}
-                                            title={doc.filename}
-                                        >
-                                            {doc.filename}
-                                        </div>
-
-                                        {/* Indexed badge */}
-                                        {doc.indexed && (
-                                            <span title="Indexed" style={{display: "inline-flex"}}>
-                                                <CheckCircle2
-                                                    size={13}
-                                                    style={{
-                                                        flexShrink: 0,
-                                                        color: isDark ? "#4ade80" : "#16a34a",
-                                                    }}
-                                                />
-                                            </span>
-                                        )}
-
-                                        {/* Size */}
-                                        <span
-                                            className="hidden sm:block"
-                                            style={{
-                                                flexShrink: 0,
-                                                width: "72px",
-                                                textAlign: "right",
-                                                fontSize: "11px",
-                                                color: labelColor,
-                                                fontVariantNumeric: "tabular-nums",
-                                            }}
-                                        >
-                                            {formatSize(doc.size_bytes)}
-                                        </span>
-
-                                        {/* Date */}
-                                        <span
-                                            className="hidden sm:block"
-                                            style={{
-                                                flexShrink: 0,
-                                                width: "88px",
-                                                textAlign: "right",
-                                                fontSize: "11px",
-                                                color: labelColor,
-                                                fontVariantNumeric: "tabular-nums",
-                                            }}
-                                        >
-                                            {formatDate(doc.uploaded_at)}
-                                        </span>
-
-                                        {/* Delete */}
-                                        <div
-                                            style={{
-                                                flexShrink: 0,
-                                                width: "64px",
-                                                display: "flex",
-                                                justifyContent: "flex-end",
-                                            }}
-                                        >
+                                        <CheckCircle2 size={15} style={{flexShrink: 0, color: doc.indexed ? "#16a34a" : "rgba(46,31,8,0.22)"}}/>
+                                        <div style={{flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", fontWeight: 500, color: textColor}} title={doc.filename}>{doc.filename}</div>
+                                        <span className="hidden sm:block" style={{flexShrink: 0, width: "72px", textAlign: "right", fontSize: "11px", color: labelColor}}>{formatSize(doc.size_bytes)}</span>
+                                        <span className="hidden sm:block" style={{flexShrink: 0, width: "88px", textAlign: "right", fontSize: "11px", color: labelColor}}>{formatDate(doc.uploaded_at)}</span>
+                                        <div style={{flexShrink: 0, width: "64px", display: "flex", justifyContent: "flex-end"}}>
                                             {confirmingId === doc.document_id ? (
                                                 <div style={{display: "flex", gap: "4px", alignItems: "center"}}>
-                                                    <button
-                                                        style={{
-                                                            background: "transparent",
-                                                            border: "none",
-                                                            cursor: "pointer",
-                                                            padding: "2px 6px",
-                                                            fontSize: "11px",
-                                                            color: isDark ? "#ff8c7a" : "#8b3520",
-                                                            fontFamily: fontStack,
-                                                        }}
-                                                        onClick={() => handleDelete(doc.document_id)}
-                                                    >
-                                                        {t("documents.confirm_yes")}
-                                                    </button>
-                                                    <button
-                                                        style={{
-                                                            background: "transparent",
-                                                            border: "none",
-                                                            cursor: "pointer",
-                                                            padding: "2px 6px",
-                                                            fontSize: "11px",
-                                                            color: labelColor,
-                                                            fontFamily: fontStack,
-                                                        }}
-                                                        onClick={() => setConfirmingId(null)}
-                                                    >
-                                                        {t("documents.confirm_no")}
-                                                    </button>
+                                                    <button style={{background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", fontSize: "11px", color: "#8b3520", fontFamily: fontStack}} onClick={() => handleDelete(doc.document_id)}>{t("documents.confirm_yes")}</button>
+                                                    <button style={{background: "transparent", border: "none", cursor: "pointer", padding: "2px 6px", fontSize: "11px", color: labelColor, fontFamily: fontStack}} onClick={() => setConfirmingId(null)}>{t("documents.confirm_no")}</button>
                                                 </div>
                                             ) : (
-                                                <button
-                                                    disabled={deletingId === doc.document_id}
-                                                    onClick={() => setConfirmingId(doc.document_id)}
-                                                    style={{
-                                                        background: "transparent",
-                                                        border: "none",
-                                                        cursor: deletingId === doc.document_id ? "default" : "pointer",
-                                                        padding: "4px",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        color:
-                                                            hoveredRowId === doc.document_id
-                                                                ? isDark ? "#ff8c7a" : "#8b3520"
-                                                                : labelColor,
-                                                        transition: "color 0.12s",
-                                                    }}
-                                                >
+                                                <button disabled={deletingId === doc.document_id} onClick={() => setConfirmingId(doc.document_id)}
+                                                    style={{background: "transparent", border: "none", cursor: deletingId === doc.document_id ? "default" : "pointer", padding: "4px", display: "flex", alignItems: "center", justifyContent: "center", color: hoveredRowId === doc.document_id ? "#8b3520" : labelColor, transition: "color 0.12s"}}>
                                                     {deletingId === doc.document_id ? (
-                                                        <span
-                                                            style={{
-                                                                display: "inline-block",
-                                                                width: "12px",
-                                                                height: "12px",
-                                                                borderRadius: "50%",
-                                                                border: "2px solid currentColor",
-                                                                borderTopColor: "transparent",
-                                                                animation: "spin 0.6s linear infinite",
-                                                            }}
-                                                        />
+                                                        <span style={{display: "inline-block", width: "12px", height: "12px", borderRadius: "50%", border: "2px solid currentColor", borderTopColor: "transparent", animation: "spin 0.6s linear infinite"}} />
                                                     ) : (
                                                         <Trash2 size={14}/>
                                                     )}

@@ -1,6 +1,5 @@
 "use client";
 
-import {Library} from "lucide-react";
 import {useI18n} from "@/lib/i18n";
 import {useColorMode} from "@/lib/color-mode";
 
@@ -51,192 +50,128 @@ const PLANNED_INDEXES: PlannedIndex[] = [
 export function LegalIndexLibrary() {
     const {t} = useI18n();
     const {isDark} = useColorMode();
-    const fontStack =
-        "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 
-    const labelColor = isDark ? "var(--strict-text-dim, rgba(255,255,255,0.40))" : "rgba(46,31,8,0.45)";
-
-    const cardHeaderSep: React.CSSProperties = {
-        borderBottom: isDark
-            ? "0.5px solid rgba(201,168,76,0.06)"
-            : "0.5px solid rgba(255,255,255,0.30)",
-    };
-
-    const glassCard: React.CSSProperties = {
-        background: isDark
-            ? "rgba(255,255,255,0.02)"
-            : "rgba(255,250,235,0.22)",
-        backdropFilter: isDark ? "blur(24px)" : "blur(32px) saturate(180%) brightness(106%)",
-        WebkitBackdropFilter: isDark ? "blur(24px)" : "blur(32px) saturate(180%) brightness(106%)",
-        border: isDark
-            ? "0.5px solid rgba(201,168,76,0.06)"
-            : "0.5px solid rgba(255,255,255,0.38)",
-        borderRadius: isDark ? "14px" : "20px",
-        boxShadow: isDark
-            ? "0 2px 16px rgba(0,0,0,0.45), inset 0 1px 0 rgba(201,168,76,0.04)"
-            : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
-        overflow: "clip",
-    };
-
-    return (
-        <div style={glassCard}>
-            {/* Header */}
-            <div
-                style={{
-                    ...cardHeaderSep,
-                    padding: "16px 20px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                }}
-            >
-                <Library
-                    size={16}
-                    style={{color: isDark ? "#C9A84C" : "rgba(46,31,8,0.45)"}}
-                />
-                <div>
-                    <h2
-                        style={{
-                            fontSize: "14px",
-                            fontWeight: 600,
-                            color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
-                            margin: 0,
-                            fontFamily: fontStack,
-                        }}
-                    >
-                        {t("documents.library_title")}
-                    </h2>
-                    <p
-                        style={{
-                            fontSize: "11px",
-                            color: labelColor,
-                            margin: "2px 0 0",
-                            fontFamily: fontStack,
-                        }}
-                    >
-                        {t("documents.library_subtitle")}
-                    </p>
+    // ── Dark mode: compact list, mockup aesthetic ─────────────────────────────
+    if (isDark) {
+        return (
+            <div style={{display: "flex", flexDirection: "column", gap: "0"}}>
+                {/* Section label */}
+                <div style={{
+                    fontSize: "7px", fontFamily: "system-ui, sans-serif",
+                    letterSpacing: "1px", textTransform: "uppercase",
+                    color: "rgba(200,210,230,0.22)", marginBottom: "6px",
+                }}>
+                    {t("documents.library_title")}
                 </div>
-            </div>
 
-            {/* Index cards */}
-            <div
-                style={{
-                    padding: "16px 20px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "10px",
-                    fontFamily: fontStack,
-                }}
-            >
-                {PLANNED_INDEXES.map((idx) => (
-                    <div
-                        key={idx.id}
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            background: isDark
-                                ? "rgba(255,255,255,0.02)"
-                                : "rgba(255,255,255,0.14)",
-                            border: isDark
-                                ? "0.5px solid rgba(201,168,76,0.06)"
-                                : "0.5px solid rgba(255,255,255,0.28)",
-                            borderRadius: isDark ? "10px" : "12px",
-                            padding: "12px 16px",
-                            gap: "12px",
-                            opacity: isDark ? 1 : 0.72,
+                {PLANNED_INDEXES.map((idx, i) => (
+                    <div key={idx.id}>
+                        {/* Subtle separator between items */}
+                        {i > 0 && (
+                            <div style={{height: "1px", background: "rgba(201,168,76,0.03)", margin: "0 4px"}} />
+                        )}
+                        <div style={{
+                            display: "flex", alignItems: "center", gap: "8px",
+                            padding: "5px 8px", borderRadius: "5px",
+                            transition: "background 0.12s",
                         }}
-                    >
-                        {/* Left: flag + text */}
-                        <div style={{display: "flex", alignItems: "center", gap: "12px", minWidth: 0}}>
-              <span
-                  style={{fontSize: "22px", lineHeight: 1, flexShrink: 0}}
-                  role="img"
-                  aria-label={idx.jurisdiction}
-              >
-                {idx.flag}
-              </span>
-                            <div style={{minWidth: 0}}>
-                                <div
-                                    style={{
-                                        fontSize: "13px",
-                                        fontWeight: 600,
-                                        color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
-                                        whiteSpace: "nowrap",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                    }}
-                                >
-                                    {idx.name}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: "11px",
-                                        color: labelColor,
-                                        marginTop: "2px",
-                                        whiteSpace: "nowrap",
-                                        overflow: "hidden",
-                                        textOverflow: "ellipsis",
-                                    }}
-                                >
-                                    {idx.description}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Right: passage count + coming soon badge */}
-                        <div
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "10px",
-                                flexShrink: 0,
-                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(201,168,76,0.02)"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                         >
-              <span
-                  style={{
-                      fontSize: "11px",
-                      color: labelColor,
-                      fontVariantNumeric: "tabular-nums",
-                  }}
-              >
-                {idx.passages}
-              </span>
-                            <span
-                                style={{
-                                    fontSize: "10px",
-                                    fontWeight: 600,
-                                    textTransform: "uppercase" as const,
-                                    letterSpacing: "0.06em",
-                                    color: isDark ? "#4ade80" : "#16a34a",
-                                    background: isDark
-                                        ? "rgba(34,197,94,0.10)"
-                                        : "rgba(34,197,94,0.08)",
-                                    border: isDark
-                                        ? "0.5px solid rgba(34,197,94,0.25)"
-                                        : "0.5px solid rgba(34,197,94,0.20)",
-                                    borderRadius: "6px",
-                                    padding: "3px 8px",
-                                    whiteSpace: "nowrap" as const,
-                                }}
-                            >
+                            {/* Flag */}
+                            <span style={{fontSize: "13px", lineHeight: 1, flexShrink: 0}} role="img" aria-label={idx.jurisdiction}>
+                                {idx.flag}
+                            </span>
+
+                            {/* Name + passage count */}
+                            <span style={{
+                                flex: 1, fontSize: "9px", fontFamily: "Georgia, serif",
+                                color: "rgba(255,255,255,0.56)",
+                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                            }}>
+                                {idx.name}
+                            </span>
+
+                            {/* Passage count */}
+                            <span style={{
+                                fontSize: "7px", fontFamily: "system-ui, sans-serif",
+                                color: "rgba(200,210,230,0.22)", flexShrink: 0,
+                                fontVariantNumeric: "tabular-nums",
+                            }}>
+                                {idx.passages}
+                            </span>
+
+                            {/* Active badge */}
+                            <span style={{
+                                fontSize: "6px", fontFamily: "system-ui, sans-serif",
+                                textTransform: "uppercase", letterSpacing: "0.5px",
+                                color: "rgba(74,222,128,0.7)",
+                                background: "rgba(34,197,94,0.08)",
+                                border: "1px solid rgba(34,197,94,0.18)",
+                                borderRadius: "3px", padding: "1px 5px",
+                                flexShrink: 0,
+                            }}>
                                 {t("documents.index_status_active")}
                             </span>
                         </div>
                     </div>
                 ))}
 
-                <p
-                    style={{
-                        fontSize: "11px",
-                        color: labelColor,
-                        margin: "4px 0 0",
-                        lineHeight: 1.5,
-                    }}
-                >
+                <div style={{
+                    fontSize: "7px", fontFamily: "system-ui, sans-serif",
+                    color: "rgba(200,210,230,0.16)", marginTop: "6px", lineHeight: 1.5,
+                }}>
                     {t("documents.library_footer")}
-                </p>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Light mode: original design unchanged ─────────────────────────────────
+    const fontStack = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
+    const labelColor = "rgba(46,31,8,0.45)";
+
+    const glassCard: React.CSSProperties = {
+        background: "rgba(255,250,235,0.22)",
+        backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
+        border: "0.5px solid rgba(255,255,255,0.38)",
+        borderRadius: "20px",
+        boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
+        overflow: "clip",
+    };
+
+    return (
+        <div style={glassCard}>
+            <div style={{borderBottom: "0.5px solid rgba(255,255,255,0.30)", padding: "16px 20px", display: "flex", alignItems: "center", gap: "8px"}}>
+                <div>
+                    <h2 style={{fontSize: "14px", fontWeight: 600, color: "#1e1208", margin: 0, fontFamily: fontStack}}>
+                        {t("documents.library_title")}
+                    </h2>
+                    <p style={{fontSize: "11px", color: labelColor, margin: "2px 0 0", fontFamily: fontStack}}>
+                        {t("documents.library_subtitle")}
+                    </p>
+                </div>
+            </div>
+            <div style={{padding: "16px 20px", display: "flex", flexDirection: "column", gap: "10px", fontFamily: fontStack}}>
+                {PLANNED_INDEXES.map((idx) => (
+                    <div key={idx.id} style={{display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.14)", border: "0.5px solid rgba(255,255,255,0.28)", borderRadius: "12px", padding: "12px 16px", gap: "12px", opacity: 0.72}}>
+                        <div style={{display: "flex", alignItems: "center", gap: "12px", minWidth: 0}}>
+                            <span style={{fontSize: "22px", lineHeight: 1, flexShrink: 0}} role="img" aria-label={idx.jurisdiction}>{idx.flag}</span>
+                            <div style={{minWidth: 0}}>
+                                <div style={{fontSize: "13px", fontWeight: 600, color: "#1e1208", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{idx.name}</div>
+                                <div style={{fontSize: "11px", color: labelColor, marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>{idx.description}</div>
+                            </div>
+                        </div>
+                        <div style={{display: "flex", alignItems: "center", gap: "10px", flexShrink: 0}}>
+                            <span style={{fontSize: "11px", color: labelColor, fontVariantNumeric: "tabular-nums"}}>{idx.passages}</span>
+                            <span style={{fontSize: "10px", fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.06em", color: "#16a34a", background: "rgba(34,197,94,0.08)", border: "0.5px solid rgba(34,197,94,0.20)", borderRadius: "6px", padding: "3px 8px", whiteSpace: "nowrap" as const}}>
+                                {t("documents.index_status_active")}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                <p style={{fontSize: "11px", color: labelColor, margin: "4px 0 0", lineHeight: 1.5}}>{t("documents.library_footer")}</p>
             </div>
         </div>
     );
