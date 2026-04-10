@@ -87,6 +87,11 @@ async def _create_pipeline_document(
             )
             return None
 
+        # Capture template name before commit — expire_on_commit=True detaches the
+        # object when the session exits, making post-commit attribute access raise
+        # DetachedInstanceError.
+        template_name = template.name
+
         # Respect the per-conversation document cap.
         count_result = await session.execute(
             select(ChatDocument.id).where(
@@ -121,7 +126,7 @@ async def _create_pipeline_document(
     return {
         "doc_id": str(doc.id),
         "template_slug": template_slug,  # Return the slug the client sent, not effective_slug
-        "template_name": template.name,
+        "template_name": template_name,
     }
 
 
