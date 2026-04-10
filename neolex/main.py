@@ -30,9 +30,11 @@ from neolex.middleware.request_id import RequestIDMiddleware
 from neolex.middleware.timeout import TimeoutMiddleware
 from neolex.routers import admin as admin_router
 from neolex.routers import documents as documents_router
+from neolex.routers import drafting as drafting_router
 from neolex.routers import feedback as feedback_router
 from neolex.routers import health, stripe_router
 from neolex.routers import query as query_router
+from neolex.routers import templates as templates_router
 from neolex.routers import web_proxy as web_proxy_router
 from neolex.startup_validation import validate_startup
 
@@ -366,7 +368,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 # CSRF middleware: require X-Requested-With header on state-mutating requests.
@@ -396,3 +398,5 @@ app.include_router(oauth_router.router)
 app.include_router(email_auth_router.router)
 app.include_router(stripe_router.router)
 app.include_router(web_proxy_router.router)
+app.include_router(templates_router.router)
+app.include_router(drafting_router.router)
