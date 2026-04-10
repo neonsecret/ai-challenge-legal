@@ -1,5 +1,10 @@
 "use client";
 
+// @deprecated — Use `useColorMode` from `@/lib/color-mode` instead.
+// The two-axis system (Neon/Strict × dark/light) has been replaced by a single
+// color-mode axis: dark = Strict design, light = Neon design.
+// This file is kept for one release cycle and will be deleted in Batch 6 cleanup.
+
 // Design version hook — toggles .design-neon or .design-strict class on <html>.
 // Modeled on frontend/src/lib/theme.tsx.
 //
