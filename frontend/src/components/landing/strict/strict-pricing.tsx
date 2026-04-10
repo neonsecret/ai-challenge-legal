@@ -179,7 +179,7 @@ function PricingCard({
         href="/login"
         onMouseEnter={() => setCtaHovered(true)}
         onMouseLeave={() => setCtaHovered(false)}
-        className="block text-center no-underline transition-all duration-200"
+        className="no-underline transition-all duration-200"
         style={{
           fontSize: "10px",
           background: "rgba(255,255,255,0.025)",
@@ -192,6 +192,10 @@ function PricingCard({
           opacity: plan.featured ? (ctaHovered ? 1 : 0.8) : ctaHovered ? 0.8 : 0.7,
           transform: ctaHovered ? "translateY(-1px)" : "translateY(0)",
           boxShadow: ctaHovered ? "0 2px 8px rgba(201,168,76,0.08)" : "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "44px",
         }}
       >
         {plan.cta}
