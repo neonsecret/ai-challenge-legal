@@ -49,12 +49,12 @@ export default function DocumentsPage() {
     }, [fetchDocuments]);
 
     const glassCard: React.CSSProperties = isDark ? {
-        background: "var(--gm-surface-0)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        border: "1px solid var(--gm-border-outer)",
-        borderRadius: "16px",
-        boxShadow: "var(--gm-shadow-structural)",
+        background: "rgba(255,255,255, 0.02)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        border: "1px solid rgba(201,168,76, 0.06)",
+        borderRadius: "14px",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.025)",
         overflow: "clip",
     } : {
         background: "rgba(255,250,235,0.22)",
@@ -66,11 +66,11 @@ export default function DocumentsPage() {
         overflow: "clip",
     };
 
-    const glassCardClass = isDark ? "v3-glass-panel" : "";
+    const glassCardClass = "";
 
     const cardHeaderSep: React.CSSProperties = {
         borderBottom: isDark
-            ? "0.5px solid rgba(255,255,255,0.12)"
+            ? "1px solid rgba(201,168,76, 0.06)"
             : "0.5px solid rgba(255,255,255,0.30)",
     };
 
@@ -80,7 +80,7 @@ export default function DocumentsPage() {
     return (
         <div
             style={{
-                padding: "24px 16px 120px",
+                padding: isDark ? "24px 16px 24px" : "24px 16px 120px",
                 maxWidth: "800px",
                 margin: "0 auto",
                 display: "flex",
@@ -93,10 +93,10 @@ export default function DocumentsPage() {
             <div>
                 <h1
                     style={{
-                        fontFamily: "var(--font-heading), Georgia, serif",
+                        fontFamily: isDark ? "Georgia, serif" : "var(--font-heading), Georgia, serif",
                         fontSize: "1.5rem",
                         fontWeight: 700,
-                        color: isDark ? "rgba(255,255,255,0.90)" : "#1e1208",
+                        color: isDark ? "var(--strict-text-primary)" : "#1e1208",
                         margin: 0,
                     }}
                 >
@@ -105,7 +105,7 @@ export default function DocumentsPage() {
                 <p
                     style={{
                         fontSize: "13px",
-                        color: isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.55)",
+                        color: isDark ? "var(--strict-text-secondary)" : "rgba(46,31,8,0.55)",
                         marginTop: "4px",
                     }}
                 >
@@ -139,13 +139,13 @@ export default function DocumentsPage() {
                 animate={isDark ? "visible" : undefined}
             >
                 <h2
-                    className={isDark ? "v3-text-aurora" : ""}
+                    className=""
                     style={{
                         fontSize: "11px",
                         fontWeight: 600,
                         textTransform: "uppercase" as const,
                         letterSpacing: "0.08em",
-                        color: isDark ? undefined : "rgba(46,31,8,0.40)",
+                        color: isDark ? "var(--strict-text-dim)" : "rgba(46,31,8,0.40)",
                         margin: "0 0 12px",
                         fontFamily: fontStack,
                     }}
@@ -225,12 +225,12 @@ export default function DocumentsPage() {
                                     fontSize: "13px",
                                     fontWeight: 600,
                                     fontFamily: fontStack,
-                                    color: isDark ? "#fff" : "#fff",
+                                    color: isDark ? "var(--strict-gold-base)" : "#fff",
                                     background: isDark
-                                        ? "rgba(255,255,255,0.12)"
+                                        ? "rgba(201,168,76, 0.1)"
                                         : "rgba(46,31,8,0.80)",
                                     border: isDark
-                                        ? "0.5px solid rgba(255,255,255,0.18)"
+                                        ? "1px solid rgba(201,168,76, 0.2)"
                                         : "0.5px solid rgba(46,31,8,0.15)",
                                     borderRadius: "10px",
                                     textDecoration: "none",
@@ -348,13 +348,13 @@ export default function DocumentsPage() {
             {/* Section divider: Legal Index Library */}
             <div>
                 <h2
-                    className={isDark ? "v3-text-aurora" : ""}
+                    className=""
                     style={{
                         fontSize: "11px",
                         fontWeight: 600,
                         textTransform: "uppercase" as const,
                         letterSpacing: "0.08em",
-                        color: isDark ? undefined : "rgba(46,31,8,0.40)",
+                        color: isDark ? "var(--strict-text-dim)" : "rgba(46,31,8,0.40)",
                         margin: "0 0 12px",
                         fontFamily: fontStack,
                     }}
