@@ -521,9 +521,16 @@ class TestDocumentUpdate:
         existing_doc.updated_at = datetime.now(UTC)
 
         mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_doc
-        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # First execute: _get_owned_document (ownership check)
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = existing_doc
+
+        # Second execute: _get_template_name
+        name_result = MagicMock()
+        name_result.scalar_one_or_none.return_value = "Test Template"
+
+        mock_session.execute = AsyncMock(side_effect=[doc_result, name_result])
         mock_session.commit = AsyncMock()
 
         async def mock_refresh(obj):
@@ -546,6 +553,8 @@ class TestDocumentUpdate:
                 assert data["version"] == 2
                 assert data["fields"]["name"] == "New Name"
                 assert data["fields"]["extra"] == "value"
+                assert data["doc_id"] == str(doc_id)
+                assert data["template_name"] == "Test Template"
             finally:
                 from neolex.auth.middleware import get_api_key
                 from neolex.db.postgres import get_db
