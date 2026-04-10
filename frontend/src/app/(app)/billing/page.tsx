@@ -327,11 +327,11 @@ export default function BillingPage() {
       return {
         background: isDark
           ? "rgba(201,168,76,0.12)"
-          : "rgba(99,102,241,0.10)",
-        color: isDark ? "#C9A84C" : "#4f46e5",
+          : "rgba(92,46,8,0.10)",
+        color: isDark ? "#C9A84C" : "#5c2e08",
         border: isDark
           ? "0.5px solid rgba(201,168,76,0.28)"
-          : "0.5px solid rgba(99,102,241,0.25)",
+          : "0.5px solid rgba(92,46,8,0.20)",
         borderRadius: "9999px",
         padding: "3px 12px",
         fontSize: "11px",
@@ -364,7 +364,7 @@ export default function BillingPage() {
       background: isDark
         ? "rgba(255,255,255,0.08)"
         : "rgba(0,0,0,0.06)",
-      color: isDark ? "rgba(255,255,255,0.50)" : "rgba(46,31,8,0.55)",
+      color: isDark ? "var(--strict-text-dim, rgba(255,255,255,0.38))" : "rgba(46,31,8,0.55)",
       border: isDark
         ? "0.5px solid rgba(255,255,255,0.12)"
         : "0.5px solid rgba(0,0,0,0.10)",
@@ -644,7 +644,7 @@ export default function BillingPage() {
               style={{
                 fontSize: "13px",
                 fontWeight: 600,
-                color: isDark ? "rgba(255,255,255,0.80)" : "#1e1208",
+                color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.90))" : "#1e1208",
                 fontFamily: fontStack,
               }}
             >
@@ -812,7 +812,7 @@ export default function BillingPage() {
                           fontSize: "13px",
                           fontWeight: 600,
                           color: isDark
-                            ? "rgba(255,255,255,0.80)"
+                            ? "var(--strict-text-primary, rgba(255,255,255,0.90))"
                             : "#1e1208",
                           fontFamily: fontStack,
                           margin: "0 0 6px 0",
@@ -824,7 +824,7 @@ export default function BillingPage() {
                         style={{
                           fontSize: "12px",
                           color: isDark
-                            ? "rgba(255,255,255,0.50)"
+                            ? "var(--strict-text-body, rgba(255,255,255,0.65))"
                             : "rgba(46,31,8,0.60)",
                           fontFamily: fontStack,
                           margin: "0 0 14px 0",
@@ -890,7 +890,7 @@ export default function BillingPage() {
                             fontWeight: 500,
                             fontFamily: fontStack,
                             color: isDark
-                              ? "rgba(255,255,255,0.45)"
+                              ? "var(--strict-text-dim, rgba(255,255,255,0.38))"
                               : "rgba(46,31,8,0.50)",
                             cursor: "pointer",
                           }}
