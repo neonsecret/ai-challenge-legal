@@ -431,7 +431,7 @@ class TestDocumentCreate:
 
     @pytest.mark.asyncio
     async def test_create_document_max_3_enforcement(self, sample_template):
-        """POST returns 429 when conversation already has 3 documents."""
+        """POST returns 409 when conversation already has 3 documents."""
         user_id = str(uuid.uuid4())
         conv_id = str(uuid.uuid4())
 
@@ -454,7 +454,7 @@ class TestDocumentCreate:
                     json={"template_slug": "test_template", "fields": {"name": "X"}},
                     headers={"X-Requested-With": "XMLHttpRequest"},
                 )
-            assert resp.status_code == 429
+            assert resp.status_code == 409
         finally:
             from neolex.auth.middleware import get_api_key
             from neolex.db.postgres import get_db
