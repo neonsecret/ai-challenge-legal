@@ -80,23 +80,51 @@ export default function DocumentsPage() {
     return (
         <div
             style={{
-                padding: isDark ? "24px 16px 24px" : "24px 16px 120px",
-                maxWidth: "800px",
-                margin: "0 auto",
-                display: "flex",
-                flexDirection: "column",
-                gap: "24px",
-                fontFamily: fontStack,
+                ...(isDark ? {
+                    display: "flex",
+                    flexDirection: "column" as const,
+                    height: "100%",
+                    overflow: "hidden",
+                } : {
+                    padding: "24px 16px 120px",
+                    maxWidth: "800px",
+                    margin: "0 auto",
+                    display: "flex",
+                    flexDirection: "column" as const,
+                    gap: "24px",
+                    fontFamily: fontStack,
+                }),
             }}
         >
             {/* Page header */}
+            {isDark ? (
+                <div style={{
+                    height: 44,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0 20px",
+                    borderBottom: "1px solid rgba(201,168,76, 0.06)",
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)",
+                }}>
+                    <h1 style={{
+                        fontFamily: "Georgia, serif",
+                        fontSize: 14,
+                        fontWeight: "normal",
+                        color: "var(--strict-text-primary)",
+                        margin: 0,
+                    }}>
+                        {t("documents.title")}
+                    </h1>
+                </div>
+            ) : (
             <div>
                 <h1
                     style={{
-                        fontFamily: isDark ? "Georgia, serif" : "var(--font-heading), Georgia, serif",
+                        fontFamily: "var(--font-heading), Georgia, serif",
                         fontSize: "1.5rem",
                         fontWeight: 700,
-                        color: isDark ? "var(--strict-text-primary)" : "#1e1208",
+                        color: "#1e1208",
                         margin: 0,
                     }}
                 >
@@ -105,13 +133,30 @@ export default function DocumentsPage() {
                 <p
                     style={{
                         fontSize: "13px",
-                        color: isDark ? "var(--strict-text-secondary)" : "rgba(46,31,8,0.55)",
+                        color: "rgba(46,31,8,0.55)",
                         marginTop: "4px",
                     }}
                 >
                     {t("documents.subtitle")}
                 </p>
             </div>
+            )}
+
+            {/* Content area — scrollable in dark mode */}
+            <div style={{
+                ...(isDark ? {
+                    flex: 1,
+                    overflowY: "auto" as const,
+                    padding: "20px 24px",
+                    display: "flex",
+                    flexDirection: "column" as const,
+                    gap: 20,
+                    maxWidth: 800,
+                    width: "100%",
+                    marginLeft: "auto",
+                    marginRight: "auto",
+                } : {}),
+            }}>
 
             {/* Global error banner */}
             {error && (
@@ -363,6 +408,7 @@ export default function DocumentsPage() {
                 </h2>
                 <LegalIndexLibrary isDark={isDark}/>
             </div>
+            </div>{/* end scrollable content wrapper */}
         </div>
     );
 }

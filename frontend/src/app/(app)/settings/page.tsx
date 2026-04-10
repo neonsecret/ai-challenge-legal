@@ -194,16 +194,44 @@ export default function SettingsPage() {
     return (
         <div
             style={{
-                padding: "24px 16px 24px",
-                maxWidth: "640px",
-                margin: "0 auto",
+                ...(isDark ? {
+                    display: "flex",
+                    flexDirection: "column" as const,
+                    height: "100%",
+                    overflow: "hidden",
+                } : {
+                    padding: "24px 16px 120px",
+                    maxWidth: "640px",
+                    margin: "0 auto",
+                }),
             }}
         >
             {/* Page header */}
+            {isDark ? (
+                <div style={{
+                    height: 44,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0 20px",
+                    borderBottom: "1px solid rgba(201,168,76, 0.06)",
+                    background: "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)",
+                }}>
+                    <h1 style={{
+                        fontFamily: "Georgia, serif",
+                        fontSize: 14,
+                        fontWeight: "normal",
+                        color: "var(--strict-text-primary)",
+                        margin: 0,
+                    }}>
+                        {t("settings.title")}
+                    </h1>
+                </div>
+            ) : (
             <div style={{marginBottom: "24px"}}>
                 <h1
                     style={{
-                        fontFamily: isDark ? "Georgia, serif" : "var(--font-heading), Georgia, serif",
+                        fontFamily: "var(--font-heading), Georgia, serif",
                         fontSize: "1.5rem",
                         fontWeight: 700,
                         color: isDark ? "var(--strict-text-primary)" : "var(--dt-text-primary)",
@@ -223,8 +251,20 @@ export default function SettingsPage() {
                     {t("settings.subtitle")}
                 </p>
             </div>
+            )}
 
-            {/* Cards container */}
+            {/* Cards container — scrollable in dark mode */}
+            <div style={{
+                ...(isDark ? {
+                    flex: 1,
+                    overflowY: "auto" as const,
+                    padding: "20px 24px",
+                    maxWidth: 640,
+                    width: "100%",
+                    marginLeft: "auto",
+                    marginRight: "auto",
+                } : {}),
+            }}>
             <motion.div
                 variants={isDark ? V3_LIST_VARIANT : undefined}
                 initial={isDark ? "hidden" : undefined}
@@ -568,6 +608,7 @@ export default function SettingsPage() {
                 )}
 
             </motion.div>
+            </div>{/* end scrollable content wrapper */}
         </div>
     );
 }

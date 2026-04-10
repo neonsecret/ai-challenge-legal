@@ -1310,19 +1310,47 @@ export default function BillingPage() {
   return (
     <div
       style={{
-        padding: "24px 16px 24px",
-        maxWidth: "1100px",
-        margin: "0 auto",
+        ...(isDark ? {
+          display: "flex",
+          flexDirection: "column" as const,
+          height: "100%",
+          overflow: "hidden",
+        } : {
+          padding: "24px 16px 120px",
+          maxWidth: "1100px",
+          margin: "0 auto",
+        }),
       }}
     >
       {/* Page header */}
+      {isDark ? (
+        <div style={{
+          height: 44,
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          padding: "0 20px",
+          borderBottom: "1px solid rgba(201,168,76, 0.06)",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)",
+        }}>
+          <h1 style={{
+            fontFamily: "Georgia, serif",
+            fontSize: 14,
+            fontWeight: "normal",
+            color: "var(--strict-text-primary)",
+            margin: 0,
+          }}>
+            {t("billing.title")}
+          </h1>
+        </div>
+      ) : (
       <div style={{ marginBottom: "24px" }}>
         <h1
           style={{
             fontFamily: "var(--font-heading), Georgia, serif",
             fontSize: "1.5rem",
             fontWeight: 700,
-            color: isDark ? "var(--strict-text-primary, rgba(255,255,255,0.92))" : "#1e1208",
+            color: "#1e1208",
             margin: 0,
           }}
         >
@@ -1330,9 +1358,7 @@ export default function BillingPage() {
         </h1>
         <p
           style={{
-            color: isDark
-              ? "var(--strict-text-secondary, rgba(255,255,255,0.50))"
-              : "rgba(46,31,8,0.55)",
+            color: "rgba(46,31,8,0.55)",
             fontSize: "13px",
             fontFamily: fontStack,
             marginTop: "4px",
@@ -1341,6 +1367,20 @@ export default function BillingPage() {
           {t("billing.subtitle")}
         </p>
       </div>
+      )}
+
+      {/* Content — scrollable in dark mode */}
+      <div style={{
+        ...(isDark ? {
+          flex: 1,
+          overflowY: "auto" as const,
+          padding: "20px 24px",
+          maxWidth: 1100,
+          width: "100%",
+          marginLeft: "auto",
+          marginRight: "auto",
+        } : {}),
+      }}>
 
       {/* Loading state */}
       {loading && (
@@ -1453,6 +1493,7 @@ export default function BillingPage() {
           {renderNotes()}
         </div>
       )}
+      </div>{/* end scrollable content wrapper */}
     </div>
   );
 }
