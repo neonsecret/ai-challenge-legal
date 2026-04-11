@@ -80,9 +80,9 @@ function migrateOldKeys() {
 
 function getInitialResolved(): "light" | "dark" {
     if (typeof document !== "undefined") {
-        return document.documentElement.classList.contains("light") ? "light" : "dark";
+        return document.documentElement.classList.contains("dark") ? "dark" : "light";
     }
-    return "dark";
+    return "light";
 }
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
@@ -134,5 +134,5 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
 
 export function useColorMode(): ColorModeContextValue {
     const ctx = useContext(ColorModeContext);
-    return ctx ?? { mode: "dark", resolvedMode: "dark", setMode: () => {}, isDark: true };
+    return ctx ?? { mode: "light", resolvedMode: "light", setMode: () => {}, isDark: false };
 }
