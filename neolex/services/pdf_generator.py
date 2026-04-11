@@ -37,6 +37,17 @@ else:
     logger.info("xelatex found at %s", _XELATEX_BIN)
 
 # ---------------------------------------------------------------------------
+# Exceptions
+# ---------------------------------------------------------------------------
+
+_XELATEX_TIMEOUT_S = 30  # seconds per xelatex run
+
+
+class PDFTimeoutError(RuntimeError):
+    """Raised when xelatex compilation exceeds the per-run timeout."""
+
+
+# ---------------------------------------------------------------------------
 # Cache directory
 # ---------------------------------------------------------------------------
 
@@ -161,7 +172,12 @@ async def generate_pdf(
                 stderr=asyncio.subprocess.PIPE,
                 cwd=tmpdir,  # run inside the tmpdir, not the project root
             )
-            stdout, stderr = await proc.communicate()
+            try:
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=_XELATEX_TIMEOUT_S)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.communicate()
+                raise PDFTimeoutError(f"xelatex timed out after {_XELATEX_TIMEOUT_S}s for doc_id={doc_id}")
 
             if proc.returncode != 0:
                 log_output = (stdout + stderr).decode("utf-8", errors="replace")[-3000:]

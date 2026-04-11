@@ -361,11 +361,14 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
-        # Second execute: row-fetch FOR UPDATE (0 existing docs)
+        # Second execute: pg_advisory_xact_lock (no meaningful return value needed)
+        lock_result = MagicMock()
+
+        # Third execute: row-fetch FOR UPDATE (0 existing docs)
         count_result = MagicMock()
         count_result.scalars.return_value.all.return_value = []
 
-        mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -442,10 +445,12 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
+        lock_result = MagicMock()
+
         count_result = MagicMock()
         count_result.scalars.return_value.all.return_value = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
 
-        mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
 
         app = _make_app_client(user_id, mock_session)
 
@@ -550,6 +555,7 @@ class TestDocumentUpdate:
                 assert data["doc_id"] == data["id"]
                 assert data["fields"]["name"] == "New Name"
                 assert data["fields"]["extra"] == "value"
+                assert data["template_name"] == "Test Template"
             finally:
                 from neolex.auth.middleware import get_api_key
                 from neolex.db.postgres import get_db
@@ -581,7 +587,8 @@ class TestDocumentUpdate:
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_doc
+        # SQL WHERE now includes user_id — wrong-owner row is not returned by DB
+        mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         app = _make_app_client(requester, mock_session)
@@ -768,16 +775,14 @@ class TestDocumentDelete:
     @pytest.mark.asyncio
     async def test_delete_document_wrong_owner_returns_404(self):
         """DELETE returns 404 when the document belongs to a different user."""
-        real_owner = uuid.uuid4()
         requester = str(uuid.uuid4())
         conv_id = uuid.uuid4()
         doc_id = uuid.uuid4()
 
-        doc = self._make_chat_doc(str(real_owner), conv_id, doc_id)
-
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = doc
+        # SQL WHERE now includes user_id — wrong-owner row is not returned by DB
+        mock_result.scalar_one_or_none.return_value = None
         mock_session.execute = AsyncMock(return_value=mock_result)
 
         app = _make_app_client(requester, mock_session)

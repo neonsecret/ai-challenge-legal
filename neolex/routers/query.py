@@ -90,7 +90,9 @@ async def _create_pipeline_document(
         # Capture template name before commit — expire_on_commit=True detaches the
         # object when the session exits, making post-commit attribute access raise
         # DetachedInstanceError.
-        template_name = template.name
+        # For __custom__ slugs, always return the locale-neutral English label
+        # regardless of what name the underlying DB template has (NEO-1021).
+        template_name = "Custom Document" if template_slug == _PIPELINE_CUSTOM_SLUG else template.name
 
         # Respect the per-conversation document cap.
         count_result = await session.execute(
