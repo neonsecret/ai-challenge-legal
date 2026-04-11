@@ -691,7 +691,9 @@ async def query_stream(
             # Emit document_generated when the query included a template_slug.
             # The document is created as a stub (empty fields) that the user
             # fills via the DocumentCard UI.  Non-fatal if creation fails.
-            if body.template_slug and conversation_id:
+            # Agent path: document_draft tool in graph.py creates+fills the
+            # document — skip the stub so we don't emit a second event.
+            if body.template_slug and conversation_id and not body.use_agent:
                 try:
                     doc_payload = await _create_pipeline_document(
                         template_slug=body.template_slug,

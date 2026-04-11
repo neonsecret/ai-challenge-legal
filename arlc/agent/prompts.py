@@ -551,6 +551,14 @@ def _build_drafting_section(state: AgentState) -> str:
         "4. **Explain to the user** — after calling document_draft, summarise what was "
         "generated and point out any fields you could not fill that require user input.",
         "",
+        "### FIRST-TURN MANDATE",
+        "On the **very first drafting turn** (when no document exists yet in this conversation), "
+        "you MUST call `document_draft` before ending your response. "
+        "Do NOT wait for a second turn to gather more information. "
+        "Research the corpus, then call `document_draft` with `action=create`. "
+        "For any required field the user has not yet provided, use a clearly marked placeholder "
+        'such as `"[DOPLNIT: jméno účastníka]"` — never leave the call for a future turn.',
+        "",
         "### CRITICAL GUARDRAILS",
         "- **NEVER invent**: party names, addresses, dates, amounts, facts, or case numbers "
         "from your general knowledge. If the user has not provided these, ask before drafting.",
