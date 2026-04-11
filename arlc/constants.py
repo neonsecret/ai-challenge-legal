@@ -260,3 +260,20 @@ Justified: same rationale — logging only, doesn't affect pipeline output."""
 RETRIEVER_PREFIX_MATCH_CHARS: int = 200
 """Max chars checked for pattern matching (SAC prefix, FINES keyword).
 Justified: these patterns always appear in the first 200 chars by design."""
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Drafting Mode — Document Slugs
+# Mirrored from neolex/constants.py to avoid cross-package imports.
+# Keep in sync manually; changes here must be reflected in neolex/constants.py.
+# ═══════════════════════════════════════════════════════════════════════════
+
+DRAFTING_CUSTOM_SLUG: str = "__custom__"
+"""Sentinel slug sent by the frontend when the user selects a custom
+(template-free) document. The agent detects this and routes to freeform
+drafting instead of fetching a DB template."""
+
+DRAFTING_FREEFORM_SLUG: str = "vlastni_dokument"
+"""Effective slug used internally once DRAFTING_CUSTOM_SLUG is resolved.
+Matches the freeform document type stored in neolex templates table.
+Resolve DRAFTING_CUSTOM_SLUG → DRAFTING_FREEFORM_SLUG before any
+FK-constrained DB operation."""
