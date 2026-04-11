@@ -242,7 +242,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                 }}>
                                     ✦
                                 </span>
-                                <div style={{display: "flex", flexDirection: "column", gap: 2}}>
+                                <div style={{display: "flex", flexDirection: "column", gap: SPACE[1]}}>
                                     <span style={{
                                         fontFamily: "Georgia, serif",
                                         fontSize: TYPE_SCALE.sm,
