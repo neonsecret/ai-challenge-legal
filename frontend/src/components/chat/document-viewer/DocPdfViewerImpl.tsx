@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useCallback} from "react"
+import {useState, useCallback, useEffect, useRef} from "react"
 import {Document, Page, pdfjs} from "react-pdf"
 import "react-pdf/dist/Page/AnnotationLayer.css"
 import "react-pdf/dist/Page/TextLayer.css"
@@ -14,13 +14,24 @@ if (typeof pdfjs !== "undefined") {
 
 export interface DocPdfViewerProps {
     pdfUrl: string
-    onError?: () => void
+    onError?: (kind: "timeout" | "error") => void
 }
 
 export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
     const [numPages, setNumPages] = useState<number | null>(null)
     const [page, setPage] = useState(1)
     const [error, setError] = useState(false)
+    const headCheckedRef = useRef<string | null>(null)
+
+    // Pre-check HTTP status via HEAD before react-pdf attempts to load.
+    // This lets us surface a 503 timeout as a distinct error kind.
+    useEffect(() => {
+        if (!pdfUrl || headCheckedRef.current === pdfUrl) return
+        headCheckedRef.current = pdfUrl
+        fetch(pdfUrl, {method: "HEAD", credentials: "include"})
+            .then(r => { if (!r.ok) onError?.(r.status === 503 ? "timeout" : "error") })
+            .catch(() => onError?.("error"))
+    }, [pdfUrl, onError])
 
     const handleLoadSuccess = useCallback(({numPages}: {numPages: number}) => {
         setNumPages(numPages)
@@ -29,7 +40,7 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
 
     const handleLoadError = useCallback(() => {
         setError(true)
-        onError?.()
+        onError?.("error")
     }, [onError])
 
     if (error) {
