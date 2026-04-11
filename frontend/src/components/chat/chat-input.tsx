@@ -193,7 +193,7 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
 
             {/* Toolbar row — below input, outside the box */}
             {onTemplateSelect && (
-                <div style={{display: "flex", alignItems: "center", gap: 6, marginTop: SPACE['1']}}>
+                <div style={{display: "flex", alignItems: "center", gap: SPACE['2'], marginTop: SPACE['1']}}>
                     <TemplatePicker
                         onOpen={() => setPanelOpen(true)}
                         disabled={documentCount >= 3}
