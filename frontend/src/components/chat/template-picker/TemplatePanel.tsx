@@ -12,7 +12,7 @@ import type {Template} from "@/types/documents"
 const JURISDICTIONS = ["CZ", "DIFC", "UK", "General"] as const
 type JurisdictionFilter = typeof JURISDICTIONS[number]
 
-const CATEGORIES = ["Civil", "Labour", "Administrative", "Criminal", "General"] as const
+const CATEGORIES = ["Civil", "Labor", "Administrative", "Criminal", "General"] as const
 type CategoryFilter = typeof CATEGORIES[number]
 
 interface TemplatePanelProps {
@@ -72,7 +72,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     }, [onSelect, onClose])
 
     const filtered = templates.filter((t: Template) => {
-        const jMatch = !jurisdiction || t.jurisdiction.toUpperCase() === jurisdiction || (jurisdiction === "General" && !t.jurisdiction)
+        const jMatch = !jurisdiction || t.jurisdiction.toUpperCase() === jurisdiction.toUpperCase() || (jurisdiction === "General" && !t.jurisdiction)
         const cMatch = !category || t.category.toLowerCase() === category.toLowerCase()
         return jMatch && cMatch
     })
