@@ -68,6 +68,7 @@ from arlc.agent.tools import (
     verify_source_relevance,
 )
 from arlc.agent.verification import verify_agent_pages
+from arlc.constants import DRAFTING_CUSTOM_SLUG, DRAFTING_FREEFORM_SLUG
 
 logger = logging.getLogger(__name__)
 
@@ -712,11 +713,11 @@ def build_agent_graph():
                 document_id = tc["args"].get("document_id", "") or ""
                 t_slug = tc["args"].get("template_slug", "") or state.get("template_slug", "")
 
-                # Convert the __custom__ frontend sentinel to the DB slug for vlastni_dokument.
-                # The freeform template lives in the DB as "vlastni_dokument"; "__custom__" is
-                # only a UI-layer sentinel and must never be used for FK-constrained DB operations.
-                if t_slug == "__custom__":
-                    t_slug = "vlastni_dokument"
+                # Convert the DRAFTING_CUSTOM_SLUG frontend sentinel to the DB slug.
+                # DRAFTING_FREEFORM_SLUG is the FK-safe value; DRAFTING_CUSTOM_SLUG is
+                # only a UI-layer sentinel and must never reach FK-constrained DB operations.
+                if t_slug == DRAFTING_CUSTOM_SLUG:
+                    t_slug = DRAFTING_FREEFORM_SLUG
 
                 if not isinstance(fields, dict):
                     results_msgs.append(
