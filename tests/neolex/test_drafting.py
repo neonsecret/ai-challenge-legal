@@ -391,6 +391,8 @@ class TestDocumentCreate:
             assert resp.status_code == 201
             data = resp.json()
             assert data["template_slug"] == "test_template"
+            assert data["template_name"] == "Test Template"
+            assert data["doc_id"] == data["id"]
             assert data["fields"]["name"] == "Jan Novák"
             assert data["version"] == 1
         finally:
@@ -514,9 +516,16 @@ class TestDocumentUpdate:
         existing_doc.updated_at = datetime.now(UTC)
 
         mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = existing_doc
-        mock_session.execute = AsyncMock(return_value=mock_result)
+
+        # First execute: _get_owned_document (returns the ChatDocument)
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = existing_doc
+
+        # Second execute: _get_template_name (returns display name scalar)
+        name_result = MagicMock()
+        name_result.scalar_one_or_none.return_value = "Test Template"
+
+        mock_session.execute = AsyncMock(side_effect=[doc_result, name_result])
         mock_session.commit = AsyncMock()
 
         async def mock_refresh(obj):
@@ -537,6 +546,8 @@ class TestDocumentUpdate:
                 assert resp.status_code == 200
                 data = resp.json()
                 assert data["version"] == 2
+                assert data["template_name"] == "Test Template"
+                assert data["doc_id"] == data["id"]
                 assert data["fields"]["name"] == "New Name"
                 assert data["fields"]["extra"] == "value"
             finally:

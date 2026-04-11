@@ -76,6 +76,41 @@ async def _get_owned_document(
 
 
 # ---------------------------------------------------------------------------
+# Helpers: template name lookup and response construction
+# ---------------------------------------------------------------------------
+
+
+async def _get_template_name(db: AsyncSession, slug: str) -> str | None:
+    """Return the display name for a template slug, or None if not found."""
+    result = await db.execute(select(DocumentTemplate.name).where(DocumentTemplate.slug == slug))
+    return result.scalar_one_or_none()
+
+
+async def _get_template_names(db: AsyncSession, slugs: set[str]) -> dict[str, str]:
+    """Batch-fetch display names for a set of template slugs."""
+    if not slugs:
+        return {}
+    result = await db.execute(
+        select(DocumentTemplate.slug, DocumentTemplate.name).where(DocumentTemplate.slug.in_(slugs))
+    )
+    return {row[0]: row[1] for row in result.all()}
+
+
+def _build_doc_response(doc: ChatDocument, template_name: str | None) -> DocumentResponse:
+    """Construct a DocumentResponse with template_name populated."""
+    return DocumentResponse(
+        id=doc.id,
+        conversation_id=doc.conversation_id,
+        template_slug=doc.template_slug,
+        template_name=template_name,
+        fields=doc.fields,
+        version=doc.version,
+        created_at=doc.created_at,
+        updated_at=doc.updated_at,
+    )
+
+
+# ---------------------------------------------------------------------------
 # POST /api/v1/conversations/{conversation_id}/documents
 # ---------------------------------------------------------------------------
 
@@ -116,6 +151,11 @@ async def create_document(
             detail=f"Missing required field(s): {', '.join(missing)}",
         )
 
+    # Capture template name before commit — expire_on_commit=True detaches the ORM
+    # object when the session exits, making post-commit attribute access raise
+    # DetachedInstanceError (or MissingGreenlet in async contexts).
+    template_name = template.name
+
     # Enforce max 3 documents per conversation with SELECT FOR UPDATE to prevent races.
     # NOTE: SELECT COUNT(*) FOR UPDATE is invalid in PostgreSQL — only row-returning
     # queries can use FOR UPDATE. We fetch the IDs instead and count in Python.
@@ -153,7 +193,7 @@ async def create_document(
         conv_uuid,
         user_id,
     )
-    return DocumentResponse.model_validate(doc)
+    return _build_doc_response(doc, template_name)
 
 
 # ---------------------------------------------------------------------------
@@ -190,8 +230,9 @@ async def update_document(
     # Invalidate cached PDF for this document (version changed)
     invalidate_cache(doc.id)
 
+    tmpl_name = await _get_template_name(db, doc.template_slug)
     logger.info("Document updated: id=%s version=%d user=%s", doc.id, doc.version, user_id)
-    return DocumentResponse.model_validate(doc)
+    return _build_doc_response(doc, tmpl_name)
 
 
 # ---------------------------------------------------------------------------
@@ -255,7 +296,9 @@ async def list_documents(
         .order_by(ChatDocument.created_at.asc())
     )
     docs = result.scalars().all()
-    return [DocumentResponse.model_validate(d) for d in docs]
+    slugs = {d.template_slug for d in docs}
+    name_map = await _get_template_names(db, slugs)
+    return [_build_doc_response(d, name_map.get(d.template_slug)) for d in docs]
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +322,8 @@ async def get_document(
     user_id = uuid.UUID(key_row["user_id"])
 
     doc = await _get_owned_document(doc_uuid, conv_uuid, user_id, db)
-    return DocumentResponse.model_validate(doc)
+    tmpl_name = await _get_template_name(db, doc.template_slug)
+    return _build_doc_response(doc, tmpl_name)
 
 
 # ---------------------------------------------------------------------------
