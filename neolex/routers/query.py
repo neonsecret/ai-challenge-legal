@@ -538,6 +538,7 @@ async def query_stream(
                                 "template_slug": doc_payload.get("template_slug", ""),
                                 "template_name": doc_payload.get("template_name", ""),
                                 "version": doc_payload.get("version", 1),
+                                "fields": doc_payload.get("fields"),
                             }
                         ),
                     }
