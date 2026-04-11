@@ -84,16 +84,18 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
         const el = panelRef.current
         if (!el) return
 
-        const focusable = el.querySelectorAll<HTMLElement>(
-            "button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])"
-        )
-        focusable[0]?.focus()
+        const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])"
+        // Initial focus — re-query so elements rendered after dialog open are included.
+        el.querySelectorAll<HTMLElement>(FOCUSABLE)[0]?.focus()
 
         const handleKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") { e.preventDefault(); onClose(); return }
             if (e.key !== "Tab") return
-            const first = focusable[0]
-            const last = focusable[focusable.length - 1]
+            // Re-query live on every Tab press — DocPdfViewerImpl renders async,
+            // so pagination buttons are absent from any snapshot taken at open time.
+            const live = el.querySelectorAll<HTMLElement>(FOCUSABLE)
+            const first = live[0]
+            const last = live[live.length - 1]
             if (e.shiftKey) {
                 if (document.activeElement === first) { e.preventDefault(); last?.focus() }
             } else {
