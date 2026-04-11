@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState, useCallback, useRef, useId} from "react"
+import {useEffect, useState, useCallback, useRef, useId, useMemo} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {X} from "lucide-react"
 import {useIsMobile} from "@/hooks/use-mobile"
@@ -30,7 +30,10 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const [category, setCategory] = useState<string | null>(null)
 
     // Derive categories from loaded templates so new backend categories appear automatically
-    const categories = Array.from(new Set(templates.map((t: Template) => t.category).filter(Boolean)))
+    const categories = useMemo(
+        () => Array.from(new Set(templates.map((t: Template) => t.category).filter(Boolean))),
+        [templates]
+    )
 
     // Load all templates once when panel opens; client-side filter handles jurisdiction/category.
     // Passing jurisdiction to the server caused case-mismatch bugs (DB stores uppercase, "General"
