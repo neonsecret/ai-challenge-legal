@@ -46,16 +46,19 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
         const el = panelRef.current
         if (!el) return
 
-        const focusable = el.querySelectorAll<HTMLElement>(
-            "button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])"
-        )
-        focusable[0]?.focus()
+        const FOCUSABLE = "button, [href], input, select, textarea, [tabindex]:not([tabindex=\"-1\"])"
+
+        // Focus the first element on open (synchronous elements are present at this point)
+        el.querySelectorAll<HTMLElement>(FOCUSABLE)[0]?.focus()
 
         const handleKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") { e.preventDefault(); onClose(); return }
             if (e.key !== "Tab") return
-            const first = focusable[0]
-            const last = focusable[focusable.length - 1]
+            // Re-query on every Tab press — template cards render asynchronously after
+            // the panel opens, so a snapshot captured at open time would miss them.
+            const live = el.querySelectorAll<HTMLElement>(FOCUSABLE)
+            const first = live[0]
+            const last = live[live.length - 1]
             if (e.shiftKey) {
                 if (document.activeElement === first) { e.preventDefault(); last?.focus() }
             } else {
