@@ -25,6 +25,8 @@ async def run_single_question(
     user_id: str | None = None,
     conversation_id: str | None = None,
     laws: list[str] | None = None,
+    user_email: str | None = None,
+    subscription_plan: str | None = None,
 ) -> dict:
     """Route one HTTP question through the arlc pipeline.
 
@@ -96,9 +98,12 @@ async def run_single_question(
         finalize_trace,
         get_trace_id,
         is_enabled,
+        reset_current_trace,
+        set_current_trace,
     )
 
     trace = None
+    _trace_token = None
     _stage_times: dict[str, float] = {}
 
     if is_enabled():
@@ -107,7 +112,12 @@ async def run_single_question(
             corpus=corpus,
             answer_type=answer_type,
             user_id=user_id,
+            session_id=conversation_id,
+            user_email=user_email,
+            subscription_plan=subscription_plan,
         )
+        if trace is not None:
+            _trace_token = set_current_trace(trace)
 
     # Wrap on_status to record the wall-clock start of each pipeline stage so
     # we can compute span durations after the pipeline completes.
@@ -144,6 +154,9 @@ async def run_single_question(
         if trace is not None:
             finalize_trace(trace, level="ERROR")
         raise
+    finally:
+        if _trace_token is not None:
+            reset_current_trace(_trace_token)
 
     # --- Post-pipeline: record spans and finalise the trace ---
     if trace is not None:
@@ -152,12 +165,15 @@ async def run_single_question(
         add_generation_span(
             trace,
             model=result.get("model_name", "unknown"),
+            input_text=effective_question,
             output_text=answer_str,
             duration_ms=float(result.get("total_time_ms", 0)),
             usage={
                 "input": result.get("input_tokens", 0),
                 "output": result.get("output_tokens", 0),
             },
+            cache_read_tokens=result.get("cache_read_tokens", 0),
+            cache_write_tokens=result.get("cache_write_tokens", 0),
         )
         finalize_trace(trace, output=answer_str)
         result["trace_id"] = get_trace_id(trace)

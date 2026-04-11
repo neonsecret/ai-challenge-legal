@@ -226,6 +226,25 @@ def llm_rerank_pages(
                 f"(combined={scored[0][1]:.2f})",
             )
 
+            # Record LLM reranker call as an observability span (no-op when trace is None)
+            try:
+                from neolex.observability import (
+                    _SPAN_INPUT_TRUNCATE_CHARS,
+                    add_generation_span,
+                    get_current_trace,
+                )
+
+                add_generation_span(
+                    get_current_trace(),
+                    model=model,
+                    input_text=prompt[:_SPAN_INPUT_TRUNCATE_CHARS],
+                    output_text=content,
+                    duration_ms=elapsed_ms,
+                    metadata={"name": "llm-reranker", "n_candidates": len(pages)},
+                )
+            except Exception:
+                pass
+
             return result
 
         except json.JSONDecodeError as e:

@@ -118,11 +118,11 @@ export default function ChatPage() {
     const {jurisdiction, setJurisdiction} = useJurisdiction()
     const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, isDraftingMode, clearError, abort} = stream
 
-    const [drawerOpen, setDrawerOpen] = useState(false)
+    const [panelOpen, setPanelOpen] = useState(false)
+    const [panelTab, setPanelTab] = useState<"source" | "index">("source")
     const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[]; focusDocId?: string; focusPage?: number; focusSeq: number }>({answer: "", sources: [], focusSeq: 0})
     const [previewIndex, setPreviewIndex] = useState<number | null>(null)
     const [historyOpen, setHistoryOpen] = useState(false)
-    const [indexOpen, setIndexOpen] = useState(false)
     const [indexFocusDocId, setIndexFocusDocId] = useState<string | null>(null)
     const [lawPaneOpen, setLawPaneOpen] = useState(false)
     const [pendingTemplate, setPendingTemplate] = useState<{slug: string; name: string} | null>(null)
@@ -130,6 +130,9 @@ export default function ChatPage() {
     const [viewingDocId, setViewingDocId] = useState<string | null>(null)
     const [viewingDocName, setViewingDocName] = useState<string | undefined>(undefined)
     const docState = useDocumentState(currentSessionId)
+    // Refs for event listeners to avoid stale closures
+    const panelOpenRef = useRef(false)
+    const panelTabRef = useRef<"source" | "index">("source")
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const longPressFiredRef = useRef(false)
     const corpusBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -197,9 +200,14 @@ export default function ChatPage() {
 
     // (Sessions are managed by ChatStateProvider)
 
+    // Keep refs in sync for event listeners that close over stale state
+    useEffect(() => { panelOpenRef.current = panelOpen }, [panelOpen])
+    useEffect(() => { panelTabRef.current = panelTab }, [panelTab])
+
     const handleSourceClick = useCallback((answer: string, sources: Source[], focusDocId?: string, focusPage?: number) => {
         setDrawerData(prev => ({answer, sources, focusDocId, focusPage, focusSeq: prev.focusSeq + 1}))
-        setDrawerOpen(true)
+        setPanelOpen(true)
+        setPanelTab("source")
         // Also focus the doc in the document index if it's open
         if (focusDocId) {
             setIndexFocusDocId(focusDocId)
@@ -359,7 +367,14 @@ export default function ChatPage() {
     useEffect(() => {
         const onHistoryToggle = () => setHistoryOpen(v => !v)
         const onNewChatEvent = () => { newChat(); setPreviewIndex(null) }
-        const onDocIndexToggle = () => setIndexOpen(v => !v)
+        const onDocIndexToggle = () => {
+            if (panelOpenRef.current && panelTabRef.current === "index") {
+                setPanelOpen(false)
+            } else {
+                setPanelOpen(true)
+                setPanelTab("index")
+            }
+        }
         window.addEventListener("vitreon:history-toggle", onHistoryToggle)
         window.addEventListener("vitreon:new-chat", onNewChatEvent)
         window.addEventListener("vitreon:doc-index-toggle", onDocIndexToggle)
@@ -368,7 +383,7 @@ export default function ChatPage() {
         if (pending) {
             sessionStorage.removeItem("vitreon:pending-action")
             if (pending === "history-toggle") setHistoryOpen(true) // eslint-disable-line react-hooks/set-state-in-effect
-            else if (pending === "doc-index-toggle") setIndexOpen(true)
+            else if (pending === "doc-index-toggle") { setPanelOpen(true); setPanelTab("index") }
         }
         return () => {
             window.removeEventListener("vitreon:history-toggle", onHistoryToggle)
@@ -439,7 +454,7 @@ export default function ChatPage() {
             <div className={isStrict ? undefined : "animate-glass-in"} style={{
                 flex: 1,
                 display: "flex",
-                flexDirection: isStrict && !isMobile && drawerOpen && drawerData.sources.length > 0 ? "row" : "column",
+                flexDirection: isStrict && !isMobile && panelOpen && panelTab === "source" && drawerData.sources.length > 0 ? "row" : "column",
                 minHeight: 0,
                 minWidth: 0,
                 position: "relative",
@@ -461,8 +476,15 @@ export default function ChatPage() {
                     onToggleInternet={() => setUseInternet(prev => !prev)}
                     historyOpen={historyOpen}
                     onToggleHistory={() => setHistoryOpen(v => !v)}
-                    indexOpen={indexOpen}
-                    onToggleIndex={() => setIndexOpen(v => !v)}
+                    indexOpen={panelOpen && panelTab === "index"}
+                    onToggleIndex={() => {
+                        if (panelOpen && panelTab === "index") {
+                            setPanelOpen(false)
+                        } else {
+                            setPanelOpen(true)
+                            setPanelTab("index")
+                        }
+                    }}
                     documentIndexCount={documentIndex.length}
                     hasMessages={messages.length > 0}
                     onNewChat={newChat}
@@ -679,11 +701,11 @@ export default function ChatPage() {
 
                 {/* Source panel — dark mode desktop: slides in at 42% on citation click */}
                 <AnimatePresence>
-                    {isStrict && !isMobile && drawerOpen && drawerData.sources.length > 0 && (
+                    {isStrict && !isMobile && panelOpen && panelTab === "source" && drawerData.sources.length > 0 && (
                         <SourcePanelV2
                             sources={drawerData.sources}
                             initialIndex={0}
-                            onClose={() => setDrawerOpen(false)}
+                            onClose={() => setPanelOpen(false)}
                         />
                     )}
                 </AnimatePresence>
@@ -834,36 +856,35 @@ export default function ChatPage() {
             </AnimatePresence>
 
             {/* ── Mobile dark mode source bottom sheet — portaled to escape glass pane stacking context ── */}
-            {isMobile && isStrict && drawerOpen && drawerData.sources.length > 0 && typeof document !== "undefined" && createPortal(
+            {isMobile && isStrict && panelOpen && panelTab === "source" && drawerData.sources.length > 0 && typeof document !== "undefined" && createPortal(
                 <MobileSourceSheet
                     sources={drawerData.sources}
                     answer={drawerData.answer}
                     focusDocId={drawerData.focusDocId}
                     focusPage={drawerData.focusPage}
                     focusSeq={drawerData.focusSeq}
-                    onClose={() => setDrawerOpen(false)}
+                    onClose={() => setPanelOpen(false)}
                 />,
                 document.body,
             )}
 
-            {/* ── Source grounding panel ── */}
-            {/* Strict desktop: handled by SourcePanelV2 inside main pane (above). */}
-            {/* Strict mobile: handled by MobileSourceSheet (above). */}
-            {/* Light mode: flex sibling beside chat (below). */}
+            {/* ── Unified side panel — source grounding (light mode) or document index ── */}
+            {/* Strict desktop source: SourcePanelV2 inside main pane. Strict mobile source: MobileSourceSheet portal. */}
             <AnimatePresence>
-                {drawerOpen && drawerData.sources.length > 0 && !isStrict && (
+                {panelOpen && (panelTab === "index" || (!isStrict && drawerData.sources.length > 0)) && (
                     <motion.div
                         initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
-                        animate={isMobile ? {y: 0} : {opacity: 1, width: "50%"}}
+                        animate={isMobile ? {y: 0} : {opacity: 1, width: panelTab === "index" ? 280 : "50%"}}
                         exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         transition={{duration: 0.25, ease: [0.32, 0.72, 0, 1], ...(isMobile ? {type: "tween"} : {})}}
+                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
                         style={{
+                            display: "flex", flexDirection: "column",
+                            minHeight: 0, flexShrink: 0,
+                            overflow: "clip",
                             ...(isMobile ? {
                                 position: "fixed",
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                top: "8vh",
+                                left: 0, right: 0, bottom: 0, top: "8vh",
                                 zIndex: 100,
                                 borderRadius: "20px 20px 0 0",
                                 willChange: "transform",
@@ -873,157 +894,23 @@ export default function ChatPage() {
                                 border: "0.5px solid var(--dt-panel-border-color)",
                                 boxShadow: "var(--dt-panel-shadow)",
                             } : {
-                                flex: layoutMode === "source" ? 2 : layoutMode === "chat" ? 1 : 1,
-                                position: "relative",
-                                flexShrink: 0,
-                                ...makeGlassPanel(false),
+                                ...(panelTab === "source" ? {
+                                    flex: layoutMode === "source" ? 2 : 1,
+                                    position: "relative" as const,
+                                    flexShrink: 0,
+                                } : {}),
+                                ...makeGlassPanel(isStrict),
                             }),
-                            display: "flex",
-                            flexDirection: "column",
-                            minHeight: 0,
-                            minWidth: 0,
-                            overflow: "clip",
                         }}
                     >
                         {/* Mobile drag handle */}
                         {isMobile && (
                             <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
-                                <div style={{
-                                    width: 36, height: SPACE['1'], borderRadius: 2,
-                                    background: "var(--dt-text-quaternary)",
-                                }}/>
+                                <div style={{width: 36, height: SPACE['1'], borderRadius: 2, background: "var(--dt-text-quaternary)"}}/>
                             </div>
                         )}
-                        {/* Panel header — light mode only (strict uses SourcePanelV2) */}
-                        <div style={{
-                            padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['6']}px`,
-                            borderBottom: "0.5px solid var(--dt-glass-border-subtle)",
-                            display: "flex", alignItems: "center", justifyContent: "space-between",
-                            flexShrink: 0,
-                            background: "var(--dt-glass-bg-subtle)",
-                        }}>
-              <span style={{
-                  fontSize: TYPE_SCALE.sm,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.12em",
-                  color: "var(--dt-accent-color)",
-                  fontFamily: FONT.sans,
-              }}>
-                Source Grounding
-              </span>
-                            <div style={{display: "flex", alignItems: "center", gap: SPACE['1']}}>
-                                {/* Layout toggle buttons — hide on mobile and in Strict mode */}
-                                {!isMobile && !isStrict && (["chat", "split", "source"] as const).map((mode) => (
-                                    <button
-                                        key={mode}
-                                        onClick={() => setLayoutMode(mode)}
-                                        title={mode === "chat" ? "Chat focused" : mode === "split" ? "Equal split" : "Sources focused"}
-                                        style={{
-                                            display: "flex", alignItems: "center", gap: 1,
-                                            padding: `3px ${SPACE['1']}px`, borderRadius: RADIUS.sm,
-                                            background: layoutMode === mode
-                                                ? "var(--dt-accent-tint)"
-                                                : "var(--dt-button-bg)",
-                                            border: layoutMode === mode
-                                                ? "0.5px solid var(--dt-accent-border-color)"
-                                                : "0.5px solid var(--dt-glass-border-subtle)",
-                                            cursor: "pointer",
-                                            transition: `all ${TIMING.instant}`,
-                                        }}
-                                    >
-                                        {/* Left rectangle (chat) */}
-                                        <span style={{
-                                            display: "block",
-                                            width: mode === "chat" ? 10 : mode === "split" ? 7 : SPACE['1'],
-                                            height: 10, borderRadius: 1.5,
-                                            background: layoutMode === mode
-                                                ? "var(--dt-color-gold-solid)"
-                                                : "var(--dt-text-quaternary)",
-                                            transition: `all ${TIMING.instant}`,
-                                        }}/>
-                                        {/* Right rectangle (sources) */}
-                                        <span style={{
-                                            display: "block",
-                                            width: mode === "chat" ? SPACE['1'] : mode === "split" ? 7 : 10,
-                                            height: 10, borderRadius: 1.5,
-                                            background: layoutMode === mode
-                                                ? "var(--dt-color-gold-solid)"
-                                                : "var(--dt-text-quaternary)",
-                                            transition: `all ${TIMING.instant}`,
-                                        }}/>
-                                    </button>
-                                ))}
-                                <button
-                                    onClick={() => setDrawerOpen(false)}
-                                    style={{
-                                        display: "flex", alignItems: "center", justifyContent: "center",
-                                        width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
-                                        borderRadius: RADIUS.md, marginLeft: SPACE['1'],
-                                        background: "var(--dt-glass-bg)",
-                                        border: "0.5px solid var(--dt-glass-border)",
-                                        cursor: "pointer",
-                                        color: "var(--dt-text-tertiary)",
-                                    }}
-                                >
-                                    <X size={isMobile ? 16 : 14} strokeWidth={2}/>
-                                </button>
-                            </div>
-                        </div>
 
-                        {/* Grounding content */}
-                        <div className="flex-1 overflow-hidden min-h-0">
-                            <GroundingErrorBoundary onReset={() => setDrawerOpen(false)}>
-                                <GroundingView answer={drawerData.answer} sources={drawerData.sources} isDark={isDark} isMobile={isMobile} focusDocId={drawerData.focusDocId} focusPage={drawerData.focusPage} focusSeq={drawerData.focusSeq}/>
-                            </GroundingErrorBoundary>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* ── Document Index panel — accumulated sources across conversation ── */}
-            <AnimatePresence>
-                {indexOpen && (
-                    <motion.div
-                        initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
-                        animate={isMobile ? {y: 0} : {opacity: 1, width: 280}}
-                        exit={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
-                        transition={isMobile
-                            ? {type: "spring", damping: 30, stiffness: 300}
-                            : {duration: 0.25, ease: [0.32, 0.72, 0, 1]}
-                        }
-                        className={isStrict && !isMobile ? "v3-glass-elevated" : undefined}
-                        style={{
-                            display: "flex", flexDirection: "column",
-                            minHeight: 0, flexShrink: 0,
-                            overflow: "clip",
-                            ...(isMobile ? {
-                                position: "fixed",
-                                left: 0,
-                                right: 0,
-                                bottom: 0,
-                                top: "12vh",
-                                zIndex: 100,
-                                borderRadius: "20px 20px 0 0",
-                                willChange: "transform",
-                                background: "var(--dt-panel-overlay-bg)",
-                                backdropFilter: "var(--dt-glass-blur-light)",
-                                WebkitBackdropFilter: "var(--dt-glass-blur-light)",
-                                border: "0.5px solid var(--dt-panel-border-color)",
-                                boxShadow: "var(--dt-panel-shadow)",
-                            } : makeGlassPanel(isStrict)),
-                        }}
-                    >
-                        {/* Mobile drag handle */}
-                        {isMobile && (
-                            <div style={{display: "flex", justifyContent: "center", padding: `${SPACE['2']}px 0 0`}}>
-                                <div style={{
-                                    width: 36, height: SPACE['1'], borderRadius: 2,
-                                    background: "var(--dt-text-quaternary)",
-                                }}/>
-                            </div>
-                        )}
-                        {/* Panel header */}
+                        {/* Panel header with tab switcher */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['4']}px`,
                             borderBottom: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border-subtle)",
@@ -1031,52 +918,133 @@ export default function ChatPage() {
                             flexShrink: 0,
                             background: isStrict ? "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                         }}>
-                            <span style={{
-                                fontSize: isStrict ? 9 : TYPE_SCALE.xs,
-                                fontWeight: isStrict ? 400 : 700,
-                                textTransform: "uppercase",
-                                letterSpacing: isStrict ? "1.2px" : "0.12em",
-                                color: isStrict ? "rgba(201,168,76,0.4)" : "var(--dt-accent-color)",
-                                fontFamily: isStrict ? "system-ui" : FONT.sans,
-                            }}>
-                                Sources ({documentIndex.length})
-                            </span>
-                            <button
-                                onClick={() => setIndexOpen(false)}
-                                style={{
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
-                                    borderRadius: RADIUS.md,
-                                    background: isStrict ? "rgba(201,168,76,0.04)" : "var(--dt-glass-bg)",
-                                    border: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border)",
-                                    cursor: "pointer",
-                                    color: isStrict ? "rgba(201,168,76,0.5)" : "var(--dt-text-tertiary)",
-                                }}
-                            >
-                                <X size={isMobile ? 16 : 14} strokeWidth={2}/>
-                            </button>
+                            {/* Tabs — light mode shows both; strict shows index label only */}
+                            <div style={{display: "flex", alignItems: "center", gap: SPACE['3']}}>
+                                {!isStrict && drawerData.sources.length > 0 && (
+                                    <button
+                                        onClick={() => setPanelTab("source")}
+                                        style={{
+                                            fontSize: TYPE_SCALE.sm, fontWeight: panelTab === "source" ? 700 : 500,
+                                            textTransform: "uppercase", letterSpacing: "0.12em",
+                                            color: panelTab === "source" ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
+                                            background: "transparent", border: "none",
+                                            borderBottom: panelTab === "source" ? "1px solid var(--dt-accent-color)" : "1px solid transparent",
+                                            cursor: panelTab !== "source" ? "pointer" : "default",
+                                            padding: `0 0 2px`, fontFamily: FONT.sans,
+                                        }}
+                                    >
+                                        Sources
+                                    </button>
+                                )}
+                                {!isStrict && drawerData.sources.length > 0 && (
+                                    <button
+                                        onClick={() => setPanelTab("index")}
+                                        style={{
+                                            fontSize: TYPE_SCALE.sm, fontWeight: panelTab === "index" ? 700 : 500,
+                                            textTransform: "uppercase", letterSpacing: "0.12em",
+                                            color: panelTab === "index" ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
+                                            background: "transparent", border: "none",
+                                            borderBottom: panelTab === "index" ? "1px solid var(--dt-accent-color)" : "1px solid transparent",
+                                            cursor: panelTab !== "index" ? "pointer" : "default",
+                                            padding: `0 0 2px`, fontFamily: FONT.sans,
+                                        }}
+                                    >
+                                        Index ({documentIndex.length})
+                                    </button>
+                                )}
+                                {/* Strict mode or no sources: single index label */}
+                                {(isStrict || drawerData.sources.length === 0) && (
+                                    <span style={{
+                                        fontSize: isStrict ? 9 : TYPE_SCALE.xs,
+                                        fontWeight: isStrict ? 400 : 700,
+                                        textTransform: "uppercase",
+                                        letterSpacing: isStrict ? "1.2px" : "0.12em",
+                                        color: isStrict ? "rgba(201,168,76,0.4)" : "var(--dt-accent-color)",
+                                        fontFamily: isStrict ? "system-ui" : FONT.sans,
+                                    }}>
+                                        Sources ({documentIndex.length})
+                                    </span>
+                                )}
+                            </div>
+
+                            <div style={{display: "flex", alignItems: "center", gap: SPACE['1']}}>
+                                {/* Layout toggles — light mode, source tab, desktop only */}
+                                {!isMobile && !isStrict && panelTab === "source" && (["chat", "split", "source"] as const).map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setLayoutMode(mode)}
+                                        title={mode === "chat" ? "Chat focused" : mode === "split" ? "Equal split" : "Sources focused"}
+                                        style={{
+                                            display: "flex", alignItems: "center", gap: 1,
+                                            padding: `3px ${SPACE['1']}px`, borderRadius: RADIUS.sm,
+                                            background: layoutMode === mode ? "var(--dt-accent-tint)" : "var(--dt-button-bg)",
+                                            border: layoutMode === mode ? "0.5px solid var(--dt-accent-border-color)" : "0.5px solid var(--dt-glass-border-subtle)",
+                                            cursor: "pointer", transition: `all ${TIMING.instant}`,
+                                        }}
+                                    >
+                                        <span style={{
+                                            display: "block",
+                                            width: mode === "chat" ? 10 : mode === "split" ? 7 : SPACE['1'],
+                                            height: 10, borderRadius: 1.5,
+                                            background: layoutMode === mode ? "var(--dt-color-gold-solid)" : "var(--dt-text-quaternary)",
+                                            transition: `all ${TIMING.instant}`,
+                                        }}/>
+                                        <span style={{
+                                            display: "block",
+                                            width: mode === "chat" ? SPACE['1'] : mode === "split" ? 7 : 10,
+                                            height: 10, borderRadius: 1.5,
+                                            background: layoutMode === mode ? "var(--dt-color-gold-solid)" : "var(--dt-text-quaternary)",
+                                            transition: `all ${TIMING.instant}`,
+                                        }}/>
+                                    </button>
+                                ))}
+                                <button
+                                    onClick={() => setPanelOpen(false)}
+                                    style={{
+                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                        width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
+                                        borderRadius: RADIUS.md, marginLeft: SPACE['1'],
+                                        background: isStrict ? "rgba(201,168,76,0.04)" : "var(--dt-glass-bg)",
+                                        border: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border)",
+                                        cursor: "pointer",
+                                        color: isStrict ? "rgba(201,168,76,0.5)" : "var(--dt-text-tertiary)",
+                                    }}
+                                >
+                                    <X size={isMobile ? 16 : 14} strokeWidth={2}/>
+                                </button>
+                            </div>
                         </div>
 
+                        {/* Source grounding content — light mode only */}
+                        {panelTab === "source" && !isStrict && (
+                            <div className="flex-1 overflow-hidden min-h-0">
+                                <GroundingErrorBoundary onReset={() => setPanelOpen(false)}>
+                                    <GroundingView answer={drawerData.answer} sources={drawerData.sources} isDark={isDark} isMobile={isMobile} focusDocId={drawerData.focusDocId} focusPage={drawerData.focusPage} focusSeq={drawerData.focusSeq}/>
+                                </GroundingErrorBoundary>
+                            </div>
+                        )}
+
                         {/* Document index content */}
-                        <DocumentIndex
-                            entries={documentIndex}
-                            isDark={isDark}
-                            focusDocId={indexFocusDocId}
-                            onEntryClick={(entry) => {
-                                // Open the grounding drawer focused on this doc
-                                const source = messages
-                                    .flatMap(m => m.sources ?? [])
-                                    .find(s => s.doc_id === entry.docId)
-                                if (source) {
-                                    handleSourceClick(
-                                        "",
-                                        messages.flatMap(m => m.sources ?? []).filter(s => s.doc_id === entry.docId),
-                                        entry.docId,
-                                        entry.pages[0],
-                                    )
-                                }
-                            }}
-                        />
+                        {panelTab === "index" && (
+                            <DocumentIndex
+                                entries={documentIndex}
+                                isDark={isDark}
+                                focusDocId={indexFocusDocId}
+                                onEntryClick={(entry) => {
+                                    const source = messages
+                                        .flatMap(m => m.sources ?? [])
+                                        .find(s => s.doc_id === entry.docId)
+                                    if (source) {
+                                        handleSourceClick(
+                                            "",
+                                            messages.flatMap(m => m.sources ?? []).filter(s => s.doc_id === entry.docId),
+                                            entry.docId,
+                                            entry.pages[0],
+                                        )
+                                    }
+                                }}
+                            />
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>
