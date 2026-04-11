@@ -1,6 +1,7 @@
 "use client"
 
 import {useRef, useCallback, useEffect, useState} from "react"
+import {createPortal} from "react-dom"
 import {useColorMode} from "@/lib/color-mode"
 import {ArrowUp, StopCircle, X} from "lucide-react"
 import {useI18n} from "@/lib/i18n"
@@ -228,7 +229,7 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                     }}>
-                        {pendingTemplate.name.toUpperCase()} — press Enter to draft
+                        {pendingTemplate.name.toUpperCase()}
                     </span>
                     {onClearTemplate && (
                         <button
@@ -255,14 +256,17 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                 </div>
             )}
 
-            {/* Template panel — portal-like, rendered outside the input box */}
-            {onTemplateSelect && (
-                <TemplatePanel
-                    open={panelOpen}
-                    onClose={() => setPanelOpen(false)}
-                    onSelect={handleTemplateSelect}
-                />
-            )}
+            {/* Template panel — portaled to document.body to escape glass pane stacking context */}
+            {onTemplateSelect && typeof document !== "undefined" &&
+                createPortal(
+                    <TemplatePanel
+                        open={panelOpen}
+                        onClose={() => setPanelOpen(false)}
+                        onSelect={handleTemplateSelect}
+                    />,
+                    document.body
+                )
+            }
         </>
     )
 }

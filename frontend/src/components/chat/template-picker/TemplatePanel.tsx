@@ -199,6 +199,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                         label={c}
                                         active={category === c}
                                         onClick={() => setCategory(prev => prev === c ? null : c)}
+                                        textTransform="capitalize"
                                     />
                                 ))}
                             </div>
@@ -284,7 +285,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     )
 }
 
-function PillButton({label, active, onClick}: {label: string; active: boolean; onClick: () => void}) {
+function PillButton({label, active, onClick, textTransform}: {label: string; active: boolean; onClick: () => void; textTransform?: React.CSSProperties["textTransform"]}) {
     return (
         <button
             onClick={onClick}
@@ -303,6 +304,7 @@ function PillButton({label, active, onClick}: {label: string; active: boolean; o
                 color: active ? "var(--doc-pill-active-color)" : "var(--doc-pill-inactive-color)",
                 transition: `all ${TIMING.fast} ${EASE.spring}`,
                 whiteSpace: "nowrap" as const,
+                textTransform,
             }}
         >
             {label}
