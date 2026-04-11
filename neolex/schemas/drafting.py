@@ -8,7 +8,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_validator
 
 # ---------------------------------------------------------------------------
 # Template schemas (public read, admin write)
@@ -95,7 +95,14 @@ class DocumentResponse(BaseModel):
     id: uuid.UUID
     conversation_id: uuid.UUID
     template_slug: str
+    template_name: str | None = None
     fields: dict[str, str]
     version: int
     created_at: datetime
     updated_at: datetime
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def doc_id(self) -> uuid.UUID:
+        """Alias for id — frontend ChatDocument type uses doc_id."""
+        return self.id
