@@ -134,7 +134,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                     >
                         {/* Header */}
                         <div style={{
-                            padding: "14px 20px",
+                            padding: `${SPACE[3]}px ${SPACE[5]}px`,
                             borderBottom: "0.5px solid var(--doc-panel-header-border)",
                             display: "flex",
                             alignItems: "center",
@@ -143,7 +143,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                             background: "var(--doc-panel-header-bg)",
                         }}>
                             <span id={titleId} style={{
-                                fontSize: 11,
+                                fontSize: TYPE_SCALE.xs,
                                 fontWeight: 700,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.12em",
