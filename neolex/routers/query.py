@@ -13,6 +13,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from neolex.auth.middleware import get_api_key
 from neolex.config import settings
+from neolex.constants import CUSTOM_SLUG, FREEFORM_SLUG, MAX_DOCS_PER_CONVERSATION
 from neolex.db.audit import get_audit_db
 from neolex.db.models import User
 from neolex.db.postgres import AsyncSessionLocal, conversation_doc_lock_key, get_db
@@ -35,15 +36,6 @@ def _log_task_exception(task: asyncio.Task) -> None:
 # ---------------------------------------------------------------------------
 # Document drafting — pipeline integration
 # ---------------------------------------------------------------------------
-
-# Slug the frontend sends for a blank/freeform document.  There is no DB
-# template row for this value; it is resolved to the existing freeform
-# template so the FK constraint on chat_documents.template_slug is satisfied.
-_PIPELINE_CUSTOM_SLUG = "__custom__"
-_PIPELINE_FREEFORM_SLUG = "vlastni_dokument"
-
-# Maximum documents per conversation (kept in sync with drafting.py).
-_MAX_DOCS_PER_CONVERSATION = 3
 
 
 async def _create_pipeline_document(
@@ -74,7 +66,7 @@ async def _create_pipeline_document(
         )
         return None
 
-    effective_slug = _PIPELINE_FREEFORM_SLUG if template_slug == _PIPELINE_CUSTOM_SLUG else template_slug
+    effective_slug = FREEFORM_SLUG if template_slug == CUSTOM_SLUG else template_slug
 
     async with AsyncSessionLocal() as session:
         # Verify the template exists before creating the document.
@@ -108,7 +100,7 @@ async def _create_pipeline_document(
                 ChatDocument.user_id == user_uuid,
             )
         )
-        if len(count_result.scalars().all()) >= _MAX_DOCS_PER_CONVERSATION:
+        if len(count_result.scalars().all()) >= MAX_DOCS_PER_CONVERSATION:
             logger.info(
                 "Pipeline document creation skipped: conversation %s already at limit",
                 conv_uuid,
