@@ -78,6 +78,11 @@ export function StrictNav() {
             {t("landing.sign_in")}
           </Link>
 
+          {/* Theme toggle — mobile nav bar (sm:hidden so desktop uses the one above) */}
+          <div className="sm:hidden flex items-center">
+            <ThemeToggle />
+          </div>
+
           {/* Hamburger — mobile only */}
           <button
             className="sm:hidden"
