@@ -507,6 +507,7 @@ async def query_stream(
                         conversation_id=conversation_id,
                         laws=body.laws,
                         user_email=user.email,
+                        subscription_plan=user.subscription_status,
                     )
             except asyncio.TimeoutError:
                 logger.error("Agent pipeline timed out for question: %.80s", body.question)

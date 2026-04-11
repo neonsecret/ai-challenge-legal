@@ -26,6 +26,7 @@ async def run_single_question(
     conversation_id: str | None = None,
     laws: list[str] | None = None,
     user_email: str | None = None,
+    subscription_plan: str | None = None,
 ) -> dict:
     """Route one HTTP question through the arlc pipeline.
 
@@ -113,6 +114,7 @@ async def run_single_question(
             user_id=user_id,
             session_id=conversation_id,
             user_email=user_email,
+            subscription_plan=subscription_plan,
         )
         if trace is not None:
             _trace_token = set_current_trace(trace)
