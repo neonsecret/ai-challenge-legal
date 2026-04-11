@@ -550,6 +550,7 @@ class TestDocumentUpdate:
                 assert data["doc_id"] == data["id"]
                 assert data["fields"]["name"] == "New Name"
                 assert data["fields"]["extra"] == "value"
+                assert data["template_name"] == "Test Template"
             finally:
                 from neolex.auth.middleware import get_api_key
                 from neolex.db.postgres import get_db
