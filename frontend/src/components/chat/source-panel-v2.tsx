@@ -9,7 +9,7 @@
  * Spec: section 5.2–5.5
  */
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { X } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import type { Source } from "@/components/chat/use-query-stream"
@@ -85,17 +85,12 @@ export function SourcePanelV2({ sources, initialIndex = 0, onClose }: SourcePane
         Math.min(initialIndex, Math.max(0, sources.length - 1))
     )
 
-    // Clamp activeIndex if sources shrinks after initial render (e.g. session switch)
-    useEffect(() => {
-        if (sources.length > 0 && activeIndex >= sources.length) {
-            setActiveIndex(sources.length - 1)
-        }
-    }, [sources, activeIndex])
-
     if (!sources.length) return null
 
-    const active = sources[activeIndex]
-    if (!active) return null
+    // Clamp at render time — avoids calling setState inside an effect (react-hooks/set-state-in-effect).
+    // When sources shrinks the displayed tab and content immediately snap to the last valid entry.
+    const clampedIndex = Math.min(activeIndex, sources.length - 1)
+    const active = sources[clampedIndex]
 
     return (
         <AnimatePresence>
@@ -128,7 +123,7 @@ export function SourcePanelV2({ sources, initialIndex = 0, onClose }: SourcePane
                     }}
                 >
                     {sources.map((src, i) => {
-                        const isActive = i === activeIndex
+                        const isActive = i === clampedIndex
                         return (
                             <button
                                 key={`${src.doc_id}-${i}`}

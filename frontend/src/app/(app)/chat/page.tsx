@@ -919,9 +919,12 @@ export default function ChatPage() {
                             background: isStrict ? "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                         }}>
                             {/* Tabs — light mode shows both; strict shows index label only */}
-                            <div style={{display: "flex", alignItems: "center", gap: SPACE['3']}}>
+                            <div role="tablist" style={{display: "flex", alignItems: "center", gap: SPACE['3']}}>
                                 {!isStrict && drawerData.sources.length > 0 && (
                                     <button
+                                        role="tab"
+                                        aria-selected={panelTab === "source"}
+                                        aria-controls="unified-panel-source"
                                         onClick={() => setPanelTab("source")}
                                         style={{
                                             fontSize: TYPE_SCALE.sm, fontWeight: panelTab === "source" ? 700 : 500,
@@ -938,6 +941,9 @@ export default function ChatPage() {
                                 )}
                                 {!isStrict && drawerData.sources.length > 0 && (
                                     <button
+                                        role="tab"
+                                        aria-selected={panelTab === "index"}
+                                        aria-controls="unified-panel-index"
                                         onClick={() => setPanelTab("index")}
                                         style={{
                                             fontSize: TYPE_SCALE.sm, fontWeight: panelTab === "index" ? 700 : 500,
@@ -1017,7 +1023,7 @@ export default function ChatPage() {
 
                         {/* Source grounding content — light mode only */}
                         {panelTab === "source" && !isStrict && (
-                            <div className="flex-1 overflow-hidden min-h-0">
+                            <div id="unified-panel-source" role="tabpanel" className="flex-1 overflow-hidden min-h-0">
                                 <GroundingErrorBoundary onReset={() => setPanelOpen(false)}>
                                     <GroundingView answer={drawerData.answer} sources={drawerData.sources} isDark={isDark} isMobile={isMobile} focusDocId={drawerData.focusDocId} focusPage={drawerData.focusPage} focusSeq={drawerData.focusSeq}/>
                                 </GroundingErrorBoundary>
@@ -1026,6 +1032,7 @@ export default function ChatPage() {
 
                         {/* Document index content */}
                         {panelTab === "index" && (
+                            <div id="unified-panel-index" role="tabpanel" className="flex-1 overflow-hidden min-h-0">
                             <DocumentIndex
                                 entries={documentIndex}
                                 isDark={isDark}
@@ -1044,6 +1051,7 @@ export default function ChatPage() {
                                     }
                                 }}
                             />
+                            </div>
                         )}
                     </motion.div>
                 )}
