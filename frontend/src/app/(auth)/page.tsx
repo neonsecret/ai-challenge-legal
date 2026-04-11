@@ -15,6 +15,7 @@ import {MotionConfig} from "motion/react";
 import {V3_MOTION_CONFIG, V3_FADE_UP, V3_LIST_VARIANT, V3_ITEM_VARIANT, V3_CARD_HOVER, V3_BUTTON_PRESS} from "@/lib/v3-motion";
 import {AuroraBackground} from "@/components/landing/aurora-background";
 import {StrictLanding} from "@/components/landing/strict/strict-landing";
+import {DocumentDraftingShowcase} from "@/components/landing/document-drafting-showcase";
 
 const LIGHT_PILLAR_ICONS = [ShieldCheck, FileSearch, ShieldCheck] as const;
 
@@ -684,6 +685,9 @@ export default function LandingPage() {
                     </motion.div>
                 </div>
             </section>
+
+            {/* ── DOCUMENT DRAFTING SHOWCASE (light) ── */}
+            <DocumentDraftingShowcase />
 
             {/* ── BENCHMARK PERFORMANCE (light) ── */}
             <section style={{

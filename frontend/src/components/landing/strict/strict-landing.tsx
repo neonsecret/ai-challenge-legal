@@ -5,6 +5,7 @@ import { StrictMeshBlobs } from "./strict-mesh-blobs";
 import { StrictNav } from "./strict-nav";
 import { StrictHero } from "./strict-hero";
 import { StrictPreview } from "./strict-preview";
+import { StrictDocumentDraftingShowcase } from "./strict-document-drafting-showcase";
 import { StrictHowItWorks } from "./strict-how-it-works";
 import { StrictPricing } from "./strict-pricing";
 import { StrictFooter } from "./strict-footer";
@@ -24,6 +25,7 @@ export function StrictLanding() {
         <StrictNav />
         <StrictHero />
         <StrictPreview />
+        <StrictDocumentDraftingShowcase />
         <StrictHowItWorks />
         <StrictPricing />
         <StrictFooter />
