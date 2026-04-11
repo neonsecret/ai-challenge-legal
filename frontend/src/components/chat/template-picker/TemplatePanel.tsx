@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useState, useCallback, useRef, useId} from "react"
+import {useEffect, useState, useCallback, useRef, useId, useMemo} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {X} from "lucide-react"
 import {useIsMobile} from "@/hooks/use-mobile"
@@ -30,7 +30,10 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const [category, setCategory] = useState<string | null>(null)
 
     // Derive categories from loaded templates so new backend categories appear automatically
-    const categories = Array.from(new Set(templates.map((t: Template) => t.category).filter(Boolean)))
+    const categories = useMemo(
+        () => Array.from(new Set(templates.map((t: Template) => t.category).filter(Boolean))),
+        [templates]
+    )
 
     // Load all templates once when panel opens; client-side filter handles jurisdiction/category.
     // Passing jurisdiction to the server caused case-mismatch bugs (DB stores uppercase, "General"
@@ -131,7 +134,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                     >
                         {/* Header */}
                         <div style={{
-                            padding: "14px 20px",
+                            padding: `${SPACE[3]}px ${SPACE[5]}px`,
                             borderBottom: "0.5px solid var(--doc-panel-header-border)",
                             display: "flex",
                             alignItems: "center",
@@ -140,7 +143,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                             background: "var(--doc-panel-header-bg)",
                         }}>
                             <span id={titleId} style={{
-                                fontSize: 11,
+                                fontSize: TYPE_SCALE.xs,
                                 fontWeight: 700,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.12em",
@@ -239,7 +242,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                 }}>
                                     ✦
                                 </span>
-                                <div style={{display: "flex", flexDirection: "column", gap: 2}}>
+                                <div style={{display: "flex", flexDirection: "column", gap: SPACE[1]}}>
                                     <span style={{
                                         fontFamily: "Georgia, serif",
                                         fontSize: TYPE_SCALE.sm,
