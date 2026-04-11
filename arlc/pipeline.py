@@ -1013,6 +1013,8 @@ async def _process_question_inner(
             "total_time_ms": getattr(answer_result, "total_time_ms", 0),
             "input_tokens": getattr(answer_result, "input_tokens", 0),
             "output_tokens": getattr(answer_result, "output_tokens", 0),
+            "cache_read_tokens": getattr(answer_result, "cache_read_tokens", 0),
+            "cache_write_tokens": getattr(answer_result, "cache_write_tokens", 0),
             "model_name": getattr(answer_result, "model_name", "claude-sonnet-4-6"),
         }
     else:

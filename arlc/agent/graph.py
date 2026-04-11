@@ -503,6 +503,11 @@ def build_agent_graph():
         # Emit status for each search
         on_status = state.get("_on_status")
 
+        # Observability: get active trace from ContextVar (set in agent_pipeline.py)
+        from neolex.observability import add_agent_step_span, get_current_trace
+
+        _obs_trace = get_current_trace()
+
         results_msgs: list[ToolMessage] = []
         new_docs_all: list[SourceDocument] = []
         new_web_sources: list[dict] = []
@@ -594,6 +599,13 @@ def build_agent_graph():
                         promoted_count,
                     )
 
+                add_agent_step_span(
+                    _obs_trace,
+                    step_name="tool:search_court_decisions",
+                    input_data={k: v for k, v in tc["args"].items()},
+                    output_data={"num_results": len(caselaw_docs), "promoted": promoted_count},
+                    metadata={"tool": "search_court_decisions"},
+                )
                 results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
                 continue
 
@@ -639,6 +651,13 @@ def build_agent_graph():
                 content = format_caselaw_full(fetched_doc, doc_offset)
                 new_docs_all.append(fetched_doc)
                 logger.info("[agent] caselaw fetch: ecli=%s → %d chars", ecli[:60], len(content))
+                add_agent_step_span(
+                    _obs_trace,
+                    step_name="tool:fetch_court_decision",
+                    input_data={"ecli": ecli},
+                    output_data={"found": True, "content_chars": len(content)},
+                    metadata={"tool": "fetch_court_decision"},
+                )
                 results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
                 continue
 
@@ -659,6 +678,13 @@ def build_agent_graph():
                 web_results = await asyncio.to_thread(execute_web_search, query)
                 content = format_web_results(web_results)
                 logger.info('[agent] web search: query="%s" -> %d results', query[:60], len(web_results))
+                add_agent_step_span(
+                    _obs_trace,
+                    step_name="tool:search_web",
+                    input_data={"query": query},
+                    output_data={"num_results": len(web_results)},
+                    metadata={"tool": "search_web"},
+                )
                 results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
                 # Web results don't go into accumulated_docs (they're not corpus docs)
                 # but we track them separately for source citations
@@ -882,6 +908,13 @@ def build_agent_graph():
                     logger.warning("[agent] czech case law auto-enrichment failed", exc_info=True)
                     # Non-fatal: statute results are returned as-is
 
+            add_agent_step_span(
+                _obs_trace,
+                step_name="tool:search_legal_corpus",
+                input_data={"query": query, "corpus": state["corpus"]},
+                output_data={"num_docs": len(new_docs), "elapsed_ms": round(elapsed * 1000)},
+                metadata={"tool": "search_legal_corpus", "corpus": state["corpus"]},
+            )
             results_msgs.append(ToolMessage(content=doc_text, tool_call_id=tc["id"]))
 
         # Merge new docs with existing, prioritising new over old when at cap.
@@ -998,6 +1031,8 @@ async def run_agent_turn(
     template_field_descriptions: dict[str, str] | None = None,
     chat_documents: list[dict] | None = None,
     draft_document_fn: Callable | None = None,
+    # --- Observability (optional) ---
+    span_fn: Callable | None = None,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -1040,6 +1075,7 @@ async def run_agent_turn(
         "doc_ids": doc_ids,
         "_on_status": on_status,  # passed through state for search_node
         "_on_document": on_document,  # emitted after successful document_draft tool call
+        "_add_span_fn": span_fn,  # optional observability callback: (name, input, output, meta) -> None
         # Drafting mode — all None/empty when not in drafting mode
         "template_slug": template_slug,
         "template_name": template_name,

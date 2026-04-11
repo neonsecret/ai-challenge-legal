@@ -1471,7 +1471,7 @@ def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
     try:
         from arlc.llm.router import _call_backend
 
-        text, *_ = _call_backend(
+        text, *rest = _call_backend(
             system_prompt=(
                 f"You are a drafter of official {domain} legislative and judicial texts. "
                 "Reproduce the exact register, section structure, and terminology of official "
@@ -1486,6 +1486,24 @@ def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
             model=_HAIKU_MODEL,
             system_blocks=None,
         )
+        # Record HyDE generation as an observability span (no-op when trace is None)
+        try:
+            from neolex.observability import add_generation_span, get_current_trace
+
+            _elapsed_ms = rest[1] if len(rest) > 1 else 0
+            _in_tok = rest[3] if len(rest) > 3 else 0
+            _out_tok = rest[4] if len(rest) > 4 else 0
+            add_generation_span(
+                get_current_trace(),
+                model=_HAIKU_MODEL,
+                input_text=question,
+                output_text=text or "",
+                duration_ms=_elapsed_ms,
+                usage={"input": _in_tok, "output": _out_tok},
+                metadata={"name": "hyde", "corpus": corpus},
+            )
+        except Exception:
+            pass
         return text.strip() if text else None
     except Exception:
         return None
@@ -1777,6 +1795,24 @@ def _generate_query_variants(question: str, corpus: str = "difc") -> list[str]:
         )
         content = response.content[0].text.strip() if response.content else ""
         variants = [line.strip() for line in content.split("\n") if line.strip()]
+        # Record query-variant generation as an observability span (no-op when trace is None)
+        try:
+            from neolex.observability import add_generation_span, get_current_trace
+
+            _usage = getattr(response, "usage", None)
+            add_generation_span(
+                get_current_trace(),
+                model=_HAIKU_MODEL,
+                input_text=question,
+                output_text=content,
+                usage={
+                    "input": getattr(_usage, "input_tokens", 0),
+                    "output": getattr(_usage, "output_tokens", 0),
+                },
+                metadata={"name": "query-variants", "corpus": corpus},
+            )
+        except Exception:
+            pass
         return variants[:2]
     except Exception:
         return []

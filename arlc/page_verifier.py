@@ -512,7 +512,21 @@ def _find_best_page_llm(
     system = "You identify which document page best supports an answer. Output only the page number."
 
     try:
-        raw, _, _, _, _, _ = llm_router.call_llm(system, prompt, 10)
+        raw, _, elapsed_ms, _, in_tok, out_tok = llm_router.call_llm(system, prompt, 10)
+        # Record page-verifier LLM call as an observability span (no-op when trace is None)
+        try:
+            from neolex.observability import add_generation_span, get_current_trace
+
+            add_generation_span(
+                get_current_trace(),
+                input_text=prompt[:500],
+                output_text=raw,
+                duration_ms=elapsed_ms,
+                usage={"input": in_tok, "output": out_tok},
+                metadata={"name": "page-verifier", "doc_id": doc_id},
+            )
+        except Exception:
+            pass
         # Extract page number
         nums = re.findall(r"\d+", raw.strip())
         if nums:

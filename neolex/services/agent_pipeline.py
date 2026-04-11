@@ -92,6 +92,9 @@ async def run_agent_question(
     template_required_fields: list[str] | None = None,
     template_field_descriptions: dict[str, str] | None = None,
     chat_documents: list[dict] | None = None,
+    # --- Observability ---
+    user_email: str | None = None,
+    subscription_plan: str | None = None,
 ) -> dict:
     """Run a question through the LangGraph agent.
 
@@ -105,6 +108,31 @@ async def run_agent_question(
 
     if on_status:
         on_status("processing")
+
+    # --- Langfuse trace lifecycle ---
+    from neolex.observability import (
+        create_query_trace,
+        finalize_trace,
+        get_trace_id,
+        is_enabled,
+        set_current_trace,
+    )
+
+    trace = None
+    _trace_token = None
+    if is_enabled():
+        trace = create_query_trace(
+            query=question,
+            corpus=corpus,
+            answer_type=answer_type,
+            user_id=user_id,
+            session_id=conversation_id,
+            user_email=user_email,
+            subscription_plan=subscription_plan,
+            use_agent=True,
+        )
+        if trace is not None:
+            _trace_token = set_current_trace(trace)
 
     # Load conversation history + accumulated docs in parallel
     conversation_history: list[dict] = []
@@ -147,26 +175,35 @@ async def run_agent_question(
     # Run the agent
     from arlc.agent.graph import run_agent_turn
 
-    result = await run_agent_turn(
-        question=question,
-        corpus=corpus,
-        selected_laws=selected_laws or [],
-        accumulated_docs=accumulated_docs,
-        conversation_history=conversation_history,
-        user_id=user_id or "",
-        conversation_id=conversation_id or "",
-        on_status=on_status,
-        on_token=on_token,
-        on_document=on_document,
-        use_internet=use_internet,
-        doc_ids=doc_ids,
-        template_slug=template_slug,
-        template_name=template_name,
-        template_required_fields=template_required_fields,
-        template_field_descriptions=template_field_descriptions,
-        chat_documents=chat_documents,
-        draft_document_fn=draft_document_fn,
-    )
+    try:
+        result = await run_agent_turn(
+            question=question,
+            corpus=corpus,
+            selected_laws=selected_laws or [],
+            accumulated_docs=accumulated_docs,
+            conversation_history=conversation_history,
+            user_id=user_id or "",
+            conversation_id=conversation_id or "",
+            on_status=on_status,
+            on_token=on_token,
+            on_document=on_document,
+            use_internet=use_internet,
+            doc_ids=doc_ids,
+            template_slug=template_slug,
+            template_name=template_name,
+            template_required_fields=template_required_fields,
+            template_field_descriptions=template_field_descriptions,
+            chat_documents=chat_documents,
+            draft_document_fn=draft_document_fn,
+        )
+    except Exception:
+        if trace is not None:
+            finalize_trace(trace, level="ERROR")
+        if _trace_token is not None:
+            from neolex.observability import reset_current_trace
+
+            reset_current_trace(_trace_token)
+        raise
 
     # Persist accumulated docs for future turns (non-blocking)
     new_docs = result.get("accumulated_docs", [])
@@ -178,9 +215,18 @@ async def run_agent_question(
 
     elapsed_ms = (time.monotonic() - t_start) * 1000
 
+    answer_str = result.get("answer", "")
+    if trace is not None:
+        finalize_trace(trace, output=answer_str)
+    if _trace_token is not None:
+        from neolex.observability import reset_current_trace
+
+        reset_current_trace(_trace_token)
+
     return {
-        "answer": result.get("answer", ""),
+        "answer": answer_str,
         "chunk_pages": result.get("sources", []),
         "total_time_ms": elapsed_ms,
         "model_name": "vitreon-legal",
+        "trace_id": get_trace_id(trace),
     }

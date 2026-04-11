@@ -21,12 +21,94 @@ output" warnings).
 
 from __future__ import annotations
 
+import contextvars
 import logging
 import os
 from contextlib import contextmanager
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# ContextVar — propagates the active trace across async + thread boundaries.
+# asyncio.to_thread() copies the current context, so the trace set in the
+# main coroutine is visible inside executor-submitted callables automatically.
+# Use set_current_trace() / get_current_trace() instead of passing trace
+# explicitly through every function signature.
+# ---------------------------------------------------------------------------
+
+_current_trace: contextvars.ContextVar[Any] = contextvars.ContextVar("langfuse_trace", default=None)
+
+
+def set_current_trace(trace: Any) -> contextvars.Token:
+    """Set the active Langfuse trace for the current context.
+
+    Returns a Token that can be passed to reset_current_trace() to restore
+    the previous value (useful when nesting traces).
+    """
+    return _current_trace.set(trace)
+
+
+def reset_current_trace(token: contextvars.Token) -> None:
+    """Restore the previous trace value using the token from set_current_trace()."""
+    _current_trace.reset(token)
+
+
+def get_current_trace() -> Any:
+    """Return the active Langfuse trace for the current context, or None."""
+    return _current_trace.get()
+
+
+# ---------------------------------------------------------------------------
+# Cost model — per-million-token prices (USD) for each supported model
+# ---------------------------------------------------------------------------
+
+MODEL_PRICING: dict[str, dict[str, float]] = {
+    "claude-opus-4-6": {
+        "input": 5.00,
+        "cache_write": 6.25,
+        "cache_read": 0.50,
+        "output": 25.00,
+    },
+    "claude-sonnet-4-6": {
+        "input": 3.00,
+        "cache_write": 3.75,
+        "cache_read": 0.30,
+        "output": 15.00,
+    },
+    "claude-haiku-4-5": {
+        "input": 1.00,
+        "cache_write": 1.25,
+        "cache_read": 0.10,
+        "output": 5.00,
+    },
+}
+
+
+def calculate_cost(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
+) -> float:
+    """Return estimated USD cost for a Claude API call.
+
+    Uses MODEL_PRICING per-MTok rates. Returns 0.0 for unknown models
+    so callers never see None or an exception.
+    """
+    pricing = MODEL_PRICING.get(model)
+    if not pricing:
+        return 0.0
+    per_m = 1_000_000
+    cost = (
+        input_tokens * pricing["input"] / per_m
+        + output_tokens * pricing["output"] / per_m
+        + cache_read_tokens * pricing["cache_read"] / per_m
+        + cache_write_tokens * pricing["cache_write"] / per_m
+    )
+    return round(cost, 8)
+
 
 # Module-level singleton — set by init_observability().
 _langfuse_client = None
@@ -281,9 +363,15 @@ def add_generation_span(
     output_text: str = "",
     duration_ms: float = 0,
     usage: dict[str, int] | None = None,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Record an LLM generation span on an existing trace."""
+    """Record an LLM generation span on an existing trace.
+
+    Automatically computes cost_usd from token counts when usage is provided,
+    using MODEL_PRICING rates for the given model.
+    """
     if trace is None:
         return
     try:
@@ -293,9 +381,20 @@ def add_generation_span(
             model=model,
             input=input_text[:2000] if input_text else "",
         )
+        span_metadata: dict[str, Any] = {"duration_ms": round(duration_ms, 1), **(metadata or {})}
+        if usage:
+            cost = calculate_cost(
+                model,
+                input_tokens=usage.get("input", 0),
+                output_tokens=usage.get("output", 0),
+                cache_read_tokens=cache_read_tokens,
+                cache_write_tokens=cache_write_tokens,
+            )
+            if cost > 0:
+                span_metadata["cost_usd"] = cost
         update_kwargs: dict[str, Any] = {
             "output": output_text[:5000] if output_text else "",
-            "metadata": {"duration_ms": round(duration_ms, 1), **(metadata or {})},
+            "metadata": span_metadata,
         }
         if usage:
             update_kwargs["usage_details"] = usage

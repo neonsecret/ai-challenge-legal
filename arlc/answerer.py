@@ -81,6 +81,8 @@ class AnswerResult:
     tpot_ms: float = 0.0
     input_tokens: int = 0
     output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
     model_name: str = MODEL
     grounding: list[dict] = field(default_factory=list)
 
@@ -1323,10 +1325,11 @@ def _call_llm(
     system_blocks: list[dict] | None = None,
     on_token=None,
     conversation_history: "list[dict] | None" = None,
-) -> tuple[str, float, float, float, int, int]:
+) -> tuple[str, float, float, float, int, int, int, int]:
     """Call Claude via Anthropic SDK with streaming.
 
-    Returns (answer_text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens).
+    Returns (answer_text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens,
+             cache_read_tokens, cache_write_tokens).
     Retries up to MAX_RETRIES times on transient failures, with extended
     exponential backoff (10s/30s/60s) for rate limit and overloaded errors.
 
@@ -1395,8 +1398,11 @@ def _call_llm_once(
     system_blocks: list[dict] | None = None,
     on_token=None,
     conversation_history: "list[dict] | None" = None,
-) -> tuple[str, float, float, float, int, int]:
+) -> tuple[str, float, float, float, int, int, int, int]:
     """Single streaming LLM call.
+
+    Returns (answer_text, ttft_ms, total_ms, tpot_ms, input_tokens,
+             output_tokens, cache_read_tokens, cache_write_tokens).
 
     Args:
         system_blocks: Optional multi-block system prompt for granular caching.
@@ -1410,7 +1416,7 @@ def _call_llm_once(
     if _USE_LITELLM:
         from arlc.llm import litellm_backend
 
-        return litellm_backend.call_llm(
+        result = litellm_backend.call_llm(
             system_prompt,
             user_message,
             max_tokens,
@@ -1418,6 +1424,8 @@ def _call_llm_once(
             system_blocks=system_blocks,
             on_token=on_token,
         )
+        # LiteLLM backend returns 6-tuple — extend with zeros for cache tokens
+        return (*result, 0, 0)
 
     client = _get_client()
     start = time.perf_counter()
@@ -1459,7 +1467,6 @@ def _call_llm_once(
     tpot_ms = (total_ms - ttft_ms) / max(output_tokens, 1)
     answer_text = "".join(chunks).strip()
 
-    # Log cache info for debugging F metric optimization
     cache_read = getattr(final.usage, "cache_read_input_tokens", 0) or 0
     cache_create = getattr(final.usage, "cache_creation_input_tokens", 0) or 0
     if cache_read or cache_create:
@@ -1472,7 +1479,7 @@ def _call_llm_once(
             input_tokens,
         )
 
-    return answer_text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
+    return answer_text, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens, cache_read, cache_create
 
 
 # Tool schema for structured output: answer + page citations
@@ -1509,16 +1516,17 @@ def _call_llm_structured(
     system_blocks: list[dict] | None = None,
     on_token=None,
     conversation_history: "list[dict] | None" = None,
-) -> tuple[str, list[int], float, float, float, int, int]:
+) -> tuple[str, list[int], float, float, float, int, int, int, int]:
     """LLM call with forced tool_use for structured answer + page citations.
 
-    Returns (answer_text, pages_used, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens).
+    Returns (answer_text, pages_used, ttft_ms, total_ms, tpot_ms, input_tokens,
+             output_tokens, cache_read_tokens, cache_write_tokens).
     Falls back to regular _call_llm if tool_use fails.
     """
     global _ANTHROPIC_CREDITS_EXHAUSTED
 
     if _ANTHROPIC_CREDITS_EXHAUSTED:
-        raw, ttft, total, tpot, in_tok, out_tok = _call_llm(
+        raw, ttft, total, tpot, in_tok, out_tok, cr, cw = _call_llm(
             system_prompt,
             user_message,
             max_tokens,
@@ -1528,7 +1536,7 @@ def _call_llm_structured(
             conversation_history=conversation_history,
         )
         pages = _extract_pages_used(raw)
-        return raw, pages, ttft, total, tpot, in_tok, out_tok
+        return raw, pages, ttft, total, tpot, in_tok, out_tok, cr, cw
 
     client = _get_client()
     start = time.perf_counter()
@@ -1557,6 +1565,8 @@ def _call_llm_structured(
         input_tokens = response.usage.input_tokens
         output_tokens = response.usage.output_tokens
         tpot_ms = total_ms / max(output_tokens, 1)
+        cache_read = getattr(response.usage, "cache_read_input_tokens", 0) or 0
+        cache_create = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
 
         # Extract tool_use result
         for block in response.content:
@@ -1567,13 +1577,23 @@ def _call_llm_structured(
                 # Validate pages_used are integers
                 pages_used = [int(p) for p in pages_used if isinstance(p, (int, float))]
                 logger.info("[LLM] Structured output: answer=%s pages=%s model=%s", answer_text[:60], pages_used, model)
-                return answer_text, pages_used, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
+                return (
+                    answer_text,
+                    pages_used,
+                    ttft_ms,
+                    total_ms,
+                    tpot_ms,
+                    input_tokens,
+                    output_tokens,
+                    cache_read,
+                    cache_create,
+                )
 
         # No tool_use block found — extract text content as fallback
         text_parts = [b.text for b in response.content if hasattr(b, "text")]
         raw = " ".join(text_parts).strip()
         pages = _extract_pages_used(raw)
-        return raw, pages, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens
+        return raw, pages, ttft_ms, total_ms, tpot_ms, input_tokens, output_tokens, cache_read, cache_create
 
     except Exception as e:
         logger.warning("[LLM] Structured output failed: %s, falling back to regular call", e)
@@ -1581,7 +1601,7 @@ def _call_llm_structured(
         if "credit balance" in err_msg or "invalid x-api-key" in err_msg or "authentication_error" in err_msg:
             _ANTHROPIC_CREDITS_EXHAUSTED = True
 
-        raw, ttft, total, tpot, in_tok, out_tok = _call_llm(
+        raw, ttft, total, tpot, in_tok, out_tok, cr, cw = _call_llm(
             system_prompt,
             user_message,
             max_tokens,
@@ -1591,7 +1611,7 @@ def _call_llm_structured(
             conversation_history=conversation_history,
         )
         pages = _extract_pages_used(raw)
-        return raw, pages, ttft, total, tpot, in_tok, out_tok
+        return raw, pages, ttft, total, tpot, in_tok, out_tok, cr, cw
 
 
 # ---------------------------------------------------------------------------
@@ -1647,7 +1667,24 @@ def _self_critique_free_text(question: str, answer: str, source_text: str) -> st
         f"Output ONLY the final answer text — no preamble, no criteria list."
     )
     try:
-        raw, _, _, _, _, _ = _call_llm(critique_system, critique_msg, max_tokens=600, model=MODEL_FREE_TEXT)
+        raw, _, total_ms, _, in_tok, out_tok, _, _ = _call_llm(
+            critique_system, critique_msg, max_tokens=600, model=MODEL_FREE_TEXT
+        )
+        # Record self-critique LLM call as an observability span (no-op when trace is None)
+        try:
+            from neolex.observability import add_generation_span, get_current_trace
+
+            add_generation_span(
+                get_current_trace(),
+                model=MODEL_FREE_TEXT,
+                input_text=critique_msg[:500],
+                output_text=raw,
+                duration_ms=total_ms,
+                usage={"input": in_tok, "output": out_tok},
+                metadata={"name": "self-critique"},
+            )
+        except Exception:
+            pass
         result = raw.strip()
         return result or answer
     except Exception as e:
@@ -2515,7 +2552,7 @@ async def generate_answer(
 
                 try:
                     ft_model = force_model or (MODEL_FREE_TEXT if answer_type == "free_text" else MODEL)
-                    raw, llm_pages, ttft, total, tpot, in_tok, out_tok = _call_llm_structured(
+                    raw, llm_pages, ttft, total, tpot, in_tok, out_tok, cache_read, cache_write = _call_llm_structured(
                         "",
                         user_msg,
                         max_tok,
@@ -2565,6 +2602,8 @@ async def generate_answer(
                         tpot_ms=tpot,
                         input_tokens=in_tok,
                         output_tokens=out_tok,
+                        cache_read_tokens=cache_read,
+                        cache_write_tokens=cache_write,
                         model_name=f"{ft_model}_cached",
                     )
                 except Exception as e:
@@ -2593,7 +2632,7 @@ async def generate_answer(
     if on_token is not None:
         import asyncio as _asyncio
 
-        raw, llm_pages, ttft, total, tpot, in_tok, out_tok = await _asyncio.to_thread(
+        raw, llm_pages, ttft, total, tpot, in_tok, out_tok, cache_read, cache_write = await _asyncio.to_thread(
             _call_llm_structured,
             system,
             user_msg,
@@ -2603,7 +2642,7 @@ async def generate_answer(
             conversation_history=conversation_history,
         )
     else:
-        raw, llm_pages, ttft, total, tpot, in_tok, out_tok = _call_llm_structured(
+        raw, llm_pages, ttft, total, tpot, in_tok, out_tok, cache_read, cache_write = _call_llm_structured(
             system,
             user_msg,
             max_tok,
@@ -2666,6 +2705,8 @@ async def generate_answer(
         tpot_ms=tpot,
         input_tokens=in_tok,
         output_tokens=out_tok,
+        cache_read_tokens=cache_read,
+        cache_write_tokens=cache_write,
         model_name=ft_model,
         grounding=grounding,
     )
