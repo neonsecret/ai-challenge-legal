@@ -18,7 +18,7 @@ type CategoryFilter = typeof CATEGORIES[number]
 interface TemplatePanelProps {
     open: boolean
     onClose: () => void
-    onSelect: (slug: string) => void
+    onSelect: (template: {slug: string; name: string}) => void
 }
 
 const CUSTOM_SLUG = "__custom__"
@@ -66,8 +66,8 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
         return () => document.removeEventListener("keydown", handleKey)
     }, [open, onClose])
 
-    const handleSelect = useCallback((slug: string) => {
-        onSelect(slug)
+    const handleSelect = useCallback((template: {slug: string; name: string}) => {
+        onSelect(template)
         onClose()
     }, [onSelect, onClose])
 
@@ -202,7 +202,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                         <div style={{flex: 1, overflowY: "auto", padding: SPACE[4], display: "flex", flexDirection: "column", gap: SPACE[2]}}>
                             {/* Custom document option */}
                             <button
-                                onClick={() => handleSelect(CUSTOM_SLUG)}
+                                onClick={() => handleSelect({slug: CUSTOM_SLUG, name: "Custom document"})}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",

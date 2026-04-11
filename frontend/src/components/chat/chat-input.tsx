@@ -14,21 +14,16 @@ interface ChatInputProps {
     /** Present when a chat session is active; gates template picker visibility. */
     chatId?: string
     /** Called when user picks a template from the panel. */
-    onTemplateSelect?: (slug: string) => void
+    onTemplateSelect?: (template: {slug: string; name: string}) => void
     /** Disables picker when chat already has 3 documents. */
     documentCount?: number
-    /** Slug of the template queued for the next send. Shown as a pill below input. */
-    pendingTemplateSlug?: string | null
+    /** Template queued for the next send. Shown as a pill below input. */
+    pendingTemplate?: {slug: string; name: string} | null
     /** Called when user dismisses the pending template pill. */
     onClearTemplate?: () => void
 }
 
-function formatTemplateName(slug: string): string {
-    if (slug === "__custom__") return "Custom document"
-    return slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelect, documentCount = 0, pendingTemplateSlug, onClearTemplate}: ChatInputProps) {
+export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate}: ChatInputProps) {
     const ref = useRef<HTMLTextAreaElement>(null)
     const [hasText, setHasText] = useState(false)
     const [focused, setFocused] = useState(false)
@@ -70,9 +65,9 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
         setHasText(el.value.trim().length > 0)
     }, [])
 
-    const handleTemplateSelect = useCallback((slug: string) => {
+    const handleTemplateSelect = useCallback((template: {slug: string; name: string}) => {
         setPanelOpen(false)
-        onTemplateSelect?.(slug)
+        onTemplateSelect?.(template)
     }, [onTemplateSelect])
 
     const sendBg = hasText && !disabled
@@ -204,7 +199,7 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
             </div>
 
             {/* Pending template pill — shown below the input when a template is queued */}
-            {pendingTemplateSlug && (
+            {pendingTemplate && (
                 <div
                     role="status"
                     aria-live="polite"
@@ -230,7 +225,7 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                     }}>
-                        {formatTemplateName(pendingTemplateSlug)} — press Enter to draft
+                        {pendingTemplate.name} — press Enter to draft
                     </span>
                     {onClearTemplate && (
                         <button

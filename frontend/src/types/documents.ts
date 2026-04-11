@@ -18,4 +18,7 @@ export interface ChatDocument {
     generated_at: string   // ISO 8601 — from SSE event or client-side fallback
     /** Populated fields from agent drafting. Absent (undefined) = stub/loading state. */
     fields?: Record<string, string>
+    /** Index of the conversation turn (0-based pair index) that generated this document.
+     *  Undefined for documents restored from backend without turn info (shown on latest pair as fallback). */
+    turn_index?: number
 }
