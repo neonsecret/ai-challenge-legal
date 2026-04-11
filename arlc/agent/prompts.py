@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import re
+from datetime import datetime
 
 from arlc.agent.state import AgentState, SourceDocument
 
@@ -535,8 +536,11 @@ def _build_drafting_section(state: AgentState) -> str:
     field_descriptions: dict[str, str] = state.get("template_field_descriptions") or {}
     chat_documents: list[dict] = state.get("chat_documents") or []
 
+    today = datetime.now().strftime("%d. %B %Y")
+
     parts = [
         "\n\n## DRAFTING MODE",
+        f"Dnesni datum: {today}",
         f"The user has selected the **{template_name}** template (`{template_slug}`) "
         "to generate a formal Czech legal document (podání).",
         "",

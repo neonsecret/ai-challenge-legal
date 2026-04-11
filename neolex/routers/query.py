@@ -453,9 +453,15 @@ async def query_stream(
                             list_conversation_documents,
                         )
 
-                        tmpl = await get_template_by_slug(db, body.template_slug)
+                        lookup_slug = (
+                            DRAFTING_FREEFORM_SLUG if body.template_slug == DRAFTING_CUSTOM_SLUG else body.template_slug
+                        )
+                        tmpl = await get_template_by_slug(db, lookup_slug)
                         if tmpl:
-                            template_name = tmpl["name"]
+                            # For __custom__ slugs use the locale-neutral label, not the DB name
+                            template_name = (
+                                "Custom Document" if body.template_slug == DRAFTING_CUSTOM_SLUG else tmpl["name"]
+                            )
                             template_required_fields = tmpl["required_fields"]
                             template_field_descriptions = tmpl["field_descriptions"]
 

@@ -712,19 +712,11 @@ def build_agent_graph():
                 document_id = tc["args"].get("document_id", "") or ""
                 t_slug = tc["args"].get("template_slug", "") or state.get("template_slug", "")
 
-                # Custom documents have no template in the DB — guide the agent.
+                # Convert the __custom__ frontend sentinel to the DB slug for vlastni_dokument.
+                # The freeform template lives in the DB as "vlastni_dokument"; "__custom__" is
+                # only a UI-layer sentinel and must never be used for FK-constrained DB operations.
                 if t_slug == "__custom__":
-                    results_msgs.append(
-                        ToolMessage(
-                            content=(
-                                "Custom documents do not use a fixed template. "
-                                "Describe the document structure you need and I will help draft it as free-form text. "
-                                "Do NOT call document_draft for custom documents."
-                            ),
-                            tool_call_id=tc["id"],
-                        ),
-                    )
-                    continue
+                    t_slug = "vlastni_dokument"
 
                 if not isinstance(fields, dict):
                     results_msgs.append(
