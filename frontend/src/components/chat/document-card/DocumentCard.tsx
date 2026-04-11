@@ -14,6 +14,7 @@ interface DocumentCardProps {
 
 export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
     const pdfUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/pdf`
+    const isReady = doc.fields !== undefined && Object.keys(doc.fields).length > 0
 
     return (
         <div style={{
@@ -64,37 +65,57 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                 </span>
             </div>
 
-            {/* Actions */}
-            <div style={{display: "flex", gap: SPACE[2], flexShrink: 0}}>
-                <ActionButton
-                    label="Preview"
-                    icon={<Eye size={13} strokeWidth={1.8} />}
-                    onClick={() => onPreview(doc.doc_id)}
-                />
-                <a
-                    href={pdfUrl}
-                    download={`${doc.template_name}-v${doc.version}.pdf`}
-                    title="Download PDF"
-                    style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: SPACE[1],
-                        padding: `${SPACE[1]}px ${SPACE[2]}px`,
-                        borderRadius: RADIUS.sm,
-                        background: "var(--doc-btn-glass-bg)",
-                        border: "1px solid var(--doc-btn-glass-border)",
-                        color: "var(--doc-text-secondary)",
+            {/* Actions — hidden until fields are populated */}
+            {isReady ? (
+                <div style={{display: "flex", gap: SPACE[2], flexShrink: 0}}>
+                    <ActionButton
+                        label="Preview"
+                        icon={<Eye size={13} strokeWidth={1.8} />}
+                        onClick={() => onPreview(doc.doc_id)}
+                    />
+                    <a
+                        href={pdfUrl}
+                        download={`${doc.template_name}-v${doc.version}.pdf`}
+                        title="Download PDF"
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACE[1],
+                            padding: `${SPACE[1]}px ${SPACE[2]}px`,
+                            borderRadius: RADIUS.sm,
+                            background: "var(--doc-btn-glass-bg)",
+                            border: "1px solid var(--doc-btn-glass-border)",
+                            color: "var(--doc-text-secondary)",
+                            fontFamily: FONT.sans,
+                            fontSize: TYPE_SCALE.xs,
+                            textDecoration: "none",
+                            transition: `all ${TIMING.fast} ${EASE.out}`,
+                            cursor: "pointer",
+                        }}
+                    >
+                        <Download size={13} strokeWidth={1.8} />
+                        PDF
+                    </a>
+                </div>
+            ) : (
+                <div style={{flexShrink: 0}}>
+                    <style>{`
+                        @keyframes doc-field-pulse {
+                            0%, 100% { opacity: 0.45; }
+                            50% { opacity: 1; }
+                        }
+                    `}</style>
+                    <span style={{
                         fontFamily: FONT.sans,
                         fontSize: TYPE_SCALE.xs,
-                        textDecoration: "none",
-                        transition: `all ${TIMING.fast} ${EASE.out}`,
-                        cursor: "pointer",
-                    }}
-                >
-                    <Download size={13} strokeWidth={1.8} />
-                    PDF
-                </a>
-            </div>
+                        color: "var(--doc-text-secondary)",
+                        animation: "doc-field-pulse 1.6s ease-in-out infinite",
+                        display: "inline-block",
+                    }}>
+                        AI is filling fields…
+                    </span>
+                </div>
+            )}
         </div>
     )
 }

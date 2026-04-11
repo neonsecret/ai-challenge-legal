@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -16,7 +16,7 @@ from neolex.config import settings
 from neolex.constants import DRAFTING_CUSTOM_SLUG, DRAFTING_FREEFORM_SLUG, DRAFTING_MAX_DOCS_PER_CONVERSATION
 from neolex.db.audit import get_audit_db
 from neolex.db.models import User
-from neolex.db.postgres import AsyncSessionLocal, get_db
+from neolex.db.postgres import AsyncSessionLocal, conversation_doc_lock_key, get_db
 from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_response
 from neolex.services.pipeline import run_single_question
 
@@ -87,12 +87,12 @@ async def _create_pipeline_document(
         template_name = "Custom Document" if template_slug == DRAFTING_CUSTOM_SLUG else template.name
 
         # Serialize concurrent document creations for this conversation.
-        # SELECT ... FOR UPDATE cannot lock rows that don't yet exist, so two
-        # concurrent first-document requests would both read count=0 and both INSERT.
-        # pg_advisory_xact_lock serialises them at the PostgreSQL level; the lock is
-        # released automatically when the transaction commits or rolls back.
-        _conv_lock_key = conv_uuid.int & 0x7FFFFFFFFFFFFFFF  # positive int64
-        await session.execute(select(func.pg_advisory_xact_lock(_conv_lock_key)))
+        # pg_advisory_xact_lock blocks until no other session holds the same key,
+        # then holds it for the duration of the transaction (released at commit/rollback).
+        # This prevents two concurrent pipeline calls from both reading count < 3
+        # and both inserting — a race that SELECT ... FOR UPDATE cannot catch when
+        # there are zero existing rows to lock.
+        await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": conversation_doc_lock_key(conv_uuid)})
 
         # Respect the per-conversation document cap.
         count_result = await session.execute(
@@ -540,6 +540,7 @@ async def query_stream(
                                 "template_slug": doc_payload.get("template_slug", ""),
                                 "template_name": doc_payload.get("template_name", ""),
                                 "version": doc_payload.get("version", 1),
+                                "fields": doc_payload.get("fields"),
                             }
                         ),
                     }
@@ -693,7 +694,9 @@ async def query_stream(
             # Emit document_generated when the query included a template_slug.
             # The document is created as a stub (empty fields) that the user
             # fills via the DocumentCard UI.  Non-fatal if creation fails.
-            if body.template_slug and conversation_id:
+            # Agent path: document_draft tool in graph.py creates+fills the
+            # document — skip the stub so we don't emit a second event.
+            if body.template_slug and conversation_id and not body.use_agent:
                 try:
                     doc_payload = await _create_pipeline_document(
                         template_slug=body.template_slug,

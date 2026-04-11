@@ -48,6 +48,8 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
                     template_name: (raw.template_name as string) ?? "",
                     version: (raw.version as number) ?? 1,
                     generated_at: (raw.generated_at as string) ?? (raw.created_at as string) ?? new Date().toISOString(),
+                    // null = non-agent stub (no fields yet); undefined = absent from response
+                    fields: (raw.fields as Record<string, string> | null) ?? undefined,
                 }))
             ))
             .catch((err) => {

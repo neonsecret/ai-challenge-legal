@@ -765,6 +765,7 @@ def build_agent_graph():
                                 "template_slug": tmpl,
                                 "template_name": state.get("template_name", ""),
                                 "version": version,
+                                "fields": fields,
                             }
                         )
                 continue

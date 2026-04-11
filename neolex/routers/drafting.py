@@ -20,13 +20,13 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.middleware import get_api_key
 from neolex.constants import DRAFTING_MAX_DOCS_PER_CONVERSATION
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
-from neolex.db.postgres import get_db
+from neolex.db.postgres import conversation_doc_lock_key, get_db
 from neolex.schemas.drafting import DocumentCreate, DocumentResponse, DocumentUpdate
 from neolex.services.pdf_generator import _XELATEX_BIN, PDFTimeoutError, generate_pdf, invalidate_cache
 
@@ -150,13 +150,14 @@ async def create_document(
             detail=f"Missing required field(s): {', '.join(missing)}",
         )
 
-    # Acquire a transaction-scoped advisory lock keyed to this conversation.
-    # SELECT FOR UPDATE cannot lock rows that don't yet exist, so two concurrent
-    # first-document requests could both read count=0 and both INSERT.
-    # pg_advisory_xact_lock serialises them at the PostgreSQL level; the lock is
-    # released automatically when the transaction commits or rolls back.
-    _conv_lock_key = conv_uuid.int & 0x7FFFFFFFFFFFFFFF  # positive int64
-    await db.execute(select(func.pg_advisory_xact_lock(_conv_lock_key)))
+    # Serialize concurrent document creations for this conversation using an
+    # advisory lock so both the REST path and the pipeline path (_create_pipeline_document
+    # in query.py) coordinate on the same mutex.  pg_advisory_xact_lock blocks
+    # until no other session holds the same key, then holds it for the duration
+    # of this transaction (released automatically at commit/rollback).
+    # SELECT ... FOR UPDATE alone cannot prevent races when there are zero
+    # existing rows to lock — the advisory lock closes that gap.
+    await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": conversation_doc_lock_key(conv_uuid)})
 
     # Enforce max 3 documents per conversation with SELECT FOR UPDATE to prevent races.
     # NOTE: SELECT COUNT(*) FOR UPDATE is invalid in PostgreSQL — only row-returning

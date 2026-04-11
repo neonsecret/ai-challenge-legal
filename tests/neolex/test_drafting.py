@@ -361,7 +361,7 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
-        # Second execute: pg_advisory_xact_lock (no meaningful return value needed)
+        # Second execute: pg_advisory_xact_lock (return value unused)
         lock_result = MagicMock()
 
         # Third execute: row-fetch FOR UPDATE (0 existing docs)
@@ -445,6 +445,7 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
+        # pg_advisory_xact_lock execute (return value unused)
         lock_result = MagicMock()
 
         count_result = MagicMock()

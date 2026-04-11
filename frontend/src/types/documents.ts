@@ -16,4 +16,6 @@ export interface ChatDocument {
     template_name: string
     version: number
     generated_at: string   // ISO 8601 — from SSE event or client-side fallback
+    /** Populated fields from agent drafting. Absent (undefined) = stub/loading state. */
+    fields?: Record<string, string>
 }

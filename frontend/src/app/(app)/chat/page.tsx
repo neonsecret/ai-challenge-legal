@@ -116,7 +116,7 @@ export default function ChatPage() {
         setMessageFeedback,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
-    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, clearError, abort} = stream
+    const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, isDraftingMode, clearError, abort} = stream
 
     const [drawerOpen, setDrawerOpen] = useState(false)
     const [drawerData, setDrawerData] = useState<{ answer: string; sources: Source[]; focusDocId?: string; focusPage?: number; focusSeq: number }>({answer: "", sources: [], focusSeq: 0})
@@ -553,6 +553,7 @@ export default function ChatPage() {
                                                         setViewingDocName(doc?.template_name)
                                                         setDocumentViewerOpen(true)
                                                     }}
+                                                    isDraftingMode={isLatestPair && isStreaming && pair.assistant.id === activeAssistantId.current && isDraftingMode}
                                                 />
                                             </motion.div>
                                         )}
