@@ -475,6 +475,40 @@ textarea::placeholder { color: #b29254; }
     --dt-panel-border-color: rgba(255,255,255,0.18);
     --dt-panel-shadow: 0 -12px 48px rgba(0,0,0,0.50), inset 0 1px 0 rgba(255,255,255,0.08);
 
+    /* Warm landing section tokens — light/amber landing page components */
+    --wl-bg-section: linear-gradient(180deg, #e8d4b8 0%, #dfc090 100%);
+    --wl-glow-ambient: rgba(175,130,20,0.22);
+    --wl-label-color: rgba(46,31,8,0.45);
+    --wl-heading-color: #1a0e04;
+    --wl-subtext-color: rgba(46,31,8,0.50);
+    --wl-body-text: rgba(46,31,8,0.60);
+    --wl-body-text-muted: rgba(46,31,8,0.55);
+    --wl-accent: #c47c00;
+    --wl-accent-bg: rgba(196,124,0,0.20);
+    --wl-accent-bg-subtle: rgba(196,124,0,0.15);
+    --wl-accent-bg-faint: rgba(196,124,0,0.12);
+    --wl-accent-border: rgba(196,124,0,0.45);
+    --wl-accent-border-mid: rgba(196,124,0,0.30);
+    --wl-accent-border-subtle: rgba(196,124,0,0.25);
+    --wl-accent-border-faint: rgba(196,124,0,0.12);
+    --wl-accent-badge-bg: rgba(196,124,0,0.90);
+    --wl-accent-dot: #ffd96e;
+    --wl-active-text: #5c2e08;
+    --wl-glass-bg: rgba(255,250,235,0.22);
+    --wl-glass-border: rgba(255,255,255,0.45);
+    --wl-glass-shadow: inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12);
+    --wl-glass-backdrop: blur(32px) saturate(180%) brightness(105%);
+    --wl-card-bg: rgba(255,255,255,0.18);
+    --wl-pdf-bg: rgba(255,255,255,0.60);
+    --wl-pdf-border: rgba(255,255,255,0.70);
+    --wl-pdf-heading: #333;
+    --wl-pdf-text: #444;
+    --wl-pdf-text-secondary: #555;
+    --wl-pdf-divider: #ccc;
+    --wl-category-bg: rgba(46,31,8,0.06);
+    --wl-text-on-accent: #fff;
+    --wl-download-icon: rgba(255,255,255,0.75);
+
     /* Landing section tokens — semantic aliases for section components */
     --dt-landing-label-color: rgba(201,168,76,0.70);
     --dt-landing-label-muted: rgba(201,168,76,0.60);
