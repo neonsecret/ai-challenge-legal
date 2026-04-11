@@ -175,6 +175,10 @@ async def create_document(
             "Delete an existing document to create a new one.",
         )
 
+    # Capture before commit: SQLAlchemy expires ORM objects on commit (expire_on_commit=True),
+    # so accessing template.name after commit raises DetachedInstanceError in production.
+    template_name = template.name
+
     doc = ChatDocument(
         conversation_id=conv_uuid,
         user_id=user_id,
