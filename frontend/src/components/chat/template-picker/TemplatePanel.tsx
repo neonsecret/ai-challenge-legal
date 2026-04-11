@@ -12,9 +12,6 @@ import type {Template} from "@/types/documents"
 const JURISDICTIONS = ["CZ", "DIFC", "UK", "AU", "General"] as const
 type JurisdictionFilter = typeof JURISDICTIONS[number]
 
-const CATEGORIES = ["Civil", "Labor", "Administrative", "Criminal", "General"] as const
-type CategoryFilter = typeof CATEGORIES[number]
-
 interface TemplatePanelProps {
     open: boolean
     onClose: () => void
@@ -30,7 +27,10 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const titleId = useId()
 
     const [jurisdiction, setJurisdiction] = useState<JurisdictionFilter | null>(null)
-    const [category, setCategory] = useState<CategoryFilter | null>(null)
+    const [category, setCategory] = useState<string | null>(null)
+
+    // Derive categories from loaded templates so new backend categories appear automatically
+    const categories = Array.from(new Set(templates.map((t: Template) => t.category).filter(Boolean)))
 
     // Load all templates once when panel opens; client-side filter handles jurisdiction/category.
     // Passing jurisdiction to the server caused case-mismatch bugs (DB stores uppercase, "General"
@@ -190,7 +190,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                 ))}
                             </div>
                             <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap"}}>
-                                {CATEGORIES.map((c) => (
+                                {categories.map((c) => (
                                     <PillButton
                                         key={c}
                                         label={c}

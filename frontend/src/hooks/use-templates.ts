@@ -5,8 +5,17 @@ import type {Template} from "@/types/documents"
 
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
 
-// In-memory cache keyed by jurisdiction (category filtered client-side)
-const templateCache = new Map<string, Template[]>()
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
+interface CacheEntry {
+    data: Template[]
+    cachedAt: number
+}
+
+// In-memory cache keyed by jurisdiction (category filtered client-side).
+// Entries expire after CACHE_TTL_MS so backend template updates become visible
+// within the same session without requiring a hard page reload.
+const templateCache = new Map<string, CacheEntry>()
 
 interface UseTemplatesReturn {
     templates: Template[]
@@ -29,8 +38,8 @@ export function useTemplates(): UseTemplatesReturn {
         setHasAttempted(true)
         const key = jurisdiction ?? ""
         const cached = templateCache.get(key)
-        if (cached) {
-            setTemplates(cached)
+        if (cached && Date.now() - cached.cachedAt < CACHE_TTL_MS) {
+            setTemplates(cached.data)
             return
         }
 
@@ -51,7 +60,7 @@ export function useTemplates(): UseTemplatesReturn {
             )
             if (!res.ok) throw new Error(`HTTP ${res.status}`)
             const data: Template[] = await res.json()
-            templateCache.set(key, data)
+            templateCache.set(key, {data, cachedAt: Date.now()})
             setTemplates(data)
         } catch (err) {
             if (err instanceof Error && err.name === "AbortError") return
