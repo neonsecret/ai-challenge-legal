@@ -336,7 +336,7 @@ export function ChatMessage({
                 <div style={dark ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
                     {isStatusOnly ? statusNode : content ? (
                         <div
-                            className={`${dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}${dark && isStreaming ? " strict-streaming-cursor" : ""}`}
+                            className={`${dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}${isStreaming && dark ? " strict-streaming-cursor" : ""}${isStreaming && !dark ? " warm-streaming-cursor" : ""}`}
                             style={dark ? {
                                 fontFamily: "var(--strict-prose-font)",
                                 lineHeight: "var(--strict-prose-lh)",
@@ -394,6 +394,26 @@ export function ChatMessage({
                                         width: 1.5px;
                                         height: 1em;
                                         background: var(--strict-gold-base);
+                                        vertical-align: text-bottom;
+                                        margin-left: 2px;
+                                        animation: cursor-blink 0.8s ease-in-out infinite;
+                                    }
+                                `}</style>
+                            )}
+                            {isStreaming && !dark && (
+                                <style>{`
+                                    .warm-streaming-cursor > p:last-child::after,
+                                    .warm-streaming-cursor > h2:last-child::after,
+                                    .warm-streaming-cursor > h3:last-child::after,
+                                    .warm-streaming-cursor > h4:last-child::after,
+                                    .warm-streaming-cursor > blockquote:last-child > p:last-child::after,
+                                    .warm-streaming-cursor > ul:last-child > li:last-child::after,
+                                    .warm-streaming-cursor > ol:last-child > li:last-child::after {
+                                        content: "";
+                                        display: inline-block;
+                                        width: 1.5px;
+                                        height: 1em;
+                                        background: #C9A84C;
                                         vertical-align: text-bottom;
                                         margin-left: 2px;
                                         animation: cursor-blink 0.8s ease-in-out infinite;

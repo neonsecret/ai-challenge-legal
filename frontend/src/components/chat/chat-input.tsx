@@ -4,6 +4,7 @@ import {useRef, useCallback, useEffect, useState} from "react"
 import {useColorMode} from "@/lib/color-mode"
 import {ArrowUp, StopCircle, X} from "lucide-react"
 import {useI18n} from "@/lib/i18n"
+import {SPACE} from "@/lib/tokens"
 import {TemplatePicker} from "@/components/chat/template-picker/TemplatePicker"
 import {TemplatePanel} from "@/components/chat/template-picker/TemplatePanel"
 
@@ -11,8 +12,6 @@ interface ChatInputProps {
     onSend: (message: string) => void
     disabled?: boolean
     onFocusRef?: React.MutableRefObject<(() => void) | null>
-    /** Present when a chat session is active; gates template picker visibility. */
-    chatId?: string
     /** Called when user picks a template from the panel. */
     onTemplateSelect?: (template: {slug: string; name: string}) => void
     /** Disables picker when chat already has 3 documents. */
@@ -23,7 +22,7 @@ interface ChatInputProps {
     onClearTemplate?: () => void
 }
 
-export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate}: ChatInputProps) {
+export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate}: ChatInputProps) {
     const ref = useRef<HTMLTextAreaElement>(null)
     const [hasText, setHasText] = useState(false)
     const [focused, setFocused] = useState(false)
@@ -153,12 +152,6 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
                         }}>
                             ↵ Enter
                         </span>
-                        {chatId && onTemplateSelect && (
-                            <TemplatePicker
-                                onOpen={() => setPanelOpen(true)}
-                                disabled={documentCount >= 3}
-                            />
-                        )}
                     </div>
                     <button
                         onClick={handleSend}
@@ -198,6 +191,16 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
                 </div>
             </div>
 
+            {/* Toolbar row — below input, outside the box */}
+            {onTemplateSelect && (
+                <div style={{display: "flex", alignItems: "center", gap: 6, marginTop: SPACE['1']}}>
+                    <TemplatePicker
+                        onOpen={() => setPanelOpen(true)}
+                        disabled={documentCount >= 3}
+                    />
+                </div>
+            )}
+
             {/* Pending template pill — shown below the input when a template is queued */}
             {pendingTemplate && (
                 <div
@@ -225,7 +228,7 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
                     }}>
-                        {pendingTemplate.name} — press Enter to draft
+                        {pendingTemplate.name.toUpperCase()} — press Enter to draft
                     </span>
                     {onClearTemplate && (
                         <button
@@ -253,7 +256,7 @@ export function ChatInput({onSend, disabled, onFocusRef, chatId, onTemplateSelec
             )}
 
             {/* Template panel — portal-like, rendered outside the input box */}
-            {chatId && onTemplateSelect && (
+            {onTemplateSelect && (
                 <TemplatePanel
                     open={panelOpen}
                     onClose={() => setPanelOpen(false)}
