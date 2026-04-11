@@ -84,7 +84,7 @@ async def _create_pipeline_document(
         # DetachedInstanceError.
         # For __custom__ slugs, always return the locale-neutral English label
         # regardless of what name the underlying DB template has (NEO-1021).
-        template_name = "Custom Document" if template_slug == _PIPELINE_CUSTOM_SLUG else template.name
+        template_name = "Custom Document" if template_slug == DRAFTING_CUSTOM_SLUG else template.name
 
         # Serialize concurrent document creations for this conversation.
         # SELECT ... FOR UPDATE cannot lock rows that don't yet exist, so two
