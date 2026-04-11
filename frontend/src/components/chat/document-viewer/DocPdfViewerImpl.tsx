@@ -22,6 +22,8 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
     const [page, setPage] = useState(1)
     const [error, setError] = useState(false)
     const headCheckedRef = useRef<string | null>(null)
+    const [width, setWidth] = useState(600)
+    const containerRef = useRef<HTMLDivElement>(null)
 
     // Pre-check HTTP status via HEAD before react-pdf attempts to load.
     // This lets us surface a 503 timeout as a distinct error kind.
@@ -32,6 +34,18 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
             .then(r => { if (!r.ok) onError?.(r.status === 503 ? "timeout" : "error") })
             .catch(() => onError?.("error"))
     }, [pdfUrl, onError])
+
+    // Track container width so the PDF page fills the panel on resize.
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        const observer = new ResizeObserver(([entry]) => {
+            const w = entry.contentRect.width
+            if (w > 0) setWidth(Math.min(w, 700))
+        })
+        observer.observe(el)
+        return () => observer.disconnect()
+    }, [])
 
     const handleLoadSuccess = useCallback(({numPages}: {numPages: number}) => {
         setNumPages(numPages)
@@ -122,7 +136,7 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
             )}
 
             {/* PDF content */}
-            <div style={{flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", padding: SPACE[3]}}>
+            <div ref={containerRef} style={{flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", padding: SPACE[3]}}>
                 <Document
                     file={pdfUrl}
                     onLoadSuccess={handleLoadSuccess}
@@ -131,7 +145,7 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
                 >
                     <Page
                         pageNumber={page}
-                        width={Math.min(typeof window !== "undefined" ? window.innerWidth * 0.75 : 600, 700)}
+                        width={width}
                         renderTextLayer={true}
                         renderAnnotationLayer={false}
                     />
