@@ -9,7 +9,7 @@ import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {TemplateCard} from "./TemplateCard"
 import type {Template} from "@/types/documents"
 
-const JURISDICTIONS = ["CZ", "DIFC", "UK", "General"] as const
+const JURISDICTIONS = ["CZ", "DIFC", "UK", "AU", "General"] as const
 type JurisdictionFilter = typeof JURISDICTIONS[number]
 
 const CATEGORIES = ["Civil", "Labor", "Administrative", "Criminal", "General"] as const
