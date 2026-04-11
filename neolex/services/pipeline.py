@@ -153,9 +153,10 @@ async def run_single_question(
     except Exception:
         if trace is not None:
             finalize_trace(trace, level="ERROR")
+        raise
+    finally:
         if _trace_token is not None:
             reset_current_trace(_trace_token)
-        raise
 
     # --- Post-pipeline: record spans and finalise the trace ---
     if trace is not None:
@@ -176,9 +177,6 @@ async def run_single_question(
         )
         finalize_trace(trace, output=answer_str)
         result["trace_id"] = get_trace_id(trace)
-
-    if _trace_token is not None:
-        reset_current_trace(_trace_token)
 
     return result
 

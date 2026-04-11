@@ -120,7 +120,6 @@ class AgentState(TypedDict):
     doc_ids: NotRequired[list[str] | None]
     _on_status: NotRequired[Callable[[str], None] | None]
     _on_document: NotRequired[Callable[[dict], None] | None]
-    _add_span_fn: NotRequired[Callable | None]  # observability: add_agent_step_span callback
     # --- Drafting mode (injected when template_slug is present in the request) ---
     # When template_slug is set the agent operates in drafting mode: it searches
     # the corpus to ground legal content, then calls document_draft to persist the

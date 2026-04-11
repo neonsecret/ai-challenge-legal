@@ -228,12 +228,16 @@ def llm_rerank_pages(
 
             # Record LLM reranker call as an observability span (no-op when trace is None)
             try:
-                from neolex.observability import add_generation_span, get_current_trace
+                from neolex.observability import (
+                    _SPAN_INPUT_TRUNCATE_CHARS,
+                    add_generation_span,
+                    get_current_trace,
+                )
 
                 add_generation_span(
                     get_current_trace(),
                     model=model,
-                    input_text=prompt[:500],
+                    input_text=prompt[:_SPAN_INPUT_TRUNCATE_CHARS],
                     output_text=content,
                     duration_ms=elapsed_ms,
                     metadata={"name": "llm-reranker", "n_candidates": len(pages)},

@@ -1672,12 +1672,16 @@ def _self_critique_free_text(question: str, answer: str, source_text: str) -> st
         )
         # Record self-critique LLM call as an observability span (no-op when trace is None)
         try:
-            from neolex.observability import add_generation_span, get_current_trace
+            from neolex.observability import (
+                _SPAN_INPUT_TRUNCATE_CHARS,
+                add_generation_span,
+                get_current_trace,
+            )
 
             add_generation_span(
                 get_current_trace(),
                 model=MODEL_FREE_TEXT,
-                input_text=critique_msg[:500],
+                input_text=critique_msg[:_SPAN_INPUT_TRUNCATE_CHARS],
                 output_text=raw,
                 duration_ms=total_ms,
                 usage={"input": in_tok, "output": out_tok},

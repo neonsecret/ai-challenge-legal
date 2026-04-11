@@ -1031,8 +1031,6 @@ async def run_agent_turn(
     template_field_descriptions: dict[str, str] | None = None,
     chat_documents: list[dict] | None = None,
     draft_document_fn: Callable | None = None,
-    # --- Observability (optional) ---
-    span_fn: Callable | None = None,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -1075,7 +1073,6 @@ async def run_agent_turn(
         "doc_ids": doc_ids,
         "_on_status": on_status,  # passed through state for search_node
         "_on_document": on_document,  # emitted after successful document_draft tool call
-        "_add_span_fn": span_fn,  # optional observability callback: (name, input, output, meta) -> None
         # Drafting mode — all None/empty when not in drafting mode
         "template_slug": template_slug,
         "template_name": template_name,

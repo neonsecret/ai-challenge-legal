@@ -115,6 +115,7 @@ async def run_agent_question(
         finalize_trace,
         get_trace_id,
         is_enabled,
+        reset_current_trace,
         set_current_trace,
     )
 
@@ -199,11 +200,10 @@ async def run_agent_question(
     except Exception:
         if trace is not None:
             finalize_trace(trace, level="ERROR")
-        if _trace_token is not None:
-            from neolex.observability import reset_current_trace
-
-            reset_current_trace(_trace_token)
         raise
+    finally:
+        if _trace_token is not None:
+            reset_current_trace(_trace_token)
 
     # Persist accumulated docs for future turns (non-blocking)
     new_docs = result.get("accumulated_docs", [])
@@ -218,10 +218,6 @@ async def run_agent_question(
     answer_str = result.get("answer", "")
     if trace is not None:
         finalize_trace(trace, output=answer_str)
-    if _trace_token is not None:
-        from neolex.observability import reset_current_trace
-
-        reset_current_trace(_trace_token)
 
     return {
         "answer": answer_str,

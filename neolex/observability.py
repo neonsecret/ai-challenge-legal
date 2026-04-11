@@ -84,6 +84,11 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
     },
 }
 
+# Max chars of LLM prompt to record in observability spans.
+# Limits span payload size — legal RAG prompts can be very large.
+# Imported by arlc modules that add generation spans for their LLM calls.
+_SPAN_INPUT_TRUNCATE_CHARS = 500
+
 
 def calculate_cost(
     model: str,
