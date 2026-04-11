@@ -30,7 +30,7 @@ import { test, expect, type Page, type BrowserContext, type Route, type Browser 
 const FRONTEND = "http://localhost:3000";
 
 /** Pre-seeded session IDs written to storageState */
-const SEED_UID = "e2e-uid";
+const SEED_UID = "e2e-user-id"; // must match MOCK_USER.id
 const SEED_SESSION_ID = "e2e-session-00000001";
 
 /** Minimal /auth/me response — lets any page requiring auth pass the guard */
