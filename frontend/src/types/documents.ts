@@ -15,4 +15,7 @@ export interface ChatDocument {
     template_slug: string
     template_name: string
     version: number
+    /** Index of the conversation turn (0-based pair index) that generated this document.
+     *  Undefined for documents restored from backend without turn info (shown on latest pair as fallback). */
+    turn_index?: number
 }

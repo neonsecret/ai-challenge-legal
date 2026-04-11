@@ -125,7 +125,7 @@ export default function ChatPage() {
     const [indexOpen, setIndexOpen] = useState(false)
     const [indexFocusDocId, setIndexFocusDocId] = useState<string | null>(null)
     const [lawPaneOpen, setLawPaneOpen] = useState(false)
-    const [pendingTemplateSlug, setPendingTemplateSlug] = useState<string | null>(null)
+    const [pendingTemplate, setPendingTemplate] = useState<{slug: string; name: string} | null>(null)
     const [documentViewerOpen, setDocumentViewerOpen] = useState(false)
     const [viewingDocId, setViewingDocId] = useState<string | null>(null)
     const [viewingDocName, setViewingDocName] = useState<string | undefined>(undefined)
@@ -133,6 +133,14 @@ export default function ChatPage() {
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const longPressFiredRef = useRef(false)
     const corpusBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    /** 0-based pair index active when the current streaming query was sent. Used to anchor
+     *  SSE-generated documents to the turn that created them (F2 — NEO-994). */
+    const queryTurnIndexRef = useRef(0)
+    /** Tracks user message count so onSend can read it without adding messages to its deps. */
+    const userMsgCountRef = useRef(0)
+    useEffect(() => {
+        userMsgCountRef.current = messages.filter(m => m.role === "user").length
+    }, [messages])
     const [layoutMode, setLayoutMode] = useState<"chat" | "split" | "source">("split")
     const [customCorpus, setCustomCorpus] = useState("")
     const [corpusWarning, setCorpusWarning] = useState<{corpus: string, jurisdiction: Jurisdiction} | null>(null)
@@ -212,26 +220,30 @@ export default function ChatPage() {
         }
     }, [])
 
-    // Sync SSE-delivered documents into docState
+    // Sync SSE-delivered documents into docState, tagging each with the current turn index
+    // so DocumentCard renders on the turn that created it rather than drifting to the latest.
     useEffect(() => {
-        stream.documents.forEach(doc => docState.addDocument(doc))
+        stream.documents.forEach(doc => docState.addDocument({...doc, turn_index: queryTurnIndexRef.current}))
     }, [stream.documents]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleTemplateSelect = useCallback((slug: string) => {
-        setPendingTemplateSlug(slug)
+    const handleTemplateSelect = useCallback((template: {slug: string; name: string}) => {
+        setPendingTemplate(template)
         inputFocusRef.current?.()
     }, [])
 
     const onSend = useCallback((question: string) => {
         setPreviewIndex(null)
-        const slug = pendingTemplateSlug
-        setPendingTemplateSlug(null)
-        const result = handleSend(question, slug ?? undefined)
+        // Capture the turn index before handleSend adds the new user message.
+        // userMsgCountRef tracks this without adding messages to the callback deps.
+        queryTurnIndexRef.current = userMsgCountRef.current
+        const slug = pendingTemplate?.slug
+        setPendingTemplate(null)
+        const result = handleSend(question, slug)
         if (result === "blocked") {
             showCorpusBlocked()
         }
         // "streaming" means previous query still running — silently ignore
-    }, [handleSend, showCorpusBlocked, pendingTemplateSlug])
+    }, [handleSend, showCorpusBlocked, pendingTemplate])
 
     // Load custom corpus name and corpus warning preference from localStorage
     useEffect(() => {
@@ -545,7 +557,9 @@ export default function ChatPage() {
                                                     conversationId={currentSessionId}
                                                     feedback={pair.assistant.feedback}
                                                     onFeedback={setMessageFeedback}
-                                                    documents={isLatestPair ? docState.documents : []}
+                                                    documents={docState.documents.filter(d =>
+                                                        d.turn_index !== undefined ? d.turn_index === pairIdx : isLatestPair
+                                                    )}
                                                     chatId={currentSessionId ?? undefined}
                                                     onDocumentPreview={(docId) => {
                                                         const doc = docState.documents.find(d => d.doc_id === docId)
@@ -646,8 +660,8 @@ export default function ChatPage() {
                         chatId={currentSessionId ?? undefined}
                         onTemplateSelect={handleTemplateSelect}
                         documentCount={docState.count}
-                        pendingTemplateSlug={pendingTemplateSlug}
-                        onClearTemplate={() => setPendingTemplateSlug(null)}
+                        pendingTemplate={pendingTemplate}
+                        onClearTemplate={() => setPendingTemplate(null)}
                     />
                     <p style={{
                         fontSize: TYPE_SCALE.xs,
