@@ -3,6 +3,7 @@
 import {useState, useCallback, useRef} from "react"
 import {useRouter} from "next/navigation"
 import {createParser} from "eventsource-parser"
+import type {ChatDocument} from "@/types/documents"
 
 // SSE goes direct to backend — CORS configured via ALLOWED_ORIGINS.
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
@@ -146,10 +147,11 @@ interface StreamState {
     thinkingPreview: string | null
     followUps: string[] | null
     error: string | null
+    documents: ChatDocument[]
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[]) => void
+    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[], templateSlug?: string) => void
     clearError: () => void
     abort: () => void
 }
@@ -168,6 +170,7 @@ export function useQueryStream(): UseQueryStreamReturn {
         thinkingPreview: null,
         followUps: null,
         error: null,
+        documents: [],
     })
     const abortRef = useRef<AbortController | null>(null)
     const tokenBufRef = useRef<string>("")
@@ -195,6 +198,7 @@ export function useQueryStream(): UseQueryStreamReturn {
             thinkingPreview: null,
             followUps: null,
             error: null,
+            documents: [],
         })
     }, [])
 
@@ -241,7 +245,7 @@ export function useQueryStream(): UseQueryStreamReturn {
     }, [router])
 
     const sendQuery = useCallback(
-        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[]) => {
+        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[], templateSlug?: string) => {
             // Abort any existing SSE connection
             if (abortRef.current) {
                 abortRef.current.abort()
@@ -262,6 +266,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                 thinkingPreview: null,
                 followUps: null,
                 error: null,
+                documents: [],
             })
 
             const ctrl = new AbortController()
@@ -362,6 +367,24 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 setState((prev) => ({...prev, streamingProgress: progress}))
                             }
                         }
+                    } else if (eventType === "document_generated") {
+                        const parsed = JSON.parse(data)
+                        // Guard: doc_id must be a valid UUID — drop malformed events
+                        const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                        if (typeof parsed.doc_id !== "string" || !UUID_RE.test(parsed.doc_id)) return
+                        const doc: ChatDocument = {
+                            doc_id: parsed.doc_id,
+                            template_slug: parsed.template_slug,
+                            template_name: parsed.template_name,
+                            version: parsed.version ?? 1,
+                        }
+                        setState((prev) => {
+                            const exists = prev.documents.some((d) => d.doc_id === doc.doc_id)
+                            const documents = exists
+                                ? prev.documents.map((d) => (d.doc_id === doc.doc_id ? doc : d))
+                                : [...prev.documents, doc]
+                            return {...prev, documents}
+                        })
                     } else if (eventType === "follow_ups") {
                         const parsed = JSON.parse(data)
                         const questions: string[] = Array.isArray(parsed.questions)
@@ -459,6 +482,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...(laws && laws.length > 0 ? {laws} : {}),
                             // Custom corpus document filter — restricts to specific uploaded docs.
                             ...(docIds && docIds.length > 0 ? {doc_ids: docIds} : {}),
+                            // Template slug for document drafting — triggers LaTeX generation.
+                            ...(templateSlug ? {template_slug: templateSlug} : {}),
                             // Agent is the production path — deterministic pipeline is for benchmarks only.
                             use_agent: true,
                             use_internet: useInternet ?? true,

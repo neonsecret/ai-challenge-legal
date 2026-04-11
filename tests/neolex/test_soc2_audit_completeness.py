@@ -26,7 +26,7 @@ async def doc_audit_client(tmp_path, monkeypatch):
     Returns (client, raw_key, db_path).
     Used for document endpoint audit tests.
     """
-    from neolex.auth.keys import generate_key, hash_key
+    from neolex.auth.keys import generate_key, hash_key  # noqa: I001
     from neolex.auth.keys import key_prefix as kp
     from neolex.config import settings
     from neolex.db.audit import get_audit_db

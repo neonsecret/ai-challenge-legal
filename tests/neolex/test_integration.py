@@ -66,7 +66,7 @@ async def live_client():
     load_dotenv()
 
     # Seed an integration key before app startup (init_schema runs in lifespan)
-    from neolex.auth.keys import generate_key, hash_key, key_prefix
+    from neolex.auth.keys import generate_key, hash_key, key_prefix  # noqa: I001
     from neolex.db.audit import get_audit_db
 
     _int_raw_key = generate_key()

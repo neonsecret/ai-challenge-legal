@@ -135,7 +135,7 @@ async def test_admin_audit_requires_admin_scope(seeded_db, monkeypatch):
 
 async def test_admin_audit_returns_rows(seeded_db, monkeypatch):
     """Admin-scoped key on GET /api/v1/admin/audit -> 200 with rows list."""
-    from neolex.auth.keys import generate_key, hash_key
+    from neolex.auth.keys import generate_key, hash_key  # noqa: I001
     from neolex.auth.keys import key_prefix as kp
     from neolex.config import settings
     from neolex.db.audit import get_audit_db

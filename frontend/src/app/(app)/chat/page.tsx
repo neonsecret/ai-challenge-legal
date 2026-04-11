@@ -22,6 +22,8 @@ import {type Jurisdiction} from "@/lib/jurisdictions"
 import {useIsMobile} from "@/hooks/use-mobile"
 import {useDocumentIndex} from "@/components/chat/use-document-index"
 import {DocumentIndex} from "@/components/chat/document-index"
+import {DocumentViewer} from "@/components/chat/document-viewer/DocumentViewer"
+import {useDocumentState} from "@/hooks/use-document-state"
 import {X} from "lucide-react"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {PREVIEW_SCENARIOS_MAP} from "./scenarios"
@@ -123,6 +125,11 @@ export default function ChatPage() {
     const [indexOpen, setIndexOpen] = useState(false)
     const [indexFocusDocId, setIndexFocusDocId] = useState<string | null>(null)
     const [lawPaneOpen, setLawPaneOpen] = useState(false)
+    const [pendingTemplateSlug, setPendingTemplateSlug] = useState<string | null>(null)
+    const [documentViewerOpen, setDocumentViewerOpen] = useState(false)
+    const [viewingDocId, setViewingDocId] = useState<string | null>(null)
+    const [viewingDocName, setViewingDocName] = useState<string | undefined>(undefined)
+    const docState = useDocumentState(currentSessionId)
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const longPressFiredRef = useRef(false)
     const corpusBlockedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -142,7 +149,7 @@ export default function ChatPage() {
     const [availableLaws, setAvailableLaws] = useState<{id: string; name: string; name_en: string}[]>([])
     useEffect(() => {
         const corpus = jurisdiction === "uk" ? "uk" : jurisdiction === "au" ? "au" : ""
-        if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return }
+        if (!corpus) { setAvailableLaws([]); setLawPaneOpen(false); return } // eslint-disable-line react-hooks/set-state-in-effect
         const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? ""
         const controller = new AbortController()
         fetch(`${sseBase}/api/v1/laws?corpus=${corpus}`, {signal: controller.signal})
@@ -205,19 +212,31 @@ export default function ChatPage() {
         }
     }, [])
 
+    // Sync SSE-delivered documents into docState
+    useEffect(() => {
+        stream.documents.forEach(doc => docState.addDocument(doc))
+    }, [stream.documents]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    const handleTemplateSelect = useCallback((slug: string) => {
+        setPendingTemplateSlug(slug)
+        inputFocusRef.current?.()
+    }, [])
+
     const onSend = useCallback((question: string) => {
         setPreviewIndex(null)
-        const result = handleSend(question)
+        const slug = pendingTemplateSlug
+        setPendingTemplateSlug(null)
+        const result = handleSend(question, slug ?? undefined)
         if (result === "blocked") {
             showCorpusBlocked()
         }
         // "streaming" means previous query still running — silently ignore
-    }, [handleSend, showCorpusBlocked])
+    }, [handleSend, showCorpusBlocked, pendingTemplateSlug])
 
     // Load custom corpus name and corpus warning preference from localStorage
     useEffect(() => {
         const storedName = localStorage.getItem("neolex_custom_corpus_name")
-        if (storedName) setCustomCorpus(storedName)
+        if (storedName) setCustomCorpus(storedName) // eslint-disable-line react-hooks/set-state-in-effect
         setHideCorpusWarning(localStorage.getItem("neolex_hide_corpus_warning") === "1")
     }, [])
 
@@ -250,13 +269,13 @@ export default function ChatPage() {
     // Fetch corpora when switching to custom jurisdiction
     useEffect(() => {
         if (jurisdiction === "custom") {
-            fetchCorpora()
+            fetchCorpora() // eslint-disable-line react-hooks/set-state-in-effect
         }
     }, [jurisdiction, fetchCorpora])
 
     // Reset preview when jurisdiction changes
     useEffect(() => {
-        setPreviewIndex(null)
+        setPreviewIndex(null) // eslint-disable-line react-hooks/set-state-in-effect
     }, [jurisdiction])
 
     // Update document title
@@ -336,7 +355,7 @@ export default function ChatPage() {
         const pending = sessionStorage.getItem("vitreon:pending-action")
         if (pending) {
             sessionStorage.removeItem("vitreon:pending-action")
-            if (pending === "history-toggle") setHistoryOpen(true)
+            if (pending === "history-toggle") setHistoryOpen(true) // eslint-disable-line react-hooks/set-state-in-effect
             else if (pending === "doc-index-toggle") setIndexOpen(true)
         }
         return () => {
@@ -450,6 +469,7 @@ export default function ChatPage() {
                     showCorpusBlocked={showCorpusBlocked}
                     availableCorpora={availableCorpora}
                     corporaLoading={corporaLoading}
+                    documentCount={docState.count}
                 />
                 {/* Messages */}
                 <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? `${SPACE['4']}px ${SPACE['3']}px 90px` : `${SPACE['6']}px ${SPACE['6']}px`, minHeight: 0}}>
@@ -525,6 +545,14 @@ export default function ChatPage() {
                                                     conversationId={currentSessionId}
                                                     feedback={pair.assistant.feedback}
                                                     onFeedback={setMessageFeedback}
+                                                    documents={isLatestPair ? docState.documents : []}
+                                                    chatId={currentSessionId ?? undefined}
+                                                    onDocumentPreview={(docId) => {
+                                                        const doc = docState.documents.find(d => d.doc_id === docId)
+                                                        setViewingDocId(docId)
+                                                        setViewingDocName(doc?.template_name)
+                                                        setDocumentViewerOpen(true)
+                                                    }}
                                                 />
                                             </motion.div>
                                         )}
@@ -611,7 +639,16 @@ export default function ChatPage() {
                     flexShrink: 0,
                     background: isStrict ? "var(--strict-footer-bg)" : "var(--dt-glass-bg-subtle)",
                 }}>
-                    <ChatInput onSend={onSend} disabled={isStreaming} onFocusRef={inputFocusRef}/>
+                    <ChatInput
+                        onSend={onSend}
+                        disabled={isStreaming}
+                        onFocusRef={inputFocusRef}
+                        chatId={currentSessionId ?? undefined}
+                        onTemplateSelect={handleTemplateSelect}
+                        documentCount={docState.count}
+                        pendingTemplateSlug={pendingTemplateSlug}
+                        onClearTemplate={() => setPendingTemplateSlug(null)}
+                    />
                     <p style={{
                         fontSize: TYPE_SCALE.xs,
                         color: isStrict ? "var(--strict-text-dim)" : "var(--dt-text-quaternary)",
@@ -1029,6 +1066,16 @@ export default function ChatPage() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* ── Document Viewer — PDF preview panel for drafted documents ── */}
+            <DocumentViewer
+                open={documentViewerOpen}
+                onClose={() => setDocumentViewerOpen(false)}
+                onAskToModify={() => { setDocumentViewerOpen(false); inputFocusRef.current?.() }}
+                chatId={currentSessionId ?? ""}
+                docId={viewingDocId}
+                docName={viewingDocName}
+            />
         </div>
     )
 }
