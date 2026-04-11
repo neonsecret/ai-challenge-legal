@@ -413,7 +413,7 @@ export function ChatMessage({
                                         display: inline-block;
                                         width: 1.5px;
                                         height: 1em;
-                                        background: var(--dt-color-gold-base);
+                                        background: var(--accent);
                                         vertical-align: text-bottom;
                                         margin-left: 2px;
                                         animation: cursor-blink 0.8s ease-in-out infinite;
