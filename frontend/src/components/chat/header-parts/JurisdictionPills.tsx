@@ -160,19 +160,6 @@ export function JurisdictionPills({
                 )
             })}
 
-            {/* Active corpora indicator */}
-            {currentCorpora.length > 0 && (
-                <span style={{
-                    fontSize: TYPE_SCALE.xs,
-                    color: "var(--dt-text-quaternary)",
-                    whiteSpace: "nowrap",
-                    flexShrink: 0,
-                    fontFamily: FONT.sans,
-                }}>
-                    {currentCorpora.join(" + ")}
-                </span>
-            )}
-
             {/* Document count badge (injected from parent) */}
             {documentCountBadge}
 

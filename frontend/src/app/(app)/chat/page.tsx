@@ -658,7 +658,6 @@ export default function ChatPage() {
                         onSend={onSend}
                         disabled={isStreaming}
                         onFocusRef={inputFocusRef}
-                        chatId={currentSessionId ?? undefined}
                         onTemplateSelect={handleTemplateSelect}
                         documentCount={docState.count}
                         pendingTemplate={pendingTemplate}

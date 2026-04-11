@@ -44,6 +44,8 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 fontWeight: "normal",
                 color: "var(--doc-text-primary)",
                 lineHeight: 1.4,
+                textTransform: "uppercase" as const,
+                letterSpacing: "0.06em",
             }}>
                 {template.name}
             </span>
