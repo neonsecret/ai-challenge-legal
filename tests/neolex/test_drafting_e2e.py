@@ -297,12 +297,13 @@ class TestCzTemplatesPdf:
         template = _make_template_obj(slug)
 
         mock_session = AsyncMock()
-        # Create sequence: template lookup → returns template; doc count → 0 existing.
+        # Create sequence: template lookup → pg_advisory_xact_lock → doc count.
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = template
+        lock_result = MagicMock()  # return value of advisory lock is unused
         count_result = MagicMock()
         count_result.scalars.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -388,9 +389,10 @@ class TestDocumentEndpointsAccessible:
         mock_session = AsyncMock()
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = template
+        lock_result = MagicMock()  # return value of advisory lock is unused
         count_result = MagicMock()
         count_result.scalars.return_value.all.return_value = []
-        mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
