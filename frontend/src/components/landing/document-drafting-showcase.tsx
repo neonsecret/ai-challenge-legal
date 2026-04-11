@@ -30,14 +30,6 @@ const CATEGORY_LABELS: Record<string, string> = {
     custom: "Vlastní",
 };
 
-const WARM_GLASS = {
-    background: "rgba(255,250,235,0.22)",
-    backdropFilter: "blur(32px) saturate(180%) brightness(105%)",
-    WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(105%)",
-    border: "0.5px solid rgba(255,255,255,0.45)",
-    boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
-} as const;
-
 // ─── Step visuals ─────────────────────────────────────────────────────────────
 
 function ChooseTemplateVisual() {
@@ -56,14 +48,14 @@ function ChooseTemplateVisual() {
                         gap: 10,
                         padding: "10px 14px",
                         borderRadius: 12,
-                        background: "rgba(255,255,255,0.18)",
-                        border: "0.5px solid rgba(255,255,255,0.45)",
+                        background: "var(--wl-card-bg)",
+                        border: "0.5px solid var(--wl-glass-border)",
                     }}
                 >
                     <span style={{
                         fontSize: 12,
                         fontFamily: "Georgia, serif",
-                        color: "#1a0e04",
+                        color: "var(--wl-heading-color)",
                         lineHeight: 1.35,
                         flex: 1,
                         minWidth: 0,
@@ -78,9 +70,9 @@ function ChooseTemplateVisual() {
                             fontSize: 9,
                             fontFamily: "monospace",
                             fontWeight: 700,
-                            color: "#c47c00",
-                            background: "rgba(196,124,0,0.12)",
-                            border: "0.5px solid rgba(196,124,0,0.25)",
+                            color: "var(--wl-accent)",
+                            background: "var(--wl-accent-bg-faint)",
+                            border: "0.5px solid var(--wl-accent-border-subtle)",
                             borderRadius: 4,
                             padding: "1px 5px",
                             letterSpacing: "0.05em",
@@ -90,8 +82,8 @@ function ChooseTemplateVisual() {
                         <span style={{
                             fontSize: 9,
                             fontFamily: "monospace",
-                            color: "rgba(46,31,8,0.50)",
-                            background: "rgba(46,31,8,0.06)",
+                            color: "var(--wl-subtext-color)",
+                            background: "var(--wl-category-bg)",
                             borderRadius: 4,
                             padding: "1px 5px",
                         }}>
@@ -118,7 +110,7 @@ function AiFillsFieldsVisual() {
                         alignItems: "baseline",
                         gap: 8,
                         padding: "6px 0",
-                        borderBottom: "0.5px solid rgba(196,124,0,0.12)",
+                        borderBottom: "0.5px solid var(--wl-accent-border-faint)",
                     }}
                 >
                     <span style={{
@@ -127,7 +119,7 @@ function AiFillsFieldsVisual() {
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.08em",
-                        color: "rgba(46,31,8,0.45)",
+                        color: "var(--wl-label-color)",
                         flexShrink: 0,
                         width: 96,
                     }}>
@@ -139,7 +131,7 @@ function AiFillsFieldsVisual() {
                         transition={{ delay: i * 0.25 + 0.15, duration: 0.3 }}
                         style={{
                             fontSize: 12,
-                            color: "#1a0e04",
+                            color: "var(--wl-heading-color)",
                             fontFamily: "Georgia, serif",
                             lineHeight: 1.4,
                         }}
@@ -156,8 +148,8 @@ function PdfCitationsVisual() {
     return (
         <div style={{
             borderRadius: 14,
-            background: "rgba(255,255,255,0.60)",
-            border: "0.5px solid rgba(255,255,255,0.70)",
+            background: "var(--wl-pdf-bg)",
+            border: "0.5px solid var(--wl-pdf-border)",
             padding: "16px 18px",
             fontFamily: "Georgia, serif",
             position: "relative",
@@ -169,12 +161,12 @@ function PdfCitationsVisual() {
                     fontWeight: 700,
                     letterSpacing: "0.14em",
                     textTransform: "uppercase",
-                    color: "#333",
+                    color: "var(--wl-pdf-heading)",
                     marginBottom: 6,
                 }}>
                     ŽALOBA NA NEPLATNOST VÝPOVĚDI
                 </p>
-                <div style={{ width: 40, height: 1, background: "#ccc", margin: "0 auto" }} />
+                <div style={{ width: 40, height: 1, background: "var(--wl-pdf-divider)", margin: "0 auto" }} />
             </div>
 
             {/* Legal text */}
@@ -183,15 +175,15 @@ function PdfCitationsVisual() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2, duration: 0.4 }}
             >
-                <p style={{ fontSize: 10, lineHeight: 1.6, color: "#444", marginBottom: 4 }}>
+                <p style={{ fontSize: 10, lineHeight: 1.6, color: "var(--wl-pdf-text)", marginBottom: 4 }}>
                     Žalobce <strong>Jan Novák</strong> se domáhá určení, že výpověď ze dne 15. 3. 2025
                     je neplatná dle <strong>§ 52 písm. g) zákoníku práce</strong>.
                 </p>
-                <p style={{ fontSize: 10, lineHeight: 1.6, color: "#444", marginBottom: 4 }}>
+                <p style={{ fontSize: 10, lineHeight: 1.6, color: "var(--wl-pdf-text)", marginBottom: 4 }}>
                     Zaměstnavatel neprokázal porušení pracovní kázně zvlášť hrubým způsobem dle
                     ustálené judikatury Nejvyššího soudu.
                 </p>
-                <p style={{ fontSize: 10, lineHeight: 1.6, color: "#555" }}>
+                <p style={{ fontSize: 10, lineHeight: 1.6, color: "var(--wl-pdf-text-secondary)" }}>
                     Žalobce proto navrhuje, aby soud výpověď prohlásil za neplatnou a uložil žalovanému
                     zaplatit náhradu mzdy za dobu výpovědní lhůty.
                 </p>
@@ -207,7 +199,7 @@ function PdfCitationsVisual() {
                     display: "flex",
                     alignItems: "center",
                     gap: 6,
-                    background: "rgba(196,124,0,0.90)",
+                    background: "var(--wl-accent-badge-bg)",
                     borderRadius: 6,
                     padding: "4px 10px",
                 }}
@@ -216,13 +208,13 @@ function PdfCitationsVisual() {
                     width: 6,
                     height: 6,
                     borderRadius: "50%",
-                    background: "#ffd96e",
+                    background: "var(--wl-accent-dot)",
                     flexShrink: 0,
                 }} />
                 <span style={{
                     fontSize: 9,
                     fontFamily: "monospace",
-                    color: "#fff",
+                    color: "var(--wl-text-on-accent)",
                     letterSpacing: "0.04em",
                 }}>
                     § 52 písm. g) ZP · Zákoník práce · str. 18
@@ -234,7 +226,7 @@ function PdfCitationsVisual() {
                     height="11"
                     viewBox="0 0 24 24"
                     fill="none"
-                    stroke="rgba(255,255,255,0.75)"
+                    stroke="var(--wl-download-icon)"
                     strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -280,7 +272,7 @@ export function DocumentDraftingShowcase() {
     return (
         <section style={{
             padding: "80px 24px",
-            background: "linear-gradient(180deg, #e8d4b8 0%, #dfc090 100%)",
+            background: "var(--wl-bg-section)",
             position: "relative",
             overflow: "hidden",
         }}>
@@ -292,7 +284,7 @@ export function DocumentDraftingShowcase() {
                     height: 480,
                     top: -60,
                     left: "20%",
-                    background: "radial-gradient(circle, rgba(175,130,20,0.22) 0%, transparent 65%)",
+                    background: `radial-gradient(circle, var(--wl-glow-ambient) 0%, transparent 65%)`,
                 }} />
             </div>
 
@@ -309,7 +301,7 @@ export function DocumentDraftingShowcase() {
                         textTransform: "uppercase",
                         letterSpacing: "0.16em",
                         fontWeight: 600,
-                        color: "rgba(46,31,8,0.45)",
+                        color: "var(--wl-label-color)",
                         marginBottom: 10,
                     }}
                 >
@@ -328,7 +320,7 @@ export function DocumentDraftingShowcase() {
                         fontSize: "clamp(1.8rem,3vw,2.6rem)",
                         fontWeight: 700,
                         letterSpacing: "-0.03em",
-                        color: "#1a0e04",
+                        color: "var(--wl-heading-color)",
                         marginBottom: 8,
                     }}
                 >
@@ -344,7 +336,7 @@ export function DocumentDraftingShowcase() {
                     style={{
                         textAlign: "center",
                         fontSize: 13,
-                        color: "rgba(46,31,8,0.50)",
+                        color: "var(--wl-subtext-color)",
                         marginBottom: 40,
                     }}
                 >
@@ -379,9 +371,9 @@ export function DocumentDraftingShowcase() {
                                     fontWeight: 500,
                                     cursor: "pointer",
                                     transition: "all 0.15s",
-                                    background: i === activeStep ? "rgba(196,124,0,0.20)" : "rgba(255,255,255,0.20)",
-                                    border: i === activeStep ? "0.5px solid rgba(196,124,0,0.45)" : "0.5px solid rgba(255,255,255,0.45)",
-                                    color: i === activeStep ? "#5c2e08" : "rgba(46,31,8,0.55)",
+                                    background: i === activeStep ? "var(--wl-accent-bg)" : "var(--wl-card-bg)",
+                                    border: i === activeStep ? "0.5px solid var(--wl-accent-border)" : "0.5px solid var(--wl-glass-border)",
+                                    color: i === activeStep ? "var(--wl-active-text)" : "var(--wl-body-text-muted)",
                                 }}
                             >
                                 <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 11 }}>
@@ -402,7 +394,11 @@ export function DocumentDraftingShowcase() {
                             transition={{ duration: 0.3 }}
                             className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8 p-5 sm:py-7 sm:px-8"
                             style={{
-                                ...WARM_GLASS,
+                                background: "var(--wl-glass-bg)",
+                                backdropFilter: "var(--wl-glass-backdrop)",
+                                WebkitBackdropFilter: "var(--wl-glass-backdrop)",
+                                border: "0.5px solid var(--wl-glass-border)",
+                                boxShadow: "var(--wl-glass-shadow)",
                                 borderRadius: 20,
                                 alignItems: "center",
                             }}
@@ -416,9 +412,9 @@ export function DocumentDraftingShowcase() {
                                     width: 36,
                                     height: 36,
                                     borderRadius: "50%",
-                                    background: "rgba(196,124,0,0.15)",
-                                    border: "0.5px solid rgba(196,124,0,0.30)",
-                                    color: "#c47c00",
+                                    background: "var(--wl-accent-bg-subtle)",
+                                    border: "0.5px solid var(--wl-accent-border-mid)",
+                                    color: "var(--wl-accent)",
                                     fontFamily: "monospace",
                                     fontSize: 11,
                                     fontWeight: 700,
@@ -429,7 +425,7 @@ export function DocumentDraftingShowcase() {
                                 <h3 style={{
                                     fontSize: 20,
                                     fontWeight: 600,
-                                    color: "#1a0e04",
+                                    color: "var(--wl-heading-color)",
                                     marginBottom: 8,
                                 }}>
                                     {STEPS[activeStep].title}
@@ -437,7 +433,7 @@ export function DocumentDraftingShowcase() {
                                 <p style={{
                                     fontSize: 14,
                                     lineHeight: 1.7,
-                                    color: "rgba(46,31,8,0.60)",
+                                    color: "var(--wl-body-text)",
                                     marginBottom: 20,
                                 }}>
                                     {STEP_DESCRIPTIONS[activeStep]}
@@ -457,7 +453,7 @@ export function DocumentDraftingShowcase() {
                                             style={{
                                                 height: 4,
                                                 borderRadius: 2,
-                                                background: "#c47c00",
+                                                background: "var(--wl-accent)",
                                                 cursor: "pointer",
                                             }}
                                         />
