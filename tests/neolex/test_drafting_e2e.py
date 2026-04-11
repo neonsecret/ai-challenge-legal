@@ -428,9 +428,12 @@ class TestDocumentEndpointsAccessible:
         doc.id = doc_id
 
         mock_session = AsyncMock()
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = doc
-        mock_session.execute = AsyncMock(return_value=result)
+        # get_document calls _get_owned_document then _get_template_name — two execute() calls
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = "Test Template"
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
 
         app = _mock_user_app(user_id, mock_session)
         try:
@@ -454,9 +457,12 @@ class TestDocumentEndpointsAccessible:
         doc.id = doc_id
 
         mock_session = AsyncMock()
-        result = MagicMock()
-        result.scalar_one_or_none.return_value = doc
-        mock_session.execute = AsyncMock(return_value=result)
+        # update_document calls _get_owned_document then _get_template_name — two execute() calls
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = "Test Template"
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
         mock_session.commit = AsyncMock()
 
         async def mock_refresh(obj):
