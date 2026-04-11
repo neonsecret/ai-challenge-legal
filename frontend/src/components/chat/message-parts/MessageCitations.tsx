@@ -72,11 +72,13 @@ export const CitationButton = memo(function CitationButton({
             const resolvedDocId = docid ?? ""
             const resolvedPage = page ?? 0
             const srcIdx = sources.findIndex(s =>
-                s.doc_id === resolvedDocId ||
-                s.doc_id.startsWith(resolvedDocId) ||
-                resolvedDocId.startsWith(s.doc_id)
+                s && (
+                    s.doc_id === resolvedDocId ||
+                    s.doc_id.startsWith(resolvedDocId) ||
+                    resolvedDocId.startsWith(s.doc_id)
+                )
             )
-            const resolvable = srcIdx >= 0
+            const resolvable = srcIdx >= 0 && sources[srcIdx] != null
             const footnoteNum = srcIdx + 1
             return (
                 <sup
@@ -85,7 +87,7 @@ export const CitationButton = memo(function CitationButton({
                         onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
                     } : undefined}
                     title={resolvable
-                        ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
+                        ? `${(sources[srcIdx]?.title || sources[srcIdx]?.doc_id) ?? ""}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
                         : "Source not found in retrieved documents"
                     }
                     style={{color: "var(--strict-citation)", cursor: resolvable ? "pointer" : "not-allowed", fontSize: "0.7em", fontFamily: "system-ui", verticalAlign: "super"}}
@@ -137,11 +139,13 @@ export const CitationButton = memo(function CitationButton({
         const resolvedDocId = docid ?? ""
         const resolvedPage = page ?? 0
         const srcIdx = sources.findIndex(s =>
-            s.doc_id === resolvedDocId ||
-            s.doc_id.startsWith(resolvedDocId) ||
-            resolvedDocId.startsWith(s.doc_id)
+            s && (
+                s.doc_id === resolvedDocId ||
+                s.doc_id.startsWith(resolvedDocId) ||
+                resolvedDocId.startsWith(s.doc_id)
+            )
         )
-        const resolvable = srcIdx >= 0
+        const resolvable = srcIdx >= 0 && sources[srcIdx] != null
         const footnoteNum = srcIdx + 1
         return (
             <button
@@ -150,7 +154,7 @@ export const CitationButton = memo(function CitationButton({
                     onSourceClick?.(content ?? "", sources, resolvedDocId, resolvedPage)
                 } : undefined}
                 title={resolvable
-                    ? `${sources[srcIdx].title || sources[srcIdx].doc_id}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
+                    ? `${(sources[srcIdx]?.title || sources[srcIdx]?.doc_id) ?? ""}${resolvedPage ? ` \u00B7 p.${resolvedPage}` : ""}`
                     : "Source not found in retrieved documents"
                 }
                 style={footnoteStyle(resolvable)}

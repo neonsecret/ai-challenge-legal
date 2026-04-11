@@ -244,11 +244,6 @@ Controls worst-case context size for agent cost control."""
 # These do NOT affect RAG pipeline output — logging only.
 # ═══════════════════════════════════════════════════════════════════════════
 
-TRACE_INPUT_TEXT_MAX_CHARS: int = 2000
-"""Max chars of input text logged to Langfuse generation spans.
-Justified: logging truncation only. Langfuse has its own storage limits.
-Keeping trace data small reduces storage costs."""
-
 TRACE_OUTPUT_TEXT_MAX_CHARS: int = 5000
 """Max chars of output text logged to Langfuse generation/finalize spans.
 Justified: same rationale — logging only, doesn't affect pipeline output."""
