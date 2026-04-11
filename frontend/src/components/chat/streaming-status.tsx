@@ -69,7 +69,7 @@ function formatElapsed(seconds: number): string {
 
 const DOT_CYCLE = [".", "..", "..."] as const
 
-export function StreamingStatus({status, progress, thinkingPreview}: StreamingStatusProps) {
+export function StreamingStatus({status, progress}: StreamingStatusProps) {
     const label = status ?? "Thinking\u2026"
     const [pastSteps, setPastSteps] = useState<StepEntry[]>([])
     const prevLabel = useRef(label)
@@ -136,17 +136,15 @@ export function StreamingStatus({status, progress, thinkingPreview}: StreamingSt
 
     return (
         <div
-            className="inline-flex flex-col rounded-xl"
+            className="inline-flex flex-wrap items-center rounded-xl"
             style={{
-                gap: SPACE["1"],
+                gap: SPACE["2"],
                 padding: `${SPACE["2"] + 2}px ${SPACE["3"] + 2}px`,
                 background: "var(--dt-glass-bg)",
                 border: "1px solid var(--dt-glass-border)",
                 backdropFilter: "var(--dt-glass-blur-light)",
                 WebkitBackdropFilter: "var(--dt-glass-blur-light)",
-                minWidth: 180,
                 width: "auto",
-                maxWidth: 340,
             }}
         >
             {/* Inline keyframes for the gentle glow pulse */}
@@ -157,33 +155,22 @@ export function StreamingStatus({status, progress, thinkingPreview}: StreamingSt
                 }
             `}</style>
 
-            {/* Past steps — plain divs, no motion/layout to prevent jitter */}
+            {/* Past steps — dots only, no text labels */}
             {pastSteps.map((step, i) => (
                 <div
                     key={`past-${i}-${step.label.slice(0, 20)}`}
-                    className="flex items-center"
-                    style={{paddingLeft: 1, gap: SPACE["2"]}}
-                >
-                    <div style={{
+                    style={{
                         width: dotSize,
                         height: dotSize,
                         borderRadius: "50%",
                         flexShrink: 0,
                         background: step.color,
                         opacity: 0.5,
-                    }}/>
-                    <span style={{
-                        fontSize: TYPE_SCALE.xs,
-                        fontFamily: FONT.sans,
-                        color: "var(--dt-text-tertiary)",
-                        whiteSpace: "nowrap",
-                    }}>
-                        {step.label}
-                    </span>
-                </div>
+                    }}
+                />
             ))}
 
-            {/* Current step */}
+            {/* Current step: icon + label + elapsed timer — all inline */}
             <div className="flex items-center" style={{gap: SPACE["2"]}}>
                 <div style={{
                     width: 18,
@@ -245,7 +232,7 @@ export function StreamingStatus({status, progress, thinkingPreview}: StreamingSt
                 </AnimatePresence>
             </div>
 
-            {/* Progress bar */}
+            {/* Progress bar — rendered as a full-width row below when active */}
             <AnimatePresence>
                 {progress && progress.total > 0 && (
                     <motion.div
@@ -255,15 +242,15 @@ export function StreamingStatus({status, progress, thinkingPreview}: StreamingSt
                         transition={{duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT}}
                         style={{
                             display: "flex",
-                            flexDirection: "column",
-                            gap: SPACE["1"],
-                            paddingLeft: 26, // align with text (18px icon + 8px gap)
-                            willChange: "opacity, transform",
+                            alignItems: "center",
+                            gap: SPACE["2"],
+                            width: "100%",
+                            willChange: "opacity",
                             overflow: "hidden",
                         }}
                     >
                         <div style={{
-                            width: "100%",
+                            flex: 1,
                             height: 4,
                             background: "var(--dt-progress-track-bg)",
                             borderRadius: RADIUS.full,
@@ -290,38 +277,6 @@ export function StreamingStatus({status, progress, thinkingPreview}: StreamingSt
                         }}>
                             {progress.current}/{progress.total}
                         </span>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Thinking preview — live intermediate reasoning from the LLM */}
-            <AnimatePresence>
-                {thinkingPreview && !progress && (
-                    <motion.div
-                        layout
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
-                        exit={{opacity: 0}}
-                        transition={{
-                            opacity: {duration: parseFloat(TIMING.fast), ease: MOTION_EASE_OUT},
-                            layout: {duration: 0.25, ease: MOTION_EASE_OUT},
-                        }}
-                        style={{
-                            paddingLeft: 26,
-                            fontSize: TYPE_SCALE.xs,
-                            fontFamily: FONT.sans,
-                            fontStyle: "italic",
-                            color: "var(--dt-text-tertiary)",
-                            lineHeight: 1.4,
-                            maxWidth: 320,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                        }}
-                    >
-                        {thinkingPreview}
                     </motion.div>
                 )}
             </AnimatePresence>

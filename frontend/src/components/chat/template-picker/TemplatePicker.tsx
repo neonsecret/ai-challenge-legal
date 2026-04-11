@@ -43,7 +43,7 @@ export function TemplatePicker({onOpen, disabled}: TemplatePickerProps) {
             }}
         >
             <FileText size={12} strokeWidth={1.8} />
-            <span>Draft</span>
+            <span>Template</span>
         </button>
     )
 }
