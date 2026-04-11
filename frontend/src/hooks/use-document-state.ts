@@ -23,14 +23,15 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
         prevChatIdRef.current = chatId
 
         if (!chatId) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setDocuments([])
             return
         }
 
+        const controller = new AbortController()
         setIsLoading(true)
         fetch(`${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents`, {
             credentials: "include",
+            signal: controller.signal,
         })
             .then((res) => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -47,8 +48,12 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
                     version: (raw.version as number) ?? 1,
                 }))
             ))
-            .catch(() => setDocuments([]))
+            .catch((err) => {
+                if ((err as Error).name !== "AbortError") setDocuments([])
+            })
             .finally(() => setIsLoading(false))
+
+        return () => controller.abort()
     }, [chatId])
 
     const addDocument = useCallback((doc: ChatDocument) => {
