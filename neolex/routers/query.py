@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -93,6 +93,14 @@ async def _create_pipeline_document(
         # For __custom__ slugs, always return the locale-neutral English label
         # regardless of what name the underlying DB template has (NEO-1021).
         template_name = "Custom Document" if template_slug == _PIPELINE_CUSTOM_SLUG else template.name
+
+        # Serialize concurrent document creations for this conversation.
+        # SELECT ... FOR UPDATE cannot lock rows that don't yet exist, so two
+        # concurrent first-document requests would both read count=0 and both INSERT.
+        # pg_advisory_xact_lock serialises them at the PostgreSQL level; the lock is
+        # released automatically when the transaction commits or rolls back.
+        _conv_lock_key = conv_uuid.int & 0x7FFFFFFFFFFFFFFF  # positive int64
+        await session.execute(select(func.pg_advisory_xact_lock(_conv_lock_key)))
 
         # Respect the per-conversation document cap.
         count_result = await session.execute(
