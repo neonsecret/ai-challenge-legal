@@ -377,6 +377,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                             template_slug: parsed.template_slug,
                             template_name: parsed.template_name,
                             version: parsed.version ?? 1,
+                            // null from backend (non-agent path) → undefined = loading state
+                            fields: parsed.fields ?? undefined,
                         }
                         setState((prev) => {
                             const exists = prev.documents.some((d) => d.doc_id === doc.doc_id)
