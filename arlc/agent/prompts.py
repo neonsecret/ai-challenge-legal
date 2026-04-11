@@ -32,6 +32,34 @@ from arlc.agent.state import AgentState, SourceDocument
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Czech date helper — locale-independent month names in genitive case.
+# Czech dates use genitive: "11. dubna 2026", not the nominative "duben".
+# Hard-coded map so output is stable regardless of server locale (no cs_CZ needed).
+# ---------------------------------------------------------------------------
+
+_CZECH_MONTHS = [
+    "ledna",
+    "\u00fanora",
+    "b\u0159ezna",
+    "dubna",
+    "kv\u011btna",
+    "\u010dervna",
+    "\u010dervence",
+    "srpna",
+    "z\u00e1\u0159\u00ed",
+    "\u0159\u00edjna",
+    "listopadu",
+    "prosince",
+]
+
+
+def _get_czech_date() -> str:
+    """Return today's date as Czech legal date, e.g. '11. dubna 2026'."""
+    now = datetime.now()
+    return f"{now.day}. {_CZECH_MONTHS[now.month - 1]} {now.year}"
+
+
+# ---------------------------------------------------------------------------
 # Case metadata index (DIFC only) — loaded lazily on first use.
 # Structure: {case_id: {docs: [{doc_id, metadata: {judge, date_of_issue, ...}}]}}
 # We also build a reverse map: doc_id -> (case_id, metadata) for quick lookup.
@@ -536,7 +564,7 @@ def _build_drafting_section(state: AgentState) -> str:
     field_descriptions: dict[str, str] = state.get("template_field_descriptions") or {}
     chat_documents: list[dict] = state.get("chat_documents") or []
 
-    today = datetime.now().strftime("%d. %B %Y")
+    today = _get_czech_date()
 
     parts = [
         "\n\n## DRAFTING MODE",
