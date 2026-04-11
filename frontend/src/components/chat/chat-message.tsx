@@ -422,7 +422,7 @@ export function ChatMessage({
 
             {/* Drafting-in-progress indicator — shown while streaming with a template selected, before document_generated fires */}
             {isStreaming && isDraftingMode && documents.length === 0 && (
-                <div style={{
+                <div data-testid="drafting-indicator" style={{
                     display: "flex",
                     alignItems: "center",
                     gap: SPACE[2],
