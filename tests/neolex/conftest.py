@@ -102,7 +102,7 @@ async def seeded_db(tmp_db_path, monkeypatch):
 
     monkeypatch.setattr(settings, "db_path", tmp_db_path)
 
-    from neolex.auth.keys import generate_key, hash_key, key_prefix
+    from neolex.auth.keys import generate_key, hash_key, key_prefix  # noqa: I001
     from neolex.db.audit import get_audit_db
 
     raw_key = generate_key()
