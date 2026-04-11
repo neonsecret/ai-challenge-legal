@@ -67,8 +67,10 @@ interface DocumentViewerProps {
 
 export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, docName}: DocumentViewerProps) {
     const isMobile = useIsMobile()
-    const [pdfError, setPdfError] = useState(false)
+    const [pdfErrorKind, setPdfErrorKind] = useState<"timeout" | "error" | null>(null)
     const [retryKey, setRetryKey] = useState(0)
+    const [retryDisabled, setRetryDisabled] = useState(false)
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
 
@@ -102,9 +104,16 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
         return () => document.removeEventListener("keydown", handleKey)
     }, [open, onClose])
 
+    // Cleanup retry back-off timer on unmount
+    useEffect(() => () => {
+        if (retryTimerRef.current) clearTimeout(retryTimerRef.current)
+    }, [])
+
     const handleRetry = useCallback(() => {
-        setPdfError(false)
+        setPdfErrorKind(null)
+        setRetryDisabled(true)
         setRetryKey(k => k + 1)
+        retryTimerRef.current = setTimeout(() => setRetryDisabled(false), 12_000)
     }, [])
 
     const handleAskToModify = useCallback(() => {
@@ -274,7 +283,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                         </div>
 
                         {/* PDF Content */}
-                        {pdfError ? (
+                        {pdfErrorKind !== null ? (
                             <div style={{
                                 flex: 1,
                                 display: "flex",
@@ -291,17 +300,21 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                     margin: 0,
                                     textAlign: "center",
                                 }}>
-                                    Could not load document. Try again.
+                                    {pdfErrorKind === "timeout"
+                                        ? "Document generation timed out — try again in a moment."
+                                        : "Could not load document. Try again."}
                                 </p>
                                 <button
                                     onClick={handleRetry}
+                                    disabled={retryDisabled}
                                     style={{
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: SPACE[2],
                                         padding: `${SPACE[2]}px ${SPACE[4]}px`,
                                         borderRadius: RADIUS.md,
-                                        cursor: "pointer",
+                                        cursor: retryDisabled ? "not-allowed" : "pointer",
+                                        opacity: retryDisabled ? 0.4 : 1,
                                         background: "var(--doc-retry-btn-bg)",
                                         border: "1px solid var(--doc-retry-btn-border)",
                                         color: "var(--doc-gold-action-color)",
@@ -317,7 +330,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                             <DocPdfViewer
                                 key={retryKey}
                                 pdfUrl={pdfUrl}
-                                onError={() => setPdfError(true)}
+                                onError={(kind) => setPdfErrorKind(kind)}
                             />
                         ) : (
                             <PdfLoadingSkeleton />

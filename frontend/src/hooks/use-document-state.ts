@@ -47,6 +47,7 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
                     // template_name may be absent before NEO-894 lands on backend.
                     template_name: (raw.template_name as string) ?? "",
                     version: (raw.version as number) ?? 1,
+                    generated_at: (raw.generated_at as string) ?? (raw.created_at as string) ?? new Date().toISOString(),
                 }))
             ))
             .catch((err) => {

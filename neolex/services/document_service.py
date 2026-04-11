@@ -19,9 +19,9 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
+from neolex.constants import DRAFTING_MAX_DOCS_PER_CONVERSATION
 
-_MAX_DOCS_PER_CONVERSATION = 3
+logger = logging.getLogger(__name__)
 
 
 async def get_template_by_slug(db: AsyncSession, slug: str) -> dict | None:
@@ -117,10 +117,10 @@ async def create_draft_document(
         .with_for_update()
     )
     current_count = len(rows_result.scalars().all())
-    if current_count >= _MAX_DOCS_PER_CONVERSATION:
+    if current_count >= DRAFTING_MAX_DOCS_PER_CONVERSATION:
         return {
             "error": (
-                f"Maximum of {_MAX_DOCS_PER_CONVERSATION} documents per conversation reached. "
+                f"Maximum of {DRAFTING_MAX_DOCS_PER_CONVERSATION} documents per conversation reached. "
                 "Ask the user to delete an existing document before creating a new one."
             )
         }

@@ -5,6 +5,8 @@ subscriptions, invoices) and operational (api_keys, queries, events,
 rate_limits, documents, reindex_jobs).
 """
 
+import uuid
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
@@ -32,6 +34,19 @@ AsyncSessionLocal = async_sessionmaker(
 
 class Base(DeclarativeBase):
     pass
+
+
+def conversation_doc_lock_key(conv_uuid: uuid.UUID) -> int:
+    """Derive a pg_advisory_xact_lock key for a conversation's document cap check.
+
+    XORs the high and low 64-bit halves of the UUID to produce a unique,
+    positive int64 that fits in a PostgreSQL bigint.  Two distinct UUIDs may
+    theoretically produce the same key (false contention), but never produce
+    different keys for the same UUID (no missed contention).
+    """
+    hi = conv_uuid.int >> 64
+    lo = conv_uuid.int & 0xFFFFFFFFFFFFFFFF
+    return (hi ^ lo) & 0x7FFFFFFFFFFFFFFF
 
 
 async def get_db():

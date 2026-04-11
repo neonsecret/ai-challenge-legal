@@ -24,6 +24,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.middleware import get_api_key
+from neolex.constants import DRAFTING_MAX_DOCS_PER_CONVERSATION
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 from neolex.db.postgres import get_db
 from neolex.schemas.drafting import DocumentCreate, DocumentResponse, DocumentUpdate
@@ -32,9 +33,6 @@ from neolex.services.pdf_generator import _XELATEX_BIN, PDFTimeoutError, generat
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["drafting"])
-
-# Maximum number of draft documents per conversation
-_MAX_DOCS_PER_CONVERSATION = 3
 
 
 def _parse_conversation_id(conversation_id: str) -> uuid.UUID:
@@ -172,10 +170,10 @@ async def create_document(
         .with_for_update()
     )
     current_count = len(rows_result.scalars().all())
-    if current_count >= _MAX_DOCS_PER_CONVERSATION:
+    if current_count >= DRAFTING_MAX_DOCS_PER_CONVERSATION:
         raise HTTPException(
             status_code=409,
-            detail=f"Maximum of {_MAX_DOCS_PER_CONVERSATION} documents per conversation reached. "
+            detail=f"Maximum of {DRAFTING_MAX_DOCS_PER_CONVERSATION} documents per conversation reached. "
             "Delete an existing document to create a new one.",
         )
 
