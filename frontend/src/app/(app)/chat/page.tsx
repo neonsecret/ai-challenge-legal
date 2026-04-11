@@ -1032,7 +1032,7 @@ export default function ChatPage() {
 
                         {/* Document index content */}
                         {panelTab === "index" && (
-                            <div id="unified-panel-index" role="tabpanel" className="flex-1 overflow-hidden min-h-0">
+                            <div id="unified-panel-index" role="tabpanel" style={{display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minHeight: 0}}>
                             <DocumentIndex
                                 entries={documentIndex}
                                 isDark={isDark}
