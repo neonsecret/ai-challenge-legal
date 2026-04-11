@@ -84,10 +84,14 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
     },
 }
 
-# Max chars of LLM prompt to record in observability spans.
-# Limits span payload size — legal RAG prompts can be very large.
+# Max chars for tool-call inputs (queries, ECLI refs, etc.) recorded in agent step spans.
 # Imported by arlc modules that add generation spans for their LLM calls.
 _SPAN_INPUT_TRUNCATE_CHARS = 500
+
+# Max chars of LLM prompt text recorded in generation spans.
+# Legal RAG prompts contain full statute/judgment text and can exceed 50k chars.
+# 100k covers the vast majority of prompts while bounding Langfuse payload size.
+_GEN_INPUT_TRUNCATE_CHARS = 100_000
 
 
 def calculate_cost(
@@ -384,7 +388,7 @@ def add_generation_span(
             name="llm-generation",
             as_type="generation",
             model=model,
-            input=input_text[:2000] if input_text else "",
+            input=input_text[:_GEN_INPUT_TRUNCATE_CHARS] if input_text else "",
         )
         span_metadata: dict[str, Any] = {"duration_ms": round(duration_ms, 1), **(metadata or {})}
         if usage:

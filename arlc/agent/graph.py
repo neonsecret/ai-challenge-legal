@@ -517,6 +517,112 @@ def build_agent_graph():
         _caselaw_auto_triggered = False
 
         for tc in last_msg.tool_calls:
+            # --- Document draft tool ---
+            # document_draft takes no query arg; handle before the query guard so
+            # it is not accidentally blocked by the empty-query check below.
+            if tc["name"] == "document_draft":
+                draft_fn = state.get("_draft_document_fn")
+                if draft_fn is None:
+                    # Drafting not active in this request (no template selected)
+                    results_msgs.append(
+                        ToolMessage(
+                            content=(
+                                "Document drafting is not available in this conversation. "
+                                "Ask the user to select a template first."
+                            ),
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                action = tc["args"].get("action", "create")
+                fields = tc["args"].get("fields") or {}
+                document_id = tc["args"].get("document_id", "") or ""
+                t_slug = tc["args"].get("template_slug", "") or state.get("template_slug", "")
+
+                # Convert the DRAFTING_CUSTOM_SLUG frontend sentinel to the DB slug.
+                # DRAFTING_FREEFORM_SLUG is the FK-safe value; DRAFTING_CUSTOM_SLUG is
+                # only a UI-layer sentinel and must never reach FK-constrained DB operations.
+                if t_slug == DRAFTING_CUSTOM_SLUG:
+                    t_slug = DRAFTING_FREEFORM_SLUG
+
+                if not isinstance(fields, dict):
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Error: fields must be a dict mapping field names to string values.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                if on_status:
+                    on_status("drafting:saving document")
+
+                try:
+                    result = await draft_fn(
+                        action=action,
+                        fields=fields,
+                        document_id=document_id,
+                        template_slug=t_slug,
+                    )
+                except Exception:
+                    logger.exception("[agent] document_draft failed: action=%s", action)
+                    results_msgs.append(
+                        ToolMessage(
+                            content="Document save failed due to an internal error. Please try again.",
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    continue
+
+                if "error" in result:
+                    logger.warning("[agent] document_draft validation error: %s", result["error"])
+                    results_msgs.append(ToolMessage(content=result["error"], tool_call_id=tc["id"]))
+                else:
+                    doc_id = result.get("id", "")
+                    version = result.get("version", 1)
+                    tmpl = result.get("template_slug", t_slug)
+                    logger.info(
+                        "[agent] document_draft: action=%s doc_id=%s version=%d",
+                        action,
+                        doc_id,
+                        version,
+                    )
+                    results_msgs.append(
+                        ToolMessage(
+                            content=(
+                                f"Document saved successfully.\n"
+                                f"document_id: {doc_id}\n"
+                                f"template: {tmpl}\n"
+                                f"version: {version}\n"
+                                "The user can now view and download the PDF."
+                            ),
+                            tool_call_id=tc["id"],
+                        ),
+                    )
+                    # Emit document_generated SSE event so the frontend can render
+                    # the document panel without waiting for the agent's text answer.
+                    on_document = state.get("_on_document")
+                    if on_document:
+                        on_document(
+                            {
+                                "type": "document_generated",
+                                "doc_id": doc_id,
+                                "template_slug": tmpl,
+                                "template_name": state.get("template_name", ""),
+                                "version": version,
+                                "fields": fields,
+                            }
+                        )
+                    add_agent_step_span(
+                        _obs_trace,
+                        step_name="tool:document_draft",
+                        input_data={"action": action, "template_slug": t_slug},
+                        output_data={"doc_id": doc_id, "version": version},
+                        metadata={"tool": "document_draft"},
+                    )
+                continue
+
             query = tc["args"].get("query", "")
             if not query:
                 results_msgs.append(
@@ -690,103 +796,6 @@ def build_agent_graph():
                 # Web results don't go into accumulated_docs (they're not corpus docs)
                 # but we track them separately for source citations
                 new_web_sources.extend(web_results)
-                continue
-
-            # --- Document draft tool ---
-            if tc["name"] == "document_draft":
-                draft_fn = state.get("_draft_document_fn")
-                if draft_fn is None:
-                    # Drafting not active in this request (no template selected)
-                    results_msgs.append(
-                        ToolMessage(
-                            content=(
-                                "Document drafting is not available in this conversation. "
-                                "Ask the user to select a template first."
-                            ),
-                            tool_call_id=tc["id"],
-                        ),
-                    )
-                    continue
-
-                action = tc["args"].get("action", "create")
-                fields = tc["args"].get("fields") or {}
-                document_id = tc["args"].get("document_id", "") or ""
-                t_slug = tc["args"].get("template_slug", "") or state.get("template_slug", "")
-
-                # Convert the DRAFTING_CUSTOM_SLUG frontend sentinel to the DB slug.
-                # DRAFTING_FREEFORM_SLUG is the FK-safe value; DRAFTING_CUSTOM_SLUG is
-                # only a UI-layer sentinel and must never reach FK-constrained DB operations.
-                if t_slug == DRAFTING_CUSTOM_SLUG:
-                    t_slug = DRAFTING_FREEFORM_SLUG
-
-                if not isinstance(fields, dict):
-                    results_msgs.append(
-                        ToolMessage(
-                            content="Error: fields must be a dict mapping field names to string values.",
-                            tool_call_id=tc["id"],
-                        ),
-                    )
-                    continue
-
-                if on_status:
-                    on_status("drafting:saving document")
-
-                try:
-                    result = await draft_fn(
-                        action=action,
-                        fields=fields,
-                        document_id=document_id,
-                        template_slug=t_slug,
-                    )
-                except Exception:
-                    logger.exception("[agent] document_draft failed: action=%s", action)
-                    results_msgs.append(
-                        ToolMessage(
-                            content="Document save failed due to an internal error. Please try again.",
-                            tool_call_id=tc["id"],
-                        ),
-                    )
-                    continue
-
-                if "error" in result:
-                    logger.warning("[agent] document_draft validation error: %s", result["error"])
-                    results_msgs.append(ToolMessage(content=result["error"], tool_call_id=tc["id"]))
-                else:
-                    doc_id = result.get("id", "")
-                    version = result.get("version", 1)
-                    tmpl = result.get("template_slug", t_slug)
-                    logger.info(
-                        "[agent] document_draft: action=%s doc_id=%s version=%d",
-                        action,
-                        doc_id,
-                        version,
-                    )
-                    results_msgs.append(
-                        ToolMessage(
-                            content=(
-                                f"Document saved successfully.\n"
-                                f"document_id: {doc_id}\n"
-                                f"template: {tmpl}\n"
-                                f"version: {version}\n"
-                                "The user can now view and download the PDF."
-                            ),
-                            tool_call_id=tc["id"],
-                        ),
-                    )
-                    # Emit document_generated SSE event so the frontend can render
-                    # the document panel without waiting for the agent's text answer.
-                    on_document = state.get("_on_document")
-                    if on_document:
-                        on_document(
-                            {
-                                "type": "document_generated",
-                                "doc_id": doc_id,
-                                "template_slug": tmpl,
-                                "template_name": state.get("template_name", ""),
-                                "version": version,
-                                "fields": fields,
-                            }
-                        )
                 continue
 
             # --- Corpus search tool (default) ---
