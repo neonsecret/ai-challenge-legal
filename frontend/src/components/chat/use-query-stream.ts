@@ -148,6 +148,7 @@ interface StreamState {
     followUps: string[] | null
     error: string | null
     documents: ChatDocument[]
+    isDraftingMode: boolean
 }
 
 export interface UseQueryStreamReturn extends StreamState {
@@ -171,6 +172,7 @@ export function useQueryStream(): UseQueryStreamReturn {
         followUps: null,
         error: null,
         documents: [],
+        isDraftingMode: false,
     })
     const abortRef = useRef<AbortController | null>(null)
     const tokenBufRef = useRef<string>("")
@@ -199,6 +201,7 @@ export function useQueryStream(): UseQueryStreamReturn {
             followUps: null,
             error: null,
             documents: [],
+            isDraftingMode: false,
         })
     }, [])
 
@@ -267,6 +270,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                 followUps: null,
                 error: null,
                 documents: [],
+                isDraftingMode: !!templateSlug,
             })
 
             const ctrl = new AbortController()
@@ -385,7 +389,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             const documents = exists
                                 ? prev.documents.map((d) => (d.doc_id === doc.doc_id ? doc : d))
                                 : [...prev.documents, doc]
-                            return {...prev, documents}
+                            return {...prev, documents, isDraftingMode: false}
                         })
                     } else if (eventType === "follow_ups") {
                         const parsed = JSON.parse(data)
@@ -404,6 +408,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...prev,
                             isStreaming: false,
                             streamingStatus: null,
+                            isDraftingMode: false,
                             error: parsed.detail || parsed.error || "Query failed. Please try again.",
                         }))
                     } else if (eventType === "done") {
@@ -415,6 +420,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...prev,
                             isStreaming: false,
                             streamingStatus: null,
+                            isDraftingMode: false,
                             error: prev.answer ? null : "No answer received. Please try again.",
                         }))
                     }
@@ -436,6 +442,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             setState(prev => ({
                                 ...prev,
                                 isStreaming: false,
+                                isDraftingMode: false,
                                 streamingStatus: "Reconnecting \u2014 answer still processing...",
                             }))
                             pollForAnswer(convId)
@@ -444,6 +451,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 ...prev,
                                 isStreaming: false,
                                 streamingStatus: null,
+                                isDraftingMode: false,
                                 error: prev.answer ? null : "Connection error. Please try again.",
                             }))
                         }
@@ -454,6 +462,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             setState(prev => ({
                                 ...prev,
                                 isStreaming: false,
+                                isDraftingMode: false,
                                 streamingStatus: "Reconnecting \u2014 answer still processing...",
                             }))
                             pollForAnswer(convId)
@@ -462,6 +471,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                                 ...prev,
                                 isStreaming: false,
                                 streamingStatus: null,
+                                isDraftingMode: false,
                                 error: prev.answer ? null : "Connection error. Please try again.",
                             }))
                         }
@@ -509,6 +519,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...prev,
                             isStreaming: false,
                             streamingStatus: null,
+                            isDraftingMode: false,
                             error: detail,
                         }))
                         return
@@ -519,6 +530,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...prev,
                             isStreaming: false,
                             streamingStatus: null,
+                            isDraftingMode: false,
                             error: "No response stream available.",
                         }))
                         return
@@ -550,6 +562,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...prev,
                             isStreaming: false,
                             streamingStatus: null,
+                            isDraftingMode: false,
                             error: prev.answer ? null : "No answer received. Please try again.",
                         }))
                     }
