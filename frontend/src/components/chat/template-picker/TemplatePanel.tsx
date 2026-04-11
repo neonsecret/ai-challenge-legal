@@ -313,7 +313,7 @@ function SkeletonList() {
                     borderRadius: RADIUS.lg,
                     background: "var(--doc-btn-glass-bg)",
                     border: "1px solid var(--doc-pill-inactive-border)",
-                    animation: "pulse 1.5s ease-in-out infinite",
+                    animation: "gentle-pulse 1.5s ease-in-out infinite",
                     opacity: 1 - i * 0.15,
                 }} />
             ))}

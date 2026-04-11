@@ -185,6 +185,7 @@ export function ChatHeader({
                     onSetJurisdiction={onSetJurisdiction}
                     onSetLawPaneOpen={onSetLawPaneOpen}
                     onSetCorpusWarning={onSetCorpusWarning}
+                    onSetSelectedLaws={onSetSelectedLaws}
                     hideCorpusWarning={hideCorpusWarning}
                     showCorpusBlocked={showCorpusBlocked}
                     documentCountBadge={

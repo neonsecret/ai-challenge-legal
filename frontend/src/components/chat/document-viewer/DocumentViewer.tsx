@@ -35,6 +35,7 @@ function PdfLoadingSkeleton() {
                     position: "absolute",
                     inset: 0,
                     background: "linear-gradient(90deg, transparent 0%, var(--doc-skeleton-shimmer) 50%, transparent 100%)",
+                    backgroundSize: "200% 100%",
                     animation: "shimmer 1.8s ease-in-out infinite",
                 }} />
             </div>

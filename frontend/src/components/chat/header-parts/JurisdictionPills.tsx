@@ -16,6 +16,7 @@ interface JurisdictionPillsProps {
     onSetJurisdiction: (j: Jurisdiction) => void
     onSetLawPaneOpen: (open: boolean | ((prev: boolean) => boolean)) => void
     onSetCorpusWarning: (w: {corpus: string; jurisdiction: Jurisdiction} | null) => void
+    onSetSelectedLaws: (ids: string[] | ((prev: string[]) => string[])) => void
     hideCorpusWarning: boolean
     showCorpusBlocked: () => void
     documentCountBadge?: React.ReactNode
@@ -25,7 +26,7 @@ export function JurisdictionPills({
     isStrict, isMobile,
     jurisdiction, currentCorpora, availableLaws, useInternet,
     onToggleInternet, onSetJurisdiction, onSetLawPaneOpen,
-    onSetCorpusWarning, hideCorpusWarning, showCorpusBlocked,
+    onSetCorpusWarning, onSetSelectedLaws, hideCorpusWarning, showCorpusBlocked,
     documentCountBadge,
 }: JurisdictionPillsProps) {
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -71,6 +72,7 @@ export function JurisdictionPills({
             longPressTimerRef.current = setTimeout(() => {
                 longPressFiredRef.current = true
                 longPressTimerRef.current = null
+                onSetSelectedLaws(availableLaws.map(l => l.id))
             }, 500)
         }
     }
