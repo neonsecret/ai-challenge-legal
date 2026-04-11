@@ -127,7 +127,9 @@ async def _create_pipeline_document(
     return {
         "doc_id": str(doc.id),
         "template_slug": template_slug,  # Return the slug the client sent, not effective_slug
-        "template_name": template_name,
+        # When the user picked the generic "Custom document" option, return a
+        # locale-neutral name instead of the Czech DB label "Vlastní dokument".
+        "template_name": "Custom Document" if template_slug == CUSTOM_SLUG else template_name,
     }
 
 

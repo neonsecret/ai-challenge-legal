@@ -564,3 +564,116 @@ class TestDocumentEndpointsAccessible:
 
             _app.dependency_overrides.pop(get_api_key, None)
             _app.dependency_overrides.pop(get_db, None)
+
+
+# ---------------------------------------------------------------------------
+# T9 — _create_pipeline_document template_name localisation (NEO-1021)
+# ---------------------------------------------------------------------------
+
+
+class TestPipelineDocumentTemplateName:
+    """Unit tests for _create_pipeline_document template_name field.
+
+    Regression guard: when the user picks the generic "Custom document" option
+    (template_slug == "__custom__"), the returned template_name must be the
+    locale-neutral "Custom Document", NOT the Czech DB label "Vlastní dokument".
+    Named templates must still return their own name unchanged.
+    """
+
+    @pytest.mark.asyncio
+    async def test_custom_slug_returns_locale_neutral_name(self):
+        """__custom__ slug must produce "Custom Document", not the Czech DB name."""
+        from neolex.db.drafting_models import DocumentTemplate
+        from neolex.routers.query import _create_pipeline_document
+
+        tmpl = DocumentTemplate()
+        tmpl.id = uuid.uuid4()
+        tmpl.slug = "vlastni_dokument"
+        tmpl.name = "Vlastní dokument"
+        tmpl.jurisdiction = "CZ"
+        tmpl.category = "civil"
+        tmpl.latex_template = ""
+        tmpl.required_fields = []
+        tmpl.field_descriptions = {}
+        tmpl.description = None
+        tmpl.created_at = datetime.now(UTC)
+
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        lock_result = MagicMock()
+        count_result = MagicMock()
+        count_result.scalars.return_value.all.return_value = []
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+
+        async def mock_refresh(obj):
+            obj.id = uuid.uuid4()
+
+        mock_session.refresh = mock_refresh
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        conv_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
+
+        with patch("neolex.routers.query.AsyncSessionLocal", return_value=mock_session):
+            result = await _create_pipeline_document("__custom__", conv_id, user_id)
+
+        assert result is not None
+        assert result["template_name"] == "Custom Document", (
+            f"Expected 'Custom Document' but got {result['template_name']!r} — "
+            "Czech name leaked for non-CZ jurisdictions"
+        )
+        assert result["template_slug"] == "__custom__"
+
+    @pytest.mark.asyncio
+    async def test_named_slug_returns_db_name(self):
+        """Named template slugs must return the template's own name unchanged."""
+        from neolex.db.drafting_models import DocumentTemplate
+        from neolex.routers.query import _create_pipeline_document
+
+        named_slug = "navrh_rozvod"
+        db_name = "Návrh na rozvod manželství"
+
+        tmpl = DocumentTemplate()
+        tmpl.id = uuid.uuid4()
+        tmpl.slug = named_slug
+        tmpl.name = db_name
+        tmpl.jurisdiction = "CZ"
+        tmpl.category = "civil"
+        tmpl.latex_template = ""
+        tmpl.required_fields = []
+        tmpl.field_descriptions = {}
+        tmpl.description = None
+        tmpl.created_at = datetime.now(UTC)
+
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        lock_result = MagicMock()
+        count_result = MagicMock()
+        count_result.scalars.return_value.all.return_value = []
+
+        mock_session = AsyncMock()
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
+        mock_session.add = MagicMock()
+        mock_session.commit = AsyncMock()
+
+        async def mock_refresh(obj):
+            obj.id = uuid.uuid4()
+
+        mock_session.refresh = mock_refresh
+        mock_session.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_session.__aexit__ = AsyncMock(return_value=False)
+
+        conv_id = str(uuid.uuid4())
+        user_id = str(uuid.uuid4())
+
+        with patch("neolex.routers.query.AsyncSessionLocal", return_value=mock_session):
+            result = await _create_pipeline_document(named_slug, conv_id, user_id)
+
+        assert result is not None
+        assert result["template_name"] == db_name
+        assert result["template_slug"] == named_slug
