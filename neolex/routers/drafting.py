@@ -20,7 +20,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.middleware import get_api_key
@@ -67,10 +67,11 @@ async def _get_owned_document(
         select(ChatDocument).where(
             ChatDocument.id == doc_uuid,
             ChatDocument.conversation_id == conv_uuid,
+            ChatDocument.user_id == user_id,  # SQL-level defence-in-depth
         )
     )
     doc = result.scalar_one_or_none()
-    if doc is None or doc.user_id != user_id:
+    if doc is None:
         raise HTTPException(status_code=404, detail="Document not found")
     return doc
 
@@ -151,10 +152,13 @@ async def create_document(
             detail=f"Missing required field(s): {', '.join(missing)}",
         )
 
-    # Capture template name before commit — expire_on_commit=True detaches the ORM
-    # object when the session exits, making post-commit attribute access raise
-    # DetachedInstanceError (or MissingGreenlet in async contexts).
-    template_name = template.name
+    # Acquire a transaction-scoped advisory lock keyed to this conversation.
+    # SELECT FOR UPDATE cannot lock rows that don't yet exist, so two concurrent
+    # first-document requests could both read count=0 and both INSERT.
+    # pg_advisory_xact_lock serialises them at the PostgreSQL level; the lock is
+    # released automatically when the transaction commits or rolls back.
+    _conv_lock_key = conv_uuid.int & 0x7FFFFFFFFFFFFFFF  # positive int64
+    await db.execute(select(func.pg_advisory_xact_lock(_conv_lock_key)))
 
     # Enforce max 3 documents per conversation with SELECT FOR UPDATE to prevent races.
     # NOTE: SELECT COUNT(*) FOR UPDATE is invalid in PostgreSQL — only row-returning

@@ -86,6 +86,14 @@ class DocumentUpdate(BaseModel):
 
     fields: dict[str, str]
 
+    @field_validator("fields")
+    @classmethod
+    def fields_must_not_be_empty(cls, v: dict[str, str]) -> dict[str, str]:
+        """Reject empty-fields PATCH to prevent spurious cache invalidation."""
+        if not v:
+            raise ValueError("fields must not be empty — provide at least one field to update")
+        return v
+
 
 class DocumentResponse(BaseModel):
     """API response for a single chat document."""
