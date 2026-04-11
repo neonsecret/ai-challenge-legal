@@ -15,4 +15,5 @@ export interface ChatDocument {
     template_slug: string
     template_name: string
     version: number
+    generated_at: string   // ISO 8601 — from SSE event or client-side fallback
 }

@@ -60,7 +60,7 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                     fontSize: TYPE_SCALE.xs,
                     color: "var(--doc-text-secondary)",
                 }}>
-                    v{doc.version}
+                    v{doc.version} · Generated at {new Date(doc.generated_at).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}
                 </span>
             </div>
 

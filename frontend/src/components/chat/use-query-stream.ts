@@ -377,6 +377,7 @@ export function useQueryStream(): UseQueryStreamReturn {
                             template_slug: parsed.template_slug,
                             template_name: parsed.template_name,
                             version: parsed.version ?? 1,
+                            generated_at: parsed.generated_at ?? new Date().toISOString(),
                         }
                         setState((prev) => {
                             const exists = prev.documents.some((d) => d.doc_id === doc.doc_id)
