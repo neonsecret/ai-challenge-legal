@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sse_starlette.sse import EventSourceResponse
 
@@ -15,7 +15,7 @@ from neolex.auth.middleware import get_api_key
 from neolex.config import settings
 from neolex.db.audit import get_audit_db
 from neolex.db.models import User
-from neolex.db.postgres import AsyncSessionLocal, get_db
+from neolex.db.postgres import AsyncSessionLocal, conversation_doc_lock_key, get_db
 from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_response
 from neolex.services.pipeline import run_single_question
 
@@ -91,6 +91,15 @@ async def _create_pipeline_document(
         # object when the session exits, making post-commit attribute access raise
         # DetachedInstanceError.
         template_name = template.name
+
+        # Serialize concurrent document creations for this conversation.
+        # pg_advisory_xact_lock blocks until no other session holds the same key,
+        # then holds it for the duration of the transaction (released at commit/rollback).
+        # This prevents two concurrent pipeline calls from both reading count < 3
+        # and both inserting — a race that SELECT ... FOR UPDATE cannot catch when
+        # there are zero existing rows to lock.
+        lock_key = conversation_doc_lock_key(conv_uuid)
+        await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
 
         # Respect the per-conversation document cap.
         count_result = await session.execute(

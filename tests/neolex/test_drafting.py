@@ -361,11 +361,14 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
-        # Second execute: row-fetch FOR UPDATE (0 existing docs)
+        # Second execute: pg_advisory_xact_lock (return value unused)
+        lock_result = MagicMock()
+
+        # Third execute: row-fetch FOR UPDATE (0 existing docs)
         count_result = MagicMock()
         count_result.scalars.return_value.all.return_value = []
 
-        mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
         mock_session.add = MagicMock()
         mock_session.commit = AsyncMock()
 
@@ -440,10 +443,13 @@ class TestDocumentCreate:
         tmpl_result = MagicMock()
         tmpl_result.scalar_one_or_none.return_value = sample_template
 
+        # pg_advisory_xact_lock execute (return value unused)
+        lock_result = MagicMock()
+
         count_result = MagicMock()
         count_result.scalars.return_value.all.return_value = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
 
-        mock_session.execute = AsyncMock(side_effect=[tmpl_result, count_result])
+        mock_session.execute = AsyncMock(side_effect=[tmpl_result, lock_result, count_result])
 
         app = _make_app_client(user_id, mock_session)
 
