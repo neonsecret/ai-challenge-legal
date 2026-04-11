@@ -618,8 +618,8 @@ async def query_stream(
             )
             follow_ups_task.add_done_callback(_log_task_exception)
 
-            async with get_audit_db() as db:
-                await db.log_query(
+            async with get_audit_db() as audit_db:
+                await audit_db.log_query(
                     key_hash=key_row["key_hash"],
                     question=body.question,
                     answer_text=response.answer,
