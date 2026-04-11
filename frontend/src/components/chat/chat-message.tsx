@@ -132,13 +132,13 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
 
     for (const m of content.matchAll(/\[DOC-(\d+)\]/g)) {
         const n = parseInt(m[1], 10)
-        const idx = n - 1
-        if (idx >= 0 && idx < sources.length && !cited.has(n)) {
+        const src = sources[n - 1]
+        if (src && !cited.has(n)) {
             cited.set(n, {
                 footnoteNum: n,
-                docId: sources[idx].doc_id,
-                title: sources[idx].title || sources[idx].doc_id,
-                page: sources[idx].page_numbers[0],
+                docId: src.doc_id,
+                title: src.title || src.doc_id,
+                page: src.page_numbers[0],
             })
         }
     }
@@ -147,15 +147,16 @@ function collectCitedSources(content: string, sources: Source[]): CitedEntry[] {
         const docId = m[1]
         const page = parseInt(m[2], 10)
         const srcIdx = sources.findIndex(s =>
-            s.doc_id === docId || s.doc_id.startsWith(docId) || docId.startsWith(s.doc_id)
+            s && (s.doc_id === docId || s.doc_id.startsWith(docId) || docId.startsWith(s.doc_id))
         )
         if (srcIdx >= 0) {
+            const src = sources[srcIdx]
             const n = srcIdx + 1
-            if (!cited.has(n)) {
+            if (src && !cited.has(n)) {
                 cited.set(n, {
                     footnoteNum: n,
-                    docId: sources[srcIdx].doc_id,
-                    title: sources[srcIdx].title || sources[srcIdx].doc_id,
+                    docId: src.doc_id,
+                    title: src.title || src.doc_id,
                     page,
                 })
             }
