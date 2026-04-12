@@ -209,17 +209,21 @@ def _latex_to_html_body(latex: str) -> str:
     # Standalone \small without a brace group — strip to avoid unclosed spans
     body = re.sub(r"\\small\b", "", body)
 
+    # --- Horizontal rule (signature line) ---
+    # MUST come before the catch-all strip below: \rule has TWO brace groups
+    # (\rule{6cm}{0.4pt}) and the catch-all would consume only the first one,
+    # leaving "{0.4pt}" as orphan text and never emitting the <hr>.
+    body = re.sub(r"\\rule\{[^}]*\}\{[^}]*\}", '<hr style="width:60%;margin:0;border-top:1px solid black;">', body)
+
     # --- Spacing commands → vertical gaps ---
     body = re.sub(r"\\vspace\{[^}]*\}", "<br>", body)
-    # Strip other unhandled LaTeX brace-commands (\hspace, \kern, etc.) —
-    # avoids raw LaTeX leaking into the HTML output as visible text.
-    body = re.sub(r"\\[a-zA-Z]+\{[^{}]*\}", "", body)
     body = re.sub(r"\\medskip\b", "<br>", body)
     body = re.sub(r"\\bigskip\b", "<br><br>", body)
     body = re.sub(r"\\smallskip\b", "<br>", body)
-
-    # --- Horizontal rule (signature line) ---
-    body = re.sub(r"\\rule\{[^}]*\}\{[^}]*\}", '<hr style="width:60%;margin:0;border-top:1px solid black;">', body)
+    # Strip other unhandled LaTeX brace-commands (\hspace, \kern, etc.) —
+    # avoids raw LaTeX leaking into the HTML output as visible text.
+    # Must come AFTER all specific handlers above.
+    body = re.sub(r"\\[a-zA-Z]+\{[^{}]*\}", "", body)
 
     # --- Non-breaking space --- (LaTeX ~)
     # Replace ~ used as non-breaking space (not inside commands) with &nbsp;
