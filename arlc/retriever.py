@@ -2403,8 +2403,9 @@ def _retrieve_pages_simple(
 
         def _vec():
             _s = (
-                _lf_parent.start_span(
+                _lf_parent.start_observation(
                     name="vector-retrieval",
+                    as_type="span",
                     input={"corpus": corpus, "top_k": top_k},
                 )
                 if _lf_parent
@@ -2418,8 +2419,9 @@ def _retrieve_pages_simple(
 
         def _bm25():
             _s = (
-                _lf_parent.start_span(
+                _lf_parent.start_observation(
                     name="bm25-retrieval",
+                    as_type="span",
                     input={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
                 )
                 if _lf_parent
@@ -2504,8 +2506,9 @@ def _retrieve_pages_simple(
             _lf_parent_vec = None
 
         _vec_span = (
-            _lf_parent_vec.start_span(
+            _lf_parent_vec.start_observation(
                 name="vector-retrieval",
+                as_type="span",
                 input={"corpus": corpus, "top_k": top_k, "mode": "vector-only"},
             )
             if _lf_parent_vec
@@ -2566,8 +2569,9 @@ def _retrieve_pages_simple(
         _lf_rerank_parent = None
 
     _rerank_span = (
-        _lf_rerank_parent.start_span(
+        _lf_rerank_parent.start_observation(
             name="reranking",
+            as_type="span",
             input={"num_candidates": len(rerank_pool), "answer_type": answer_type},
         )
         if _lf_rerank_parent
