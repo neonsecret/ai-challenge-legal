@@ -17,6 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from neolex.constants import DRAFTING_FREEFORM_SLUG
 from neolex.db.drafting_models import DocumentTemplate
 from neolex.db.models import User
 from neolex.db.postgres import get_db
@@ -40,7 +41,13 @@ async def list_templates(
     db: AsyncSession = Depends(get_db),
 ) -> list[TemplateListItem]:
     """List all available templates, optionally filtered by jurisdiction and/or category."""
-    stmt = select(DocumentTemplate).order_by(DocumentTemplate.jurisdiction, DocumentTemplate.name)
+    # Exclude the freeform sentinel row — it backs the __custom__ slug internally
+    # and is already surfaced via the hardcoded "Custom document" button in the UI.
+    stmt = (
+        select(DocumentTemplate)
+        .where(DocumentTemplate.slug != DRAFTING_FREEFORM_SLUG)
+        .order_by(DocumentTemplate.jurisdiction, DocumentTemplate.name)
+    )
 
     if jurisdiction:
         stmt = stmt.where(DocumentTemplate.jurisdiction == jurisdiction)

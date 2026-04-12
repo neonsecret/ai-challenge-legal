@@ -36,6 +36,7 @@ dependencies = [
     "pgvector>=0.4.2",
     "psycopg2-binary>=2.9.11",
     "simplemma>=1.1.2",
+    "langfuse>=4.0.0,<5",
 ]
 
 [project.scripts]
