@@ -521,17 +521,13 @@ def add_retrieval_substep_span(
     if parent is None:
         return
     try:
-        kwargs: "dict[str, Any]" = {"name": name, "as_type": "span"}
-        if input_data is not None:
-            kwargs["input"] = input_data
-        obs = parent.start_observation(**kwargs)
-        update_kwargs: "dict[str, Any]" = {}
+        obs = parent.start_span(
+            name=name,
+            input=input_data,
+            metadata=metadata,
+        )
         if output_data is not None:
-            update_kwargs["output"] = output_data
-        if metadata:
-            update_kwargs["metadata"] = metadata
-        if update_kwargs:
-            obs.update(**update_kwargs)
+            obs.update(output=output_data)
         obs.end()
     except Exception:
         logger.debug("Failed to add retrieval sub-span %s", name, exc_info=True)
@@ -563,7 +559,7 @@ def finalize_trace(
         # Propagate output to the trace level so the Langfuse trace list
         # shows the answer inline (not just nested inside the root span).
         if truncated_output is not None:
-            trace.set_trace_io(output=truncated_output)
+            trace.update_trace(output=truncated_output)
 
         trace.end()
     except Exception:
