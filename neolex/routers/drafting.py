@@ -460,7 +460,7 @@ async def get_document_tex(
         content=filled_tex.encode("utf-8"),
         media_type="application/x-tex",
         headers={
-            "Content-Disposition": f'attachment; filename="{doc_id}.tex"',
+            "Content-Disposition": f'attachment; filename="{doc.template_slug}-v{doc.version}.tex"',
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff",
         },
