@@ -28,7 +28,13 @@ from neolex.constants import DRAFTING_MAX_DOCS_PER_CONVERSATION
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 from neolex.db.postgres import conversation_doc_lock_key, get_db
 from neolex.schemas.drafting import DocumentCreate, DocumentResponse, DocumentUpdate
-from neolex.services.pdf_generator import _XELATEX_BIN, PDFTimeoutError, generate_pdf, invalidate_cache
+from neolex.services.pdf_generator import (
+    _WEASYPRINT_AVAILABLE,
+    _XELATEX_BIN,
+    PDFTimeoutError,
+    generate_pdf,
+    invalidate_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -347,10 +353,10 @@ async def get_document_pdf(
 ) -> Response:
     """Generate and return a PDF for the specified draft document.
 
-    Returns 503 if xelatex is not installed.
+    Returns 503 if no PDF renderer is available (xelatex or weasyprint).
     Returns cached PDF if already generated for this (doc_id, version).
     """
-    if _XELATEX_BIN is None:
+    if _XELATEX_BIN is None and not _WEASYPRINT_AVAILABLE:
         raise HTTPException(
             status_code=503,
             detail="PDF generation is not available on this server. Contact support.",
