@@ -19,14 +19,20 @@ from sqlalchemy.orm import Session as SASession
 
 from arlc.czech_morphology import build_czech_tsquery
 
-# CrossEncoder is imported lazily inside its factory function so that the
+# SentenceTransformer is used by the snowflake embedding backend.
+# CrossEncoder is used only when RERANKER_MODEL is not a Qwen model (non-default).
+# Both are imported lazily inside their respective factory functions so that the
 # default Qwen3-Reranker + llama-server path has no hard sentence_transformers dependency.
+# SentenceTransformer imported lazily inside get_embedding_model() to avoid
+# loading PyTorch when the default llama-server path is used.
 
 load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 _HAIKU_MODEL = "claude-haiku-4-5"  # short ID required for direct Vertex AI (no date suffix)
+# Langfuse span payload cap — avoids oversized ingest requests
+_LANGFUSE_INPUT_TRUNCATE = 500
 
 # Anthropic client (lazy singleton for HyDE / query variants)
 _anthropic_client: anthropic.Anthropic | None = None
@@ -86,6 +92,7 @@ RERANKER_INSTRUCTIONS_BY_TYPE: dict[str, str] = {
 
 # Embedding backend. Default: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
 # Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
+# Fallback: set EMBEDDING_MODEL=snowflake to use Snowflake Arctic Embed L v2.0 (no server needed).
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
 
 # doc_id -> page where date_of_issue appears (from case_metadata_index.json).
@@ -308,29 +315,61 @@ def rerank_chunks(
         return chunks[:top_k]
 
 
+def _is_arctic_model() -> bool:
+    """Check if the configured embedding model is Snowflake Arctic Embed."""
+    return "arctic" in EMBEDDING_MODEL.lower()
+
+
+def _is_llama_server() -> bool:
+    """Check if llama-server HTTP backend is configured (default)."""
+    return EMBEDDING_MODEL.lower() == "llama-server"
+
+
 def get_embedding_model():
     """Get embedding model (cached, thread-safe).
 
-    Returns LlamaServerEmbedder for llama-server (the only supported backend).
+    Returns LlamaServerEmbedder for llama-server (default),
+    or SentenceTransformer for snowflake (fallback).
     """
     global _embedding_model
     if _embedding_model is None:
         with _embedding_lock:
             if _embedding_model is None:
-                from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+                if _is_llama_server():
+                    from neolex.embeddings.llama_embedder import LlamaServerEmbedder
 
-                _embedding_model = LlamaServerEmbedder()
+                    _embedding_model = LlamaServerEmbedder()
+                else:
+                    import torch
+
+                    device = (
+                        "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
+                    )
+                    model_kwargs = {"trust_remote_code": True} if _is_arctic_model() else {}
+                    from sentence_transformers import SentenceTransformer
+
+                    _embedding_model = SentenceTransformer(EMBEDDING_MODEL, device=device, **model_kwargs)
     return _embedding_model
 
 
 def embed_query(question: str) -> list[float]:
     """Embed a query for asymmetric retrieval.
 
-    LlamaServerEmbedder.encode(prompt_name='query') applies the Qwen3 instruction prefix.
-    llama-server is a stateless HTTP client — safe to call concurrently without the embedding lock.
+    llama-server: LlamaServerEmbedder.encode(prompt_name='query') applies instruction prefix.
+    Arctic:       prompt_name='query' prepends the Arctic 'query: ' prefix.
+    BGE fallback: manual BGE_QUERY_PREFIX prepend.
     """
     model = get_embedding_model()
-    embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
+    if _is_llama_server():
+        # llama-server is a stateless HTTP client — no shared tokenizer, safe
+        # to call concurrently without the embedding lock.
+        embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
+    else:
+        with _embedding_lock:  # tokenizer is not thread-safe for local models
+            if _is_arctic_model():
+                embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
+            else:
+                embedding = model.encode(question, normalize_embeddings=True)
     return embedding.tolist()
 
 
@@ -342,7 +381,11 @@ def embed_document(text: str) -> list[float]:
     Use embed_query() for search queries.
     """
     model = get_embedding_model()
-    embedding = model.encode(text, normalize_embeddings=True)
+    if _is_llama_server():
+        embedding = model.encode(text, normalize_embeddings=True)
+    else:
+        with _embedding_lock:
+            embedding = model.encode(text, normalize_embeddings=True)
     return embedding.tolist()
 
 
@@ -360,7 +403,7 @@ def _get_sync_engine():
 
 
 # ---------------------------------------------------------------------------
-# PostgreSQL-backed search functions (pgvector + tsvector)
+# PostgreSQL-backed search functions (replace FAISS + BM25 + ChromaDB)
 # ---------------------------------------------------------------------------
 
 
@@ -1537,7 +1580,7 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
 
 
 def get_all_pages_for_docs(pdf_ids: list[str]) -> list[dict]:
-    """Get all indexed chunks for specific documents (in-memory, from PostgreSQL)."""
+    """Get all indexed chunks for specific documents (in-memory, no ChromaDB query)."""
     chunks_by_doc = get_chunks_by_doc()
     chunks = []
     for pdf_id in pdf_ids:
@@ -2299,7 +2342,7 @@ def _extract_page_text(doc_id: str, page_number: int) -> str:
     """Extract full text from a specific page of a document.
 
     page_number is 1-based (matches our grounding convention).
-    Tries PDF first, then falls back to chunk text from the database
+    Tries PDF first, then falls back to chunk text from the FAISS metadata
     (for TXT-based judgment documents that have no PDF).
     """
     # Try PDF extraction first (law documents)
@@ -2419,7 +2462,7 @@ def _retrieve_pages_simple(
             if _lf_enabled():
                 add_retrieval_substep_span(
                     name="bm25-retrieval",
-                    input_data={"query": question[:500], "corpus": corpus, "top_k": top_k},
+                    input_data={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
                     output_data={"num_results": len(bm25_chunk_ids)},
                 )
                 add_retrieval_substep_span(

@@ -4,7 +4,7 @@ Graph:  reason ──(tool_calls?)──> search ──> reason
            └──(no tool_calls)──> END
 
 The reason node invokes Claude via Vertex AI. If it needs sources, it emits
-a search_legal_corpus tool call. The search node runs pgvector + reranker and
+a search_legal_corpus tool call. The search node runs FAISS + reranker and
 feeds results back. The loop continues until Claude answers or the cap is hit.
 
 All agent decisions are logged and emitted as status events so the frontend
@@ -670,8 +670,6 @@ def build_agent_graph():
                     )
                 except Exception:
                     logger.exception("[agent] caselaw search failed: query=%s", query[:80])
-                    if _caselaw_span_token is not None:
-                        reset_current_span(_caselaw_span_token)
                     end_tool_span(_caselaw_span, level="ERROR")
                     results_msgs.append(
                         ToolMessage(
@@ -817,7 +815,21 @@ def build_agent_graph():
                     input_data={"query": query},
                     metadata={"tool": "search_web"},
                 )
-                web_results = await asyncio.to_thread(execute_web_search, query)
+                _web_failed = False
+                web_results = []
+                try:
+                    web_results = await asyncio.to_thread(execute_web_search, query)
+                except Exception:
+                    _web_failed = True
+                    logger.exception("[agent] web search failed: query=%s", query[:80])
+
+                if _web_failed:
+                    end_tool_span(_web_span, level="ERROR")
+                    results_msgs.append(
+                        ToolMessage(content="Web search failed. Try a different query.", tool_call_id=tc["id"])
+                    )
+                    continue
+
                 content = format_web_results(web_results)
                 logger.info('[agent] web search: query="%s" -> %d results', query[:60], len(web_results))
                 end_tool_span(
