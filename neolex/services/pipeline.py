@@ -174,6 +174,7 @@ async def run_single_question(
             },
             cache_read_tokens=result.get("cache_read_tokens", 0),
             cache_write_tokens=result.get("cache_write_tokens", 0),
+            metadata={"input_field": "effective_question_with_history"},
         )
         finalize_trace(trace, output=answer_str)
         result["trace_id"] = get_trace_id(trace)
