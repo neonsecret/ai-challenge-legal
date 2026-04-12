@@ -199,10 +199,15 @@ def _latex_to_html_body(latex: str) -> str:
     body = re.sub(r"\\textit\{(.*?)\}", r"<em>\1</em>", body)
     # \emph{...}
     body = re.sub(r"\\emph\{(.*?)\}", r"<em>\1</em>", body)
-    # \small (inline — wrap in a span; handled below by stripping outer brace groups)
-    body = re.sub(r"\\small\s*", '<span style="font-size:9pt;">', body)
-    # Close dangling <span> from \small by replacing trailing } in footer context
-    # (This is a heuristic — footer lines end with a } from \fancyfoot{...})
+    # {\small text} → <span style="font-size:9pt;">text</span>  (self-closing)
+    body = re.sub(
+        r"\{\\small\s*(.*?)\}",
+        lambda m: f'<span style="font-size:9pt;">{m.group(1).strip()}</span>',
+        body,
+        flags=re.DOTALL,
+    )
+    # Standalone \small without a brace group — strip to avoid unclosed spans
+    body = re.sub(r"\\small\b", "", body)
 
     # --- Spacing commands → vertical gaps ---
     body = re.sub(r"\\vspace\{[^}]*\}", "<br>", body)
@@ -250,7 +255,7 @@ _DISCLAIMER_EN = "Template — review and modify before submission. This documen
 
 _HTML_TEMPLATE = """\
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="{lang}">
 <head>
 <meta charset="UTF-8">
 <style>
@@ -298,7 +303,7 @@ _HTML_TEMPLATE = """\
 """
 
 
-def _latex_to_html(latex_template: str, fields: dict[str, str]) -> str:
+def _latex_to_html(latex_template: str, fields: dict[str, str], jurisdiction: str = "general") -> str:
     """Convert a filled LaTeX template to an HTML document for weasyprint rendering.
 
     Steps:
@@ -319,8 +324,18 @@ def _latex_to_html(latex_template: str, fields: dict[str, str]) -> str:
     # 4. Convert LaTeX to HTML
     body_html = _latex_to_html_body(filled.strip())
 
-    # 5. Wrap in HTML document
-    return _HTML_TEMPLATE.format(body=body_html, disclaimer=_DISCLAIMER_CZ)
+    # 5. Pick jurisdiction-appropriate disclaimer and lang attribute
+    is_czech = jurisdiction.upper() == "CZ"
+    disclaimer = _DISCLAIMER_CZ if is_czech else _DISCLAIMER_EN
+    lang = "cs" if is_czech else "en"
+
+    # 6. Escape curly braces in body_html so .format() does not misinterpret
+    #    user-injected content (e.g. legal citations like "Smith {2023}") as
+    #    format placeholders, which would raise KeyError or IndexError.
+    safe_body = body_html.replace("{", "{{").replace("}", "}}")
+
+    # 7. Wrap in HTML document
+    return _HTML_TEMPLATE.format(body=safe_body, disclaimer=disclaimer, lang=lang)
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +348,7 @@ async def _generate_pdf_weasyprint(
     version: int,
     template: str,
     fields: dict[str, str],
+    jurisdiction: str = "general",
 ) -> bytes:
     """Generate a PDF using weasyprint (HTML→PDF fallback for when xelatex is absent).
 
@@ -341,7 +357,7 @@ async def _generate_pdf_weasyprint(
     """
     import weasyprint
 
-    html_doc = _latex_to_html(template, fields)
+    html_doc = _latex_to_html(template, fields, jurisdiction=jurisdiction)
 
     def _render() -> bytes:
         return weasyprint.HTML(string=html_doc).write_pdf()
@@ -373,6 +389,7 @@ async def generate_pdf(
     version: int,
     template: str,
     fields: dict[str, str],
+    jurisdiction: str = "general",
 ) -> bytes:
     """Generate a PDF from a LaTeX template and user-provided fields.
 
@@ -400,7 +417,7 @@ async def generate_pdf(
         return await _generate_pdf_xelatex(doc_id, version, template, fields)
 
     if _WEASYPRINT_AVAILABLE:
-        return await _generate_pdf_weasyprint(doc_id, version, template, fields)
+        return await _generate_pdf_weasyprint(doc_id, version, template, fields, jurisdiction=jurisdiction)
 
     raise RuntimeError(
         "No PDF renderer available. Install TeX Live (xelatex) or ensure "

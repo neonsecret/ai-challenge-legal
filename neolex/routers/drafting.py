@@ -386,6 +386,7 @@ async def get_document_pdf(
             version=doc.version,
             template=template.latex_template,
             fields=doc.fields,
+            jurisdiction=template.jurisdiction,
         )
     except PDFTimeoutError as exc:
         logger.error("PDF generation timed out for doc_id=%s", doc.id)
