@@ -181,7 +181,9 @@ def _latex_to_html_body(latex: str) -> str:
     )
     body = re.sub(
         r"\\begin\{quote\}(.*?)\\end\{quote\}",
-        lambda m: f'<blockquote style="margin-left:2em;margin-right:2em;font-style:italic;">{m.group(1).strip()}</blockquote>',
+        lambda m: (
+            f'<blockquote style="margin-left:2em;margin-right:2em;font-style:italic;">{m.group(1).strip()}</blockquote>'
+        ),
         body,
         flags=re.DOTALL,
     )
@@ -322,9 +324,11 @@ def _latex_to_html(latex_template: str, fields: dict[str, str], jurisdiction: st
     # 4. Convert LaTeX to HTML
     body_html = _latex_to_html_body(filled.strip())
 
-    # 5. Wrap in HTML document with locale-appropriate disclaimer
-    disclaimer = _DISCLAIMER_CZ if jurisdiction.upper() == "CZ" else _DISCLAIMER_EN
-    return _HTML_TEMPLATE.format(body=body_html, disclaimer=disclaimer)
+    # 5. Wrap in HTML document with locale-appropriate disclaimer and lang attribute
+    is_cz = jurisdiction.upper() == "CZ"
+    disclaimer = _DISCLAIMER_CZ if is_cz else _DISCLAIMER_EN
+    lang = "cs" if is_cz else "en"
+    return _HTML_TEMPLATE.format(body=body_html, disclaimer=disclaimer, lang=lang)
 
 
 # ---------------------------------------------------------------------------
