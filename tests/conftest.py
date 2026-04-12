@@ -21,3 +21,9 @@ os.environ.setdefault("ADMIN_EMAILS", "admin@vitreon.app")
 # Without it `import neolex.main` raises RuntimeError, breaking the entire test
 # suite in CI environments where no .env is present.
 os.environ.setdefault("JWT_SECRET_KEY", "ci-test-only-secret-key-not-for-production")
+
+# These test files reference modules removed during the arlc refactor.
+collect_ignore = [
+    "test_agent_tools.py",
+    "test_agent_v2.py",
+]
