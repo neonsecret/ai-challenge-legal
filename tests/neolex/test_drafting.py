@@ -268,25 +268,11 @@ class TestTemplateAPI:
         It is surfaced in the UI via a hardcoded 'Custom document' button, so returning
         it from the API would create a duplicate entry in the template picker.
         """
+        from datetime import UTC, datetime
+
         from neolex.constants import DRAFTING_FREEFORM_SLUG
         from neolex.db.drafting_models import DocumentTemplate
 
-        freeform = DocumentTemplate()
-        freeform.id = uuid.uuid4()
-        freeform.slug = DRAFTING_FREEFORM_SLUG
-        freeform.name = "Vlastní dokument"
-        freeform.jurisdiction = "general"
-        freeform.category = "other"
-        freeform.latex_template = r"\documentclass{article}\begin{document}\end{document}"
-        freeform.required_fields = []
-        freeform.field_descriptions = {}
-        freeform.description = None
-        from datetime import UTC, datetime
-
-        freeform.created_at = datetime.now(UTC)
-
-        # DB returns the freeform sentinel alongside another template; the endpoint
-        # must filter it out before responding.
         other = DocumentTemplate()
         other.id = uuid.uuid4()
         other.slug = "zaloba_na_zaplaceni"
@@ -301,11 +287,9 @@ class TestTemplateAPI:
 
         mock_session = AsyncMock()
         mock_result = MagicMock()
-        # Simulate DB returning both rows (before the WHERE clause filters them)
-        # In the real query the WHERE slug != DRAFTING_FREEFORM_SLUG eliminates the
-        # freeform row at DB level, but since this test mocks the execute() response
-        # we verify the contract: if the freeform row somehow appeared it would not
-        # be in the list (the real test of the WHERE clause is at the SQL level).
+        # Mock returns the already-filtered result that the DB-level WHERE clause produces
+        # (WHERE slug != DRAFTING_FREEFORM_SLUG). SQL-level correctness is verified by
+        # integration tests; this unit test validates the API contract and response shape.
         mock_result.scalars.return_value.all.return_value = [other]
         mock_session.execute = AsyncMock(return_value=mock_result)
 
