@@ -328,12 +328,7 @@ def _latex_to_html(latex_template: str, fields: dict[str, str], jurisdiction: st
     is_cz = jurisdiction.upper() == "CZ"
     disclaimer = _DISCLAIMER_CZ if is_cz else _DISCLAIMER_EN
     lang = "cs" if is_cz else "en"
-
-    # 6. Escape curly braces in body_html so .format() does not misinterpret
-    #    user-injected content (e.g. legal citations like "Smith {2023}") as
-    #    format placeholders, which would raise KeyError or IndexError.
-    safe_body = body_html.replace("{", "{{").replace("}", "}}")
-    return _HTML_TEMPLATE.format(body=safe_body, disclaimer=disclaimer, lang=lang)
+    return _HTML_TEMPLATE.format(body=body_html, disclaimer=disclaimer, lang=lang)
 
 
 # ---------------------------------------------------------------------------
