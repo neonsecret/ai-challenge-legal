@@ -505,7 +505,13 @@ def build_agent_graph():
         on_status = state.get("_on_status")
 
         # Observability: get active trace from ContextVar (set in agent_pipeline.py)
-        from neolex.observability import add_agent_step_span, get_current_trace
+        from neolex.observability import (
+            end_tool_span,
+            get_current_trace,
+            reset_current_span,
+            set_current_span,
+            start_tool_span,
+        )
 
         _obs_trace = get_current_trace()
 
@@ -558,6 +564,12 @@ def build_agent_graph():
                 if on_status:
                     on_status("drafting:saving document")
 
+                _draft_span = start_tool_span(
+                    _obs_trace,
+                    name="tool:document_draft",
+                    input_data={"action": action, "template_slug": t_slug},
+                    metadata={"tool": "document_draft"},
+                )
                 try:
                     result = await draft_fn(
                         action=action,
@@ -567,6 +579,7 @@ def build_agent_graph():
                     )
                 except Exception:
                     logger.exception("[agent] document_draft failed: action=%s", action)
+                    end_tool_span(_draft_span, level="ERROR")
                     results_msgs.append(
                         ToolMessage(
                             content="Document save failed due to an internal error. Please try again.",
@@ -577,6 +590,7 @@ def build_agent_graph():
 
                 if "error" in result:
                     logger.warning("[agent] document_draft validation error: %s", result["error"])
+                    end_tool_span(_draft_span, output_data={"error": result["error"]}, level="WARNING")
                     results_msgs.append(ToolMessage(content=result["error"], tool_call_id=tc["id"]))
                 else:
                     doc_id = result.get("id", "")
@@ -614,12 +628,10 @@ def build_agent_graph():
                                 "fields": fields,
                             }
                         )
-                    add_agent_step_span(
-                        _obs_trace,
-                        step_name="tool:document_draft",
-                        input_data={"action": action, "template_slug": t_slug},
-                        output_data={"doc_id": doc_id, "version": version},
-                        metadata={"tool": "document_draft"},
+                    end_tool_span(
+                        _draft_span,
+                        output_data={"doc_id": doc_id, "version": version, "template_slug": tmpl},
+                        metadata={"tool": "document_draft", "action": action},
                     )
                 continue
 
@@ -642,6 +654,13 @@ def build_agent_graph():
                     format_caselaw_search_results,
                 )
 
+                _caselaw_span = start_tool_span(
+                    _obs_trace,
+                    name="tool:search_court_decisions",
+                    input_data={k: v for k, v in tc["args"].items() if v},
+                    metadata={"tool": "search_court_decisions"},
+                )
+                _caselaw_span_token = set_current_span(_caselaw_span) if _caselaw_span is not None else None
                 try:
                     caselaw_docs = await execute_caselaw_search(
                         query=query,
@@ -651,6 +670,9 @@ def build_agent_graph():
                     )
                 except Exception:
                     logger.exception("[agent] caselaw search failed: query=%s", query[:80])
+                    if _caselaw_span_token is not None:
+                        reset_current_span(_caselaw_span_token)
+                    end_tool_span(_caselaw_span, level="ERROR")
                     results_msgs.append(
                         ToolMessage(
                             content="Case law search failed. Try a different query.",
@@ -658,6 +680,9 @@ def build_agent_graph():
                         ),
                     )
                     continue
+                finally:
+                    if _caselaw_span_token is not None:
+                        reset_current_span(_caselaw_span_token)
 
                 content = format_caselaw_search_results(caselaw_docs)
                 if on_status and caselaw_docs:
@@ -706,10 +731,8 @@ def build_agent_graph():
                         promoted_count,
                     )
 
-                add_agent_step_span(
-                    _obs_trace,
-                    step_name="tool:search_court_decisions",
-                    input_data={k: v for k, v in tc["args"].items()},
+                end_tool_span(
+                    _caselaw_span,
                     output_data={"num_results": len(caselaw_docs), "promoted": promoted_count},
                     metadata={"tool": "search_court_decisions"},
                 )
@@ -732,10 +755,17 @@ def build_agent_graph():
                     on_status("retrieving:fetching court decision")
                 from arlc.agent.caselaw_tools import execute_caselaw_fetch, format_caselaw_full
 
+                _fetch_span = start_tool_span(
+                    _obs_trace,
+                    name="tool:fetch_court_decision",
+                    input_data={"ecli": ecli},
+                    metadata={"tool": "fetch_court_decision"},
+                )
                 try:
                     fetched_doc = await execute_caselaw_fetch(ecli)
                 except Exception:
                     logger.exception("[agent] caselaw fetch failed: ecli=%s", ecli)
+                    end_tool_span(_fetch_span, level="ERROR")
                     results_msgs.append(
                         ToolMessage(
                             content=f"Failed to fetch decision {ecli}. Try searching for it instead.",
@@ -745,6 +775,7 @@ def build_agent_graph():
                     continue
 
                 if fetched_doc is None:
+                    end_tool_span(_fetch_span, output_data={"found": False})
                     results_msgs.append(
                         ToolMessage(
                             content=f"Decision not found: {ecli}",
@@ -758,10 +789,8 @@ def build_agent_graph():
                 content = format_caselaw_full(fetched_doc, doc_offset)
                 new_docs_all.append(fetched_doc)
                 logger.info("[agent] caselaw fetch: ecli=%s → %d chars", ecli[:60], len(content))
-                add_agent_step_span(
-                    _obs_trace,
-                    step_name="tool:fetch_court_decision",
-                    input_data={"ecli": ecli},
+                end_tool_span(
+                    _fetch_span,
                     output_data={"found": True, "content_chars": len(content)},
                     metadata={"tool": "fetch_court_decision"},
                 )
@@ -782,13 +811,17 @@ def build_agent_graph():
                     continue
                 if on_status:
                     on_status("retrieving:searching the web")
+                _web_span = start_tool_span(
+                    _obs_trace,
+                    name="tool:search_web",
+                    input_data={"query": query},
+                    metadata={"tool": "search_web"},
+                )
                 web_results = await asyncio.to_thread(execute_web_search, query)
                 content = format_web_results(web_results)
                 logger.info('[agent] web search: query="%s" -> %d results', query[:60], len(web_results))
-                add_agent_step_span(
-                    _obs_trace,
-                    step_name="tool:search_web",
-                    input_data={"query": query},
+                end_tool_span(
+                    _web_span,
                     output_data={"num_results": len(web_results)},
                     metadata={"tool": "search_web"},
                 )
@@ -806,7 +839,22 @@ def build_agent_graph():
             exclude = {(d["doc_id"], d["page"]) for d in state["accumulated_docs"]}
             exclude.update((d["doc_id"], d["page"]) for d in new_docs_all)
 
+            # Open the tool span BEFORE calling execute_search so that retrieval
+            # sub-spans (bm25-retrieval, vector-retrieval, reranking) recorded
+            # inside retrieve_pages() appear as children.  asyncio.to_thread()
+            # copies the Python context, so the _current_span ContextVar set
+            # here is visible inside the worker thread without extra plumbing.
+            _corpus_span = start_tool_span(
+                _obs_trace,
+                name="tool:search_legal_corpus",
+                input_data={"query": query, "corpus": state["corpus"]},
+                metadata={"tool": "search_legal_corpus"},
+            )
+            _corpus_span_token = set_current_span(_corpus_span) if _corpus_span is not None else None
+
             t0 = time.monotonic()
+            _search_failed = False
+            new_docs: list[SourceDocument] = []
             try:
                 new_docs = await asyncio.to_thread(
                     execute_search,
@@ -818,7 +866,16 @@ def build_agent_graph():
                     doc_ids=state.get("doc_ids"),
                 )
             except Exception:
+                _search_failed = True
                 logger.exception("[agent] search failed: query=%s", query[:80])
+            finally:
+                if _corpus_span_token is not None:
+                    reset_current_span(_corpus_span_token)
+
+            elapsed = time.monotonic() - t0
+
+            if _search_failed:
+                end_tool_span(_corpus_span, level="ERROR")
                 results_msgs.append(
                     ToolMessage(
                         content="Search failed. Try a different query.",
@@ -827,7 +884,6 @@ def build_agent_graph():
                 )
                 continue
 
-            elapsed = time.monotonic() - t0
             doc_ids = [d["doc_id"] for d in new_docs]
             logger.info(
                 '[agent] search: query="%s" -> %d docs in %.1fs (%s)',
@@ -910,10 +966,8 @@ def build_agent_graph():
                     logger.warning("[agent] czech case law auto-enrichment failed", exc_info=True)
                     # Non-fatal: statute results are returned as-is
 
-            add_agent_step_span(
-                _obs_trace,
-                step_name="tool:search_legal_corpus",
-                input_data={"query": query, "corpus": state["corpus"]},
+            end_tool_span(
+                _corpus_span,
                 output_data={"num_docs": len(new_docs), "elapsed_ms": round(elapsed * 1000)},
                 metadata={"tool": "search_legal_corpus", "corpus": state["corpus"]},
             )
