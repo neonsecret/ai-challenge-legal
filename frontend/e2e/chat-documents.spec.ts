@@ -79,6 +79,23 @@ const SSE_WITH_DOC = sseBody([
   { event: "done", data: {} },
 ]);
 
+// SSE_WITH_DOC_READY includes populated `fields` so the DocumentCard enters the
+// "ready" state and renders the Preview button and Download PDF link (isReady=true).
+const SSE_WITH_DOC_READY = sseBody([
+  { event: "answer", data: { answer: "Dokument byl vygenerován.", sources: [], confidence: 0.9 } },
+  {
+    event: "document_generated",
+    data: {
+      doc_id: DOC_UUID,
+      template_slug: "zaloba_neplatnost_vypovedi",
+      template_name: "Žaloba na neplatnost výpovědi",
+      version: 1,
+      fields: { zalobce: "Jan Novák", zalovany: "Firma s.r.o." },
+    },
+  },
+  { event: "done", data: {} },
+]);
+
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -337,8 +354,10 @@ test("CD-5: PDF preview dialog loads successfully without error text", async ({ 
   const [page, context] = await createSeededPage(browser);
   try {
     await mockBaseRoutes(page);
+    // SSE_WITH_DOC_READY includes fields so DocumentCard enters isReady=true state,
+    // rendering the Preview button that this test exercises.
     await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC })
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_READY })
     );
     await page.route("**/api/v1/conversations/*/documents/*/pdf", (route: Route) =>
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.4" })
@@ -376,8 +395,10 @@ test("CD-6: PDF download works without error text in the DOM", async ({ browser 
     let pdfEndpointCalled = 0;
 
     await mockBaseRoutes(page);
+    // SSE_WITH_DOC_READY includes fields so DocumentCard enters isReady=true state,
+    // rendering the Download PDF link that this test exercises.
     await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC })
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_READY })
     );
     await page.route("**/api/v1/conversations/*/documents/*/pdf", (route: Route) => {
       pdfEndpointCalled += 1;
