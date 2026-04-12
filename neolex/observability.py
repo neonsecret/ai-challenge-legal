@@ -1,4 +1,4 @@
-"""Langfuse observability for Vitreon Legal.
+"""Langfuse observability for Vitreon Legal. # TEST_MARKER
 
 Provides per-query tracing with nested spans for retrieval, reranking,
 and LLM generation. All traces are sent to a self-hosted Langfuse v3
@@ -57,6 +57,31 @@ def reset_current_trace(token: contextvars.Token) -> None:
 def get_current_trace() -> Any:
     """Return the active Langfuse trace for the current context, or None."""
     return _current_trace.get()
+
+
+# ---------------------------------------------------------------------------
+# Per-tool-call span ContextVar — propagates the active tool span into threads
+# so retrieval sub-spans can be nested under the parent tool span.
+# asyncio.to_thread() copies the current context automatically, so setting
+# this before the call makes it visible inside the worker thread.
+# ---------------------------------------------------------------------------
+
+_current_span: contextvars.ContextVar[Any] = contextvars.ContextVar("langfuse_span", default=None)
+
+
+def set_current_span(span: Any) -> contextvars.Token:
+    """Set the active Langfuse tool span for the current context."""
+    return _current_span.set(span)
+
+
+def reset_current_span(token: contextvars.Token) -> None:
+    """Restore the previous span value."""
+    _current_span.reset(token)
+
+
+def get_current_span() -> Any:
+    """Return the active Langfuse tool span, or None."""
+    return _current_span.get()
 
 
 # ---------------------------------------------------------------------------
@@ -447,6 +472,97 @@ def add_agent_step_span(
         span.end()
     except Exception:
         logger.debug("Failed to add agent step span", exc_info=True)
+
+
+def start_tool_span(
+    trace,
+    *,
+    name: str,
+    input_data: Any = None,
+    metadata: dict[str, Any] | None = None,
+) -> Any | None:
+    """Open a named tool span on the trace and return it (caller must call end_tool_span).
+
+    Unlike add_agent_step_span(), this span stays open so retrieval sub-spans
+    (bm25-retrieval, vector-retrieval, reranking) can be recorded as children
+    while the tool executes inside asyncio.to_thread().
+    """
+    if trace is None or not _enabled:
+        return None
+    try:
+        kwargs: dict[str, Any] = {"name": name, "as_type": "span"}
+        if input_data is not None:
+            kwargs["input"] = input_data
+        if metadata:
+            kwargs["metadata"] = metadata
+        return trace.start_observation(**kwargs)
+    except Exception:
+        logger.debug("Failed to start tool span %s", name, exc_info=True)
+        return None
+
+
+def end_tool_span(
+    span,
+    *,
+    output_data: Any = None,
+    metadata: dict[str, Any] | None = None,
+    level: str = "DEFAULT",
+) -> None:
+    """Finalise a tool span opened by start_tool_span()."""
+    if span is None:
+        return
+    try:
+        update_kwargs: dict[str, Any] = {"level": level}
+        if output_data is not None:
+            update_kwargs["output"] = output_data
+        if metadata:
+            update_kwargs["metadata"] = metadata
+        span.update(**update_kwargs)
+        span.end()
+    except Exception:
+        logger.debug("Failed to end tool span", exc_info=True)
+
+
+def add_retrieval_substep_span(
+    *,
+    name: str,
+    input_data: Any = None,
+    output_data: Any = None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    """Record a retrieval sub-step as a child of the current tool span.
+
+    Falls back to the root trace when no tool span is active.
+    asyncio.to_thread() copies the Python context, so _current_span set in
+    the async task is visible in the worker thread without extra plumbing.
+
+    Produces the nested hierarchy::
+
+        SPAN tool:search_legal_corpus
+        ├── SPAN bm25-retrieval
+        ├── SPAN vector-retrieval
+        └── SPAN reranking
+    """
+    if not _enabled:
+        return
+    parent = get_current_span() or get_current_trace()
+    if parent is None:
+        return
+    try:
+        kwargs: dict[str, Any] = {"name": name, "as_type": "span"}
+        if input_data is not None:
+            kwargs["input"] = input_data
+        obs = parent.start_observation(**kwargs)
+        update_kwargs: dict[str, Any] = {}
+        if output_data is not None:
+            update_kwargs["output"] = output_data
+        if metadata:
+            update_kwargs["metadata"] = metadata
+        if update_kwargs:
+            obs.update(**update_kwargs)
+        obs.end()
+    except Exception:
+        logger.debug("Failed to add retrieval sub-span %s", name, exc_info=True)
 
 
 def finalize_trace(
