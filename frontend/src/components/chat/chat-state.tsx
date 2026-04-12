@@ -113,6 +113,7 @@ interface ChatState {
     setMessages: React.Dispatch<React.SetStateAction<Message[]>>
     activeAssistantId: React.MutableRefObject<string | null>
     traceRef: React.MutableRefObject<string[]>
+    liveTrace: string[]
     wasStreamingRef: React.MutableRefObject<boolean>
     selectedCorpus: string
     setSelectedCorpus: (c: string) => void
@@ -145,6 +146,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     // The mount effect loads from localStorage and sets this to true, triggering a re-render
     // where sync effects see the loaded data.
     const [hydrated, setHydrated] = useState(false)
+    const [liveTrace, setLiveTrace] = useState<string[]>([])
     const activeAssistantId = useRef<string | null>(null)
     const traceRef = useRef<string[]>([])
     const wasStreamingRef = useRef<boolean>(false)
@@ -373,6 +375,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     useEffect(() => {
         if (stream.isStreaming && stream.streamingStatus && !traceRef.current.includes(stream.streamingStatus)) {
             traceRef.current = [...traceRef.current, stream.streamingStatus]
+            setLiveTrace([...traceRef.current])
         }
     }, [stream.streamingStatus, stream.isStreaming]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -409,6 +412,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             }
 
             traceRef.current = []
+            setLiveTrace([])
             streamingSessionIdRef.current = null
             streamingMessagesRef.current = []
         }
@@ -642,6 +646,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         const existingCorpora = session?.corpora ?? []
 
         traceRef.current = []
+        setLiveTrace([])
         const userId = `user-${Date.now()}`
         const assistantId = `assistant-${Date.now()}`
         activeAssistantId.current = assistantId
@@ -696,7 +701,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
 
     return (
         <ChatStateContext.Provider value={{
-            messages, setMessages, activeAssistantId, traceRef, wasStreamingRef,
+            messages, setMessages, activeAssistantId, traceRef, liveTrace, wasStreamingRef,
             selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
             useInternet, setUseInternet,
             stream, handleSend,

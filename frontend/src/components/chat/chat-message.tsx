@@ -310,9 +310,10 @@ export function ChatMessage({
         />
     )
 
+    const hasPipelineBar = trace && trace.length > 0
     const isStatusOnly = content === "__polling_pipeline_status__" ||
         content?.startsWith("__pipeline_status:") ||
-        (!content && isStreaming)
+        (!content && isStreaming && !hasPipelineBar)
 
     return (
         <div className="mb-7 animate-fade-in-up">
