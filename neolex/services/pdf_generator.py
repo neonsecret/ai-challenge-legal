@@ -136,6 +136,15 @@ def _inject_fields(template: str, fields: dict[str, str]) -> str:
     return _PLACEHOLDER_RE.sub(_replace, template)
 
 
+def fill_latex_template(template: str, fields: dict[str, str]) -> str:
+    """Return the filled LaTeX source string (fields injected and LaTeX-escaped).
+
+    Public wrapper around _inject_fields for callers that need the filled .tex
+    source without generating a PDF (e.g. the /tex download endpoint).
+    """
+    return _inject_fields(template, fields)
+
+
 def _inject_fields_html(template: str, fields: dict[str, str]) -> str:
     """Replace {{field_name}} placeholders with HTML-escaped user values.
 

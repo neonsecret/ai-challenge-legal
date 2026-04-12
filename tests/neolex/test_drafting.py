@@ -886,3 +886,279 @@ class TestDocumentDelete:
 
             app.dependency_overrides.pop(get_api_key, None)
             app.dependency_overrides.pop(get_db, None)
+
+
+class TestDocumentTex:
+    """Tests for GET/HEAD .../documents/{doc_id}/tex endpoint."""
+
+    def _make_chat_doc(
+        self, user_id_str: str, conv_id: uuid.UUID, doc_id: uuid.UUID, template_slug: str = "test_template"
+    ):
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import ChatDocument
+
+        doc = ChatDocument()
+        doc.id = doc_id
+        doc.conversation_id = conv_id
+        doc.user_id = uuid.UUID(user_id_str)
+        doc.template_slug = template_slug
+        doc.fields = {"name": "Jan Novák", "amount": "50%"}
+        doc.version = 1
+        doc.created_at = datetime.now(UTC)
+        doc.updated_at = datetime.now(UTC)
+        return doc
+
+    def _make_template(
+        self, latex_template: str | None = r"\documentclass{article}\begin{document}{{name}}\end{document}"
+    ):
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import DocumentTemplate
+
+        tmpl = DocumentTemplate()
+        tmpl.id = uuid.uuid4()
+        tmpl.slug = "test_template"
+        tmpl.name = "Test Template"
+        tmpl.jurisdiction = "CZ"
+        tmpl.category = "civil"
+        tmpl.latex_template = latex_template
+        tmpl.required_fields = ["name"]
+        tmpl.field_descriptions = {"name": "Full name"}
+        tmpl.description = None
+        tmpl.created_at = datetime.now(UTC)
+        return tmpl
+
+    @pytest.mark.asyncio
+    async def test_get_tex_returns_200_with_correct_content_type(self):
+        """GET .../tex returns 200 with application/x-tex and filled LaTeX content."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 200
+            assert "application/x-tex" in resp.headers["content-type"]
+            # Field value injected into body
+            assert b"Jan Novak" in resp.content or b"Jan Nov" in resp.content or b"Jan" in resp.content
+            # Content-Disposition must name the file as {doc_id}.tex
+            assert f"{doc_id}.tex" in resp.headers["content-disposition"]
+            # Security headers
+            assert resp.headers["cache-control"] == "no-store, private"
+            assert resp.headers["x-content-type-options"] == "nosniff"
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_field_values_are_latex_escaped(self):
+        """GET .../tex escapes LaTeX special chars in field values (security guard)."""
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import ChatDocument
+
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = ChatDocument()
+        doc.id = doc_id
+        doc.conversation_id = conv_id
+        doc.user_id = uuid.UUID(user_id_str)
+        doc.template_slug = "test_template"
+        doc.fields = {"name": r"\input{/etc/passwd}"}  # injection attempt
+        doc.version = 1
+        doc.created_at = datetime.now(UTC)
+        doc.updated_at = datetime.now(UTC)
+
+        tmpl = self._make_template()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 200
+            body = resp.text
+            # The raw injection command must not appear in the output
+            assert r"\input{/etc/passwd}" not in body
+            # The backslash must be escaped
+            assert r"\textbackslash{}" in body
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_head_tex_returns_200_no_body(self):
+        """HEAD .../tex returns 200 with headers but no response body."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.head(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 200
+            assert "application/x-tex" in resp.headers["content-type"]
+            # HEAD must return no body
+            assert resp.content == b""
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_503_when_latex_template_is_none(self):
+        """GET .../tex returns 503 when template.latex_template is None."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template(latex_template=None)
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 503
+            assert "No LaTeX source" in resp.json()["detail"]
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_503_when_latex_template_is_empty_string(self):
+        """GET .../tex returns 503 when template.latex_template is empty string."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template(latex_template="")
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 503
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_404_when_document_not_found(self):
+        """GET .../tex returns 404 when document does not exist."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=doc_result)
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 404
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_404_when_template_not_found(self):
+        """GET .../tex returns 404 when the template row has been deleted."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = None  # template deleted
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 404
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)

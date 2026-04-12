@@ -11,6 +11,7 @@ Routes:
     GET    /api/v1/conversations/{conversation_id}/documents             — list documents
     GET    /api/v1/conversations/{conversation_id}/documents/{doc_id}   — get document
     GET    /api/v1/conversations/{conversation_id}/documents/{doc_id}/pdf — generate PDF
+    GET    /api/v1/conversations/{conversation_id}/documents/{doc_id}/tex — download .tex source
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from neolex.services.pdf_generator import (
     _WEASYPRINT_AVAILABLE,
     _XELATEX_BIN,
     PDFTimeoutError,
+    fill_latex_template,
     generate_pdf,
     invalidate_cache,
 )
@@ -408,6 +410,57 @@ async def get_document_pdf(
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'attachment; filename="document_{doc.id}_v{doc.version}.pdf"',
+            "Cache-Control": "no-store, private",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/conversations/{conversation_id}/documents/{doc_id}/tex
+# ---------------------------------------------------------------------------
+
+
+@router.api_route(
+    "/api/v1/conversations/{conversation_id}/documents/{doc_id}/tex",
+    methods=["GET", "HEAD"],
+)
+async def get_document_tex(
+    conversation_id: str,
+    doc_id: str,
+    key_row: dict = Depends(get_api_key),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Return the filled LaTeX source (.tex) for the specified draft document.
+
+    Supports GET (returns filled .tex) and HEAD (headers only).
+    Returns 503 if the template has no LaTeX source.
+    Returns 404 if the document or template is not found.
+    """
+    conv_uuid = _parse_conversation_id(conversation_id)
+    doc_uuid = _parse_doc_id(doc_id)
+    user_id = uuid.UUID(key_row["user_id"])
+
+    doc = await _get_owned_document(doc_uuid, conv_uuid, user_id, db)
+
+    tmpl_result = await db.execute(select(DocumentTemplate).where(DocumentTemplate.slug == doc.template_slug))
+    template = tmpl_result.scalar_one_or_none()
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found for this document.")
+
+    if not template.latex_template:
+        raise HTTPException(
+            status_code=503,
+            detail="No LaTeX source available for this template.",
+        )
+
+    filled_tex = fill_latex_template(template.latex_template, doc.fields)
+
+    return Response(
+        content=filled_tex.encode("utf-8"),
+        media_type="application/x-tex",
+        headers={
+            "Content-Disposition": f'attachment; filename="{doc_id}.tex"',
             "Cache-Control": "no-store, private",
             "X-Content-Type-Options": "nosniff",
         },
