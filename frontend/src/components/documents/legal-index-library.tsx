@@ -142,7 +142,7 @@ export function LegalIndexLibrary() {
                                 }}>
                                     {idx.name}
                                     {hasStatutes && (
-                                        <span style={{marginLeft: "4px", fontSize: "10px", fontFamily: "system-ui, sans-serif"}}>
+                                        <span aria-hidden="true" style={{marginLeft: "4px", fontSize: "10px", fontFamily: "system-ui, sans-serif"}}>
                                             {isExpanded ? "\u25be" : "\u25b8"}
                                         </span>
                                     )}
@@ -251,7 +251,7 @@ export function LegalIndexLibrary() {
                                         <div style={{fontSize: "13px", fontWeight: 600, color: "#1e1208", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis"}}>
                                             {idx.name}
                                             {hasStatutes && (
-                                                <span style={{marginLeft: "5px", fontSize: "10px", fontFamily: fontStack}}>
+                                                <span aria-hidden="true" style={{marginLeft: "5px", fontSize: "10px", fontFamily: fontStack}}>
                                                     {isExpanded ? "\u25be" : "\u25b8"}
                                                 </span>
                                             )}
