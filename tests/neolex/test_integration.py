@@ -10,9 +10,13 @@ Run locally: pytest tests/neolex/test_integration.py -v -s
 """
 
 import asyncio
+import hashlib
 import json
 import os
+import secrets
 import subprocess
+import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -58,8 +62,8 @@ async def live_client():
     Module-scoped so warm-up only happens once for all tests in this file.
     Skip if PostgreSQL is unreachable or the chunks table is empty.
 
-    Seeds an integration test API key in the audit DB so auth-protected endpoints
-    work without needing a pre-existing neolex.db.
+    Seeds a test user + session in PostgreSQL so session-cookie-protected
+    endpoints work without a pre-existing login.
     """
     if not await corpus_available():
         pytest.skip("DIFC corpus not available (chunks table empty or DB unreachable). Run `make prepare`.")
@@ -68,27 +72,44 @@ async def live_client():
 
     load_dotenv()
 
-    # Seed an integration key before app startup (init_schema runs in lifespan)
-    from neolex.auth.keys import generate_key, hash_key, key_prefix  # noqa: I001
-    from neolex.db.audit import get_audit_db
+    from neolex.config import settings  # noqa: I001
+    from neolex.db.models import Session as DBSession
+    from neolex.db.models import User
+    from neolex.db.postgres import get_db
+    from sqlalchemy import select
 
-    _int_raw_key = generate_key()
-    _int_hash = hash_key(_int_raw_key)
-    _int_prefix = key_prefix(_int_raw_key)
+    _int_raw_token = secrets.token_urlsafe(32)
+    _int_token_hash = hashlib.sha256(_int_raw_token.encode()).hexdigest()
+    _int_user_id = uuid.uuid4()
 
-    # Ensure schema exists and key is seeded before starting app
-    async with get_audit_db() as db:
-        await db.init_schema()
-        # Check if key already exists to avoid UNIQUE constraint on repeated runs
-        existing = await db.get_key_by_hash(_int_hash)
-        if existing is None:
-            await db.create_key(
-                name="integration-test",
-                key_hash=_int_hash,
-                key_prefix=_int_prefix,
-                client_slug="integration",
-                scope="query",
+    # Seed a test user + session before app startup.
+    # The app uses session-cookie auth — API key Bearer headers are not supported.
+    async for db in get_db():
+        existing_user = (
+            await db.execute(select(User).where(User.email == "integration-test@vitreon.test"))
+        ).scalar_one_or_none()
+        if existing_user is None:
+            test_user = User(
+                id=_int_user_id,
+                email="integration-test@vitreon.test",
+                name="Integration Test",
+                email_verified=True,
+                subscription_status="pro",  # pro avoids daily query limits
             )
+            db.add(test_user)
+            await db.flush()
+            _int_user_id = test_user.id
+        else:
+            _int_user_id = existing_user.id
+
+        session = DBSession(
+            user_id=_int_user_id,
+            token_hash=_int_token_hash,
+            expires_at=datetime.now(UTC) + timedelta(days=1),
+        )
+        db.add(session)
+        await db.commit()
+        break
 
     # Import fresh app instance — triggers lifespan via asgi_lifespan
     from asgi_lifespan import LifespanManager
@@ -100,7 +121,9 @@ async def live_client():
             transport=ASGITransport(app=manager.app, raise_app_exceptions=True),
             base_url="http://test",
             timeout=120.0,
-            headers={"Authorization": f"Bearer {_int_raw_key}"},
+            cookies={settings.session_cookie_name: _int_raw_token},
+            # CSRFMiddleware requires this header on all state-mutating requests
+            headers={"X-Requested-With": "XMLHttpRequest"},
         ) as client:
             yield client
 
@@ -172,10 +195,10 @@ async def test_concurrent_queries_no_deadlock(live_client: AsyncClient):
 
 @pytest.mark.integration
 async def test_real_sse_stream(live_client: AsyncClient):
-    """GET /api/v1/query/stream delivers all 3 SSE events for a real DIFC question."""
-    response = await live_client.get(
+    """POST /api/v1/query/stream delivers all 3 SSE events for a real DIFC question."""
+    response = await live_client.post(
         "/api/v1/query/stream",
-        params={"question": "What is the limitation period under DIFC Law No. 5 of 2005?"},
+        json={"question": "What is the limitation period under DIFC Law No. 5 of 2005?"},
     )
     assert response.status_code == 200
     assert "text/event-stream" in response.headers.get("content-type", "")
