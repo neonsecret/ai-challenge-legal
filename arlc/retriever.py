@@ -891,8 +891,10 @@ def _search_court_decisions_sync(
             ).fetchall()
 
     with ThreadPoolExecutor(max_workers=2) as executor:
-        vec_rows = executor.submit(_vector_leg).result()
-        bm25_rows = executor.submit(_bm25_leg).result()
+        vec_fut = executor.submit(_vector_leg)
+        bm25_fut = executor.submit(_bm25_leg)
+        vec_rows = vec_fut.result()
+        bm25_rows = bm25_fut.result()
 
     # RRF fusion: vector weight 0.7, BM25 weight 0.3
     _rrf_k = 60
