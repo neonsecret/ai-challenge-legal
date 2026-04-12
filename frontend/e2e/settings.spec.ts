@@ -2,10 +2,10 @@
  * E2E tests for Settings and Billing pages — NEO-1872
  *
  * Covers:
- *   ST-1  Settings page loads and shows authenticated user email
+ *   ST-1  Settings page loads and shows authenticated user email + name
  *   ST-2  Sign out button is visible on settings page
- *   ST-3  Language selector is visible on settings page
- *   ST-4  Billing page loads and renders pricing content
+ *   ST-3  Language selector is visible on settings page (dark mode)
+ *   ST-4  Billing page loads and renders plan content
  *   ST-5  At least one plan label (Free/Starter/Pro/Enterprise) is visible on billing
  *   ST-6  Delete account confirmation: type email enables the delete button
  *
@@ -44,7 +44,7 @@ const MOCK_BILLING: Record<string, unknown> = {
 };
 
 // ---------------------------------------------------------------------------
-// ST-1 — Settings page loads with user email
+// ST-1 — Settings page loads with user email and name
 // ---------------------------------------------------------------------------
 test("ST-1: settings page loads and displays the authenticated user's email", async ({ page }) => {
   const jsErrors: string[] = [];
@@ -85,9 +85,15 @@ test("ST-2: sign out button is visible on the settings page", async ({ page }) =
 });
 
 // ---------------------------------------------------------------------------
-// ST-3 — Language selector is visible
+// ST-3 — Language selector is visible (dark mode)
 // ---------------------------------------------------------------------------
 test("ST-3: language selector is rendered on the settings page", async ({ page }) => {
+  // The language <select> only renders in dark mode (light mode has no language section yet).
+  // Force dark mode via localStorage before any page script runs.
+  await page.addInitScript(() => {
+    localStorage.setItem("vitreon-color-mode", "dark");
+  });
+
   await page.route("**/auth/me", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_USER) })
   );
@@ -95,37 +101,36 @@ test("ST-3: language selector is rendered on the settings page", async ({ page }
   await page.goto(`${FRONTEND}/settings`);
   await page.waitForURL(/\/settings/, { timeout: 5_000 });
 
-  // Language section must be present — either a <select>, a button group, or text "Language"
-  await expect(async () => {
-    const bodyText = (await page.locator("body").innerText()).toLowerCase();
-    const hasLanguage =
-      bodyText.includes("language") ||
-      (await page.locator("select").count()) > 0;
-    expect(hasLanguage).toBe(true);
-  }).toPass({ timeout: 10_000 });
+  // Dark mode settings renders a <select> for the language picker
+  const langSelect = page.locator("select").first();
+  await expect(langSelect).toBeVisible({ timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------
-// ST-4 — Billing page loads and renders pricing content
+// ST-4 — Billing page loads and renders plan content
 // ---------------------------------------------------------------------------
 test("ST-4: billing page renders pricing content", async ({ page }) => {
   await page.route("**/auth/me", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_USER) })
   );
-  await page.route("**/api/v1/billing/status", (route: Route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_BILLING) })
-  );
-  await page.route("**/api/v1/billing**", (route: Route) =>
+  // billing/page.tsx fetches ${NEXT_PUBLIC_SSE_URL}/stripe/billing-status
+  await page.route("**/stripe/billing-status", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_BILLING) })
   );
 
   await page.goto(`${FRONTEND}/billing`);
   await page.waitForURL(/\/billing/, { timeout: 5_000 });
-  await page.waitForLoadState("networkidle");
 
-  // Billing page must render content — not a blank crash
-  const bodyText = await page.locator("body").innerText();
-  expect(bodyText.length).toBeGreaterThan(50);
+  // Plan cards are rendered unconditionally — assert a plan label appears
+  await expect(async () => {
+    const bodyText = await page.locator("body").innerText();
+    const hasPlanContent =
+      bodyText.includes("Free") ||
+      bodyText.includes("Starter") ||
+      bodyText.includes("Pro") ||
+      bodyText.includes("Enterprise");
+    expect(hasPlanContent).toBe(true);
+  }).toPass({ timeout: 10_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -135,10 +140,7 @@ test("ST-5: at least one billing plan label (Free/Starter/Pro/Enterprise) is vis
   await page.route("**/auth/me", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_USER) })
   );
-  await page.route("**/api/v1/billing/status", (route: Route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_BILLING) })
-  );
-  await page.route("**/api/v1/billing**", (route: Route) =>
+  await page.route("**/stripe/billing-status", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_BILLING) })
   );
 
@@ -170,34 +172,28 @@ test("ST-6: delete account button becomes enabled after typing the correct email
   await page.goto(`${FRONTEND}/settings`);
   await page.waitForURL(/\/settings/, { timeout: 5_000 });
 
-  // Wait for user data to load (email visible before delete section renders)
+  // Wait for user email to appear (confirms auth state resolved)
   await expect(async () => {
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).toContain(TEST_EMAIL);
   }).toPass({ timeout: 10_000 });
 
-  // Find "Delete Account" button/toggle that reveals the confirmation form
-  const deleteToggle = page.locator('button:has-text("Delete Account"), button[aria-label*="Delete Account" i]').first();
-  const hasToggle = await deleteToggle.count() > 0;
-  if (hasToggle) {
-    await deleteToggle.click();
-  }
+  // Hole A fix: hard-assert the delete toggle is visible before clicking
+  // t("settings.delete_account") = "Delete Account"
+  const deleteToggle = page.locator('button:has-text("Delete Account")').first();
+  await expect(deleteToggle).toBeVisible({ timeout: 10_000 });
+  await deleteToggle.click();
 
-  // Find the email confirmation input
+  // Email input must appear after the form expands
   const emailInput = page.locator('input[type="email"]').first();
-  const hasInput = await emailInput.count() > 0;
+  await expect(emailInput).toBeVisible({ timeout: 5_000 });
 
-  if (!hasInput) {
-    // Delete confirmation input not visible yet — test passes if page is still intact
-    expect(page.url()).toContain("/settings");
-    return;
-  }
+  // Hole B fix: confirm button must be disabled BEFORE typing the correct email
+  // t("settings.delete_permanently") = "Delete my account permanently"
+  const deleteBtn = page.locator('button:has-text("Delete my account permanently")');
+  await expect(deleteBtn).toBeDisabled();
 
-  // Before typing, delete button should be disabled
-  const deleteBtn = page.locator(
-    'button:has-text("Delete permanently"), button:has-text("Delete Permanently"), button:has-text("Delete Account")'
-  ).last();
-
+  // Type the correct email — should enable the button
   await emailInput.fill(TEST_EMAIL);
 
   // After typing the correct email, the delete button must become enabled
