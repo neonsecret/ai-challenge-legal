@@ -3,7 +3,7 @@
 import {useCallback, useState, useEffect, useRef, useId} from "react"
 import dynamic from "next/dynamic"
 import {motion, AnimatePresence} from "motion/react"
-import {X, Download, MessageSquare, RotateCcw} from "lucide-react"
+import {X, Download, MessageSquare, RotateCcw, FileCode} from "lucide-react"
 import {useIsMobile} from "@/hooks/use-mobile"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/tokens"
 import type {DocPdfViewerProps} from "./DocPdfViewerImpl"
@@ -76,6 +76,10 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
 
     const pdfUrl = docId
         ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/pdf`
+        : null
+
+    const texUrl = docId
+        ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/tex`
         : null
 
     // Escape key + focus trap
@@ -258,6 +262,28 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                         }}
                                     >
                                         <Download size={13} strokeWidth={1.8} />
+                                    </a>
+                                )}
+
+                                {/* Download LaTeX */}
+                                {texUrl && (
+                                    <a
+                                        href={texUrl}
+                                        download={docName ? `${docName}.tex` : "document.tex"}
+                                        title="Download LaTeX source"
+                                        style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 8,
+                                            background: "var(--doc-close-btn-bg)",
+                                            border: "0.5px solid var(--doc-close-btn-border)",
+                                            color: "var(--doc-close-btn-color)",
+                                        }}
+                                    >
+                                        <FileCode size={13} strokeWidth={1.8} />
                                     </a>
                                 )}
 

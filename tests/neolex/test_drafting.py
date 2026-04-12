@@ -886,3 +886,383 @@ class TestDocumentDelete:
 
             app.dependency_overrides.pop(get_api_key, None)
             app.dependency_overrides.pop(get_db, None)
+
+
+class TestDocumentTex:
+    """Tests for GET/HEAD .../documents/{doc_id}/tex endpoint."""
+
+    def _make_chat_doc(
+        self, user_id_str: str, conv_id: uuid.UUID, doc_id: uuid.UUID, template_slug: str = "test_template"
+    ):
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import ChatDocument
+
+        doc = ChatDocument()
+        doc.id = doc_id
+        doc.conversation_id = conv_id
+        doc.user_id = uuid.UUID(user_id_str)
+        doc.template_slug = template_slug
+        doc.fields = {"name": "Jan Novák", "amount": "50%"}
+        doc.version = 1
+        doc.created_at = datetime.now(UTC)
+        doc.updated_at = datetime.now(UTC)
+        return doc
+
+    def _make_template(
+        self, latex_template: str | None = r"\documentclass{article}\begin{document}{{name}}\end{document}"
+    ):
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import DocumentTemplate
+
+        tmpl = DocumentTemplate()
+        tmpl.id = uuid.uuid4()
+        tmpl.slug = "test_template"
+        tmpl.name = "Test Template"
+        tmpl.jurisdiction = "CZ"
+        tmpl.category = "civil"
+        tmpl.latex_template = latex_template
+        tmpl.required_fields = ["name"]
+        tmpl.field_descriptions = {"name": "Full name"}
+        tmpl.description = None
+        tmpl.created_at = datetime.now(UTC)
+        return tmpl
+
+    @pytest.mark.asyncio
+    async def test_get_tex_returns_200_with_correct_content_type(self):
+        """GET .../tex returns 200 with application/x-tex and filled LaTeX content."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 200
+            assert "application/x-tex" in resp.headers["content-type"]
+            # Field value injected into body
+            assert b"Jan Novak" in resp.content or b"Jan Nov" in resp.content or b"Jan" in resp.content
+            # Content-Disposition must name the file as {doc_id}.tex
+            assert f"{doc_id}.tex" in resp.headers["content-disposition"]
+            # Security headers
+            assert resp.headers["cache-control"] == "no-store, private"
+            assert resp.headers["x-content-type-options"] == "nosniff"
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_field_values_are_latex_escaped(self):
+        """GET .../tex escapes LaTeX special chars in field values (security guard)."""
+        from datetime import UTC, datetime
+
+        from neolex.db.drafting_models import ChatDocument
+
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = ChatDocument()
+        doc.id = doc_id
+        doc.conversation_id = conv_id
+        doc.user_id = uuid.UUID(user_id_str)
+        doc.template_slug = "test_template"
+        doc.fields = {"name": r"\input{/etc/passwd}"}  # injection attempt
+        doc.version = 1
+        doc.created_at = datetime.now(UTC)
+        doc.updated_at = datetime.now(UTC)
+
+        tmpl = self._make_template()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 200
+            body = resp.text
+            # The raw injection command must not appear in the output
+            assert r"\input{/etc/passwd}" not in body
+            # The backslash must be escaped
+            assert r"\textbackslash{}" in body
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_head_tex_returns_200_no_body(self):
+        """HEAD .../tex returns 200 with headers but no response body."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.head(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 200
+            assert "application/x-tex" in resp.headers["content-type"]
+            # HEAD must return no body
+            assert resp.content == b""
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_422_when_latex_template_is_none(self):
+        """GET .../tex returns 422 when template.latex_template is None."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template(latex_template=None)
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 422
+            assert "No LaTeX source" in resp.json()["detail"]
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_422_when_latex_template_is_empty_string(self):
+        """GET .../tex returns 422 when template.latex_template is empty string."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+        tmpl = self._make_template(latex_template="")
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = tmpl
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 422
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_404_when_document_not_found(self):
+        """GET .../tex returns 404 when document does not exist."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = None
+        mock_session.execute = AsyncMock(return_value=doc_result)
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 404
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+    @pytest.mark.asyncio
+    async def test_get_tex_404_when_template_not_found(self):
+        """GET .../tex returns 404 when the template row has been deleted."""
+        user_id_str = str(uuid.uuid4())
+        conv_id = uuid.uuid4()
+        doc_id = uuid.uuid4()
+
+        doc = self._make_chat_doc(user_id_str, conv_id, doc_id)
+
+        mock_session = AsyncMock()
+        doc_result = MagicMock()
+        doc_result.scalar_one_or_none.return_value = doc
+        tmpl_result = MagicMock()
+        tmpl_result.scalar_one_or_none.return_value = None  # template deleted
+        mock_session.execute = AsyncMock(side_effect=[doc_result, tmpl_result])
+
+        app = _make_app_client(user_id_str, mock_session)
+
+        try:
+            async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+                resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
+            assert resp.status_code == 404
+        finally:
+            from neolex.auth.middleware import get_api_key
+            from neolex.db.postgres import get_db
+
+            app.dependency_overrides.pop(get_api_key, None)
+            app.dependency_overrides.pop(get_db, None)
+
+
+# ---------------------------------------------------------------------------
+# _latex_to_html_body unit tests (no DB needed — pure conversion)
+# ---------------------------------------------------------------------------
+
+
+class TestLatexToHtmlBody:
+    """Unit tests for _latex_to_html_body — direct LaTeX→HTML conversion.
+
+    No fixtures or async needed: the function is a pure string transformer.
+    """
+
+    def test_textbf_becomes_strong(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\textbf{Bold Text}")
+        assert "<strong>Bold Text</strong>" in result
+
+    def test_textit_becomes_em(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\textit{Italic}")
+        assert "<em>Italic</em>" in result
+
+    def test_emph_becomes_em(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\emph{Emphasized}")
+        assert "<em>Emphasized</em>" in result
+
+    def test_rule_becomes_hr(self):
+        r"""Regression guard: \rule has TWO brace groups.
+
+        The catch-all brace-command strip must not consume only the first group
+        (\rule{6cm}), leaving "{0.4pt}" as orphan text and never emitting <hr>.
+        Bug fixed in commit 2157d6c.
+        """
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\rule{6cm}{0.4pt}")
+        assert "<hr" in result
+        # Second brace group must not leak as visible text
+        assert "0.4pt" not in result
+
+    def test_vspace_becomes_br(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        # Test in context: bare \vspace{...} alone produces <p><br></p> which
+        # the empty-paragraph cleanup pass removes, so we embed it between words.
+        result = _latex_to_html_body(r"before\vspace{1em}after")
+        assert "<br>" in result
+
+    def test_hspace_is_stripped(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"before\hspace{1em}after")
+        assert r"\hspace" not in result
+        assert "1em" not in result
+
+    def test_small_group_becomes_closed_span(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"{\small some text}")
+        assert '<span style="font-size:9pt;">some text</span>' in result
+
+    def test_standalone_small_is_stripped(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\small")
+        assert r"\small" not in result
+        # Must not produce an unclosed <span>
+        assert "<span" not in result
+
+    def test_center_env_becomes_div(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\begin{center}Centred text\end{center}")
+        assert '<div style="text-align:center;">' in result
+        assert "Centred text" in result
+
+    def test_quote_env_becomes_blockquote(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\begin{quote}Quoted text\end{quote}")
+        assert "<blockquote" in result
+        assert "Quoted text" in result
+
+    def test_double_newline_becomes_paragraph_break(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body("First paragraph\n\nSecond paragraph")
+        assert "</p><p>" in result
+
+    def test_bare_curly_year_passes_through(self):
+        """Bare {2023} in body must appear verbatim — no KeyError, no corruption.
+
+        Regression guard: if _HTML_TEMPLATE.format() re-parsed substituted values,
+        {2023} would raise an IndexError or be silently dropped.
+        """
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body("See judgment {2023}")
+        assert "{2023}" in result
