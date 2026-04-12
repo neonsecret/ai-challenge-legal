@@ -427,7 +427,7 @@ test("CQ-8: pipeline status bar steps appear sequentially during streaming", asy
 // ---------------------------------------------------------------------------
 test("CQ-9: Czech corpus query renders Czech-origin source references", async ({ browser }) => {
   // Seed session with corpora: ["czech"] so the query targets Czech law corpus.
-  const CZECH_DOC_UUID = "c3z4e5f6-a7b8-4c5d-a0b1-2c3d4e5f6a7b";
+  const CZECH_DOC_UUID = "c3a4e5f6-a7b8-4c5d-a0b1-2c3d4e5f6a7b";
 
   const SSE_CZECH_SOURCES = sseBody([
     {
