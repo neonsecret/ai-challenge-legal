@@ -44,16 +44,25 @@ const MOCK_TEMPLATES = [
     description: "Žaloba na neplatnost výpovědi z pracovního poměru.",
     created_at: "2025-01-01T00:00:00Z",
   },
-  {
-    id: "00000001-0000-4000-a000-000000000099",
-    slug: "vlastni_dokument",
-    name: "Vlastní dokument",
-    jurisdiction: "General",
-    category: "General",
-    description: "Volná šablona bez povinných polí.",
-    created_at: "2025-01-01T00:00:00Z",
-  },
+  // Note: 'vlastni_dokument' must NOT be in this mock. TemplatePanel hardcodes a
+  // "Custom document" button with slug "__custom__" and filters out any API template
+  // whose slug matches CUSTOM_SLUG ("__custom__"). The backend never returns
+  // 'vlastni_dokument' in production. Including it here would cause CD-3 to fail in
+  // Czech-locale CI where t("template.custom_document") = "Vlastní dokument",
+  // producing count=2 for 'button:has-text("Vlastní dokument")' in the panel.
 ];
+
+// ---------------------------------------------------------------------------
+// MOCK_BACKEND_DOC is the shape returned by GET /api/v1/conversations/*/documents.
+// Used in CD-1 and CD-8 to simulate backend document persistence across navigation.
+const MOCK_BACKEND_DOC = {
+  doc_id: DOC_UUID,
+  template_slug: "zaloba_neplatnost_vypovedi",
+  template_name: "Žaloba na neplatnost výpovědi",
+  version: 1,
+  generated_at: "2026-01-01T00:00:00.000Z",
+  fields: { zalobce: "Jan Novák", zalovany: "Firma s.r.o." },
+};
 
 // ---------------------------------------------------------------------------
 // SSE helpers
@@ -178,16 +187,22 @@ test("CD-1: navigating away from /chat and back preserves the document card", as
   const [page, context] = await createSeededPage(browser);
   try {
     await mockBaseRoutes(page);
+    // Override documents list to return MOCK_BACKEND_DOC — useDocumentState fetches
+    // this on every mount, so the card reappears after navigation (not localStorage).
+    await page.route("**/api/v1/conversations/*/documents", (route: Route) => {
+      const reqUrl = new URL(route.request().url());
+      if (!reqUrl.pathname.match(/\/documents\/[^/]+/)) {
+        route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([MOCK_BACKEND_DOC]) });
+      } else {
+        route.continue();
+      }
+    });
     await page.route("**/api/v1/query/stream", (route: Route) =>
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC })
     );
 
     await page.goto(`${FRONTEND}/chat`);
-    await clickFollowUp(page);
-
-    // Wait for document card to appear
     await expect(page.locator("text=Žaloba na neplatnost výpovědi").first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 5_000 });
 
     // Navigate away — settings requires auth (already mocked)
     await page.goto(`${FRONTEND}/settings`);
@@ -197,17 +212,9 @@ test("CD-1: navigating away from /chat and back preserves the document card", as
     await page.goto(`${FRONTEND}/chat`);
     await page.waitForURL(/\/chat/, { timeout: 5_000 });
 
-    // The document state is stored in localStorage and restored on mount.
-    // If the document card re-renders, the test passes.
-    // Note: this depends on how the app persists documents to localStorage.
-    // If documents are session-only (not persisted), the card may not re-appear,
-    // but the page must still load without crashing.
-    const url = page.url();
-    expect(url).toContain("/chat");
-
-    // The page body must contain meaningful content — no blank crash
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText.length).toBeGreaterThan(10);
+    // Hard assertion: the document card must be visible after returning.
+    // useDocumentState re-fetches from the backend on mount — MOCK_BACKEND_DOC provides it.
+    await expect(page.locator("text=Žaloba na neplatnost výpovědi").first()).toBeVisible({ timeout: 10_000 });
   } finally {
     await context.close();
   }
@@ -443,8 +450,14 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
     let texEndpointCalled = 0;
 
     await mockBaseRoutes(page);
+    // SSE_WITH_DOC_READY includes fields so DocumentCard enters isReady=true state,
+    // rendering the Preview button needed to open DocumentViewer where LaTeX lives.
     await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC })
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_READY })
+    );
+    // PDF mock needed for DocumentViewer to render without error state
+    await page.route("**/api/v1/conversations/*/documents/*/pdf", (route: Route) =>
+      route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.4" })
     );
     await page.route("**/api/v1/conversations/*/documents/*/tex", (route: Route) => {
       texEndpointCalled += 1;
@@ -458,25 +471,19 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
     await page.goto(`${FRONTEND}/chat`);
     await clickFollowUp(page);
 
-    // Wait for document card
+    // Wait for document card to reach isReady=true (fields populated)
     await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 15_000 });
 
-    // Find and click the LaTeX download button/link.
-    // The button may carry aria-label="Download LaTeX", title="Download LaTeX",
-    // or contain the text "LaTeX".
-    const latexLink = page
-      .locator(
-        'a[title="Download LaTeX"], a[aria-label="Download LaTeX"], button[aria-label="Download LaTeX"]'
-      )
-      .first();
+    // Open DocumentViewer — Preview button is rendered only when isReady=true
+    const previewBtn = page.locator('button[aria-label="Preview"]').first();
+    await expect(previewBtn).toBeVisible({ timeout: 5_000 });
+    await previewBtn.click();
 
-    // Skip explicitly if the LaTeX button is not yet present — makes the gap
-    // visible in the test report rather than silently passing with a url assertion.
-    const hasLatex = await latexLink.count() > 0;
-    if (!hasLatex) {
-      test.skip(true, "LaTeX download button not present in current UI — feature not yet exposed");
-    }
+    // Confirm the dialog opened
+    await expect(page.locator('button[aria-label="Close document viewer"]')).toBeVisible({ timeout: 5_000 });
 
+    // The LaTeX download link is inside DocumentViewer (aria-label="Download LaTeX source")
+    const latexLink = page.locator('a[aria-label="Download LaTeX source"]').first();
     await expect(latexLink).toBeVisible({ timeout: 5_000 });
 
     const [download] = await Promise.all([
@@ -484,7 +491,7 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
       latexLink.click(),
     ]);
 
-    // The tex endpoint must have been called
+    // The tex endpoint must have been called (or browser download event fired)
     expect(texEndpointCalled > 0 || download !== null).toBe(true);
   } finally {
     await context.close();
