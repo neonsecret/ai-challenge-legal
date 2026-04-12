@@ -1162,3 +1162,107 @@ class TestDocumentTex:
 
             app.dependency_overrides.pop(get_api_key, None)
             app.dependency_overrides.pop(get_db, None)
+
+
+# ---------------------------------------------------------------------------
+# _latex_to_html_body unit tests (no DB needed — pure conversion)
+# ---------------------------------------------------------------------------
+
+
+class TestLatexToHtmlBody:
+    """Unit tests for _latex_to_html_body — direct LaTeX→HTML conversion.
+
+    No fixtures or async needed: the function is a pure string transformer.
+    """
+
+    def test_textbf_becomes_strong(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\textbf{Bold Text}")
+        assert "<strong>Bold Text</strong>" in result
+
+    def test_textit_becomes_em(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\textit{Italic}")
+        assert "<em>Italic</em>" in result
+
+    def test_emph_becomes_em(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\emph{Emphasized}")
+        assert "<em>Emphasized</em>" in result
+
+    def test_rule_becomes_hr(self):
+        r"""Regression guard: \rule has TWO brace groups.
+
+        The catch-all brace-command strip must not consume only the first group
+        (\rule{6cm}), leaving "{0.4pt}" as orphan text and never emitting <hr>.
+        Bug fixed in commit 2157d6c.
+        """
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\rule{6cm}{0.4pt}")
+        assert "<hr" in result
+        # Second brace group must not leak as visible text
+        assert "0.4pt" not in result
+
+    def test_vspace_becomes_br(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        # Test in context: bare \vspace{...} alone produces <p><br></p> which
+        # the empty-paragraph cleanup pass removes, so we embed it between words.
+        result = _latex_to_html_body(r"before\vspace{1em}after")
+        assert "<br>" in result
+
+    def test_hspace_is_stripped(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"before\hspace{1em}after")
+        assert r"\hspace" not in result
+        assert "1em" not in result
+
+    def test_small_group_becomes_closed_span(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"{\small some text}")
+        assert '<span style="font-size:9pt;">some text</span>' in result
+
+    def test_standalone_small_is_stripped(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\small")
+        assert r"\small" not in result
+        # Must not produce an unclosed <span>
+        assert "<span" not in result
+
+    def test_center_env_becomes_div(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\begin{center}Centred text\end{center}")
+        assert '<div style="text-align:center;">' in result
+        assert "Centred text" in result
+
+    def test_quote_env_becomes_blockquote(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body(r"\begin{quote}Quoted text\end{quote}")
+        assert "<blockquote" in result
+        assert "Quoted text" in result
+
+    def test_double_newline_becomes_paragraph_break(self):
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body("First paragraph\n\nSecond paragraph")
+        assert "</p><p>" in result
+
+    def test_bare_curly_year_passes_through(self):
+        """Bare {2023} in body must appear verbatim — no KeyError, no corruption.
+
+        Regression guard: if _HTML_TEMPLATE.format() re-parsed substituted values,
+        {2023} would raise an IndexError or be silently dropped.
+        """
+        from neolex.services.pdf_generator import _latex_to_html_body
+
+        result = _latex_to_html_body("See judgment {2023}")
+        assert "{2023}" in result
