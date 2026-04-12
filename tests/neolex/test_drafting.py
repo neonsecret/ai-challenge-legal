@@ -1211,7 +1211,7 @@ class TestLatexToHtmlBody:
         from neolex.services.pdf_generator import _latex_to_html_body
 
         # Test in context: bare \vspace{...} alone produces <p><br></p> which
-        # the empty-paragraph cleanup pass removes, so we embed it between words.
+        # the empty-paragraph cleanup pass removes, so embed it between words.
         result = _latex_to_html_body(r"before\vspace{1em}after")
         assert "<br>" in result
 
