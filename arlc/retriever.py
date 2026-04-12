@@ -2402,35 +2402,47 @@ def _retrieve_pages_simple(
             _lf_parent = None
 
         def _vec():
-            _s = (
-                _lf_parent.start_observation(
-                    name="vector-retrieval",
-                    as_type="span",
-                    input={"corpus": corpus, "top_k": top_k},
+            try:
+                _s = (
+                    _lf_parent.start_observation(
+                        name="vector-retrieval",
+                        as_type="span",
+                        input={"corpus": corpus, "top_k": top_k},
+                    )
+                    if _lf_parent
+                    else None
                 )
-                if _lf_parent
-                else None
-            )
+            except Exception:
+                _s = None
             result = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
             if _s:
-                _s.update(output={"num_results": len(result["ids"][0]) if result.get("ids") else 0})
-                _s.end()
+                try:
+                    _s.update(output={"num_results": len(result["ids"][0]) if result.get("ids") else 0})
+                    _s.end()
+                except Exception:
+                    pass
             return result
 
         def _bm25():
-            _s = (
-                _lf_parent.start_observation(
-                    name="bm25-retrieval",
-                    as_type="span",
-                    input={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
+            try:
+                _s = (
+                    _lf_parent.start_observation(
+                        name="bm25-retrieval",
+                        as_type="span",
+                        input={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
+                    )
+                    if _lf_parent
+                    else None
                 )
-                if _lf_parent
-                else None
-            )
+            except Exception:
+                _s = None
             result = search_chunks_text(question, top_k=top_k, corpus=corpus)
             if _s:
-                _s.update(output={"num_results": len(result)})
-                _s.end()
+                try:
+                    _s.update(output={"num_results": len(result)})
+                    _s.end()
+                except Exception:
+                    pass
             return result
 
         def _court():
@@ -2568,19 +2580,25 @@ def _retrieve_pages_simple(
     except Exception:
         _lf_rerank_parent = None
 
-    _rerank_span = (
-        _lf_rerank_parent.start_observation(
-            name="reranking",
-            as_type="span",
-            input={"num_candidates": len(rerank_pool), "answer_type": answer_type},
+    try:
+        _rerank_span = (
+            _lf_rerank_parent.start_observation(
+                name="reranking",
+                as_type="span",
+                input={"num_candidates": len(rerank_pool), "answer_type": answer_type},
+            )
+            if _lf_rerank_parent
+            else None
         )
-        if _lf_rerank_parent
-        else None
-    )
+    except Exception:
+        _rerank_span = None
     ranked = rerank_chunks(question, rerank_pool, top_k=20, answer_type=answer_type, on_status=on_status)
     if _rerank_span:
-        _rerank_span.update(output={"num_results": len(ranked)})
-        _rerank_span.end()
+        try:
+            _rerank_span.update(output={"num_results": len(ranked)})
+            _rerank_span.end()
+        except Exception:
+            pass
 
     # Aggregate chunks to pages, pick best per (doc_id, page).
     # Value tuple: (score, text, chunk_id, court_meta_dict)
