@@ -1,7 +1,7 @@
 "use client"
 
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
-import {Eye, Download} from "lucide-react"
+import {Eye, Download, FileCode} from "lucide-react"
 import type {ChatDocument} from "@/types/documents"
 
 const API_BASE = process.env.NEXT_PUBLIC_SSE_URL ?? ""
@@ -14,6 +14,7 @@ interface DocumentCardProps {
 
 export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
     const pdfUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/pdf`
+    const texUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/tex`
     const isReady = doc.fields !== undefined && Object.keys(doc.fields).length > 0
 
     return (
@@ -95,6 +96,29 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                     >
                         <Download size={13} strokeWidth={1.8} />
                         PDF
+                    </a>
+                    <a
+                        href={texUrl}
+                        download={`${doc.template_name}-v${doc.version}.tex`}
+                        title="Download LaTeX source"
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: SPACE[1],
+                            padding: `${SPACE[1]}px ${SPACE[2]}px`,
+                            borderRadius: RADIUS.sm,
+                            background: "var(--doc-btn-glass-bg)",
+                            border: "1px solid var(--doc-btn-glass-border)",
+                            color: "var(--doc-text-secondary)",
+                            fontFamily: FONT.sans,
+                            fontSize: TYPE_SCALE.xs,
+                            textDecoration: "none",
+                            transition: `all ${TIMING.fast} ${EASE.out}`,
+                            cursor: "pointer",
+                        }}
+                    >
+                        <FileCode size={13} strokeWidth={1.8} />
+                        .tex
                     </a>
                 </div>
             ) : (

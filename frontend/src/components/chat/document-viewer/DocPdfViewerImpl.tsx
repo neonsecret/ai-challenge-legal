@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useCallback, useEffect, useRef} from "react"
+import {useState, useCallback, useEffect, useRef, useMemo} from "react"
 import {Document, Page, pdfjs} from "react-pdf"
 import "react-pdf/dist/Page/AnnotationLayer.css"
 import "react-pdf/dist/Page/TextLayer.css"
@@ -56,6 +56,10 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
         setError(true)
         onError?.("error")
     }, [onError])
+
+    const pdfOptions = useMemo(() => ({
+        withCredentials: true,
+    }), [])
 
     if (error) {
         return (
@@ -139,6 +143,7 @@ export default function DocPdfViewerImpl({pdfUrl, onError}: DocPdfViewerProps) {
             <div ref={containerRef} style={{flex: 1, overflowY: "auto", display: "flex", justifyContent: "center", padding: SPACE[3]}}>
                 <Document
                     file={pdfUrl}
+                    options={pdfOptions}
                     onLoadSuccess={handleLoadSuccess}
                     onLoadError={handleLoadError}
                     loading={null}
