@@ -54,9 +54,19 @@ async def health_check(request: Request):
             },
         )
 
+    import importlib.metadata
+
+    try:
+        version = importlib.metadata.version("neolex")
+    except importlib.metadata.PackageNotFoundError:
+        version = "0.1.0"
+
     return {
         "status": "ready",
         "pipeline_ready": True,
+        "workers": getattr(app.state, "workers", 0),
+        "uptime_seconds": round(uptime_s, 1),
+        "version": version,
     }
 
 
