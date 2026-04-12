@@ -50,10 +50,13 @@ function sseBody(events: Array<{ event: string; data: object }>): string {
     .join("");
 }
 
-/** SSE with a status event, then answer + done */
+/** SSE with a status event, then answer + done.
+ *  Uses machine-code status strings that formatStatus() in use-query-stream.ts
+ *  maps to user-friendly labels. Human-readable strings are NOT recognised and
+ *  return null from formatStatus(), making the pipeline bar invisible. */
 const SSE_WITH_STATUS = sseBody([
-  { event: "status", data: { message: "Analyzing your question...", step: 1 } },
-  { event: "status", data: { message: "Searching legal documents...", step: 2 } },
+  { event: "status", data: { message: "agent:understanding", step: 1 } },     // → "Thinking..."
+  { event: "status", data: { message: "retrieving:searching corpus", step: 2 } }, // → "Searching legal documents..."
   { event: "answer", data: { answer: "The answer is here.", sources: [], confidence: 0.9 } },
   { event: "done", data: {} },
 ]);
@@ -387,10 +390,12 @@ test("CQ-8: pipeline status bar steps appear sequentially during streaming", asy
   // Emit 3 status events with distinct step numbers, then answer + done.
   // We verify that the steps are processed in order by confirming the final
   // answer renders (which requires all prior SSE events to have been consumed).
+  // Machine-code status strings that formatStatus() maps to user-friendly labels.
+  // Human-readable strings return null from formatStatus() — the bar stays blank.
   const SSE_SEQUENTIAL_STEPS = sseBody([
-    { event: "status", data: { message: "Retrieving documents...", step: 1 } },
-    { event: "status", data: { message: "Evaluating relevance...", step: 2 } },
-    { event: "status", data: { message: "Writing answer...", step: 3 } },
+    { event: "status", data: { message: "retrieving:searching corpus", step: 1 } }, // → "Searching legal documents..."
+    { event: "status", data: { message: "reranking",                   step: 2 } }, // → "Evaluating relevance..."
+    { event: "status", data: { message: "answering",                   step: 3 } }, // → "Writing answer..."
     { event: "answer", data: { answer: "Sequential step answer.", sources: [], confidence: 0.9 } },
     { event: "done", data: {} },
   ]);
@@ -410,14 +415,8 @@ test("CQ-8: pipeline status bar steps appear sequentially during streaming", asy
     // failed the stream would stop and no answer would appear.
     await expect(page.locator("text=Sequential step answer.").first()).toBeVisible({ timeout: 15_000 });
 
-    // The answer must appear exactly once (no duplication from status replay)
-    const answerCount = await page.locator("text=Sequential step answer.").count();
-    expect(answerCount).toBeGreaterThanOrEqual(1);
-
-    // After the done event, the answer is the dominant visible content —
-    // not a lingering pile of status texts from all 3 steps simultaneously.
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText).toContain("Sequential step answer.");
+    // The answer must appear exactly once — no duplication from status replay
+    await expect(page.locator("text=Sequential step answer.")).toHaveCount(1, { timeout: 5_000 });
   } finally {
     await context.close();
   }

@@ -244,19 +244,18 @@ test("CD-2: clicking delete on a document card removes it from the page", async 
       'button[aria-label*="Delete"], button[aria-label*="delete"], button[aria-label*="Remove"], button[title*="Delete"], button[title*="delete"]'
     ).first();
 
+    // If no delete button is present the feature isn't exposed yet — skip cleanly
+    // rather than silently passing with an assertion that contradicts the test intent.
     const hasDel = await deleteBtn.count() > 0;
-    if (hasDel) {
-      await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
-      await deleteBtn.click();
-
-      // The document card must disappear
-      await expect(page.locator("text=Žaloba na neplatnost výpovědi").first()).not.toBeVisible({ timeout: 5_000 });
-    } else {
-      // Delete button not found — the card still renders correctly, test passes
-      // (the UI may not expose delete in this version)
-      const cardVisible = await page.locator("text=Žaloba na neplatnost výpovědi").count() > 0;
-      expect(cardVisible).toBe(true);
+    if (!hasDel) {
+      test.skip(true, "Delete button not present in current UI — feature not yet exposed");
     }
+
+    await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
+    await deleteBtn.click();
+
+    // The document card must disappear after deletion
+    await expect(page.locator("text=Žaloba na neplatnost výpovědi").first()).not.toBeVisible({ timeout: 5_000 });
   } finally {
     await context.close();
   }
@@ -471,21 +470,22 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
       )
       .first();
 
+    // Skip explicitly if the LaTeX button is not yet present — makes the gap
+    // visible in the test report rather than silently passing with a url assertion.
     const hasLatex = await latexLink.count() > 0;
-    if (hasLatex) {
-      await expect(latexLink).toBeVisible({ timeout: 5_000 });
-
-      const [download] = await Promise.all([
-        page.waitForEvent("download", { timeout: 5_000 }).catch(() => null),
-        latexLink.click(),
-      ]);
-
-      // The tex endpoint must have been called
-      expect(texEndpointCalled > 0 || download !== null).toBe(true);
-    } else {
-      // LaTeX download not exposed in this UI state — page still renders correctly
-      expect(page.url()).toContain("/chat");
+    if (!hasLatex) {
+      test.skip(true, "LaTeX download button not present in current UI — feature not yet exposed");
     }
+
+    await expect(latexLink).toBeVisible({ timeout: 5_000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download", { timeout: 5_000 }).catch(() => null),
+      latexLink.click(),
+    ]);
+
+    // The tex endpoint must have been called
+    expect(texEndpointCalled > 0 || download !== null).toBe(true);
   } finally {
     await context.close();
   }
@@ -524,23 +524,46 @@ test("CD-8: documents generated in a session persist when the context is reopene
     await context.close();
   }
 
-  // Reopen with the saved localStorage — documents should still be present
+  // Reopen with the saved localStorage (which contains the session + chatId).
+  // The app fetches documents from the backend on mount via useDocumentState.
+  // We mock that endpoint to return the document that was generated — this
+  // tests that the frontend correctly renders documents fetched on session reopen,
+  // which is the real persistence mechanism (not localStorage).
   const [page2, context2] = await createSeededPage(browser, savedLocalStorage);
   try {
     await mockBaseRoutes(page2);
-    // No query/stream route — we're testing persistence, not generation
+
+    // Override the documents list endpoint to return the generated document.
+    // mockBaseRoutes sets up a catch-all that returns [] — this specific route
+    // is registered after and takes priority for the exact documents-list path.
+    await page2.route("**/api/v1/conversations/*/documents", (route: Route) => {
+      const url = new URL(route.request().url());
+      if (!url.pathname.match(/\/documents\/[^/]+$/)) {
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify([
+            {
+              doc_id: DOC_UUID,
+              template_slug: "zaloba_neplatnost_vypovedi",
+              template_name: "Žaloba na neplatnost výpovědi",
+              version: 1,
+              generated_at: new Date().toISOString(),
+            },
+          ]),
+        });
+      } else {
+        route.continue();
+      }
+    });
 
     await page2.goto(`${FRONTEND}/chat`);
     await page2.waitForURL(/\/chat/, { timeout: 5_000 });
 
-    // Page must load without crashing
-    const bodyText = await page2.locator("body").innerText();
-    expect(bodyText.length).toBeGreaterThan(10);
-
-    // If the app persists documents to localStorage, the card should re-render.
-    // This assertion is best-effort: some implementations are session-only.
-    const url = page2.url();
-    expect(url).toContain("/chat");
+    // The document card must be visible — confirms the frontend correctly fetches
+    // and renders documents when the session is reopened (the core persistence test).
+    await expect(page2.locator("text=Žaloba na neplatnost výpovědi").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page2.locator("text=v1").first()).toBeVisible({ timeout: 5_000 });
   } finally {
     await context2.close();
   }
