@@ -25,6 +25,9 @@ def test_audit_db_is_append_only():
 
     db = AuditDB(MagicMock(spec=AsyncSession))
 
+    # NOTE: purge_table() is intentionally excluded — retention-driven purging
+    # is an authorized exception to the append-only rule (see retention.py).
+    # AUDIT-05 covers ad-hoc delete/update, not scheduled retention.
     forbidden = (
         "delete_query",
         "delete_event",
