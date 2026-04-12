@@ -211,6 +211,9 @@ def _latex_to_html_body(latex: str) -> str:
 
     # --- Spacing commands → vertical gaps ---
     body = re.sub(r"\\vspace\{[^}]*\}", "<br>", body)
+    # Strip other unhandled LaTeX brace-commands (\hspace, \kern, etc.) —
+    # avoids raw LaTeX leaking into the HTML output as visible text.
+    body = re.sub(r"\\[a-zA-Z]+\{[^{}]*\}", "", body)
     body = re.sub(r"\\medskip\b", "<br>", body)
     body = re.sub(r"\\bigskip\b", "<br><br>", body)
     body = re.sub(r"\\smallskip\b", "<br>", body)
@@ -329,13 +332,10 @@ def _latex_to_html(latex_template: str, fields: dict[str, str], jurisdiction: st
     disclaimer = _DISCLAIMER_CZ if is_czech else _DISCLAIMER_EN
     lang = "cs" if is_czech else "en"
 
-    # 6. Escape curly braces in body_html so .format() does not misinterpret
-    #    user-injected content (e.g. legal citations like "Smith {2023}") as
-    #    format placeholders, which would raise KeyError or IndexError.
-    safe_body = body_html.replace("{", "{{").replace("}", "}}")
-
-    # 7. Wrap in HTML document
-    return _HTML_TEMPLATE.format(body=safe_body, disclaimer=disclaimer, lang=lang)
+    # 6. Wrap in HTML document
+    # Note: Python str.format() does NOT re-parse substituted values, so
+    # {2023} in body_html is safe to pass directly — no KeyError risk.
+    return _HTML_TEMPLATE.format(body=body_html, disclaimer=disclaimer, lang=lang)
 
 
 # ---------------------------------------------------------------------------
