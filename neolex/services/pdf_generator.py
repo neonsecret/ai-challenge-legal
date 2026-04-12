@@ -199,10 +199,10 @@ def _latex_to_html_body(latex: str) -> str:
     body = re.sub(r"\\textit\{(.*?)\}", r"<em>\1</em>", body)
     # \emph{...}
     body = re.sub(r"\\emph\{(.*?)\}", r"<em>\1</em>", body)
-    # \small (inline — wrap in a span; handled below by stripping outer brace groups)
+    # \small (inline — wrap in a span)
     body = re.sub(r"\\small\s*", '<span style="font-size:9pt;">', body)
-    # Close dangling <span> from \small by replacing trailing } in footer context
-    # (This is a heuristic — footer lines end with a } from \fancyfoot{...})
+    # Close dangling <span> from \small — match content up to the next closing brace
+    body = re.sub(r'(<span style="font-size:9pt;">)([^}]*)\}', r"\1\2</span>", body)
 
     # --- Spacing commands → vertical gaps ---
     body = re.sub(r"\\vspace\{[^}]*\}", "<br>", body)
@@ -250,7 +250,7 @@ _DISCLAIMER_EN = "Template — review and modify before submission. This documen
 
 _HTML_TEMPLATE = """\
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="{lang}">
 <head>
 <meta charset="UTF-8">
 <style>
