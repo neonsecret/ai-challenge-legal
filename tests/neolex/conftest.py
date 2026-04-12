@@ -147,11 +147,12 @@ def override_db_path(tmp_db_path):
 @pytest.fixture
 async def seeded_db(tmp_db_path):
     """Stub fixture for backward compat (SQLite audit DB removed)."""
-    from neolex.auth.keys import generate_key, hash_key, key_prefix  # noqa: I001
+    import hashlib
+    import secrets
 
-    raw_key = generate_key()
-    k_hash = hash_key(raw_key)
-    k_prefix = key_prefix(raw_key)
+    raw_key = f"sk_{secrets.token_hex(16)}"
+    k_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    k_prefix = raw_key[:8]
     return (
         tmp_db_path,
         raw_key,
