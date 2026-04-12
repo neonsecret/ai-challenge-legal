@@ -107,7 +107,7 @@ export default function ChatPage() {
     const router = useRouter()
     // Chat state from layout-level context — survives tab switches
     const {
-        messages, activeAssistantId,
+        messages, activeAssistantId, liveTrace,
         selectedCorpus, setSelectedCorpus, selectedLaws, setSelectedLaws,
         useInternet, setUseInternet,
         stream, handleSend,
@@ -576,7 +576,9 @@ export default function ChatPage() {
                                                     streamingStatus={isStreaming && pair.assistant.id === activeAssistantId.current ? streamingStatus : null}
                                                     streamingProgress={isStreaming && pair.assistant.id === activeAssistantId.current ? streamingProgress : null}
                                                     streamingThinkingPreview={isStreaming && pair.assistant.id === activeAssistantId.current ? thinkingPreview : null}
-                                                    trace={pair.assistant.trace}
+                                                    trace={isStreaming && pair.assistant.id === activeAssistantId.current
+                                                        ? liveTrace
+                                                        : (pair.assistant.trace ?? liveTrace)}
                                                     onSourceClick={handleSourceClick}
                                                     onAbort={abort}
                                                     isDark={isDark}

@@ -3,6 +3,8 @@
 // PipelineStatusBar — horizontal compact trace bar for dark (Strict) mode.
 // Replaces the vertical AgentTrace timeline.
 
+import {motion, AnimatePresence} from "motion/react"
+
 interface PipelineStatusBarProps {
     trace: string[]
     isStreaming: boolean
@@ -91,29 +93,37 @@ export function PipelineStatusBar({ trace, isStreaming, isDark, onAbort }: Pipel
                 marginBottom: 8,
             }}
         >
-            {steps.map((label, i) => {
-                const isActive = isStreaming && i === lastIdx
-                return (
-                    <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        {i > 0 && (
-                            <span aria-hidden style={{
-                                fontSize: "10px",
-                                color: "rgba(201,168,76, 0.2)",
-                                margin: "0 1px",
-                            }}>›</span>
-                        )}
-                        <Dot active={isActive} />
-                        <span style={{
-                            font: "10px/1 system-ui, sans-serif",
-                            color: isActive ? "var(--strict-gold-text)" : "var(--strict-text-dim)",
-                            letterSpacing: "0.01em",
-                            transition: "color 0.2s ease",
-                        }}>
-                            {label}
-                        </span>
-                    </span>
-                )
-            })}
+            <AnimatePresence initial={false}>
+                {steps.map((label, i) => {
+                    const isActive = isStreaming && i === lastIdx
+                    return (
+                        <motion.span
+                            key={i}
+                            initial={{ opacity: 0, x: -4 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+                        >
+                            {i > 0 && (
+                                <span aria-hidden style={{
+                                    fontSize: "10px",
+                                    color: "rgba(201,168,76, 0.2)",
+                                    margin: "0 1px",
+                                }}>›</span>
+                            )}
+                            <Dot active={isActive} />
+                            <span style={{
+                                font: "10px/1 system-ui, sans-serif",
+                                color: isActive ? "var(--strict-gold-text)" : "var(--strict-text-dim)",
+                                letterSpacing: "0.01em",
+                                transition: "color 0.2s ease",
+                            }}>
+                                {label}
+                            </span>
+                        </motion.span>
+                    )
+                })}
+            </AnimatePresence>
             {/* Inline stop button during streaming */}
             {isStreaming && onAbort && (
                 <>
