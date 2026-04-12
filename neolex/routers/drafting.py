@@ -28,7 +28,13 @@ from neolex.constants import DRAFTING_MAX_DOCS_PER_CONVERSATION
 from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 from neolex.db.postgres import conversation_doc_lock_key, get_db
 from neolex.schemas.drafting import DocumentCreate, DocumentResponse, DocumentUpdate
-from neolex.services.pdf_generator import _XELATEX_BIN, PDFTimeoutError, generate_pdf, invalidate_cache
+from neolex.services.pdf_generator import (
+    _WEASYPRINT_AVAILABLE,
+    _XELATEX_BIN,
+    PDFTimeoutError,
+    generate_pdf,
+    invalidate_cache,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -338,7 +344,10 @@ async def get_document(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/api/v1/conversations/{conversation_id}/documents/{doc_id}/pdf")
+@router.api_route(
+    "/api/v1/conversations/{conversation_id}/documents/{doc_id}/pdf",
+    methods=["GET", "HEAD"],
+)
 async def get_document_pdf(
     conversation_id: str,
     doc_id: str,
@@ -347,10 +356,12 @@ async def get_document_pdf(
 ) -> Response:
     """Generate and return a PDF for the specified draft document.
 
-    Returns 503 if xelatex is not installed.
+    Supports both GET (returns full PDF) and HEAD (returns headers only, used by the
+    frontend pre-check to detect 503 before attempting to load the PDF viewer).
+    Returns 503 if no PDF renderer is available (xelatex or weasyprint).
     Returns cached PDF if already generated for this (doc_id, version).
     """
-    if _XELATEX_BIN is None:
+    if _XELATEX_BIN is None and not _WEASYPRINT_AVAILABLE:
         raise HTTPException(
             status_code=503,
             detail="PDF generation is not available on this server. Contact support.",
@@ -375,12 +386,13 @@ async def get_document_pdf(
             version=doc.version,
             template=template.latex_template,
             fields=doc.fields,
+            jurisdiction=template.jurisdiction,
         )
     except PDFTimeoutError as exc:
         logger.error("PDF generation timed out for doc_id=%s", doc.id)
         raise HTTPException(
             status_code=503,
-            detail="PDF generation failed.",
+            detail="PDF generation timed out.",
         ) from exc
     except RuntimeError as exc:
         logger.error("PDF generation failed for doc_id=%s: %s", doc.id, exc)

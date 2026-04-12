@@ -665,35 +665,17 @@ class TestDocumentUpdate:
 
 class TestDocumentPdf:
     @pytest.mark.asyncio
-    async def test_pdf_endpoint_returns_503_when_xelatex_missing(self):
-        """GET .../pdf returns 503 if xelatex binary is not available."""
-        from datetime import UTC, datetime
+    async def test_pdf_endpoint_returns_503_when_no_renderer_available(self):
+        """GET .../pdf returns 503 if neither xelatex nor weasyprint is available."""
+        app = _make_app_client(str(uuid.uuid4()), AsyncMock())
 
-        from neolex.db.drafting_models import ChatDocument
-
-        user_id_str = str(uuid.uuid4())
-        conv_id = uuid.uuid4()
-        doc_id = uuid.uuid4()
-
-        doc = ChatDocument()
-        doc.id = doc_id
-        doc.conversation_id = conv_id
-        doc.user_id = uuid.UUID(user_id_str)
-        doc.template_slug = "test_template"
-        doc.fields = {"name": "Test"}
-        doc.version = 1
-        doc.created_at = datetime.now(UTC)
-        doc.updated_at = datetime.now(UTC)
-
-        mock_session = AsyncMock()
-        mock_result = MagicMock()
-        mock_result.scalar_one_or_none.return_value = doc
-        mock_session.execute = AsyncMock(return_value=mock_result)
-
-        app = _make_app_client(user_id_str, mock_session)
-
-        with patch("neolex.routers.drafting._XELATEX_BIN", None):
+        with (
+            patch("neolex.routers.drafting._XELATEX_BIN", None),
+            patch("neolex.routers.drafting._WEASYPRINT_AVAILABLE", False),
+        ):
             try:
+                conv_id = uuid.uuid4()
+                doc_id = uuid.uuid4()
                 async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                     resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/pdf")
                 assert resp.status_code == 503

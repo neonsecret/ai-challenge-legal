@@ -31,6 +31,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 _HAIKU_MODEL = "claude-haiku-4-5"  # short ID required for direct Vertex AI (no date suffix)
+# Langfuse span payload cap — avoids oversized ingest requests
+_LANGFUSE_INPUT_TRUNCATE = 500
 
 # Anthropic client (lazy singleton for HyDE / query variants)
 _anthropic_client: anthropic.Anthropic | None = None
@@ -2460,7 +2462,7 @@ def _retrieve_pages_simple(
             if _lf_enabled():
                 add_retrieval_substep_span(
                     name="bm25-retrieval",
-                    input_data={"query": question[:500], "corpus": corpus, "top_k": top_k},
+                    input_data={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
                     output_data={"num_results": len(bm25_chunk_ids)},
                 )
                 add_retrieval_substep_span(

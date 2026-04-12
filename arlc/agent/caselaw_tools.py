@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 # Maximum characters of full text to include when fetch returns a document
 _FULL_TEXT_MAX_CHARS = 12_000
+# Langfuse span payload cap — avoids oversized ingest requests
+_LANGFUSE_INPUT_TRUNCATE = 500
 
 
 def _parse_statute_ref(statute_reference: str) -> tuple[int, int] | tuple[int, int, str] | None:
@@ -133,6 +135,20 @@ async def execute_caselaw_search(
             except Exception as emb_exc:
                 logger.info("[caselaw] embed_query unavailable, falling back to BM25: %s", emb_exc)
 
+        try:
+            from neolex.observability import add_retrieval_substep_span
+            from neolex.observability import is_enabled as _lf_enabled
+
+            if _lf_enabled():
+                add_retrieval_substep_span(
+                    name="embedding-query",
+                    input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE]},
+                    output_data={"embedded": query_emb is not None},
+                    metadata={"model": "qwen3-embedding-8b"},
+                )
+        except Exception:
+            pass  # observability is always non-fatal
+
         if query_emb is not None:
             decisions = await search_decisions_hybrid(
                 query=query,
@@ -143,6 +159,18 @@ async def execute_caselaw_search(
                 limit=limit,
             )
             logger.info("[caselaw] hybrid search query=%r → %d results", query[:60], len(decisions))
+            try:
+                from neolex.observability import add_retrieval_substep_span
+                from neolex.observability import is_enabled as _lf_enabled
+
+                if _lf_enabled():
+                    add_retrieval_substep_span(
+                        name="vector-search",
+                        input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE], "limit": limit, "mode": "hybrid"},
+                        output_data={"num_results": len(decisions)},
+                    )
+            except Exception:
+                pass  # observability is always non-fatal
         else:
             decisions = await search_decisions(
                 query=query,
@@ -152,6 +180,18 @@ async def execute_caselaw_search(
                 limit=limit,
             )
             logger.info("[caselaw] bm25-only search query=%r → %d results", query[:60], len(decisions))
+            try:
+                from neolex.observability import add_retrieval_substep_span
+                from neolex.observability import is_enabled as _lf_enabled
+
+                if _lf_enabled():
+                    add_retrieval_substep_span(
+                        name="bm25-retrieval",
+                        input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE], "limit": limit, "mode": "bm25-only"},
+                        output_data={"num_results": len(decisions)},
+                    )
+            except Exception:
+                pass  # observability is always non-fatal
     except Exception as exc:
         logger.error("[caselaw] search failed: %s", exc)
         return []
