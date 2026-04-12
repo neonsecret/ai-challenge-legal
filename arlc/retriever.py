@@ -149,6 +149,14 @@ class PageResult:
     score: float
     text: str
     chunk_id: str = ""
+    # Court decision metadata — populated only when source_type == "court_decision"
+    source_type: str | None = None  # "statute" | "court_decision"
+    case_number: str | None = None  # e.g. "21 Cdo 1234/2023"
+    ecli: str | None = None  # ECLI identifier
+    decision_date: str | None = None  # ISO date string e.g. "2023-06-15"
+    court: str | None = None  # e.g. "Nejvyssi soud"
+    category: str | None = None  # A–E
+    legal_thesis: str | None = None  # Pravni veta
 
 
 def _is_qwen_reranker() -> bool:
@@ -791,6 +799,141 @@ def get_chunk_count(corpus: str = "difc") -> int:
             {"corpus": corpus},
         ).scalar()
     return result or 0
+
+
+# Corpora for which court decisions are included in retrieval results.
+# Czech court decisions (Nejvyssi soud judikatura) are stored in a separate
+# `court_decisions` table and must be merged with statute chunk results.
+_COURT_DECISION_CORPORA: frozenset[str] = frozenset({"czech"})
+
+
+def _search_court_decisions_sync(
+    query: str,
+    query_embedding: list[float],
+    limit: int = 30,
+) -> list[dict]:
+    """Sync hybrid BM25 + vector search on the court_decisions table.
+
+    Runs two legs concurrently using a ThreadPoolExecutor, then fuses with RRF
+    (vector weight 0.7, BM25 weight 0.3 — matching statute chunk weights).
+
+    Uses the same sync SQLAlchemy engine as the rest of the retriever so no
+    additional connection pool is needed.
+
+    Returns a list of chunk-like dicts compatible with the fusion pool in
+    ``_retrieve_pages_simple``::
+
+        {
+            "chunk_id": ecli,          # ECLI as unique ID
+            "text": legal_thesis,      # text used for embedding + reranking
+            "metadata": {
+                "doc_id": ecli,
+                "pdf_id": ecli,
+                "page": 1,             # court decisions have no page structure
+                "source_file": case_number,
+                "source_type": "court_decision",
+                "case_number": ...,
+                "ecli": ...,
+                "decision_date": ...,  # ISO date string or None
+                "court": ...,
+                "category": ...,
+                "legal_thesis": ...,
+            },
+            "distance": 1.0,           # placeholder; RRF score is used for ranking
+        }
+
+    Decisions without legal_thesis (required for meaningful results) are excluded
+    from both legs. Decisions without embeddings are excluded from the vector leg
+    but remain searchable via BM25.
+    """
+    engine = _get_sync_engine()
+
+    # Normalise embedding for inner-product search (pgvector needs L2-normalised vectors)
+    query_np = np.array(query_embedding, dtype=np.float32)
+    norm = np.linalg.norm(query_np)
+    if norm > 0:
+        query_np = query_np / norm
+    vec_literal = "[" + ",".join(str(float(x)) for x in query_np) + "]"
+
+    def _vector_leg() -> list:
+        with SASession(engine) as session:
+            return session.execute(
+                sa_text("""
+                SELECT ecli, case_number, court, category, legal_thesis, decision_date
+                FROM court_decisions
+                WHERE embedding IS NOT NULL
+                  AND legal_thesis IS NOT NULL
+                  AND legal_thesis != ''
+                ORDER BY embedding <#> cast(:vec as vector)
+                LIMIT :limit
+                """),
+                {"vec": vec_literal, "limit": limit},
+            ).fetchall()
+
+    def _bm25_leg() -> list:
+        if not query or not query.strip():
+            return []
+        tsq = build_czech_tsquery(query)
+        if not tsq:
+            return []
+        with SASession(engine) as session:
+            return session.execute(
+                sa_text("""
+                SELECT ecli, case_number, court, category, legal_thesis, decision_date
+                FROM court_decisions
+                WHERE search_vector @@ to_tsquery('simple', :tsq)
+                  AND legal_thesis IS NOT NULL
+                  AND legal_thesis != ''
+                ORDER BY ts_rank(search_vector, to_tsquery('simple', :tsq)) DESC
+                LIMIT :limit
+                """),
+                {"tsq": tsq, "limit": limit},
+            ).fetchall()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        vec_rows = executor.submit(_vector_leg).result()
+        bm25_rows = executor.submit(_bm25_leg).result()
+
+    # RRF fusion: vector weight 0.7, BM25 weight 0.3
+    _rrf_k = 60
+    rrf_scores: dict[str, float] = {}
+    row_by_ecli: dict[str, object] = {}
+
+    for rank, row in enumerate(vec_rows):
+        rrf_scores[row.ecli] = rrf_scores.get(row.ecli, 0.0) + 0.7 / (_rrf_k + rank + 1)
+        row_by_ecli.setdefault(row.ecli, row)
+
+    for rank, row in enumerate(bm25_rows):
+        rrf_scores[row.ecli] = rrf_scores.get(row.ecli, 0.0) + 0.3 / (_rrf_k + rank + 1)
+        row_by_ecli.setdefault(row.ecli, row)
+
+    sorted_eclis = sorted(rrf_scores, key=lambda e: rrf_scores[e], reverse=True)[:limit]
+
+    results = []
+    for ecli in sorted_eclis:
+        row = row_by_ecli[ecli]
+        decision_date_str = str(row.decision_date) if row.decision_date else None
+        results.append(
+            {
+                "chunk_id": ecli,
+                "text": row.legal_thesis or "",
+                "metadata": {
+                    "doc_id": ecli,
+                    "pdf_id": ecli,
+                    "page": 1,
+                    "source_file": row.case_number or ecli,
+                    "source_type": "court_decision",
+                    "case_number": row.case_number,
+                    "ecli": ecli,
+                    "decision_date": decision_date_str,
+                    "court": row.court,
+                    "category": row.category,
+                    "legal_thesis": row.legal_thesis,
+                },
+                "distance": 1.0,
+            }
+        )
+    return results
 
 
 def get_chunks_by_ids(chunk_ids: list[str], corpus: str | None = None) -> dict:
@@ -2285,21 +2428,29 @@ def _retrieve_pages_simple(
         on_status("retrieving:searching corpus")
 
     if use_bm25_fusion:
-        # Czech: run vector + BM25 concurrently, fuse with RRF for better recall
-        # on exact legal term matches (statute §, specific legal terms).
+        # Czech: run vector + BM25 (statute chunks) + court decisions concurrently,
+        # fuse with RRF for better recall on exact legal terms and court holdings.
         def _vec():
             return search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
 
         def _bm25():
             return search_chunks_text(question, top_k=top_k, corpus=corpus)
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        def _court():
+            # Only search court decisions for corpora that have them
+            if corpus not in _COURT_DECISION_CORPORA:
+                return []
+            return _search_court_decisions_sync(question, query_emb, limit=top_k)
+
+        with ThreadPoolExecutor(max_workers=3) as executor:
             vec_fut = executor.submit(_vec)
             bm25_fut = executor.submit(_bm25)
+            court_fut = executor.submit(_court)
             vector_results = vec_fut.result()
             bm25_chunk_ids = bm25_fut.result()
+            court_chunks = court_fut.result()
 
-        # Build chunk lookup from vector results (already has text + metadata)
+        # Build chunk lookup from statute vector results (already has text + metadata)
         chunk_by_id: dict[str, dict] = {}
         for i in range(len(vector_results["ids"][0])):
             cid = vector_results["ids"][0][i]
@@ -2310,27 +2461,37 @@ def _retrieve_pages_simple(
                 "distance": vector_results["distances"][0][i],
             }
 
-        # RRF fusion: combine BM25 and vector rankings
+        # Add court decisions to chunk lookup (fully populated from _search_court_decisions_sync)
+        for cd in court_chunks:
+            chunk_by_id[cd["chunk_id"]] = cd
+
+        # RRF fusion: combine statute BM25 + vector signals + court decisions
         # RRF constant k=60 (Cormack et al. 2009)
         _rrf_k = 60
         rrf_scores: dict[str, float] = {}
 
-        # Vector signal (weight 0.7 — embedding model handles Czech semantics well)
+        # Statute vector signal (weight 0.7 — embedding model handles Czech semantics well)
         for rank, cid in enumerate(vector_results["ids"][0]):
             rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + rank + 1)
 
-        # BM25 signal (weight 0.3 — keyword match for exact legal terms / §-numbers)
+        # Statute BM25 signal (weight 0.3 — keyword match for exact legal terms / §-numbers)
         for rank, cid in enumerate(bm25_chunk_ids):
             rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.3 / (_rrf_k + rank + 1)
 
-        # Fetch text/metadata for BM25-only hits not in vector results
+        # Court decisions enter as pre-fused (weight 0.5 — between BM25 and vector weights).
+        # Their internal RRF already combines vector + BM25 signals from court_decisions table.
+        for rank, cd in enumerate(court_chunks):
+            ecli = cd["chunk_id"]
+            rrf_scores[ecli] = rrf_scores.get(ecli, 0.0) + 0.5 / (_rrf_k + rank + 1)
+
+        # Fetch text/metadata for BM25-only statute hits not in vector results
         bm25_only_ids = [cid for cid in bm25_chunk_ids if cid not in chunk_by_id]
         if bm25_only_ids:
             extra = get_chunks_by_ids(bm25_only_ids, corpus=corpus)
             for cid, text, meta in zip(
-                extra.get("ids", [[]])[0],
-                extra.get("documents", [[]])[0],
-                extra.get("metadatas", [[]])[0],
+                extra.get("ids", []),
+                extra.get("documents", []),
+                extra.get("metadatas", []),
             ):
                 if cid not in chunk_by_id:
                     chunk_by_id[cid] = {"chunk_id": cid, "text": text, "metadata": meta, "distance": 1.0}
@@ -2351,50 +2512,113 @@ def _retrieve_pages_simple(
                 }
             )
 
-    # Filter by law prefixes if specified (Czech corpus law selector)
+    # Filter by law prefixes if specified (Czech corpus law selector).
+    # Court decisions (source_type == "court_decision") bypass the statute prefix filter —
+    # they are indexed by ECLI, not by law doc_id prefix, and are always included.
     if laws:
         law_prefixes = set(laws)
-        chunks = [c for c in chunks if any(c["metadata"].get("doc_id", "").startswith(p) for p in law_prefixes)]
+        chunks = [
+            c
+            for c in chunks
+            if c["metadata"].get("source_type") == "court_decision"
+            or any(c["metadata"].get("doc_id", "").startswith(p) for p in law_prefixes)
+        ]
 
-    # Preserve top vector/fused result before reranking — embedding models handle
+    # Preserve top fused result before reranking — embedding models handle
     # cross-language queries better than the reranker for non-DIFC corpora.
     vector_top = chunks[0] if chunks else None
 
+    # Build reranking pool (40 chunks max): explicitly mix court decisions with statute
+    # chunks so the cross-encoder evaluates both types.  Without this, statute chunks
+    # dominate the RRF ranking (they receive contributions from two legs — vector + BM25)
+    # and court decisions are never examined by the reranker.
+    # Reserve up to 10 of the 40 reranker slots for court decisions.
+    _court_chunks = [c for c in chunks if c["metadata"].get("source_type") == "court_decision"]
+    _statute_chunks = [c for c in chunks if c["metadata"].get("source_type") != "court_decision"]
+    _court_slots = min(10, len(_court_chunks))
+    _statute_slots = min(40 - _court_slots, len(_statute_chunks))
+    rerank_pool = _statute_chunks[:_statute_slots] + _court_chunks[:_court_slots]
+
     # Cross-encoder reranking
     if on_status:
-        on_status(f"retrieving:reranking {len(chunks[:40])} passages")
-    ranked = rerank_chunks(question, chunks[:40], top_k=20, answer_type=answer_type, on_status=on_status)
+        on_status(f"retrieving:reranking {len(rerank_pool)} passages")
+    ranked = rerank_chunks(question, rerank_pool, top_k=20, answer_type=answer_type, on_status=on_status)
 
-    # Aggregate chunks to pages, pick best per (doc_id, page)
-    page_scores: dict[tuple[str, int], tuple[float, str, str]] = {}
+    # Aggregate chunks to pages, pick best per (doc_id, page).
+    # Value tuple: (score, text, chunk_id, court_meta_dict)
+    # court_meta_dict is non-empty only for court_decision source_type.
+    page_scores: dict[tuple[str, int], tuple[float, str, str, dict]] = {}
     for chunk in ranked:
         doc_id = chunk["metadata"].get("doc_id", chunk["metadata"]["pdf_id"])
         page = int(chunk["metadata"]["page"])
         score = chunk.get("rerank_score", 0.5)
         key = (doc_id, page)
         if key not in page_scores or score > page_scores[key][0]:
-            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""))
+            court_meta: dict = {}
+            if chunk["metadata"].get("source_type") == "court_decision":
+                court_meta = {
+                    k: chunk["metadata"].get(k)
+                    for k in (
+                        "source_type",
+                        "case_number",
+                        "ecli",
+                        "decision_date",
+                        "court",
+                        "category",
+                        "legal_thesis",
+                    )
+                }
+            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""), court_meta)
 
-    # Inject vector top-1 if the reranker dropped it — the embedding model's
+    # Inject top fused result if the reranker dropped it — the embedding model's
     # best pick often outperforms the reranker on cross-language queries.
     if vector_top:
         ft_doc = vector_top["metadata"].get("doc_id", vector_top["metadata"]["pdf_id"])
         ft_page = int(vector_top["metadata"]["page"])
         ft_key = (ft_doc, ft_page)
         if ft_key not in page_scores:
-            page_scores[ft_key] = (0.5, vector_top["text"], vector_top["metadata"].get("chunk_id", ""))
+            ft_court_meta: dict = {}
+            if vector_top["metadata"].get("source_type") == "court_decision":
+                ft_court_meta = {
+                    k: vector_top["metadata"].get(k)
+                    for k in (
+                        "source_type",
+                        "case_number",
+                        "ecli",
+                        "decision_date",
+                        "court",
+                        "category",
+                        "legal_thesis",
+                    )
+                }
+            page_scores[ft_key] = (0.5, vector_top["text"], vector_top["metadata"].get("chunk_id", ""), ft_court_meta)
 
     # Sort by score descending, apply per-doc and total limits
     sorted_pages = sorted(page_scores.items(), key=lambda x: x[1][0], reverse=True)
     doc_counts: dict[str, int] = {}
     results: list[PageResult] = []
-    for (doc_id, page), (score, text, chunk_id) in sorted_pages:
+    for (doc_id, page), (score, text, chunk_id, court_meta) in sorted_pages:
         if len(results) >= max_total:
             break
         if doc_counts.get(doc_id, 0) >= max_per_doc:
             continue
         doc_counts[doc_id] = doc_counts.get(doc_id, 0) + 1
-        results.append(PageResult(doc_id=doc_id, page_number=page, score=score, text=text, chunk_id=chunk_id))
+        results.append(
+            PageResult(
+                doc_id=doc_id,
+                page_number=page,
+                score=score,
+                text=text,
+                chunk_id=chunk_id,
+                source_type=court_meta.get("source_type"),
+                case_number=court_meta.get("case_number"),
+                ecli=court_meta.get("ecli"),
+                decision_date=court_meta.get("decision_date"),
+                court=court_meta.get("court"),
+                category=court_meta.get("category"),
+                legal_thesis=court_meta.get("legal_thesis"),
+            )
+        )
 
     return results
 
