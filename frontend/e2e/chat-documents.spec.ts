@@ -452,14 +452,10 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
     let texEndpointCalled = 0;
 
     await mockBaseRoutes(page);
-    // SSE_WITH_DOC_READY includes fields so DocumentCard enters isReady=true state,
-    // rendering the Preview button needed to open DocumentViewer where LaTeX lives.
+    // SSE_WITH_DOC_READY includes populated fields so DocumentCard enters isReady=true,
+    // which renders the .tex download link (DocumentCard.tsx:100-122, title="Download LaTeX source").
     await page.route("**/api/v1/query/stream", (route: Route) =>
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_READY })
-    );
-    // PDF mock needed for DocumentViewer to render without error state
-    await page.route("**/api/v1/conversations/*/documents/*/pdf", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.4" })
     );
     await page.route("**/api/v1/conversations/*/documents/*/tex", (route: Route) => {
       texEndpointCalled += 1;
@@ -473,19 +469,11 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
     await page.goto(`${FRONTEND}/chat`);
     await clickFollowUp(page);
 
-    // Wait for document card to reach isReady=true (fields populated)
+    // Wait for document card to reach isReady=true (v1 badge visible = fields populated)
     await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 15_000 });
 
-    // Open DocumentViewer — Preview button is rendered only when isReady=true
-    const previewBtn = page.locator('button[aria-label="Preview"]').first();
-    await expect(previewBtn).toBeVisible({ timeout: 5_000 });
-    await previewBtn.click();
-
-    // Confirm the dialog opened
-    await expect(page.locator('button[aria-label="Close document viewer"]')).toBeVisible({ timeout: 5_000 });
-
-    // The LaTeX download link is inside DocumentViewer (aria-label="Download LaTeX source")
-    const latexLink = page.locator('a[aria-label="Download LaTeX source"]').first();
+    // LaTeX download link on the card — requires isReady=true (DocumentCard.tsx:100-122)
+    const latexLink = page.locator('a[title="Download LaTeX source"]').first();
     await expect(latexLink).toBeVisible({ timeout: 5_000 });
 
     const [download] = await Promise.all([
