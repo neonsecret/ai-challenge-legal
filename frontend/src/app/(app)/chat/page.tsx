@@ -11,7 +11,6 @@ import {ChatHeader} from "@/components/chat/chat-header"
 import {ChatInput} from "@/components/chat/chat-input"
 import {ChatMessage, type Source} from "@/components/chat/chat-message"
 import {StrictSidebarRail} from "@/components/chat/strict-sidebar-rail"
-import {SourcePanelV2} from "@/components/chat/source-panel-v2"
 import {CollapsibleTurn} from "@/components/chat/collapsible-turn"
 import {useChatState} from "@/components/chat/chat-state"
 import {EmptyState, getPresetQuestions} from "@/components/chat/empty-state"
@@ -245,7 +244,8 @@ export default function ChatPage() {
         // userMsgCountRef tracks this without adding messages to the callback deps.
         queryTurnIndexRef.current = userMsgCountRef.current
         const slug = pendingTemplate?.slug
-        setPendingTemplate(null)
+        // Template persists until user explicitly deselects via the X button —
+        // do NOT clear it here so follow-up messages continue to use the same template.
         const result = handleSend(question, slug)
         if (result === "blocked") {
             showCorpusBlocked()
@@ -699,16 +699,6 @@ export default function ChatPage() {
                 </div>
                 </div>{/* end reading area */}
 
-                {/* Source panel — dark mode desktop: slides in at 42% on citation click */}
-                <AnimatePresence>
-                    {isStrict && !isMobile && panelOpen && panelTab === "source" && drawerData.sources.length > 0 && (
-                        <SourcePanelV2
-                            sources={drawerData.sources}
-                            initialIndex={0}
-                            onClose={() => setPanelOpen(false)}
-                        />
-                    )}
-                </AnimatePresence>
             </div>{/* end main glass pane */}
 
             {/* ── Document preview panel — same flex:1, slides in alongside chat ── */}
@@ -868,10 +858,10 @@ export default function ChatPage() {
                 document.body,
             )}
 
-            {/* ── Unified side panel — source grounding (light mode) or document index ── */}
-            {/* Strict desktop source: SourcePanelV2 inside main pane. Strict mobile source: MobileSourceSheet portal. */}
+            {/* ── Unified side panel — source grounding or document index ── */}
+            {/* Strict mobile source: MobileSourceSheet portal (above). Desktop source: this panel. */}
             <AnimatePresence>
-                {panelOpen && (panelTab === "index" || (!isStrict && drawerData.sources.length > 0)) && (
+                {panelOpen && (panelTab === "index" || drawerData.sources.length > 0) && (
                     <motion.div
                         initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         animate={isMobile ? {y: 0} : {opacity: 1, width: panelTab === "index" ? 280 : "50%"}}
@@ -918,9 +908,9 @@ export default function ChatPage() {
                             flexShrink: 0,
                             background: isStrict ? "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
                         }}>
-                            {/* Tabs — light mode shows both; strict shows index label only */}
+                            {/* Tabs — show both when sources are available; single label when no sources */}
                             <div role="tablist" style={{display: "flex", alignItems: "center", gap: SPACE['3']}}>
-                                {!isStrict && drawerData.sources.length > 0 && (
+                                {drawerData.sources.length > 0 && (
                                     <button
                                         role="tab"
                                         aria-selected={panelTab === "source"}
@@ -939,7 +929,7 @@ export default function ChatPage() {
                                         Sources
                                     </button>
                                 )}
-                                {!isStrict && drawerData.sources.length > 0 && (
+                                {drawerData.sources.length > 0 && (
                                     <button
                                         role="tab"
                                         aria-selected={panelTab === "index"}
@@ -958,8 +948,8 @@ export default function ChatPage() {
                                         Index ({documentIndex.length})
                                     </button>
                                 )}
-                                {/* Strict mode or no sources: single index label */}
-                                {(isStrict || drawerData.sources.length === 0) && (
+                                {/* No grounding sources yet: single index label */}
+                                {drawerData.sources.length === 0 && (
                                     <span style={{
                                         fontSize: isStrict ? 9 : TYPE_SCALE.xs,
                                         fontWeight: isStrict ? 400 : 700,
@@ -1021,8 +1011,8 @@ export default function ChatPage() {
                             </div>
                         </div>
 
-                        {/* Source grounding content — light mode only */}
-                        {panelTab === "source" && !isStrict && (
+                        {/* Source grounding content */}
+                        {panelTab === "source" && (
                             <div id="unified-panel-source" role="tabpanel" className="flex-1 overflow-hidden min-h-0">
                                 <GroundingErrorBoundary onReset={() => setPanelOpen(false)}>
                                     <GroundingView answer={drawerData.answer} sources={drawerData.sources} isDark={isDark} isMobile={isMobile} focusDocId={drawerData.focusDocId} focusPage={drawerData.focusPage} focusSeq={drawerData.focusSeq}/>

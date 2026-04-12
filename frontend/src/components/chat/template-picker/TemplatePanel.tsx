@@ -80,7 +80,8 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const filtered = templates.filter((t: Template) => {
         const jMatch = !jurisdiction || t.jurisdiction.toUpperCase() === jurisdiction.toUpperCase() || (jurisdiction === "General" && !t.jurisdiction)
         const cMatch = !category || t.category.toLowerCase() === category.toLowerCase()
-        return jMatch && cMatch
+        // Exclude __custom__ — it is rendered separately as a hardcoded button above the list
+        return jMatch && cMatch && t.slug !== CUSTOM_SLUG
     })
 
     return (
