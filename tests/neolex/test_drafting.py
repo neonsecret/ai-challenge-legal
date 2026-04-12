@@ -155,8 +155,12 @@ class TestLatexToHtml:
         template = r"\documentclass{article}\begin{document}{{case}}\end{document}"
         # Field value contains raw curly braces (e.g. a legal citation)
         result = _latex_to_html(template, {"case": "Smith {2023}"})
-        # The curly braces must survive all format/escape passes unchanged
-        assert "{2023}" in result
+        # The curly braces must survive all format/escape passes unchanged.
+        # Use the full field value so this assertion fails if {{2023}} double-escape
+        # corruption is re-introduced ("Smith {2023}" is NOT a substring of
+        # "Smith {{2023}}").
+        assert "Smith {2023}" in result
+        assert "{{2023}}" not in result  # explicit guard: double-escape caught here
 
 
 # ---------------------------------------------------------------------------
