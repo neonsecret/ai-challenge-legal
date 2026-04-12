@@ -163,8 +163,10 @@ async def run_agent_question(
     draft_document_fn = None
     if template_slug and user_id and conversation_id:
         try:
+            from neolex.services.conversation import _to_conv_uuid
+
             user_uuid = uuid.UUID(user_id)
-            conv_uuid = uuid.UUID(conversation_id)
+            conv_uuid = _to_conv_uuid(conversation_id)
             draft_document_fn = _make_draft_document_fn(user_uuid, conv_uuid)
         except ValueError:
             logger.warning(

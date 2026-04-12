@@ -283,6 +283,29 @@ async def delete_conversation(user_id: str, conversation_id: str) -> bool:
                     ConversationDocs.conversation_id == cid,
                 ),
             )
+            # Delete drafted documents
+            from neolex.db.drafting_models import ChatDocument
+
+            await session.execute(
+                sql_delete(ChatDocument).where(
+                    ChatDocument.user_id == uid,
+                    ChatDocument.conversation_id == cid,
+                ),
+            )
+            # Delete pipeline jobs
+            await session.execute(
+                sql_delete(PipelineJob).where(
+                    PipelineJob.user_id == uid,
+                    PipelineJob.conversation_id == str(cid),
+                ),
+            )
+            # Delete feedback
+            await session.execute(
+                sql_delete(Feedback).where(
+                    Feedback.user_id == uid,
+                    Feedback.conversation_id == str(cid),
+                ),
+            )
             await session.commit()
             return msg_result.rowcount > 0
     except Exception:

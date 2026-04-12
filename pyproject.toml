@@ -37,6 +37,8 @@ dependencies = [
     "psycopg2-binary>=2.9.11",
     "simplemma>=1.1.2",
     "langfuse>=4.0.0,<5",
+    "langchain-core>=1.2.28",
+    "langgraph>=1.1.6",
 ]
 
 [project.scripts]
