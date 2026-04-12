@@ -232,7 +232,10 @@ dependencies = [
     { name = "langchain-core" },
     { name = "langfuse" },
     { name = "langgraph" },
+<<<<<<< Updated upstream
     { name = "nltk" },
+=======
+>>>>>>> Stashed changes
     { name = "openai" },
     { name = "passlib", extra = ["bcrypt"] },
     { name = "pgvector" },
@@ -290,7 +293,10 @@ requires-dist = [
     { name = "langchain-core", specifier = ">=1.2.28" },
     { name = "langfuse", specifier = ">=4.0.0,<5" },
     { name = "langgraph", specifier = ">=1.1.6" },
+<<<<<<< Updated upstream
     { name = "nltk", specifier = ">=3.9.4" },
+=======
+>>>>>>> Stashed changes
     { name = "openai", specifier = ">=2.24.0" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "pgvector", specifier = ">=0.4.2" },

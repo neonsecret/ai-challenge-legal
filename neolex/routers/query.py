@@ -56,7 +56,9 @@ async def _create_pipeline_document(
     from neolex.db.drafting_models import ChatDocument, DocumentTemplate
 
     try:
-        conv_uuid = uuid.UUID(conversation_id)
+        from neolex.services.conversation import _to_conv_uuid
+
+        conv_uuid = _to_conv_uuid(conversation_id)
         user_uuid = uuid.UUID(user_id)
     except ValueError:
         logger.error(
@@ -469,10 +471,12 @@ async def query_stream(
                             template_field_descriptions = tmpl["field_descriptions"]
 
                         try:
+                            from neolex.services.conversation import _to_conv_uuid as _conv_uuid
+
                             chat_documents = await list_conversation_documents(
                                 db,
                                 user_id=_uuid.UUID(user_id),
-                                conversation_id=_uuid.UUID(conversation_id),
+                                conversation_id=_conv_uuid(conversation_id),
                             )
                         except (ValueError, Exception):
                             chat_documents = []

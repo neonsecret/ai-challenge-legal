@@ -42,11 +42,13 @@ router = APIRouter(tags=["drafting"])
 
 
 def _parse_conversation_id(conversation_id: str) -> uuid.UUID:
-    """Parse conversation_id path param, returning 400 on malformed input."""
+    """Parse conversation_id path param, supporting both UUID and chat-{timestamp} format."""
+    from neolex.services.conversation import _to_conv_uuid
+
     try:
-        return uuid.UUID(conversation_id)
+        return _to_conv_uuid(conversation_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid conversation_id — must be a UUID")
+        raise HTTPException(status_code=400, detail="Invalid conversation_id")
 
 
 def _parse_doc_id(doc_id: str) -> uuid.UUID:
