@@ -437,7 +437,7 @@ class TestRerankerBatching:
 
 
 # ---------------------------------------------------------------------------
-# 6. FAISS dense page scoring — _dense_page_scores()
+# 6. pgvector dense page scoring — _dense_page_scores()
 # ---------------------------------------------------------------------------
 
 

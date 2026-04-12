@@ -48,7 +48,7 @@ async def test_post_query_pipeline_failure(app_client):
     with patch(
         "neolex.routers.query.run_single_question",
         new_callable=AsyncMock,
-        side_effect=RuntimeError("FAISS index not found"),
+        side_effect=RuntimeError("pgvector query failed"),
     ):
         response = await app_client.post(
             "/api/v1/query",
