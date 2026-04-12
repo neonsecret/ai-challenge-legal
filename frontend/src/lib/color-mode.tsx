@@ -54,6 +54,7 @@ function readStoredMode(): ColorMode {
         // Migration from next-themes key
         const oldTheme = localStorage.getItem(OLD_THEME_KEY);
         if (oldTheme === "dark") return "dark";
+        if (oldTheme === "light") return "light";
     } catch {
         // localStorage unavailable
     }
