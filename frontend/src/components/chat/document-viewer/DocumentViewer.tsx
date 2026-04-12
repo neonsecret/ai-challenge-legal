@@ -271,6 +271,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                         href={texUrl}
                                         download={docName ? `${docName}.tex` : "document.tex"}
                                         title="Download LaTeX source"
+                                        aria-label="Download LaTeX source"
                                         style={{
                                             display: "inline-flex",
                                             alignItems: "center",
