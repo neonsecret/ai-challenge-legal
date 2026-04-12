@@ -1,7 +1,7 @@
 """Integration tests: full stack against real DIFC corpus.
 
 These tests require:
-- data/ directory with FAISS/BM25 indexes (run `make prepare` first)
+- PostgreSQL running with a populated chunks table (run `make prepare` first)
 - ANTHROPIC_API_KEY set in .env
 - arlc/ package installed
 
@@ -18,15 +18,18 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 
-def corpus_available() -> bool:
-    """Return True if FAISS indexes exist in data/."""
-    if not os.path.exists("data"):
+async def corpus_available() -> bool:
+    """Return True if PostgreSQL is reachable and the chunks table has data."""
+    try:
+        from sqlalchemy import text
+
+        from neolex.db.postgres import engine
+
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT 1 FROM chunks LIMIT 1"))
+            return result.fetchone() is not None
+    except Exception:
         return False
-    for root, _, files in os.walk("data"):
-        for f in files:
-            if f.endswith(".faiss") or f.endswith(".bin"):
-                return True
-    return False
 
 
 def parse_sse_events(text: str) -> list[dict]:
@@ -50,16 +53,16 @@ def parse_sse_events(text: str) -> list[dict]:
 
 @pytest.fixture(scope="module")
 async def live_client():
-    """Test client with real lifespan — warms actual FAISS/BM25/cross-encoder singletons.
+    """Test client with real lifespan — warms actual pgvector/reranker singletons.
 
     Module-scoped so warm-up only happens once for all tests in this file.
-    Skip if corpus not on disk.
+    Skip if PostgreSQL is unreachable or the chunks table is empty.
 
     Seeds an integration test API key in the audit DB so auth-protected endpoints
     work without needing a pre-existing neolex.db.
     """
-    if not corpus_available():
-        pytest.skip("DIFC corpus not available (data/*.faiss missing). Run `make prepare`.")
+    if not await corpus_available():
+        pytest.skip("DIFC corpus not available (chunks table empty or DB unreachable). Run `make prepare`.")
 
     from dotenv import load_dotenv
 
