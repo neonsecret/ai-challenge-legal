@@ -489,29 +489,41 @@ def _enforce_page_limit(chunk_pages: list[dict], max_pages: int = 3) -> list[dic
 
 
 def _attach_source_text(chunk_pages: list[dict], source_pages: list[dict]) -> None:
-    """Enrich chunk_pages dicts with source text from retrieved pages (in-place).
+    """Enrich chunk_pages dicts with source text and court decision metadata (in-place).
 
     The page verifier and LLM page verification steps create new chunk_pages dicts
     that lack the 'text' field. This function copies text from source_pages back onto
     chunk_pages so downstream consumers (e.g. the web frontend) have source text.
 
-    Lookup priority: exact (doc_id, page_number) match first, then any text for doc_id.
+    Also copies court decision metadata fields (source_type, case_number, ecli, etc.)
+    when the source page is a court decision — these are not present in the LLM-generated
+    chunk_pages and must be re-attached so SourceCitation is populated correctly.
+
+    Lookup priority: exact (doc_id, page_number) match first, then any entry for doc_id.
     """
     if not source_pages or not chunk_pages:
         return
-    # Exact lookup: (doc_id, page_number) -> text
-    text_by_page = {(sp["doc_id"], sp.get("page_number", 0)): sp.get("text", "") for sp in source_pages}
-    # Fallback lookup: doc_id -> first non-empty text
-    text_by_doc = {sp["doc_id"]: sp.get("text", "") for sp in source_pages if sp.get("text")}
+    # Build lookups keyed by (doc_id, page_number) and by doc_id alone
+    sp_by_page: dict[tuple[str, int], dict] = {(sp["doc_id"], sp.get("page_number", 0)): sp for sp in source_pages}
+    sp_by_doc: dict[str, dict] = {}
+    for sp in source_pages:
+        sp_by_doc.setdefault(sp["doc_id"], sp)
+
+    _court_fields = ("source_type", "case_number", "ecli", "decision_date", "court", "category", "legal_thesis")
+
     for cp in chunk_pages:
-        if cp.get("text"):
-            continue
         doc_id = cp.get("doc_id", "")
         for pn in cp.get("page_numbers", []):
-            text = text_by_page.get((doc_id, pn)) or text_by_doc.get(doc_id)
-            if text:
-                cp["text"] = text
-                break
+            sp = sp_by_page.get((doc_id, pn)) or sp_by_doc.get(doc_id)
+            if not sp:
+                continue
+            if not cp.get("text") and sp.get("text"):
+                cp["text"] = sp["text"]
+            # Re-attach court decision metadata absent from LLM-generated chunk_pages
+            if sp.get("source_type") == "court_decision" and not cp.get("source_type"):
+                for field in _court_fields:
+                    cp[field] = sp.get(field)
+            break
 
 
 def _boost_cross_references(pages, question: str):
@@ -580,19 +592,32 @@ def _boost_cross_references(pages, question: str):
 
 
 def _pages_to_source_dicts(pages) -> list[dict]:
-    """Convert PageResult objects to dicts for the answerer."""
+    """Convert PageResult objects to dicts for the answerer.
+
+    Court decision metadata (source_type, ecli, case_number, etc.) is included
+    when present so it flows through to source_pages and ultimately chunk_pages,
+    where _attach_source_text re-attaches it after LLM citation generation.
+    """
     result = []
     for p in pages:
         if hasattr(p, "doc_id"):
-            result.append(
-                {
-                    "doc_id": p.doc_id,
-                    "page_number": p.page_number,
-                    "page_numbers": [p.page_number],
-                    "score": p.score,
-                    "text": p.text,
-                },
-            )
+            d: dict = {
+                "doc_id": p.doc_id,
+                "page_number": p.page_number,
+                "page_numbers": [p.page_number],
+                "score": p.score,
+                "text": p.text,
+            }
+            # Include court decision metadata when the source is a court decision
+            if getattr(p, "source_type", None) == "court_decision":
+                d["source_type"] = p.source_type
+                d["case_number"] = p.case_number
+                d["ecli"] = p.ecli
+                d["decision_date"] = p.decision_date
+                d["court"] = p.court
+                d["category"] = p.category
+                d["legal_thesis"] = p.legal_thesis
+            result.append(d)
         else:
             result.append(p)
     return result
