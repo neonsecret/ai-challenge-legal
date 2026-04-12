@@ -298,7 +298,7 @@ _HTML_TEMPLATE = """\
 """
 
 
-def _latex_to_html(latex_template: str, fields: dict[str, str]) -> str:
+def _latex_to_html(latex_template: str, fields: dict[str, str], jurisdiction: str = "EN") -> str:
     """Convert a filled LaTeX template to an HTML document for weasyprint rendering.
 
     Steps:
@@ -307,6 +307,9 @@ def _latex_to_html(latex_template: str, fields: dict[str, str]) -> str:
     3. Strip the \\end{document} trailer
     4. Convert LaTeX markup to HTML equivalents
     5. Wrap in a full HTML document with CSS
+
+    ``jurisdiction`` selects the disclaimer footer language: "CZ" → Czech text,
+    all other values (DIFC, UK, AU, general, …) → English.
     """
     # 1. Inject field values (HTML-escaped)
     filled = _inject_fields_html(latex_template, fields)
@@ -319,8 +322,9 @@ def _latex_to_html(latex_template: str, fields: dict[str, str]) -> str:
     # 4. Convert LaTeX to HTML
     body_html = _latex_to_html_body(filled.strip())
 
-    # 5. Wrap in HTML document
-    return _HTML_TEMPLATE.format(body=body_html, disclaimer=_DISCLAIMER_CZ)
+    # 5. Wrap in HTML document with locale-appropriate disclaimer
+    disclaimer = _DISCLAIMER_CZ if jurisdiction.upper() == "CZ" else _DISCLAIMER_EN
+    return _HTML_TEMPLATE.format(body=body_html, disclaimer=disclaimer)
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +337,7 @@ async def _generate_pdf_weasyprint(
     version: int,
     template: str,
     fields: dict[str, str],
+    jurisdiction: str = "EN",
 ) -> bytes:
     """Generate a PDF using weasyprint (HTML→PDF fallback for when xelatex is absent).
 
@@ -341,7 +346,7 @@ async def _generate_pdf_weasyprint(
     """
     import weasyprint
 
-    html_doc = _latex_to_html(template, fields)
+    html_doc = _latex_to_html(template, fields, jurisdiction)
 
     def _render() -> bytes:
         return weasyprint.HTML(string=html_doc).write_pdf()
@@ -373,6 +378,7 @@ async def generate_pdf(
     version: int,
     template: str,
     fields: dict[str, str],
+    jurisdiction: str = "EN",
 ) -> bytes:
     """Generate a PDF from a LaTeX template and user-provided fields.
 
@@ -380,6 +386,10 @@ async def generate_pdf(
     Returns cached PDF bytes if (doc_id, version) is already cached.
     Raises RuntimeError if neither renderer is available.
     Raises RuntimeError if compilation/rendering fails.
+
+    ``jurisdiction`` controls the disclaimer footer language in the weasyprint
+    path (xelatex uses the LaTeX template's own \\fancyfoot directly).
+    Pass the template's jurisdiction string, e.g. "CZ", "DIFC", "UK", "AU".
 
     Security notes (xelatex path):
       - escape_latex() is applied to ALL field values before template injection.
@@ -400,7 +410,7 @@ async def generate_pdf(
         return await _generate_pdf_xelatex(doc_id, version, template, fields)
 
     if _WEASYPRINT_AVAILABLE:
-        return await _generate_pdf_weasyprint(doc_id, version, template, fields)
+        return await _generate_pdf_weasyprint(doc_id, version, template, fields, jurisdiction)
 
     raise RuntimeError(
         "No PDF renderer available. Install TeX Live (xelatex) or ensure "
