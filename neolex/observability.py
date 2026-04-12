@@ -272,8 +272,10 @@ def create_query_trace(
 ) -> Any | None:
     """Create a top-level Langfuse trace for a user query.
 
-    Creates a root span and sets trace-level attributes (user_id, session_id,
-    tags, input) so the Langfuse UI displays them correctly at the trace level.
+    Uses ``propagate_attributes`` so the trace-level ``user_id`` and
+    ``session_id`` are set (enabling grouping/filtering in the Langfuse
+    UI), then creates a root span whose input is also propagated to the
+    trace via ``set_trace_io``.
 
     Returns a LangfuseSpan object (or None when disabled) that can be
     passed to span helpers below.
@@ -282,8 +284,10 @@ def create_query_trace(
         return None
 
     try:
+        from langfuse import propagate_attributes
+
         trace_input = {"question": query, "corpus": corpus, "answer_type": answer_type}
-        trace_metadata: dict[str, Any] = {
+        trace_metadata = {
             "corpus": corpus,
             "answer_type": answer_type,
             "use_agent": use_agent,
@@ -301,24 +305,25 @@ def create_query_trace(
         if use_agent:
             tags.append("agent")
 
-        # Create root span — Langfuse v3 API: start_span() opens a span that
-        # must be explicitly ended via .end().
-        obs = _langfuse_client.start_span(
-            name="vitreon-query",
-            input=trace_input,
-            metadata=trace_metadata,
-        )
-
-        # Set trace-level attributes so Langfuse shows user_id, session_id,
-        # tags, and input on the trace itself (not buried in the root span).
-        obs.update_trace(
-            name="vitreon-query",
+        # propagate_attributes sets trace-level user_id, session_id, and
+        # tags so they are visible in the Langfuse trace list (not buried
+        # in span metadata).  The metadata kwarg expects Dict[str, str],
+        # so we pass only string-valued items here; the full metadata
+        # (including booleans/ints) goes on the span itself.
+        propagate_meta = {k: str(v) for k, v in trace_metadata.items() if isinstance(v, str)}
+        with propagate_attributes(
             user_id=user_id or None,
             session_id=session_id or None,
             tags=tags,
-            input=trace_input,
-            metadata=trace_metadata,
-        )
+            trace_name="vitreon-query",
+            metadata=propagate_meta,
+        ):
+            obs = _langfuse_client.start_observation(
+                name="vitreon-query",
+                as_type="span",
+                input=trace_input,
+                metadata=trace_metadata,
+            )
 
         return obs
     except Exception:
@@ -338,8 +343,9 @@ def add_retrieval_span(
     if trace is None:
         return
     try:
-        span = trace.start_span(
+        span = trace.start_observation(
             name="retrieval",
+            as_type="span",
             input={"query": query},
         )
         span.update(
@@ -363,8 +369,9 @@ def add_reranking_span(
     if trace is None:
         return
     try:
-        span = trace.start_span(
+        span = trace.start_observation(
             name="reranking",
+            as_type="span",
             input={"num_candidates": num_candidates},
         )
         span.update(
@@ -396,31 +403,29 @@ def add_generation_span(
     if trace is None:
         return
     try:
-        gen = trace.start_generation(
+        gen = trace.start_observation(
             name="llm-generation",
+            as_type="generation",
             model=model,
             input=input_text[:_GEN_INPUT_TRUNCATE_CHARS] if input_text else "",
         )
         span_metadata: dict[str, Any] = {"duration_ms": round(duration_ms, 1), **(metadata or {})}
-        cost_details: dict[str, float] = {}
         if usage:
-            pricing = MODEL_PRICING.get(model)
-            if pricing:
-                per_m = 1_000_000
-                cost_details["input"] = usage.get("input", 0) * pricing["input"] / per_m
-                cost_details["output"] = usage.get("output", 0) * pricing["output"] / per_m
-                if cache_read_tokens:
-                    cost_details["cache_read"] = cache_read_tokens * pricing["cache_read"] / per_m
-                if cache_write_tokens:
-                    cost_details["cache_write"] = cache_write_tokens * pricing["cache_write"] / per_m
+            cost = calculate_cost(
+                model,
+                input_tokens=usage.get("input", 0),
+                output_tokens=usage.get("output", 0),
+                cache_read_tokens=cache_read_tokens,
+                cache_write_tokens=cache_write_tokens,
+            )
+            if cost > 0:
+                span_metadata["cost_usd"] = cost
         update_kwargs: dict[str, Any] = {
             "output": output_text[:5000] if output_text else "",
             "metadata": span_metadata,
         }
         if usage:
             update_kwargs["usage_details"] = usage
-        if cost_details:
-            update_kwargs["cost_details"] = cost_details
         gen.update(**update_kwargs)
         gen.end()
     except Exception:
@@ -441,17 +446,16 @@ def add_agent_step_span(
     if trace is None:
         return
     try:
-        if step_type == "generation":
-            span = trace.start_generation(
-                name=step_name,
-                input=input_data,
-                model=model or None,
-            )
-        else:
-            span = trace.start_span(
-                name=step_name,
-                input=input_data,
-            )
+        kwargs: dict[str, Any] = {
+            "name": step_name,
+            "as_type": step_type,
+        }
+        if input_data is not None:
+            kwargs["input"] = input_data
+        if model:
+            kwargs["model"] = model
+
+        span = trace.start_observation(**kwargs)
         update_kwargs: dict[str, Any] = {}
         if output_data is not None:
             update_kwargs["output"] = output_data
@@ -475,11 +479,12 @@ def start_tool_span(
     if trace is None or not _enabled:
         return None
     try:
-        return trace.start_span(
-            name=name,
-            input=input_data,
-            metadata=metadata,
-        )
+        kwargs: "dict[str, Any]" = {"name": name, "as_type": "span"}
+        if input_data is not None:
+            kwargs["input"] = input_data
+        if metadata:
+            kwargs["metadata"] = metadata
+        return trace.start_observation(**kwargs)
     except Exception:
         logger.debug("Failed to start tool span %s", name, exc_info=True)
         return None
@@ -521,13 +526,17 @@ def add_retrieval_substep_span(
     if parent is None:
         return
     try:
-        obs = parent.start_span(
-            name=name,
-            input=input_data,
-            metadata=metadata,
-        )
+        kwargs: "dict[str, Any]" = {"name": name, "as_type": "span"}
+        if input_data is not None:
+            kwargs["input"] = input_data
+        obs = parent.start_observation(**kwargs)
+        update_kwargs: "dict[str, Any]" = {}
         if output_data is not None:
-            obs.update(output=output_data)
+            update_kwargs["output"] = output_data
+        if metadata:
+            update_kwargs["metadata"] = metadata
+        if update_kwargs:
+            obs.update(**update_kwargs)
         obs.end()
     except Exception:
         logger.debug("Failed to add retrieval sub-span %s", name, exc_info=True)
@@ -555,11 +564,6 @@ def finalize_trace(
         if metadata:
             update_kwargs["metadata"] = metadata
         trace.update(**update_kwargs)
-
-        # Propagate output to the trace level so the Langfuse trace list
-        # shows the answer inline (not just nested inside the root span).
-        if truncated_output is not None:
-            trace.update_trace(output=truncated_output)
 
         trace.end()
     except Exception:
