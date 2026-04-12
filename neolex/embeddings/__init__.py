@@ -13,6 +13,4 @@ Setup:
 
     3. Set EMBEDDING_MODEL=llama-server in your .env (already the default).
 
-Fallback: set EMBEDDING_MODEL=snowflake for Snowflake Arctic Embed L v2.0
-(no server required, lower quality).
 """

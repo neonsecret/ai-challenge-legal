@@ -202,7 +202,6 @@ def configure_logging(level: str | None = None) -> None:
         "httpcore",
         "urllib3",
         "sentence_transformers",
-        "faiss",
         "transformers",
         "torch",
         "filelock",
