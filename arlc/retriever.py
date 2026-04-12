@@ -2452,6 +2452,25 @@ def _retrieve_pages_simple(
             bm25_chunk_ids = bm25_fut.result()
             court_chunks = court_fut.result()
 
+        # Record BM25 + vector sub-spans for Langfuse nested tracing.
+        try:
+            from neolex.observability import add_retrieval_substep_span
+            from neolex.observability import is_enabled as _lf_enabled
+
+            if _lf_enabled():
+                add_retrieval_substep_span(
+                    name="bm25-retrieval",
+                    input_data={"query": question[:500], "corpus": corpus, "top_k": top_k},
+                    output_data={"num_results": len(bm25_chunk_ids)},
+                )
+                add_retrieval_substep_span(
+                    name="vector-retrieval",
+                    input_data={"corpus": corpus, "top_k": top_k},
+                    output_data={"num_results": len(vector_results["ids"][0])},
+                )
+        except Exception:
+            pass  # observability is always non-fatal
+
         # Build chunk lookup from statute vector results (already has text + metadata)
         chunk_by_id: dict[str, dict] = {}
         for i in range(len(vector_results["ids"][0])):
