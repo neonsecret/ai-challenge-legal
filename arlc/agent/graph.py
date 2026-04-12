@@ -4,7 +4,7 @@ Graph:  reason ──(tool_calls?)──> search ──> reason
            └──(no tool_calls)──> END
 
 The reason node invokes Claude via Vertex AI. If it needs sources, it emits
-a search_legal_corpus tool call. The search node runs FAISS + reranker and
+a search_legal_corpus tool call. The search node runs pgvector + reranker and
 feeds results back. The loop continues until Claude answers or the cap is hit.
 
 All agent decisions are logged and emitted as status events so the frontend

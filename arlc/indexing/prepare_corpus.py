@@ -142,7 +142,7 @@ def step_docling_convert(force: bool = False):
 
 
 # ---------------------------------------------------------------------------
-# Step 2: Index documents into ChromaDB
+# Step 2: Index documents into PostgreSQL
 # ---------------------------------------------------------------------------
 
 
@@ -388,7 +388,7 @@ async def step_smoke_test(n_questions: int = 10):
 async def main():
     parser = argparse.ArgumentParser(description="Prepare corpus for finals pipeline")
     parser.add_argument("--skip-download", action="store_true", help="Skip downloading from platform")
-    parser.add_argument("--skip-indexing", action="store_true", help="Skip ChromaDB indexing")
+    parser.add_argument("--skip-indexing", action="store_true", help="Skip PostgreSQL indexing")
     parser.add_argument("--smoke-test-only", action="store_true", help="Just run smoke test")
     parser.add_argument("--force", action="store_true", help="Rebuild everything from scratch")
     parser.add_argument("--smoke-count", type=int, default=10, help="Number of smoke test questions")
@@ -420,7 +420,7 @@ async def main():
     if not args.skip_indexing:
         step_index(force=args.force)
     else:
-        _step_header(2, "ChromaDB indexing", skip=True)
+        _step_header(2, "PostgreSQL indexing", skip=True)
 
     # Step 3: Case metadata
     step_case_metadata(force=args.force)

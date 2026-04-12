@@ -1753,7 +1753,7 @@ async def run_pipeline(
         sys.exit(1)
 
     # Step 3b: Pre-warm retriever caches synchronously.
-    # First retrieval loads 3000+ ChromaDB chunks + cross-encoder into memory.
+    # First retrieval loads chunks + cross-encoder into memory.
     # Without pre-warming, parallel workers race for _reranker_lock on cold start,
     # causing a deadlock when asyncio.wait_for cancels the asyncio wrapper but the
     # OS thread keeps holding the lock.
@@ -1764,7 +1764,7 @@ async def run_pipeline(
         # never race to initialize them.
         import arlc.retriever as _ret_mod
 
-        _ret_mod.get_chunks_by_doc()  # load all 3000+ ChromaDB chunks into memory
+        _ret_mod.get_chunks_by_doc()  # load all chunks from PostgreSQL into memory
         _ret_mod.get_reranker()  # load cross-encoder model onto MPS/CPU
         _ret_mod.get_embedding_model()  # connect to llama-server (Qwen3-Embedding)
         print("  Retriever warmed up (chunks, reranker, embeddings all loaded).")

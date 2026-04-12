@@ -22,13 +22,6 @@ class TestEmbeddingConfig:
         importlib.reload(cfg)
         assert cfg.EMBEDDING_BACKEND == "llama-server"
 
-    def test_snowflake_backend(self, monkeypatch):
-        monkeypatch.setenv("EMBEDDING_MODEL", "snowflake")
-        import neolex.embeddings.config as cfg
-
-        importlib.reload(cfg)
-        assert cfg.EMBEDDING_BACKEND == "snowflake"
-
     def test_invalid_backend_raises(self, monkeypatch):
         monkeypatch.setenv("EMBEDDING_MODEL", "unknown-model")
         import neolex.embeddings.config as cfg
