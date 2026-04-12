@@ -32,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 # Maximum characters of full text to include when fetch returns a document
 _FULL_TEXT_MAX_CHARS = 12_000
+# Langfuse span payload cap — avoids oversized ingest requests
+_LANGFUSE_INPUT_TRUNCATE = 500
 
 
 def _parse_statute_ref(statute_reference: str) -> tuple[int, int] | tuple[int, int, str] | None:
@@ -140,7 +142,7 @@ async def execute_caselaw_search(
             if _lf_enabled():
                 add_retrieval_substep_span(
                     name="embedding-query",
-                    input_data={"query": query[:500]},
+                    input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE]},
                     output_data={"embedded": query_emb is not None},
                     metadata={"model": "qwen3-embedding-8b"},
                 )
@@ -164,7 +166,7 @@ async def execute_caselaw_search(
                 if _lf_enabled():
                     add_retrieval_substep_span(
                         name="vector-search",
-                        input_data={"query": query[:500], "limit": limit, "mode": "hybrid"},
+                        input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE], "limit": limit, "mode": "hybrid"},
                         output_data={"num_results": len(decisions)},
                     )
             except Exception:
@@ -185,7 +187,7 @@ async def execute_caselaw_search(
                 if _lf_enabled():
                     add_retrieval_substep_span(
                         name="bm25-retrieval",
-                        input_data={"query": query[:500], "limit": limit, "mode": "bm25-only"},
+                        input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE], "limit": limit, "mode": "bm25-only"},
                         output_data={"num_results": len(decisions)},
                     )
             except Exception:
