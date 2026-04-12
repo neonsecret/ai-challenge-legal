@@ -255,6 +255,9 @@ async def query(
             answer_fn=state.answer_fn,
             corpus=corpus,
             laws=body.laws,
+            user_id=str(user_id),
+            user_email=user.email,
+            subscription_plan=user.subscription_status,
         )
     except asyncio.TimeoutError as err:
         logger.error("Pipeline timeout for question: %.80s", body.question)
