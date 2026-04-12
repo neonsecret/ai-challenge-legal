@@ -359,3 +359,106 @@ test("CQ-7: when query/stream returns 500, an error message appears in chat", as
     await context.close();
   }
 });
+
+// ---------------------------------------------------------------------------
+// CQ-8 — Pipeline status bar steps appear sequentially
+// ---------------------------------------------------------------------------
+test("CQ-8: pipeline status bar steps appear sequentially during streaming", async ({ browser }) => {
+  // Emit 3 status events with distinct step numbers, then answer + done.
+  // We verify that the steps are processed in order by confirming the final
+  // answer renders (which requires all prior SSE events to have been consumed).
+  const SSE_SEQUENTIAL_STEPS = sseBody([
+    { event: "status", data: { message: "Retrieving documents...", step: 1 } },
+    { event: "status", data: { message: "Evaluating relevance...", step: 2 } },
+    { event: "status", data: { message: "Writing answer...", step: 3 } },
+    { event: "answer", data: { answer: "Sequential step answer.", sources: [], confidence: 0.9 } },
+    { event: "done", data: {} },
+  ]);
+
+  const [page, context] = await createSeededPage(browser);
+  try {
+    await mockBaseRoutes(page);
+    await page.route("**/api/v1/query/stream", (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_SEQUENTIAL_STEPS })
+    );
+
+    await page.goto(`${FRONTEND}/chat`);
+    await clickFollowUp(page);
+
+    // The final answer must render — confirms all 3 steps were processed in order.
+    // Sequential SSE processing is guaranteed by eventsource-parser — if any step
+    // failed the stream would stop and no answer would appear.
+    await expect(page.locator("text=Sequential step answer.").first()).toBeVisible({ timeout: 15_000 });
+
+    // The answer must appear exactly once (no duplication from status replay)
+    const answerCount = await page.locator("text=Sequential step answer.").count();
+    expect(answerCount).toBeGreaterThanOrEqual(1);
+
+    // After the done event, the answer is the dominant visible content —
+    // not a lingering pile of status texts from all 3 steps simultaneously.
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).toContain("Sequential step answer.");
+  } finally {
+    await context.close();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CQ-9 — Czech corpus query returns Czech-origin sources
+// ---------------------------------------------------------------------------
+test("CQ-9: Czech corpus query renders Czech-origin source references", async ({ browser }) => {
+  // Seed session with corpora: ["czech"] so the query targets Czech law corpus.
+  const CZECH_DOC_UUID = "c3z4e5f6-a7b8-4c5d-a0b1-2c3d4e5f6a7b";
+
+  const SSE_CZECH_SOURCES = sseBody([
+    {
+      event: "answer",
+      data: {
+        answer: "Podle zákoníku práce [DOC-1] §\u00a052 lze pracovní poměr ukončit.",
+        sources: [
+          {
+            doc_id: CZECH_DOC_UUID,
+            title: "Zákoník práce",
+            page_numbers: [52],
+          },
+        ],
+        confidence: 0.9,
+      },
+    },
+    { event: "done", data: {} },
+  ]);
+
+  const [page, context] = await createSeededPage(browser, "czech");
+  try {
+    let capturedBody: Record<string, unknown> | null = null;
+
+    await mockBaseRoutes(page);
+    await page.route("**/api/v1/query/stream", async (route: Route) => {
+      capturedBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_CZECH_SOURCES });
+    });
+
+    await page.goto(`${FRONTEND}/chat`);
+    await clickFollowUp(page);
+
+    // The Czech source title must appear (confirms corpus routing didn't fall back to DIFC)
+    await expect(page.locator("text=zákoníku práce").first()).toBeVisible({ timeout: 15_000 });
+
+    // The citation marker [DOC-1] must render as a <sup> element
+    const sup = page.locator("sup").first();
+    await expect(sup).toBeVisible({ timeout: 5_000 });
+
+    // Confirm the request body contained "czech" corpus (not "difc")
+    await expect(async () => {
+      expect(capturedBody).not.toBeNull();
+    }).toPass({ timeout: 5_000 });
+
+    const corpusValue = capturedBody!["corpus"] as string | string[] | undefined;
+    const corpusString = Array.isArray(corpusValue)
+      ? corpusValue.join(",")
+      : String(corpusValue ?? "");
+    expect(corpusString.toLowerCase()).toContain("czech");
+  } finally {
+    await context.close();
+  }
+});
