@@ -60,6 +60,30 @@ def get_current_trace() -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Per-tool-call span ContextVar — propagates active tool span into threads.
+# asyncio.to_thread() copies Python context so span set before the call is
+# visible in the worker thread without extra plumbing.
+# ---------------------------------------------------------------------------
+
+_current_span: "contextvars.ContextVar[Any]" = contextvars.ContextVar("langfuse_span", default=None)
+
+
+def set_current_span(span: Any) -> "contextvars.Token":
+    """Set the active Langfuse tool span for the current context."""
+    return _current_span.set(span)
+
+
+def reset_current_span(token: "contextvars.Token") -> None:
+    """Restore the previous span value."""
+    _current_span.reset(token)
+
+
+def get_current_span() -> Any:
+    """Return the active Langfuse tool span, or None."""
+    return _current_span.get()
+
+
+# ---------------------------------------------------------------------------
 # Cost model — per-million-token prices (USD) for each supported model
 # ---------------------------------------------------------------------------
 
@@ -447,6 +471,80 @@ def add_agent_step_span(
         span.end()
     except Exception:
         logger.debug("Failed to add agent step span", exc_info=True)
+
+
+def start_tool_span(
+    trace,
+    *,
+    name: str,
+    input_data: Any = None,
+    metadata: "dict[str, Any] | None" = None,
+) -> "Any | None":
+    """Open a named tool span on the trace; caller must call end_tool_span()."""
+    if trace is None or not _enabled:
+        return None
+    try:
+        kwargs: "dict[str, Any]" = {"name": name, "as_type": "span"}
+        if input_data is not None:
+            kwargs["input"] = input_data
+        if metadata:
+            kwargs["metadata"] = metadata
+        return trace.start_observation(**kwargs)
+    except Exception:
+        logger.debug("Failed to start tool span %s", name, exc_info=True)
+        return None
+
+
+def end_tool_span(
+    span,
+    *,
+    output_data: Any = None,
+    metadata: "dict[str, Any] | None" = None,
+    level: str = "DEFAULT",
+) -> None:
+    """Finalise a tool span opened by start_tool_span()."""
+    if span is None:
+        return
+    try:
+        update_kwargs: "dict[str, Any]" = {"level": level}
+        if output_data is not None:
+            update_kwargs["output"] = output_data
+        if metadata:
+            update_kwargs["metadata"] = metadata
+        span.update(**update_kwargs)
+        span.end()
+    except Exception:
+        logger.debug("Failed to end tool span", exc_info=True)
+
+
+def add_retrieval_substep_span(
+    *,
+    name: str,
+    input_data: Any = None,
+    output_data: Any = None,
+    metadata: "dict[str, Any] | None" = None,
+) -> None:
+    """Record a retrieval sub-step as a child of the current tool span."""
+    if not _enabled:
+        return
+    parent = get_current_span() or get_current_trace()
+    if parent is None:
+        return
+    try:
+        kwargs: "dict[str, Any]" = {"name": name, "as_type": "span"}
+        if input_data is not None:
+            kwargs["input"] = input_data
+        obs = parent.start_observation(**kwargs)
+        update_kwargs: "dict[str, Any]" = {}
+        if output_data is not None:
+            update_kwargs["output"] = output_data
+        if metadata:
+            update_kwargs["metadata"] = metadata
+        if update_kwargs:
+            obs.update(**update_kwargs)
+        obs.end()
+    except Exception:
+        logger.debug("Failed to add retrieval sub-span %s", name, exc_info=True)
 
 
 def finalize_trace(
