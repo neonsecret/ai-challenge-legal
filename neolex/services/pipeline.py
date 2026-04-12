@@ -54,7 +54,7 @@ async def run_single_question(
         history = await load_history(user_id, conversation_id)
         if history:
             # Enrich query for routing + retrieval: append condensed previous answers
-            # so the regex router and FAISS embedder find document references from
+            # so the regex router and pgvector retriever find document references from
             # prior turns (e.g. "DIFC Law No. 5", "Article 118").
             prev_answers = [t["content"][:300] for t in history if t["role"] == "assistant"][-2:]
             if prev_answers:
