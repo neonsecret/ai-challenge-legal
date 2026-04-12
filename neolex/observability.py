@@ -1,4 +1,4 @@
-"""Langfuse observability for Vitreon Legal. # TEST_MARKER
+"""Langfuse observability for Vitreon Legal.
 
 Provides per-query tracing with nested spans for retrieval, reranking,
 and LLM generation. All traces are sent to a self-hosted Langfuse v3

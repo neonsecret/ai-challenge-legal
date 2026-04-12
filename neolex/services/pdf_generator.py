@@ -202,7 +202,7 @@ def _latex_to_html_body(latex: str) -> str:
     # \emph{...}
     body = re.sub(r"\\emph\{(.*?)\}", r"<em>\1</em>", body)
     # \small (inline — wrap in a span)
-    body = re.sub(r"\\small\s*", '<span style="font-size:9pt;">', body)
+    body = re.sub(r"\\small\b\s*", '<span style="font-size:9pt;">', body)
     # Close dangling <span> from \small — match content up to the next closing brace
     body = re.sub(r'(<span style="font-size:9pt;">)([^}]*)\}', r"\1\2</span>", body)
 
