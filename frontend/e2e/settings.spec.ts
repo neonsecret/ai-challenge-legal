@@ -1,5 +1,5 @@
 /**
- * E2E tests for Settings and Billing pages — NEO-1855
+ * E2E tests for Settings and Billing pages — NEO-1872
  *
  * Covers:
  *   ST-1  Settings page loads and shows authenticated user email
