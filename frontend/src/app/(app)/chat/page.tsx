@@ -861,7 +861,7 @@ export default function ChatPage() {
             {/* ── Unified side panel — source grounding or document index ── */}
             {/* Strict mobile source: MobileSourceSheet portal (above). Desktop source: this panel. */}
             <AnimatePresence>
-                {panelOpen && (panelTab === "index" || drawerData.sources.length > 0) && (
+                {panelOpen && (panelTab === "index" || drawerData.sources.length > 0) && !(isMobile && isStrict && panelTab === "source") && (
                     <motion.div
                         initial={isMobile ? {y: "100%"} : {opacity: 0, width: 0}}
                         animate={isMobile ? {y: 0} : {opacity: 1, width: panelTab === "index" ? 280 : "50%"}}
