@@ -272,7 +272,9 @@ test("CD-2: clicking delete on a document card removes it from the page", async 
 // CD-3 — "Vlastní dokument" appears exactly once in template picker
 // ---------------------------------------------------------------------------
 test("CD-3: Vlastní dokument option appears exactly once in the template picker", async ({ browser }) => {
-  // Templates endpoint returns one "Vlastní dokument" entry — must not be duplicated in UI
+  // TemplatePanel hardcodes a "Custom document" button (slug __custom__) separately from the API.
+  // This test verifies that the custom-document entry appears exactly once (EN locale)
+  // and that no Czech "Vlastní dokument" leaks through from the API mock.
   const [page, context] = await createSeededPage(browser);
   try {
     await mockBaseRoutes(page);
