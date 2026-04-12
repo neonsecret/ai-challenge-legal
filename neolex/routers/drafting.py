@@ -434,7 +434,7 @@ async def get_document_tex(
     """Return the filled LaTeX source (.tex) for the specified draft document.
 
     Supports GET (returns filled .tex) and HEAD (headers only).
-    Returns 503 if the template has no LaTeX source.
+    Returns 422 if the template has no LaTeX source.
     Returns 404 if the document or template is not found.
     """
     conv_uuid = _parse_conversation_id(conversation_id)
@@ -450,7 +450,7 @@ async def get_document_tex(
 
     if not template.latex_template:
         raise HTTPException(
-            status_code=503,
+            status_code=422,
             detail="No LaTeX source available for this template.",
         )
 

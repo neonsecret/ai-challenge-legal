@@ -1049,8 +1049,8 @@ class TestDocumentTex:
             app.dependency_overrides.pop(get_db, None)
 
     @pytest.mark.asyncio
-    async def test_get_tex_503_when_latex_template_is_none(self):
-        """GET .../tex returns 503 when template.latex_template is None."""
+    async def test_get_tex_422_when_latex_template_is_none(self):
+        """GET .../tex returns 422 when template.latex_template is None."""
         user_id_str = str(uuid.uuid4())
         conv_id = uuid.uuid4()
         doc_id = uuid.uuid4()
@@ -1070,7 +1070,7 @@ class TestDocumentTex:
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
-            assert resp.status_code == 503
+            assert resp.status_code == 422
             assert "No LaTeX source" in resp.json()["detail"]
         finally:
             from neolex.auth.middleware import get_api_key
@@ -1080,8 +1080,8 @@ class TestDocumentTex:
             app.dependency_overrides.pop(get_db, None)
 
     @pytest.mark.asyncio
-    async def test_get_tex_503_when_latex_template_is_empty_string(self):
-        """GET .../tex returns 503 when template.latex_template is empty string."""
+    async def test_get_tex_422_when_latex_template_is_empty_string(self):
+        """GET .../tex returns 422 when template.latex_template is empty string."""
         user_id_str = str(uuid.uuid4())
         conv_id = uuid.uuid4()
         doc_id = uuid.uuid4()
@@ -1101,7 +1101,7 @@ class TestDocumentTex:
         try:
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
                 resp = await client.get(f"/api/v1/conversations/{conv_id}/documents/{doc_id}/tex")
-            assert resp.status_code == 503
+            assert resp.status_code == 422
         finally:
             from neolex.auth.middleware import get_api_key
             from neolex.db.postgres import get_db
