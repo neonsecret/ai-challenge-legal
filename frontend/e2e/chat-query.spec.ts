@@ -81,7 +81,7 @@ const SSE_PLAIN = sseBody([
 // Shared helpers (mirrors document-drafting.spec.ts exactly)
 // ---------------------------------------------------------------------------
 
-function buildStorageState(corpus = "difc") {
+function buildStorageState(corpus = "difc", jurisdictionKey = "difc") {
   const session = {
     id: SEED_SESSION_ID,
     title: "E2E Setup",
@@ -108,6 +108,9 @@ function buildStorageState(corpus = "difc") {
           { name: "neolex_uid", value: SEED_UID },
           { name: `neolex_chat_sessions_${SEED_UID}`, value: JSON.stringify([session]) },
           { name: `neolex_current_session_${SEED_UID}`, value: SEED_SESSION_ID },
+          // Corpus for new queries is determined by neolex_jurisdiction, not the session's
+          // corpora array. jurisdictionToCorpus("cz") → "czech", ("difc") → "difc", etc.
+          { name: "neolex_jurisdiction", value: jurisdictionKey },
         ],
       },
     ],
@@ -115,7 +118,10 @@ function buildStorageState(corpus = "difc") {
 }
 
 async function createSeededPage(browser: Browser, corpus = "difc"): Promise<[Page, BrowserContext]> {
-  const context = await browser.newContext({ storageState: buildStorageState(corpus) });
+  // corpus param also controls neolex_jurisdiction so sendQuery picks up the right corpus.
+  // Jurisdiction key maps: "difc" → "difc", "czech" → "cz" (see jurisdictionToCorpus).
+  const jurisdictionKey = corpus === "czech" ? "cz" : corpus;
+  const context = await browser.newContext({ storageState: buildStorageState(corpus, jurisdictionKey) });
   const page = await context.newPage();
   return [page, context];
 }
@@ -152,26 +158,39 @@ async function clickFollowUp(page: Page) {
 // CQ-1 — Streaming status events appear in order
 // ---------------------------------------------------------------------------
 test("CQ-1: streaming status messages appear sequentially during the query", async ({ browser }) => {
+  // Hold the SSE response so we can assert the streaming indicator is visible
+  // before any events arrive — proves the app transitions to streaming state
+  // as soon as the request is submitted, before step 1 text is received.
   const [page, context] = await createSeededPage(browser);
   try {
+    let fulfillSSE: (() => void) | null = null;
+
     await mockBaseRoutes(page);
-    await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_STATUS })
-    );
+    await page.route("**/api/v1/query/stream", async (route: Route) => {
+      await new Promise<void>((resolve) => { fulfillSSE = resolve; });
+      await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_STATUS });
+    });
 
     await page.goto(`${FRONTEND}/chat`);
     await clickFollowUp(page);
 
-    // The final answer must render — confirms the whole SSE sequence was processed
+    // While the request is pending (no SSE events yet), StreamingStatus renders
+    // "Connecting." text — set synchronously by sendQuery before the fetch.
+    // Use .or() to mix CSS and Playwright text selectors without CSS parse errors.
+    const streamingIndicator = page
+      .locator('[aria-label="Processing pipeline"]')
+      .or(page.getByText(/Connecting/i));
+    await expect(streamingIndicator).toBeVisible({ timeout: 8_000 });
+
+    // Release SSE — all status + answer + done events delivered now
+    fulfillSSE!();
+
+    // The final answer must render — confirms all status steps were processed in order
     await expect(page.locator("text=The answer is here.").first()).toBeVisible({ timeout: 15_000 });
 
-    // At least one status-like element must have appeared while streaming —
-    // we confirm the pipeline status area was rendered by verifying the
-    // aria-label="Processing pipeline" container is (or was) part of the DOM.
-    // After stream completes the status bar may hide, so we check the answer
-    // rendered correctly (implies status pipeline ran).
-    const answerText = page.locator("text=The answer is here.").first();
-    await expect(answerText).toBeVisible({ timeout: 5_000 });
+    // Verify the body contains content from the processed SSE sequence
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText).toContain("The answer is here.");
   } finally {
     await context.close();
   }
@@ -320,9 +339,10 @@ test("CQ-6: corpus from session is sent in the POST /query/stream body", async (
       expect(capturedBody).not.toBeNull();
     }).toPass({ timeout: 10_000 });
 
-    // The corpus field must be present and a non-empty string
-    expect(typeof capturedBody!["corpus"]).toBe("string");
-    expect((capturedBody!["corpus"] as string).length).toBeGreaterThan(0);
+    // The corpus field must be exactly "czech".
+    // Session is seeded with neolex_jurisdiction="cz"; jurisdictionToCorpus("cz") → "czech".
+    // Any other value (e.g. "difc" from the default) indicates a routing bug.
+    expect(capturedBody!["corpus"]).toBe("czech");
   } finally {
     await context.close();
   }

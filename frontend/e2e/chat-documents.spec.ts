@@ -284,11 +284,18 @@ test("CD-3: Vlastní dokument option appears exactly once in the template picker
     const panel = page.locator('[role="dialog"]');
     await expect(panel).toBeVisible({ timeout: 5_000 });
 
-    // "Custom document" (t("template.custom_document") = "Custom document") must appear exactly once
-    // The custom template button is hardcoded in TemplatePanel with slug "__custom__",
-    // separate from the API-returned templates list to prevent duplication.
+    // TemplatePanel renders the custom entry as a hardcoded button (slug "__custom__")
+    // with i18n text t("template.custom_document") = "Custom document" (EN).
+    // The API's "Vlastní dokument" entry (slug "vlastni_dokument") is excluded from
+    // the rendered list. Assert both sides to catch the actual duplication bug:
+    //   1. The hardcoded EN button appears exactly once.
+    //   2. The API's Czech "Vlastní dokument" does NOT leak into the panel
+    //      (which would mean the exclusion guard is broken and it shows twice).
     const customCount = await panel.locator('button:has-text("Custom document")').count();
     expect(customCount).toBe(1);
+
+    const vlastniLeakedCount = await panel.locator('button:has-text("Vlastní dokument")').count();
+    expect(vlastniLeakedCount).toBe(0);
   } finally {
     await context.close();
   }
@@ -317,31 +324,28 @@ test("CD-4: drafting indicator is visible during streaming and absent after stre
     await expect(followUpBtn).toBeVisible({ timeout: 10_000 });
     await followUpBtn.click();
 
-    // While the route is held, look for any streaming indicator.
-    // This could be a spinner, "Processing" text, aria-label="Processing pipeline",
-    // or a status message.
-    const streamingIndicator = page.locator(
-      '[aria-label="Processing pipeline"], [role="status"], text=Connecting'
-    ).first();
+    // While the route is held (SSE response not yet delivered), the app must show
+    // a streaming indicator — proving the "isStreaming" UI state is active before
+    // any answer content arrives. This is the meaningful pre-answer assertion.
+    // StreamingStatus renders "Connecting." text synchronously when sendQuery fires.
+    const streamingIndicator = page
+      .locator('[aria-label="Processing pipeline"]')
+      .or(page.getByText(/Connecting/i));
+    await expect(streamingIndicator).toBeVisible({ timeout: 8_000 });
 
-    // Allow some time for the streaming state to propagate to the DOM
-    const indicatorVisible = await streamingIndicator.isVisible().catch(() => false);
-
-    // Release the SSE response
+    // Release SSE now that we have confirmed the indicator was visible
     fulfillSSE!();
 
-    // After streaming completes, the answer must appear
+    // After streaming completes, the answer must appear — this proves streaming ended.
     await expect(page.locator("text=Dokument byl vygenerován.").first()).toBeVisible({ timeout: 15_000 });
 
-    // The pipeline status bar must no longer be the primary visible element
-    // (answer is now present, which is the key post-streaming assertion)
-    const answerVisible = await page.locator("text=Dokument byl vygenerován.").first().isVisible();
-    expect(answerVisible).toBe(true);
-
-    // indicatorVisible is a soft assertion — the test still passes if the indicator
-    // was briefly visible (confirms streaming state was active at some point)
-    // We log for diagnostics but do not fail if it wasn't caught in time
-    expect(typeof indicatorVisible).toBe("boolean");
+    // PipelineStatusBar keeps the "Connecting..." trace label visible as a static step
+    // in the completed trace (parseStep("Connecting...") returns the raw string since
+    // it doesn't match any pipeline keyword). Asserting "Connecting" text is gone would
+    // always fail. Instead we confirm the answer is present (streaming is done) AND that
+    // the live streaming state is gone by checking isStreaming-gated elements.
+    // The abort/"Stop generating" button only renders when isStreaming=true — it must be gone.
+    await expect(page.locator('[aria-label="Stop generating"]')).not.toBeVisible({ timeout: 5_000 });
   } finally {
     await context.close();
   }
