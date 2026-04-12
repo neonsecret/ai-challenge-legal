@@ -2514,6 +2514,19 @@ def _retrieve_pages_simple(
                 }
             )
 
+        try:
+            from neolex.observability import add_retrieval_substep_span
+            from neolex.observability import is_enabled as _lf_enabled
+
+            if _lf_enabled():
+                add_retrieval_substep_span(
+                    name="vector-retrieval",
+                    input_data={"corpus": corpus, "top_k": top_k, "mode": "vector-only"},
+                    output_data={"num_results": len(vector_results["ids"][0])},
+                )
+        except Exception:
+            pass  # observability is always non-fatal
+
     # Filter by law prefixes if specified (Czech corpus law selector).
     # Court decisions (source_type == "court_decision") bypass the statute prefix filter —
     # they are indexed by ECLI, not by law doc_id prefix, and are always included.
@@ -2545,6 +2558,19 @@ def _retrieve_pages_simple(
     if on_status:
         on_status(f"retrieving:reranking {len(rerank_pool)} passages")
     ranked = rerank_chunks(question, rerank_pool, top_k=20, answer_type=answer_type, on_status=on_status)
+
+    try:
+        from neolex.observability import add_retrieval_substep_span
+        from neolex.observability import is_enabled as _lf_enabled
+
+        if _lf_enabled():
+            add_retrieval_substep_span(
+                name="reranking",
+                input_data={"num_candidates": len(rerank_pool), "answer_type": answer_type},
+                output_data={"num_results": len(ranked)},
+            )
+    except Exception:
+        pass  # observability is always non-fatal
 
     # Aggregate chunks to pages, pick best per (doc_id, page).
     # Value tuple: (score, text, chunk_id, court_meta_dict)
