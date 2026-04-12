@@ -471,12 +471,12 @@ async def query_stream(
                             template_field_descriptions = tmpl["field_descriptions"]
 
                         try:
-                            from neolex.services.conversation import _to_conv_uuid as _conv_uuid
+                            from neolex.services.conversation import _to_conv_uuid
 
                             chat_documents = await list_conversation_documents(
                                 db,
                                 user_id=_uuid.UUID(user_id),
-                                conversation_id=_conv_uuid(conversation_id),
+                                conversation_id=_to_conv_uuid(conversation_id),
                             )
                         except (ValueError, Exception):
                             chat_documents = []

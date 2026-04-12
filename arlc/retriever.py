@@ -2391,11 +2391,59 @@ def _retrieve_pages_simple(
     if use_bm25_fusion:
         # Czech: run vector + BM25 (statute chunks) + court decisions concurrently,
         # fuse with RRF for better recall on exact legal terms and court holdings.
+        # Each closure creates its own Langfuse child span so timing reflects the
+        # actual search duration, not a post-hoc 0ms recording.
+        try:
+            from neolex.observability import get_current_span
+            from neolex.observability import is_enabled as _lf_enabled
+
+            _lf_parent = get_current_span() if _lf_enabled() else None
+        except Exception:
+            _lf_parent = None
+
         def _vec():
-            return search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
+            try:
+                _s = (
+                    _lf_parent.start_observation(
+                        name="vector-retrieval",
+                        as_type="span",
+                        input={"corpus": corpus, "top_k": top_k},
+                    )
+                    if _lf_parent
+                    else None
+                )
+            except Exception:
+                _s = None
+            result = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
+            if _s:
+                try:
+                    _s.update(output={"num_results": len(result["ids"][0]) if result.get("ids") else 0})
+                    _s.end()
+                except Exception:
+                    pass
+            return result
 
         def _bm25():
-            return search_chunks_text(question, top_k=top_k, corpus=corpus)
+            try:
+                _s = (
+                    _lf_parent.start_observation(
+                        name="bm25-retrieval",
+                        as_type="span",
+                        input={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
+                    )
+                    if _lf_parent
+                    else None
+                )
+            except Exception:
+                _s = None
+            result = search_chunks_text(question, top_k=top_k, corpus=corpus)
+            if _s:
+                try:
+                    _s.update(output={"num_results": len(result)})
+                    _s.end()
+                except Exception:
+                    pass
+            return result
 
         def _court():
             # Only search court decisions for corpora that have them
@@ -2410,25 +2458,6 @@ def _retrieve_pages_simple(
             vector_results = vec_fut.result()
             bm25_chunk_ids = bm25_fut.result()
             court_chunks = court_fut.result()
-
-        # Record BM25 + vector sub-spans for Langfuse nested tracing.
-        try:
-            from neolex.observability import add_retrieval_substep_span
-            from neolex.observability import is_enabled as _lf_enabled
-
-            if _lf_enabled():
-                add_retrieval_substep_span(
-                    name="bm25-retrieval",
-                    input_data={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
-                    output_data={"num_results": len(bm25_chunk_ids)},
-                )
-                add_retrieval_substep_span(
-                    name="vector-retrieval",
-                    input_data={"corpus": corpus, "top_k": top_k},
-                    output_data={"num_results": len(vector_results["ids"][0])},
-                )
-        except Exception:
-            pass  # observability is always non-fatal
 
         # Build chunk lookup from statute vector results (already has text + metadata)
         chunk_by_id: dict[str, dict] = {}
@@ -2480,7 +2509,28 @@ def _retrieve_pages_simple(
         fused_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
         chunks = [chunk_by_id[cid] for cid in fused_ids if cid in chunk_by_id]
     else:
+        try:
+            from neolex.observability import get_current_span
+            from neolex.observability import is_enabled as _lf_enabled
+
+            _lf_parent_vec = get_current_span() if _lf_enabled() else None
+        except Exception:
+            _lf_parent_vec = None
+
+        _vec_span = (
+            _lf_parent_vec.start_observation(
+                name="vector-retrieval",
+                as_type="span",
+                input={"corpus": corpus, "top_k": top_k, "mode": "vector-only"},
+            )
+            if _lf_parent_vec
+            else None
+        )
         vector_results = search_chunks_vector(query_emb, top_k=top_k, corpus=corpus, doc_ids=doc_ids)
+        if _vec_span:
+            _vec_span.update(output={"num_results": len(vector_results["ids"][0]) if vector_results.get("ids") else 0})
+            _vec_span.end()
+
         chunks = []
         for i in range(len(vector_results["ids"][0])):
             chunks.append(
@@ -2491,19 +2541,6 @@ def _retrieve_pages_simple(
                     "distance": vector_results["distances"][0][i],
                 }
             )
-
-        try:
-            from neolex.observability import add_retrieval_substep_span
-            from neolex.observability import is_enabled as _lf_enabled
-
-            if _lf_enabled():
-                add_retrieval_substep_span(
-                    name="vector-retrieval",
-                    input_data={"corpus": corpus, "top_k": top_k, "mode": "vector-only"},
-                    output_data={"num_results": len(vector_results["ids"][0])},
-                )
-        except Exception:
-            pass  # observability is always non-fatal
 
     # Filter by law prefixes if specified (Czech corpus law selector).
     # Court decisions (source_type == "court_decision") bypass the statute prefix filter —
@@ -2532,23 +2569,36 @@ def _retrieve_pages_simple(
     _statute_slots = min(40 - _court_slots, len(_statute_chunks))
     rerank_pool = _statute_chunks[:_statute_slots] + _court_chunks[:_court_slots]
 
-    # Cross-encoder reranking
+    # Cross-encoder reranking — span wraps actual call for correct timing
     if on_status:
         on_status(f"retrieving:reranking {len(rerank_pool)} passages")
-    ranked = rerank_chunks(question, rerank_pool, top_k=20, answer_type=answer_type, on_status=on_status)
-
     try:
-        from neolex.observability import add_retrieval_substep_span
+        from neolex.observability import get_current_span
         from neolex.observability import is_enabled as _lf_enabled
 
-        if _lf_enabled():
-            add_retrieval_substep_span(
-                name="reranking",
-                input_data={"num_candidates": len(rerank_pool), "answer_type": answer_type},
-                output_data={"num_results": len(ranked)},
-            )
+        _lf_rerank_parent = get_current_span() if _lf_enabled() else None
     except Exception:
-        pass  # observability is always non-fatal
+        _lf_rerank_parent = None
+
+    try:
+        _rerank_span = (
+            _lf_rerank_parent.start_observation(
+                name="reranking",
+                as_type="span",
+                input={"num_candidates": len(rerank_pool), "answer_type": answer_type},
+            )
+            if _lf_rerank_parent
+            else None
+        )
+    except Exception:
+        _rerank_span = None
+    ranked = rerank_chunks(question, rerank_pool, top_k=20, answer_type=answer_type, on_status=on_status)
+    if _rerank_span:
+        try:
+            _rerank_span.update(output={"num_results": len(ranked)})
+            _rerank_span.end()
+        except Exception:
+            pass
 
     # Aggregate chunks to pages, pick best per (doc_id, page).
     # Value tuple: (score, text, chunk_id, court_meta_dict)

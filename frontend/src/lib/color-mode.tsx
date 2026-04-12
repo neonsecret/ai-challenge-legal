@@ -57,8 +57,8 @@ function readStoredMode(): ColorMode {
     } catch {
         // localStorage unavailable
     }
-    // Default to light — dark only via explicit toggle
-    return "light";
+    // Default to dark for new users with no stored preference
+    return "dark";
 }
 
 function applyMode(resolved: "light" | "dark") {

@@ -252,5 +252,17 @@
   "strict.feature_priority_support": "Prioritní podpora",
   "strict.feature_everything_starter": "Vše ze Starter",
   "strict.feature_team_workspace": "Týmový prostor",
-  "strict.feature_everything_pro": "Vše z Pro"
+  "strict.feature_everything_pro": "Vše z Pro",
+
+  "template.button_label": "Šablona",
+  "template.open_picker": "Otevřít výběr šablon",
+  "template.disabled_tooltip": "Dosáhli jste maximálního počtu 3 dokumentů v chatu",
+  "template.enabled_tooltip": "Vytvořit právní dokument ze šablony",
+  "template.panel_title": "Šablony dokumentů",
+  "template.close_panel": "Zavřít panel šablon",
+  "template.custom_document": "Vlastní dokument",
+  "template.custom_subtitle": "Začít od začátku",
+  "template.error_load": "Nepodařilo se načíst šablony",
+  "template.no_match": "Žádné šablony neodpovídají těmto filtrům",
+  "template.drafting": "Vytváření dokumentu..."
 }

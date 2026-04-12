@@ -266,5 +266,17 @@
   "strict.feature_priority_support": "Priority support",
   "strict.feature_everything_starter": "Everything in Starter",
   "strict.feature_team_workspace": "Team workspace",
-  "strict.feature_everything_pro": "Everything in Pro"
+  "strict.feature_everything_pro": "Everything in Pro",
+
+  "template.button_label": "Template",
+  "template.open_picker": "Open template picker",
+  "template.disabled_tooltip": "Maximum 3 documents per chat reached",
+  "template.enabled_tooltip": "Generate a legal document from a template",
+  "template.panel_title": "Document Templates",
+  "template.close_panel": "Close template panel",
+  "template.custom_document": "Custom document",
+  "template.custom_subtitle": "Start from scratch",
+  "template.error_load": "Failed to load templates",
+  "template.no_match": "No templates match these filters",
+  "template.drafting": "Drafting document..."
 }

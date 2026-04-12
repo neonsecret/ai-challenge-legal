@@ -2,6 +2,7 @@
 
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {FileText} from "lucide-react"
+import {useI18n} from "@/lib/i18n"
 
 interface TemplatePickerProps {
     onOpen: () => void
@@ -10,12 +11,13 @@ interface TemplatePickerProps {
 }
 
 export function TemplatePicker({onOpen, disabled}: TemplatePickerProps) {
+    const { t } = useI18n()
     return (
         <button
             onClick={onOpen}
             disabled={disabled}
-            title={disabled ? "Maximum 3 documents per chat reached" : "Generate a legal document from a template"}
-            aria-label="Open template picker"
+            title={disabled ? t("template.disabled_tooltip") : t("template.enabled_tooltip")}
+            aria-label={t("template.open_picker")}
             style={{
                 display: "inline-flex",
                 alignItems: "center",
@@ -43,7 +45,7 @@ export function TemplatePicker({onOpen, disabled}: TemplatePickerProps) {
             }}
         >
             <FileText size={12} strokeWidth={1.8} />
-            <span>Template</span>
+            <span>{t("template.button_label")}</span>
         </button>
     )
 }

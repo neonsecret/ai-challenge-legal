@@ -8,6 +8,7 @@ import {useTemplates} from "@/hooks/use-templates"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {TemplateCard} from "./TemplateCard"
 import type {Template} from "@/types/documents"
+import {useI18n} from "@/lib/i18n"
 
 const JURISDICTIONS = ["CZ", "DIFC", "UK", "AU", "General"] as const
 type JurisdictionFilter = typeof JURISDICTIONS[number]
@@ -21,6 +22,7 @@ interface TemplatePanelProps {
 const CUSTOM_SLUG = "__custom__"
 
 export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
+    const { t } = useI18n()
     const isMobile = useIsMobile()
     const {templates, isLoading, hasAttempted, error, load} = useTemplates()
     const panelRef = useRef<HTMLDivElement>(null)
@@ -151,11 +153,11 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                 color: "var(--doc-text-label)",
                                 fontFamily: FONT.sans,
                             }}>
-                                Document Templates
+                                {t("template.panel_title")}
                             </span>
                             <button
                                 onClick={onClose}
-                                aria-label="Close template panel"
+                                aria-label={t("template.close_panel")}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -210,7 +212,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                         <div style={{flex: 1, overflowY: "auto", padding: SPACE[4], display: "flex", flexDirection: "column", gap: SPACE[2]}}>
                             {/* Custom document option */}
                             <button
-                                onClick={() => handleSelect({slug: CUSTOM_SLUG, name: "Custom document"})}
+                                onClick={() => handleSelect({slug: CUSTOM_SLUG, name: t("template.custom_document")})}
                                 style={{
                                     display: "flex",
                                     alignItems: "center",
@@ -250,14 +252,14 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                         fontSize: TYPE_SCALE.sm,
                                         color: "var(--doc-text-label)",
                                     }}>
-                                        Custom document
+                                        {t("template.custom_document")}
                                     </span>
                                     <span style={{
                                         fontFamily: FONT.sans,
                                         fontSize: TYPE_SCALE.xs,
                                         color: "var(--doc-text-secondary)",
                                     }}>
-                                        Start from scratch
+                                        {t("template.custom_subtitle")}
                                     </span>
                                 </div>
                             </button>
@@ -267,11 +269,11 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                 <SkeletonList />
                             ) : error ? (
                                 <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: "var(--doc-text-secondary)", textAlign: "center", padding: SPACE[8]}}>
-                                    Failed to load templates
+                                    {t("template.error_load")}
                                 </p>
                             ) : filtered.length === 0 ? (
                                 <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: "var(--doc-text-secondary)", textAlign: "center", padding: SPACE[8]}}>
-                                    No templates match these filters
+                                    {t("template.no_match")}
                                 </p>
                             ) : (
                                 filtered.map((t: Template) => (
