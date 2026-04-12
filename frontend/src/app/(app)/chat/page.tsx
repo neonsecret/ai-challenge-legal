@@ -124,7 +124,7 @@ export default function ChatPage() {
     const [historyOpen, setHistoryOpen] = useState(false)
     const [indexFocusDocId, setIndexFocusDocId] = useState<string | null>(null)
     const [lawPaneOpen, setLawPaneOpen] = useState(false)
-    const [pendingTemplate, setPendingTemplate] = useState<{slug: string; name: string} | null>(null)
+    const [pendingTemplate, setPendingTemplate] = useState<{slug: string; name: string; jurisdiction?: string} | null>(null)
     const [documentViewerOpen, setDocumentViewerOpen] = useState(false)
     const [viewingDocId, setViewingDocId] = useState<string | null>(null)
     const [viewingDocName, setViewingDocName] = useState<string | undefined>(undefined)
@@ -233,10 +233,17 @@ export default function ChatPage() {
         stream.documents.forEach(doc => docState.addDocument({...doc, turn_index: queryTurnIndexRef.current}))
     }, [stream.documents]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    const handleTemplateSelect = useCallback((template: {slug: string; name: string}) => {
+    const handleTemplateSelect = useCallback((template: {slug: string; name: string; jurisdiction?: string}) => {
         setPendingTemplate(template)
+        // Auto-switch jurisdiction when a template carries a jurisdiction code (Bug 12).
+        // Maps backend uppercase codes (CZ, DIFC, UK, AU) to the app's lowercase keys.
+        if (template.jurisdiction) {
+            const J_MAP: Record<string, Jurisdiction> = {CZ: "cz", DIFC: "difc", UK: "uk", AU: "au"}
+            const mapped = J_MAP[template.jurisdiction.toUpperCase()]
+            if (mapped) setJurisdiction(mapped)
+        }
         inputFocusRef.current?.()
-    }, [])
+    }, [setJurisdiction])
 
     const onSend = useCallback((question: string) => {
         setPreviewIndex(null)

@@ -51,6 +51,11 @@ export function formatStatus(raw: string): string | null {
         return detail.charAt(0).toUpperCase() + detail.slice(1) + "..."
     }
 
+    // ── Drafting ──
+    // Backend emits 'drafting:saving document' when the agent calls document_draft.
+    if (raw === "drafting:saving document") return "Drafting document..."
+    if (raw.startsWith("drafting:")) return "Drafting..."
+
     // ── Top-level stages ──
     const LABELS: Record<string, string> = {
         processing: "Processing...",
@@ -270,7 +275,10 @@ export function useQueryStream(): UseQueryStreamReturn {
                 followUps: null,
                 error: null,
                 documents: [],
-                isDraftingMode: !!templateSlug,
+                // isDraftingMode starts false — it is activated only when the backend
+                // emits a 'drafting:' status event (Bug 13: was always true when a
+                // template slug was present, causing the indicator to flash on non-drafting queries).
+                isDraftingMode: false,
             })
 
             const ctrl = new AbortController()
@@ -325,7 +333,10 @@ export function useQueryStream(): UseQueryStreamReturn {
                             answer: cleanAnswer ?? prev.answer,
                             sources: parsed.sources ?? [],
                             confidence: parsed.confidence ?? null,
-                            traceId: parsed.trace_id ?? null,
+                            // SSE trace_id is authoritative; fall back to header-based traceId
+                            // captured earlier so feedback buttons appear even when Langfuse
+                            // tracing is disabled and the event body omits trace_id.
+                            traceId: parsed.trace_id ?? prev.traceId,
                             streamingStatus: null,
                             streamingProgress: null,
                         }))
@@ -364,6 +375,9 @@ export function useQueryStream(): UseQueryStreamReturn {
                                         ...prev,
                                         streamingStatus: friendly,
                                         streamingProgress: progress,
+                                        // Activate drafting indicator when backend signals a drafting stage.
+                                        // isDraftingMode stays true until document_generated, done, or error.
+                                        ...(raw.startsWith("drafting:") ? {isDraftingMode: true} : {}),
                                     }))
                                 }
                             } else if (progress) {
@@ -524,6 +538,15 @@ export function useQueryStream(): UseQueryStreamReturn {
                             error: detail,
                         }))
                         return
+                    }
+
+                    // Read X-Trace-ID from HTTP response headers early — Langfuse
+                    // sets this before the SSE answer event arrives. Use it as
+                    // initial traceId so feedback buttons can appear even if
+                    // the SSE answer event omits trace_id (e.g. tracing disabled).
+                    const headerTraceId = response.headers.get("X-Trace-ID")
+                    if (headerTraceId) {
+                        setState(prev => ({...prev, traceId: headerTraceId}))
                     }
 
                     if (!response.body) {

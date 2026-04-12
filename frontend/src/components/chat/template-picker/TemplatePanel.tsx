@@ -15,7 +15,7 @@ type JurisdictionFilter = typeof JURISDICTIONS[number]
 interface TemplatePanelProps {
     open: boolean
     onClose: () => void
-    onSelect: (template: {slug: string; name: string}) => void
+    onSelect: (template: {slug: string; name: string; jurisdiction?: string}) => void
 }
 
 const CUSTOM_SLUG = "__custom__"
@@ -72,7 +72,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
         return () => document.removeEventListener("keydown", handleKey)
     }, [open, onClose])
 
-    const handleSelect = useCallback((template: {slug: string; name: string}) => {
+    const handleSelect = useCallback((template: {slug: string; name: string; jurisdiction?: string}) => {
         onSelect(template)
         onClose()
     }, [onSelect, onClose])

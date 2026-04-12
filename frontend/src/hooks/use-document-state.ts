@@ -53,7 +53,11 @@ export function useDocumentState(chatId: string | null | undefined): UseDocument
                 }))
             ))
             .catch((err) => {
-                if ((err as Error).name !== "AbortError") setDocuments([])
+                // On AbortError (navigation away / chatId change) the in-flight request
+                // is cancelled intentionally — clear documents so the new chatId starts fresh.
+                // On any other fetch error (network hiccup, 404, 401) preserve existing
+                // state instead of silently discarding already-loaded documents (Bug 16).
+                if ((err as Error).name === "AbortError") setDocuments([])
             })
             .finally(() => setIsLoading(false))
 

@@ -319,6 +319,9 @@ def _latex_to_html(latex_template: str, fields: dict[str, str], jurisdiction: st
     3. Strip the \\end{document} trailer
     4. Convert LaTeX markup to HTML equivalents
     5. Wrap in a full HTML document with CSS
+
+    ``jurisdiction`` selects the disclaimer footer language: "CZ" → Czech text,
+    all other values (DIFC, UK, AU, general, …) → English.
     """
     # 1. Inject field values (HTML-escaped)
     filled = _inject_fields_html(latex_template, fields)
@@ -401,6 +404,10 @@ async def generate_pdf(
     Returns cached PDF bytes if (doc_id, version) is already cached.
     Raises RuntimeError if neither renderer is available.
     Raises RuntimeError if compilation/rendering fails.
+
+    ``jurisdiction`` controls the disclaimer footer language in the weasyprint
+    path (xelatex uses the LaTeX template's own \\fancyfoot directly).
+    Pass the template's jurisdiction string, e.g. "CZ", "DIFC", "UK", "AU".
 
     Security notes (xelatex path):
       - escape_latex() is applied to ALL field values before template injection.

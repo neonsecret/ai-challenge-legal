@@ -5,13 +5,13 @@ import type {Template} from "@/types/documents"
 
 interface TemplateCardProps {
     template: Template
-    onSelect: (template: {slug: string; name: string}) => void
+    onSelect: (template: {slug: string; name: string; jurisdiction?: string}) => void
 }
 
 export function TemplateCard({template, onSelect}: TemplateCardProps) {
     return (
         <button
-            onClick={() => onSelect({slug: template.slug, name: template.name})}
+            onClick={() => onSelect({slug: template.slug, name: template.name, jurisdiction: template.jurisdiction || undefined})}
             style={{
                 display: "flex",
                 flexDirection: "column",
