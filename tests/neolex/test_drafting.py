@@ -141,6 +141,24 @@ class TestInjectFields:
         assert r"\textbackslash{}" in result
 
 
+class TestLatexToHtml:
+    def test_curly_brace_field_value_renders_verbatim(self):
+        """Field values containing curly braces must appear verbatim in HTML output.
+
+        Regression guard for the curly-brace escape bug (9bc2b09): if the
+        single-pass _HTML_TEMPLATE.format() call were to re-parse substituted
+        values, {2023} would raise an IndexError or be silently dropped.
+        """
+        from neolex.services.pdf_generator import _latex_to_html
+
+        # Minimal LaTeX template with a {{case}} placeholder
+        template = r"\documentclass{article}\begin{document}{{case}}\end{document}"
+        # Field value contains raw curly braces (e.g. a legal citation)
+        result = _latex_to_html(template, {"case": "Smith {2023}"})
+        # The curly braces must survive all format/escape passes unchanged
+        assert "{2023}" in result
+
+
 # ---------------------------------------------------------------------------
 # API tests using FastAPI TestClient with mocked DB and auth
 # ---------------------------------------------------------------------------
