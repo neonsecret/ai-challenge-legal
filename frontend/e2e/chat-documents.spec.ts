@@ -245,19 +245,12 @@ test("CD-2: clicking delete on a document card removes it from the page", async 
     // Wait for document card
     await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 15_000 });
 
-    // Find and click delete/remove button on the document card.
-    // The button may carry aria-label="Delete document", "Remove", or be a trash icon.
+    // Hard assertion: the delete button must be visible on the document card.
+    // If it's absent, the test fails explicitly — exposing the missing feature rather
+    // than silently skipping and hiding the regression.
     const deleteBtn = page.locator(
       'button[aria-label*="Delete"], button[aria-label*="delete"], button[aria-label*="Remove"], button[title*="Delete"], button[title*="delete"]'
     ).first();
-
-    // If no delete button is present the feature isn't exposed yet — skip cleanly
-    // rather than silently passing with an assertion that contradicts the test intent.
-    const hasDel = await deleteBtn.count() > 0;
-    if (!hasDel) {
-      test.skip(true, "Delete button not present in current UI — feature not yet exposed");
-    }
-
     await expect(deleteBtn).toBeVisible({ timeout: 5_000 });
     await deleteBtn.click();
 
