@@ -54,7 +54,7 @@ def test_pipeline_dict_to_response_happy_path():
     result = pipeline_dict_to_response(_make_result())
     assert result.confidence == "high"
     assert result.latency_ms == 3200
-    assert result.model_name == "claude-sonnet-4-6"
+    assert result.model_name == "vitreon-legal"  # public name masked
     assert len(result.sources) == 1
 
 
