@@ -1,6 +1,7 @@
 "use client"
 
 import {useMemo, useCallback} from "react"
+import {useI18n} from "@/lib/i18n"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {visit} from "unist-util-visit"
@@ -224,6 +225,7 @@ export function ChatMessage({
     isDraftingMode = false,
 }: ChatMessageProps) {
     const dark = isStrict ?? isDark
+    const { t } = useI18n()
 
     const citedSources = useMemo(
         () => (content && sources.length > 0 && !isStreaming)
@@ -467,7 +469,7 @@ export function ChatMessage({
                         fontWeight: 500,
                         letterSpacing: "0.02em",
                     }}>
-                        Drafting document...
+                        {t("template.drafting")}
                     </span>
                 </div>
             )}
