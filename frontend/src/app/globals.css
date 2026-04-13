@@ -1970,6 +1970,26 @@ button:active:not(:disabled):not(.no-press-scale) {
     50%       { opacity: 0.9; }
 }
 
+/* Pipeline ellipsis dots — staggered fade for active stage "..." indicator */
+@keyframes pipeline-dot-1 {
+    0%, 66%, 100% { opacity: 0.2; }
+    22%           { opacity: 0.8; }
+}
+@keyframes pipeline-dot-2 {
+    0%, 22%, 88%, 100% { opacity: 0.2; }
+    44%                { opacity: 0.8; }
+}
+@keyframes pipeline-dot-3 {
+    0%, 44%, 100% { opacity: 0.2; }
+    66%           { opacity: 0.8; }
+}
+
+/* Pipeline connector fill — left-to-right wipe when stage completes */
+@keyframes pipeline-connector-fill {
+    from { opacity: 0.08; transform: scaleX(0.4); }
+    to   { opacity: 0.35; transform: scaleX(1); }
+}
+
 /* Highlight fade-in animation for PDF */
 @keyframes highlight-fade {
     from {

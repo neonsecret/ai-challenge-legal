@@ -35,7 +35,7 @@ function parseStep(raw: string): string {
     return raw.length > 32 ? raw.slice(0, 32) + "…" : raw
 }
 
-// Dot — 4px gold, pulses when active
+// Dot — 4px gold, pulses when active; muted check-size dot when done
 function Dot({ active }: { active: boolean }) {
     return (
         <span
@@ -48,8 +48,68 @@ function Dot({ active }: { active: boolean }) {
                 background: active ? "var(--strict-gold-base)" : "var(--strict-text-dim)",
                 flexShrink: 0,
                 animation: active ? "pipeline-dot-pulse 1.5s ease-in-out infinite" : "none",
+                opacity: active ? 1 : 0.45,
+                transition: "opacity 0.3s ease, background 0.3s ease",
             }}
         />
+    )
+}
+
+// AnimatedEllipsis — three staggered dots that cycle while a stage is active.
+// Each dot fades in turn so it reads as a subtle "..." motion, not a bounce.
+function AnimatedEllipsis() {
+    return (
+        <span aria-hidden style={{ display: "inline-flex", alignItems: "center", gap: 1, marginLeft: 1 }}>
+            <span style={{
+                display: "inline-block",
+                width: 2,
+                height: 2,
+                borderRadius: "50%",
+                background: "var(--strict-gold-base)",
+                animation: "pipeline-dot-1 1.2s ease-in-out infinite",
+                animationDelay: "0ms",
+            }} />
+            <span style={{
+                display: "inline-block",
+                width: 2,
+                height: 2,
+                borderRadius: "50%",
+                background: "var(--strict-gold-base)",
+                animation: "pipeline-dot-2 1.2s ease-in-out infinite",
+                animationDelay: "0ms",
+            }} />
+            <span style={{
+                display: "inline-block",
+                width: 2,
+                height: 2,
+                borderRadius: "50%",
+                background: "var(--strict-gold-base)",
+                animation: "pipeline-dot-3 1.2s ease-in-out infinite",
+                animationDelay: "0ms",
+            }} />
+        </span>
+    )
+}
+
+// ConnectorArrow — animated › separator between steps.
+// When the left stage is complete (not the active one), the arrow brightens with a brief wipe animation.
+function ConnectorArrow({ leftComplete }: { leftComplete: boolean }) {
+    return (
+        <motion.span
+            aria-hidden
+            initial={{ opacity: 0.08 }}
+            animate={{ opacity: leftComplete ? 0.3 : 0.12 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            style={{
+                fontSize: "10px",
+                color: "rgba(201,168,76, 1)",
+                margin: "0 1px",
+                display: "inline-block",
+                transformOrigin: "left center",
+            }}
+        >
+            ›
+        </motion.span>
     )
 }
 
@@ -96,6 +156,9 @@ export function PipelineStatusBar({ trace, isStreaming, isDark, onAbort }: Pipel
             <AnimatePresence initial={false}>
                 {steps.map((label, i) => {
                     const isActive = isStreaming && i === lastIdx
+                    // A step is "complete" when it's not the active one and we are still
+                    // streaming (more steps may come), OR when streaming has ended.
+                    const isComplete = !isActive && (i < lastIdx || !isStreaming)
                     return (
                         <motion.span
                             key={i}
@@ -105,21 +168,24 @@ export function PipelineStatusBar({ trace, isStreaming, isDark, onAbort }: Pipel
                             style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
                         >
                             {i > 0 && (
-                                <span aria-hidden style={{
-                                    fontSize: "10px",
-                                    color: "rgba(201,168,76, 0.2)",
-                                    margin: "0 1px",
-                                }}>›</span>
+                                <ConnectorArrow leftComplete={i <= lastIdx} />
                             )}
                             <Dot active={isActive} />
                             <span style={{
                                 font: "10px/1 system-ui, sans-serif",
-                                color: isActive ? "var(--strict-gold-text)" : "var(--strict-text-dim)",
+                                color: isActive
+                                    ? "var(--strict-gold-text)"
+                                    : isComplete
+                                        ? "var(--strict-text-dim)"
+                                        : "var(--strict-text-dim)",
                                 letterSpacing: "0.01em",
-                                transition: "color 0.2s ease",
+                                transition: "color 0.3s ease, opacity 0.3s ease",
+                                opacity: isComplete ? 0.65 : 1,
                             }}>
                                 {label}
                             </span>
+                            {/* Animated ellipsis only on the active in-progress stage */}
+                            {isActive && <AnimatedEllipsis />}
                         </motion.span>
                     )
                 })}
