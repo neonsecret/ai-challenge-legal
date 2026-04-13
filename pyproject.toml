@@ -40,6 +40,7 @@ dependencies = [
     "langfuse>=4.0.0,<5",
     "langchain-core>=1.2.28",
     "langgraph>=1.1.6",
+    "langchain-google-vertexai>=2.0.0",
     "weasyprint>=68.1",
     "pygments>=2.20.0",
     "cryptography>=46.0.7",
@@ -65,7 +66,6 @@ observability = [
 ]
 eval = [
     "ragas>=0.2.0,<0.3",
-    "langchain-google-vertexai>=2.0.0",
 ]
 
 [tool.setuptools.packages.find]
