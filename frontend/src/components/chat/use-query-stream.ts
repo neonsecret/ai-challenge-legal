@@ -183,6 +183,18 @@ export function useQueryStream(): UseQueryStreamReturn {
     const tokenBufRef = useRef<string>("")
     const conversationIdRef = useRef<string | null>(null)
     const intermediateClearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    /**
+     * When an isSearchPhase status fires we schedule a 2-second timer to clear
+     * the intermediate answer text.  We record the buffer length at that moment
+     * so that if new answer tokens arrive BEFORE the timer fires we can slice
+     * the buffer to only the fresh tokens and cancel the stale clear.
+     */
+    const intermediateBufLenRef = useRef<number>(0)
+    /**
+     * True while the intermediate-clear timer is armed.  Used by the token
+     * handler to know whether it should rescue tokens from the old buffer.
+     */
+    const intermediateTimerArmedRef = useRef<boolean>(false)
 
     const clearError = useCallback(() => {
         setState((prev) => ({...prev, error: null}))
@@ -289,6 +301,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                 clearTimeout(intermediateClearTimerRef.current)
                 intermediateClearTimerRef.current = null
             }
+            intermediateBufLenRef.current = 0
+            intermediateTimerArmedRef.current = false
 
             // --- Event processing ---
 
@@ -300,8 +314,27 @@ export function useQueryStream(): UseQueryStreamReturn {
                             tokenBufRef.current += parsed.text
                             const visible = extractAnswerContent(tokenBufRef.current)
                             if (visible !== null && visible.length > 0) {
-                                // Real answer content — display it and clear status
-                                setState((prev) => ({...prev, answer: visible, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
+                                // If the intermediate-clear timer is still armed, these are
+                                // new-answer tokens that arrived before it fired.  Cancel the
+                                // timer and slice the buffer to only the fresh tokens so the
+                                // old intermediate text is not prepended to the new answer.
+                                if (intermediateTimerArmedRef.current) {
+                                    if (intermediateClearTimerRef.current) {
+                                        clearTimeout(intermediateClearTimerRef.current)
+                                        intermediateClearTimerRef.current = null
+                                    }
+                                    intermediateTimerArmedRef.current = false
+                                    // Keep only tokens that arrived after the phase boundary
+                                    tokenBufRef.current = tokenBufRef.current.slice(intermediateBufLenRef.current)
+                                    intermediateBufLenRef.current = 0
+                                    const freshVisible = extractAnswerContent(tokenBufRef.current)
+                                    if (freshVisible !== null && freshVisible.length > 0) {
+                                        setState((prev) => ({...prev, answer: freshVisible, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
+                                    }
+                                } else {
+                                    // Real answer content — display it and clear status
+                                    setState((prev) => ({...prev, answer: visible, streamingStatus: null, streamingProgress: null, thinkingPreview: null}))
+                                }
                             } else if (visible !== null) {
                                 // Empty string — answer mode started but only whitespace so far.
                                 // Clear the "Writing answer..." status so it doesn't persist,
@@ -317,6 +350,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                     } else if (eventType === "answer") {
                         // Final answer — cancel any pending intermediate text clear
                         if (intermediateClearTimerRef.current) { clearTimeout(intermediateClearTimerRef.current); intermediateClearTimerRef.current = null }
+                        intermediateTimerArmedRef.current = false
+                        intermediateBufLenRef.current = 0
                         const parsed = JSON.parse(data)
                         // Strip any leftover XML tags from the answer (safety net —
                         // backend should already strip them in pipeline_dict_to_response)
@@ -365,10 +400,17 @@ export function useQueryStream(): UseQueryStreamReturn {
                                         thinkingPreview: null,
                                     }))
                                     if (intermediateClearTimerRef.current) clearTimeout(intermediateClearTimerRef.current)
+                                    // Record where the buffer stands right now so the token
+                                    // handler can slice off any new-answer tokens that arrive
+                                    // before this timer fires (Bug 2 fix).
+                                    intermediateBufLenRef.current = tokenBufRef.current.length
+                                    intermediateTimerArmedRef.current = true
                                     intermediateClearTimerRef.current = setTimeout(() => {
                                         tokenBufRef.current = ""
-                                        setState((prev) => ({...prev, answer: null}))
+                                        intermediateBufLenRef.current = 0
+                                        intermediateTimerArmedRef.current = false
                                         intermediateClearTimerRef.current = null
+                                        setState((prev) => ({...prev, answer: null}))
                                     }, 2000)
                                 } else {
                                     setState((prev) => ({

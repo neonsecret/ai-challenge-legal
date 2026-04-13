@@ -1,6 +1,7 @@
 "use client"
 
 import {useMemo, useCallback} from "react"
+import {AnimatePresence, motion} from "motion/react"
 import {useI18n} from "@/lib/i18n"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
@@ -338,8 +339,35 @@ export function ChatMessage({
             {/* Answer card */}
             <div style={answerCardStyle}>
                 <div style={dark ? {paddingBottom: SPACE[4]} : {padding: SPACE[4]}}>
-                    {isStatusOnly ? statusNode : content ? (
-                        <div
+                    {/*
+                     * AnimatePresence wraps ALL three content states so that when the
+                     * intermediate answer (pre-tool-call text) is cleared it fades out
+                     * smoothly instead of vanishing instantly (Bug 1 fix).
+                     * Each state has a distinct key so framer-motion runs the exit animation
+                     * before mounting the next state.
+                     *
+                     * "status"         — streaming status spinner / no answer text yet
+                     * "answer-content" — real or intermediate answer text
+                     * "no-response"    — done streaming but answer is empty
+                     */}
+                    <AnimatePresence mode="wait">
+                    {isStatusOnly ? (
+                        <motion.div
+                            key="status"
+                            initial={{opacity: 0}}
+                            animate={{opacity: 1}}
+                            exit={{opacity: 0}}
+                            transition={{duration: 0.2, ease: "easeOut"}}
+                        >
+                            {statusNode}
+                        </motion.div>
+                    ) : content ? (
+                        <motion.div
+                            key="answer-content"
+                            initial={{opacity: 0}}
+                            animate={{opacity: 1}}
+                            exit={{opacity: 0}}
+                            transition={{duration: 0.2, ease: "easeOut"}}
                             className={`${dark ? STRICT_DARK_PROSE : isDark ? DARK_PROSE : WARM_PROSE}${isStreaming && dark ? " strict-streaming-cursor" : ""}${isStreaming && !dark ? " warm-streaming-cursor" : ""}`}
                             style={dark ? {
                                 fontFamily: "var(--strict-prose-font)",
@@ -424,12 +452,20 @@ export function ChatMessage({
                                     }
                                 `}</style>
                             )}
-                        </div>
+                        </motion.div>
                     ) : (
-                        <p style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: "var(--dt-vote-text)", margin: 0}}>
+                        <motion.p
+                            key="no-response"
+                            initial={{opacity: 0}}
+                            animate={{opacity: 1}}
+                            exit={{opacity: 0}}
+                            transition={{duration: 0.2, ease: "easeOut"}}
+                            style={{fontSize: TYPE_SCALE.sm, fontStyle: "italic", color: "var(--dt-vote-text)", margin: 0}}
+                        >
                             No response
-                        </p>
+                        </motion.p>
                     )}
+                    </AnimatePresence>
                 </div>
 
                 {/* Light-mode footnotes inside card footer */}
