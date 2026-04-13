@@ -255,7 +255,6 @@ dependencies = [
     { name = "urllib3" },
     { name = "uvicorn" },
     { name = "weasyprint" },
-    { name = "wheel" },
 ]
 
 [package.dev-dependencies]
@@ -265,6 +264,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
+    { name = "wheel" },
 ]
 eval = [
     { name = "langchain-google-vertexai" },
@@ -317,7 +317,6 @@ requires-dist = [
     { name = "urllib3", specifier = ">=2.6.3" },
     { name = "uvicorn", specifier = ">=0.41.0" },
     { name = "weasyprint", specifier = ">=68.1" },
-    { name = "wheel", specifier = ">=0.46.2" },
 ]
 
 [package.metadata.requires-dev]
@@ -327,6 +326,7 @@ dev = [
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "pytest-asyncio", specifier = ">=1.3.0" },
     { name = "ruff", specifier = ">=0.11.0" },
+    { name = "wheel", specifier = ">=0.46.2" },
 ]
 eval = [
     { name = "langchain-google-vertexai", specifier = ">=2.0.0" },

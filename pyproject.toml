@@ -47,7 +47,6 @@ dependencies = [
     "nltk>=3.9.4",
     "pypdf>=6.10.0",
     "urllib3>=2.6.3",
-    "wheel>=0.46.2",
 ]
 
 [project.scripts]
@@ -60,6 +59,7 @@ dev = [
     "ruff>=0.11.0",
     "pre-commit>=4.0.0",
     "asgi-lifespan>=2.1.0",
+    "wheel>=0.46.2",
 ]
 observability = [
     "langfuse>=4.0.0,<5",
