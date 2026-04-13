@@ -955,8 +955,8 @@ class TestDocumentTex:
             assert "application/x-tex" in resp.headers["content-type"]
             # Field value injected into body
             assert b"Jan Novak" in resp.content or b"Jan Nov" in resp.content or b"Jan" in resp.content
-            # Content-Disposition must name the file as {doc_id}.tex
-            assert f"{doc_id}.tex" in resp.headers["content-disposition"]
+            # Content-Disposition uses template_slug-vN.tex (NEO-1852)
+            assert "test_template-v1.tex" in resp.headers["content-disposition"]
             # Security headers
             assert resp.headers["cache-control"] == "no-store, private"
             assert resp.headers["x-content-type-options"] == "nosniff"
