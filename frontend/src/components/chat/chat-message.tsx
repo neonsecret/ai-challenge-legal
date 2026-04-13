@@ -453,7 +453,7 @@ export function ChatMessage({
                                 `}</style>
                             )}
                         </motion.div>
-                    ) : (
+                    ) : !isStreaming ? (
                         <motion.p
                             key="no-response"
                             initial={{opacity: 0}}
@@ -464,7 +464,7 @@ export function ChatMessage({
                         >
                             No response
                         </motion.p>
-                    )}
+                    ) : null}
                     </AnimatePresence>
                 </div>
 
