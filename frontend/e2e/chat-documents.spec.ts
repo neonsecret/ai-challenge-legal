@@ -724,8 +724,10 @@ test("CD-12: LaTeX download button is visible inside DocumentViewer when the /te
     expect(headResp.status()).toBe(200);
 
     // After HEAD returned 200, hasLatex=true — LaTeX link MUST appear in the viewer.
-    // DocumentViewer renders both title and aria-label on the link.
-    const latexLink = page.locator('a[title="Download LaTeX source"], a[aria-label="Download LaTeX source"]');
+    // DocumentViewer renders BOTH title and aria-label on the same element; DocumentCard
+    // renders only title. Using AND (no comma) targets the viewer link exclusively so the
+    // locator never matches 2 elements when DocumentCard is also showing its .tex button.
+    const latexLink = page.locator('a[title="Download LaTeX source"][aria-label="Download LaTeX source"]');
     await expect(latexLink).toBeVisible({ timeout: 5_000 });
   } finally {
     await context.close();
