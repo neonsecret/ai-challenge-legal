@@ -245,6 +245,13 @@ export default function ChatPage() {
         inputFocusRef.current?.()
     }, [setJurisdiction])
 
+    // Clear any pending template when the user starts a new chat or switches to a different
+    // conversation. Without this, the template pill remains visible in the new chat but the
+    // drafting slug is never actually sent, causing a visual/behaviour mismatch.
+    useEffect(() => {
+        setPendingTemplate(null)
+    }, [currentSessionId])
+
     const onSend = useCallback((question: string) => {
         setPreviewIndex(null)
         // Capture the turn index before handleSend adds the new user message.
