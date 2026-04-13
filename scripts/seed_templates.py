@@ -118,7 +118,7 @@ ZALOBA_NEPLATNOST_VYPOVEDI = (
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{zalobce_jmeno}}
+\noindent{}{{zalobce_jmeno}}
 
 \end{document}
 """
@@ -196,7 +196,7 @@ Pohledávka vznikla na základě: {{duvod_pohledavky}}.
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{zalobce_jmeno}}
+\noindent{}{{zalobce_jmeno}}
 
 \end{document}
 """
@@ -263,7 +263,7 @@ Pohledávka navrhovatele vznikla na základě: {{duvod_pohledavky}}.
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{navrhovatel_jmeno}}
+\noindent{}{{navrhovatel_jmeno}}
 
 \end{document}
 """
@@ -341,7 +341,7 @@ Odvolatel podává odvolání z těchto důvodů:
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{odvolatel_jmeno}}
+\noindent{}{{odvolatel_jmeno}}
 
 \end{document}
 """
@@ -398,7 +398,7 @@ aby soud platební rozkaz zrušil a věc projednal v řádném soudním řízen�
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{odpurce_jmeno}}
+\noindent{}{{odpurce_jmeno}}
 
 \end{document}
 """
@@ -463,7 +463,7 @@ Stěžovatel navrhuje, aby nadřízený správní orgán:
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{stizovatel_jmeno}}
+\noindent{}{{stizovatel_jmeno}}
 
 \end{document}
 """
@@ -532,7 +532,7 @@ Navrhovatel a odpůrce uzavřeli manželství dne {{datum_svadby}} v~{{misto_sva
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{navrhovatel_jmeno}}
+\noindent{}{{navrhovatel_jmeno}}
 
 \end{document}
 """
@@ -600,7 +600,7 @@ pokud to povaha zastupování nevylučuje.
 \vspace{3em}
 
 \noindent\rule{8cm}{0.4pt}\\
-\noindent{{zmocnitel_jmeno}}\\
+\noindent{}{{zmocnitel_jmeno}}\\
 \textit{zmocnitel}
 
 \end{document}
