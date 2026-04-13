@@ -41,6 +41,27 @@ def _build_ragas_llm():
     return LangchainLLMWrapper(chat_model)
 
 
+def _build_ragas_embeddings():
+    """Create a RAGAS-compatible embeddings wrapper using our Qwen3 embedding model.
+
+    Uses the same embedding model already running for retrieval — avoids OpenAI dep
+    (default RAGAS embedding fallback requires OPENAI_API_KEY).
+    """
+    from langchain_core.embeddings import Embeddings
+    from ragas.embeddings import LangchainEmbeddingsWrapper
+
+    from arlc.retriever import embed_document, embed_query
+
+    class Qwen3Embeddings(Embeddings):
+        def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            return [embed_document(t) for t in texts]
+
+        def embed_query(self, text: str) -> list[float]:
+            return embed_query(text)
+
+    return LangchainEmbeddingsWrapper(Qwen3Embeddings())
+
+
 def _run_ragas_sync(question: str, answer: str, contexts: list[str]) -> dict[str, float]:
     """Run RAGAS faithfulness + answer_relevancy evaluation synchronously.
 
@@ -62,11 +83,13 @@ def _run_ragas_sync(question: str, answer: str, contexts: list[str]) -> dict[str
     )
     dataset = EvaluationDataset(samples=[sample])
     ragas_llm = _build_ragas_llm()
+    ragas_embeddings = _build_ragas_embeddings()
 
     result = evaluate(
         dataset=dataset,
         metrics=[Faithfulness(), AnswerRelevancy()],
         llm=ragas_llm,
+        embeddings=ragas_embeddings,
         show_progress=False,
     )
 
