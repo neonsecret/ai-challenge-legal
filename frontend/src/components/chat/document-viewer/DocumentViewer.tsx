@@ -82,6 +82,18 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
         ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/tex`
         : null
 
+    // HEAD-check the .tex endpoint when the viewer opens. Only show the download
+    // button when the template has a LaTeX source (200 OK); 422 means unavailable.
+    const [hasLatex, setHasLatex] = useState(false)
+    useEffect(() => {
+        if (!open || !texUrl) { setHasLatex(false); return }
+        const controller = new AbortController()
+        fetch(texUrl, {method: "HEAD", credentials: "include", signal: controller.signal})
+            .then(res => { if (!controller.signal.aborted) setHasLatex(res.ok) })
+            .catch(() => {})
+        return () => controller.abort()
+    }, [open, texUrl])
+
     // Escape key + focus trap
     useEffect(() => {
         if (!open) return
@@ -265,8 +277,8 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                     </a>
                                 )}
 
-                                {/* Download LaTeX */}
-                                {texUrl && (
+                                {/* Download LaTeX — only shown when template has a .tex source (HEAD 200) */}
+                                {texUrl && hasLatex && (
                                     <a
                                         href={texUrl}
                                         download={docName ? `${docName}.tex` : "document.tex"}

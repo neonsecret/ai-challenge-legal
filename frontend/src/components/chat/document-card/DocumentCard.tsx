@@ -1,5 +1,6 @@
 "use client"
 
+import {useState, useEffect} from "react"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import {Eye, Download, FileCode} from "lucide-react"
 import type {ChatDocument} from "@/types/documents"
@@ -16,6 +17,20 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
     const pdfUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/pdf`
     const texUrl = `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(doc.doc_id)}/tex`
     const isReady = doc.fields !== undefined && Object.keys(doc.fields).length > 0
+
+    // HEAD-check the .tex endpoint once the document is ready. Only render the
+    // download link when the template actually has a LaTeX source (200 OK).
+    // Returns 422 when unavailable — hide the button silently rather than letting
+    // the browser download a JSON error body.
+    const [hasLatex, setHasLatex] = useState(false)
+    useEffect(() => {
+        if (!isReady) return
+        const controller = new AbortController()
+        fetch(texUrl, {method: "HEAD", credentials: "include", signal: controller.signal})
+            .then(res => { if (!controller.signal.aborted) setHasLatex(res.ok) })
+            .catch(() => {})
+        return () => controller.abort()
+    }, [isReady, texUrl])
 
     return (
         <div style={{
@@ -97,7 +112,7 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                         <Download size={13} strokeWidth={1.8} />
                         PDF
                     </a>
-                    <a
+                    {hasLatex && <a
                         href={texUrl}
                         download={`${doc.template_name}-v${doc.version}.tex`}
                         title="Download LaTeX source"
@@ -119,7 +134,7 @@ export function DocumentCard({doc, chatId, onPreview}: DocumentCardProps) {
                     >
                         <FileCode size={13} strokeWidth={1.8} />
                         .tex
-                    </a>
+                    </a>}
                 </div>
             ) : (
                 <div style={{flexShrink: 0}}>
