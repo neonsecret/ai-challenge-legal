@@ -159,9 +159,12 @@ async def run_agent_question(
                 )
             accumulated_docs = same_corpus
 
-    # Build the draft_document_fn callback when in drafting mode
+    # Build the draft_document_fn callback when in drafting mode OR when
+    # existing documents are present in the conversation (so the agent can
+    # call document_draft with action="update" on turn 2+ even without a
+    # template_slug being set in the current request).
     draft_document_fn = None
-    if template_slug and user_id and conversation_id:
+    if (template_slug or chat_documents) and user_id and conversation_id:
         try:
             from neolex.services.conversation import _to_conv_uuid
 

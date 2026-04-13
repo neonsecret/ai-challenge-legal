@@ -546,18 +546,84 @@ def build_system_prompt(state: AgentState) -> str:
     return _STATIC_PREFIX + semi_static
 
 
+def _build_update_only_section(chat_documents: list[dict]) -> str:
+    """Build a minimal DRAFTING MODE section for update-only turns.
+
+    Used on turn 2+ when the conversation already has documents but no new
+    template_slug was sent in the current request.  The agent is allowed to
+    call document_draft with action="update" ONLY when the user explicitly
+    asks to change something in an existing draft.  For unrelated questions
+    (legal research, explanations, etc.) the agent must NOT call the tool.
+
+    Parameters
+    ----------
+    chat_documents : list[dict]
+        Existing documents in this conversation, each with at least
+        ``id``, ``template_slug``, ``version``, and ``fields`` keys.
+
+    Returns
+    -------
+    str
+        Prompt section appended after the jurisdiction block.
+    """
+    parts = [
+        "\n\n## DRAFTING MODE (UPDATE ONLY)",
+        "This conversation already contains document draft(s) listed below.",
+        'You MAY call `document_draft` with `action="update"` and the appropriate',
+        "`document_id` ONLY when the user **explicitly asks to change, fix, or update**",
+        "something in one of the existing drafts (e.g. 'change the plaintiff name',",
+        "'update the date', 'add a witness'). Do NOT call the tool for:",
+        "- general legal questions or explanations",
+        "- questions about what a clause means",
+        "- any request that does not ask to modify a document",
+        "",
+        "### EXISTING DOCUMENTS IN THIS CONVERSATION",
+    ]
+    for doc in chat_documents:
+        doc_id = doc.get("id", "?")
+        slug = doc.get("template_slug", "?")
+        version = doc.get("version", 1)
+        fields_summary = ", ".join(f"{k}={repr(v[:30])}" for k, v in list(doc.get("fields", {}).items())[:3])
+        parts.append(f"- Document `{doc_id}` (template: `{slug}`, v{version}): {fields_summary}")
+
+    parts += [
+        "",
+        "### UPDATE RULES",
+        '- `action`: always `"update"` (do NOT create new documents in this mode)',
+        "- `document_id`: UUID of the document to update (from the list above)",
+        "- `template_slug`: use the template_slug shown for the document being updated",
+        "- `fields`: only the fields the user wants to change; omit unchanged fields",
+        "",
+        "If the user asks to draft a brand-new document without selecting a template,",
+        "direct them to use the template picker button first.",
+    ]
+    return "\n".join(parts)
+
+
 def _build_drafting_section(state: AgentState) -> str:
-    """Build the DRAFTING MODE section when a template is selected.
+    """Build the DRAFTING MODE section when a template is selected OR when
+    existing documents are in the conversation (turn 2+ update mode).
 
     Injected after the jurisdiction context in the system prompt.  Stable for
     the whole conversation (template_slug doesn't change mid-session), so it
     benefits from Anthropic's prompt caching within a conversation.
 
-    Returns an empty string when the agent is in normal research mode.
+    Returns an empty string when the agent is in normal research mode and there
+    are no existing documents to update.
     """
     template_slug = state.get("template_slug")
-    if not template_slug:
+    chat_documents: list[dict] = state.get("chat_documents") or []
+
+    # No template and no existing documents — pure research mode, no drafting section.
+    if not template_slug and not chat_documents:
         return ""
+
+    # Update-only mode: existing documents exist but no new template selected.
+    # The agent may call document_draft with action="update" if the user asks to
+    # modify a draft, but MUST NOT create new documents or call the tool for
+    # unrelated questions.
+    if not template_slug and chat_documents:
+        return _build_update_only_section(chat_documents)
 
     template_name = state.get("template_name", template_slug)
     required_fields: list[str] = state.get("template_required_fields") or []

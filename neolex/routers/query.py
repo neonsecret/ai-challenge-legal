@@ -481,6 +481,25 @@ async def query_stream(
                         except (ValueError, Exception):
                             chat_documents = []
 
+                    elif conversation_id:
+                        # No template selected on this turn, but we still need to
+                        # fetch existing conversation documents so the agent can
+                        # offer update actions on turn 2+ drafting follow-ups.
+                        import uuid as _uuid
+
+                        from neolex.services.document_service import list_conversation_documents
+
+                        try:
+                            from neolex.services.conversation import _to_conv_uuid
+
+                            chat_documents = await list_conversation_documents(
+                                db,
+                                user_id=_uuid.UUID(user_id),
+                                conversation_id=_to_conv_uuid(conversation_id),
+                            )
+                        except (ValueError, Exception):
+                            chat_documents = []
+
                     pipeline_result = await asyncio.wait_for(
                         run_agent_question(
                             question=body.question,
