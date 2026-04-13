@@ -116,11 +116,12 @@ export function MobileSourceSheet({
             {/* Backdrop */}
             <div
                 onClick={onClose}
+                aria-hidden="true"
                 style={{
                     position: "fixed",
                     inset: 0,
                     zIndex: 199,
-                    background: "rgba(0,0,0,0.55)",
+                    background: "var(--doc-overlay-bg)",
                 }}
             />
 
@@ -134,7 +135,7 @@ export function MobileSourceSheet({
                     bottom: 0,
                     height: expanded ? "100%" : "50%",
                     zIndex: 200,
-                    background: "rgba(13,10,18,0.95)",
+                    background: "var(--dt-panel-overlay-bg)",
                     backdropFilter: "blur(24px)",
                     WebkitBackdropFilter: "blur(24px)",
                     borderTop: "1px solid var(--strict-glass-border)",
@@ -164,7 +165,7 @@ export function MobileSourceSheet({
                         width: 24,
                         height: 3,
                         borderRadius: 1,
-                        background: "rgba(201,168,76,0.3)",
+                        background: "var(--dt-color-gold-glow)",
                     }} />
                 </div>
 
@@ -187,14 +188,15 @@ export function MobileSourceSheet({
                     </span>
                     <button
                         onClick={onClose}
+                        aria-label="Close source panel"
                         style={{
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            width: 28,
-                            height: 28,
+                            width: 44,
+                            height: 44,
                             borderRadius: 6,
-                            background: "rgba(201,168,76,0.05)",
+                            background: "var(--strict-gold-badge-bg)",
                             border: "1px solid var(--strict-gold-border)",
                             cursor: "pointer",
                             color: "var(--strict-text-dim)",
