@@ -919,10 +919,10 @@ export default function ChatPage() {
                         {/* Panel header with tab switcher */}
                         <div style={{
                             padding: isMobile ? `${SPACE['3']}px ${SPACE['4']}px` : `${SPACE['4']}px ${SPACE['4']}px`,
-                            borderBottom: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border-subtle)",
+                            borderBottom: isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
                             display: "flex", alignItems: "center", justifyContent: "space-between",
                             flexShrink: 0,
-                            background: isStrict ? "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)" : "var(--dt-glass-bg-subtle)",
+                            background: isStrict ? "var(--strict-drawer-header-bg)" : "var(--dt-glass-bg-subtle)",
                         }}>
                             {/* Tabs — show both when sources are available; single label when no sources */}
                             <div role="tablist" style={{display: "flex", alignItems: "center", gap: SPACE['3']}}>
@@ -933,13 +933,20 @@ export default function ChatPage() {
                                         aria-controls="unified-panel-source"
                                         onClick={() => setPanelTab("source")}
                                         style={{
-                                            fontSize: TYPE_SCALE.sm, fontWeight: panelTab === "source" ? 700 : 500,
-                                            textTransform: "uppercase", letterSpacing: "0.12em",
-                                            color: panelTab === "source" ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
+                                            fontSize: isStrict ? 9 : TYPE_SCALE.xs,
+                                            fontWeight: panelTab === "source" ? (isStrict ? 500 : 700) : (isStrict ? 400 : 500),
+                                            textTransform: "uppercase",
+                                            letterSpacing: isStrict ? "var(--strict-label-tracking)" : "0.12em",
+                                            color: panelTab === "source"
+                                                ? (isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)")
+                                                : (isStrict ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)"),
                                             background: "transparent", border: "none",
-                                            borderBottom: panelTab === "source" ? "1px solid var(--dt-accent-color)" : "1px solid transparent",
+                                            borderBottom: panelTab === "source"
+                                                ? `1px solid ${isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)"}`
+                                                : "1px solid transparent",
                                             cursor: panelTab !== "source" ? "pointer" : "default",
-                                            padding: `0 0 2px`, fontFamily: FONT.sans,
+                                            padding: `0 0 2px`,
+                                            fontFamily: isStrict ? "system-ui, sans-serif" : FONT.sans,
                                         }}
                                     >
                                         Sources
@@ -952,13 +959,20 @@ export default function ChatPage() {
                                         aria-controls="unified-panel-index"
                                         onClick={() => setPanelTab("index")}
                                         style={{
-                                            fontSize: TYPE_SCALE.sm, fontWeight: panelTab === "index" ? 700 : 500,
-                                            textTransform: "uppercase", letterSpacing: "0.12em",
-                                            color: panelTab === "index" ? "var(--dt-accent-color)" : "var(--dt-text-tertiary)",
+                                            fontSize: isStrict ? 9 : TYPE_SCALE.xs,
+                                            fontWeight: panelTab === "index" ? (isStrict ? 500 : 700) : (isStrict ? 400 : 500),
+                                            textTransform: "uppercase",
+                                            letterSpacing: isStrict ? "var(--strict-label-tracking)" : "0.12em",
+                                            color: panelTab === "index"
+                                                ? (isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)")
+                                                : (isStrict ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)"),
                                             background: "transparent", border: "none",
-                                            borderBottom: panelTab === "index" ? "1px solid var(--dt-accent-color)" : "1px solid transparent",
+                                            borderBottom: panelTab === "index"
+                                                ? `1px solid ${isStrict ? "var(--strict-gold-text)" : "var(--dt-accent-color)"}`
+                                                : "1px solid transparent",
                                             cursor: panelTab !== "index" ? "pointer" : "default",
-                                            padding: `0 0 2px`, fontFamily: FONT.sans,
+                                            padding: `0 0 2px`,
+                                            fontFamily: isStrict ? "system-ui, sans-serif" : FONT.sans,
                                         }}
                                     >
                                         Index ({documentIndex.length})
@@ -970,9 +984,9 @@ export default function ChatPage() {
                                         fontSize: isStrict ? 9 : TYPE_SCALE.xs,
                                         fontWeight: isStrict ? 400 : 700,
                                         textTransform: "uppercase",
-                                        letterSpacing: isStrict ? "1.2px" : "0.12em",
-                                        color: isStrict ? "rgba(201,168,76,0.4)" : "var(--dt-accent-color)",
-                                        fontFamily: isStrict ? "system-ui" : FONT.sans,
+                                        letterSpacing: isStrict ? "var(--strict-label-tracking)" : "0.12em",
+                                        color: isStrict ? "var(--strict-source-label)" : "var(--dt-accent-color)",
+                                        fontFamily: isStrict ? "system-ui, sans-serif" : FONT.sans,
                                     }}>
                                         Sources ({documentIndex.length})
                                     </span>
@@ -1016,10 +1030,10 @@ export default function ChatPage() {
                                         display: "flex", alignItems: "center", justifyContent: "center",
                                         width: isMobile ? 34 : 28, height: isMobile ? 34 : 28,
                                         borderRadius: RADIUS.md, marginLeft: SPACE['1'],
-                                        background: isStrict ? "rgba(201,168,76,0.04)" : "var(--dt-glass-bg)",
-                                        border: isStrict ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid var(--dt-glass-border)",
+                                        background: isStrict ? "var(--strict-gold-badge-bg)" : "var(--dt-glass-bg)",
+                                        border: isStrict ? "1px solid var(--strict-gold-badge-border)" : "0.5px solid var(--dt-glass-border)",
                                         cursor: "pointer",
-                                        color: isStrict ? "rgba(201,168,76,0.5)" : "var(--dt-text-tertiary)",
+                                        color: isStrict ? "var(--strict-gold-text)" : "var(--dt-text-tertiary)",
                                     }}
                                 >
                                     <X size={isMobile ? 16 : 14} strokeWidth={2}/>

@@ -3,6 +3,7 @@
 import {useState, useRef, useEffect, useCallback} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {ChevronDown, FileText} from "lucide-react"
+import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/tokens"
 import type {IndexEntry} from "./use-document-index"
 
 interface DocumentIndexProps {
@@ -35,22 +36,18 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
         else entryRefs.current.delete(docId)
     }, [])
 
-    const gold = isDark ? "#C9A84C" : "#c47c00"
-    const mutedText = isDark ? "rgba(255,255,255,0.45)" : "rgba(46,31,8,0.50)"
-    const bodyText = isDark ? "rgba(255,255,255,0.75)" : "rgba(46,31,8,0.75)"
-    const font = "-apple-system, BlinkMacSystemFont, system-ui, sans-serif"
-
     if (entries.length === 0) {
         return (
             <div style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
-                height: "100%", padding: "24px 12px",
+                height: "100%", padding: `${SPACE["6"]}px ${SPACE["3"]}px`,
             }}>
                 <p style={{
-                    fontSize: 12, color: isDark ? "var(--strict-text-dim)" : mutedText,
+                    fontSize: TYPE_SCALE.sm,
+                    color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)",
                     textAlign: "center",
-                    fontFamily: isDark ? "Georgia, serif" : font,
-                    fontStyle: isDark ? "italic" : undefined,
+                    fontFamily: isDark ? "var(--strict-prose-font)" : FONT.sans,
+                    fontStyle: "italic",
                     lineHeight: 1.5, margin: 0,
                 }}>
                     No sources yet
@@ -63,9 +60,12 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
         <div
             ref={scrollContainerRef}
             style={{
-                flex: 1, overflowY: "auto", padding: "8px",
+                flex: 1, overflowY: "auto",
+                padding: `${SPACE["2"]}px`,
                 scrollbarWidth: "thin",
-                scrollbarColor: isDark ? "rgba(255,255,255,0.12) transparent" : "rgba(46,31,8,0.12) transparent",
+                scrollbarColor: isDark
+                    ? "var(--strict-scrollbar) transparent"
+                    : "var(--dt-text-quaternary) transparent",
             }}
         >
             {entries.map((entry) => {
@@ -76,29 +76,31 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                     <div
                         key={entry.docId}
                         ref={setRef(entry.docId)}
-                        style={{marginBottom: 6}}
+                        style={{marginBottom: SPACE["1"] + 2}}
                     >
                         <motion.div
                             animate={isHighlighted ? {
                                 boxShadow: [
-                                    `0 0 0 0px ${gold}00`,
-                                    `0 0 0 3px ${gold}55`,
-                                    `0 0 0 0px ${gold}00`,
+                                    "0 0 0 0px var(--dt-accent-color)00",
+                                    "0 0 0 3px var(--dt-accent-border-color)",
+                                    "0 0 0 0px var(--dt-accent-color)00",
                                 ],
                             } : {}}
                             transition={isHighlighted ? {duration: 1, repeat: 1} : {}}
                             style={{
-                                borderRadius: 14,
+                                borderRadius: isDark ? 10 : RADIUS.lg,
                                 background: isHighlighted
-                                    ? isDark ? "rgba(201,168,76,0.12)" : "rgba(233,196,106,0.18)"
-                                    : isDark ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.18)",
+                                    ? "var(--dt-accent-tint)"
+                                    : isDark ? "var(--strict-glass-bg)" : "var(--dt-glass-bg)",
                                 border: isHighlighted
-                                    ? isDark ? "0.5px solid rgba(201,168,76,0.35)" : "0.5px solid rgba(196,124,0,0.30)"
-                                    : isDark ? "1px solid rgba(201,168,76,0.06)" : "0.5px solid rgba(255,255,255,0.45)",
-                                backdropFilter: "blur(8px)",
-                                WebkitBackdropFilter: "blur(8px)",
+                                    ? `1px solid var(--dt-accent-border-color)`
+                                    : isDark
+                                        ? "1px solid var(--strict-gold-border)"
+                                        : "0.5px solid var(--dt-glass-border)",
+                                backdropFilter: isDark ? "var(--strict-glass-blur)" : "none",
+                                WebkitBackdropFilter: isDark ? "var(--strict-glass-blur)" : "none",
                                 overflow: "hidden",
-                                transition: "background 0.2s, border-color 0.2s",
+                                transition: `background ${TIMING.fast}, border-color ${TIMING.fast}`,
                             }}
                         >
                             {/* Card header — always visible */}
@@ -108,35 +110,46 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                     onEntryClick?.(entry)
                                 }}
                                 style={{
-                                    display: "flex", alignItems: "flex-start", gap: 10,
+                                    display: "flex", alignItems: "flex-start", gap: SPACE["2"] + 2,
                                     width: "100%", textAlign: "left",
-                                    padding: "10px 12px",
+                                    padding: `${SPACE["2"] + 2}px ${SPACE["3"]}px`,
                                     background: "none", border: "none",
                                     cursor: "pointer",
-                                    fontFamily: font,
+                                    fontFamily: FONT.sans,
                                 }}
                             >
-                                {/* Number badge */}
+                                {/* Document icon badge */}
                                 <div style={{
-                                    width: 26, height: 26, borderRadius: 8, flexShrink: 0,
-                                    background: isDark ? "rgba(201,168,76,0.14)" : "rgba(196,124,0,0.12)",
-                                    border: isDark ? "0.5px solid rgba(201,168,76,0.28)" : "0.5px solid rgba(196,124,0,0.24)",
+                                    width: 26, height: 26,
+                                    borderRadius: isDark ? RADIUS.sm : RADIUS.md,
+                                    flexShrink: 0,
+                                    background: isDark
+                                        ? "var(--strict-gold-badge-bg)"
+                                        : "var(--dt-accent-tint)",
+                                    border: isDark
+                                        ? "1px solid var(--strict-gold-badge-border)"
+                                        : "0.5px solid var(--dt-accent-border-subtle)",
                                     display: "flex", alignItems: "center", justifyContent: "center",
                                     marginTop: 1,
                                 }}>
-                                    <FileText size={13} strokeWidth={1.8} style={{color: gold}} />
+                                    <FileText
+                                        size={13}
+                                        strokeWidth={1.8}
+                                        style={{color: "var(--dt-accent-color)"}}
+                                    />
                                 </div>
 
                                 {/* Text content */}
                                 <div style={{flex: 1, minWidth: 0}}>
-                                    {/* Law name */}
+                                    {/* Law name — label style */}
                                     <p style={{
-                                        fontSize: 9, fontWeight: 700,
+                                        fontSize: isDark ? 9 : TYPE_SCALE.xs - 1,
+                                        fontWeight: isDark ? 500 : 700,
                                         textTransform: "uppercase",
-                                        letterSpacing: "0.10em",
-                                        color: gold,
-                                        margin: "0 0 3px",
-                                        fontFamily: font,
+                                        letterSpacing: isDark ? "1.2px" : "0.10em",
+                                        color: "var(--dt-accent-color)",
+                                        margin: `0 0 ${SPACE["1"]}px`,
+                                        fontFamily: isDark ? "system-ui, sans-serif" : FONT.sans,
                                         overflow: "hidden",
                                         textOverflow: "ellipsis",
                                         whiteSpace: "nowrap",
@@ -144,39 +157,57 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                         {entry.lawName}
                                     </p>
 
-                                    {/* Section number */}
+                                    {/* Section number — body text */}
                                     {entry.sectionNumber && (
                                         <p style={{
-                                            fontSize: isDark ? 12 : 14, fontWeight: isDark ? 500 : 600,
-                                            color: isDark ? "rgba(255,255,255,0.88)" : "#1a0e04",
-                                            fontFamily: isDark ? "system-ui" : "Georgia, 'Times New Roman', serif",
-                                            margin: "0 0 4px",
+                                            fontSize: TYPE_SCALE.sm,
+                                            fontWeight: 500,
+                                            color: isDark
+                                                ? "var(--strict-text-primary)"
+                                                : "var(--dt-text-primary)",
+                                            fontFamily: isDark
+                                                ? "var(--strict-prose-font)"
+                                                : FONT.sans,
+                                            margin: `0 0 ${SPACE["1"]}px`,
+                                            lineHeight: 1.4,
                                         }}>
                                             {entry.sectionNumber}
                                         </p>
                                     )}
 
                                     {/* Meta row: pages + citation count */}
-                                    <div style={{display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap"}}>
+                                    <div style={{display: "flex", alignItems: "center", gap: SPACE["1"] + 2, flexWrap: "wrap"}}>
                                         {/* Page badges */}
                                         {entry.pages.slice(0, 5).map((page) => (
                                             <span
                                                 key={page}
                                                 style={{
                                                     display: "inline-flex", alignItems: "center",
-                                                    height: 18, padding: "0 6px",
-                                                    borderRadius: 4, fontSize: 10, fontWeight: 500,
-                                                    background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.30)",
-                                                    border: isDark ? "0.5px solid rgba(255,255,255,0.10)" : "0.5px solid rgba(255,255,255,0.50)",
-                                                    color: isDark ? "rgba(255,255,255,0.55)" : "rgba(46,31,8,0.60)",
-                                                    fontFamily: font,
+                                                    height: 18, padding: `0 ${SPACE["1"] + 2}px`,
+                                                    borderRadius: RADIUS.xs,
+                                                    fontSize: TYPE_SCALE.xs - 1,
+                                                    fontWeight: 500,
+                                                    background: isDark
+                                                        ? "var(--strict-glass-bg)"
+                                                        : "var(--dt-glass-bg)",
+                                                    border: isDark
+                                                        ? "1px solid var(--strict-glass-border)"
+                                                        : "0.5px solid var(--dt-glass-border)",
+                                                    color: isDark
+                                                        ? "var(--strict-text-secondary)"
+                                                        : "var(--dt-text-tertiary)",
+                                                    fontFamily: FONT.sans,
                                                 }}
                                             >
                                                 p.{page}
                                             </span>
                                         ))}
                                         {entry.pages.length > 5 && (
-                                            <span style={{fontSize: 10, color: mutedText, fontFamily: font}}>
+                                            <span style={{
+                                                fontSize: TYPE_SCALE.xs - 1,
+                                                color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)",
+                                                fontFamily: FONT.sans,
+                                            }}>
                                                 +{entry.pages.length - 5}
                                             </span>
                                         )}
@@ -184,9 +215,11 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                         {/* Citation count */}
                                         {entry.citationCount > 1 && (
                                             <span style={{
-                                                fontSize: 10, fontWeight: 500,
-                                                color: gold, opacity: 0.75,
-                                                fontFamily: font,
+                                                fontSize: TYPE_SCALE.xs - 1,
+                                                fontWeight: 500,
+                                                color: "var(--dt-accent-color)",
+                                                opacity: 0.75,
+                                                fontFamily: FONT.sans,
                                                 marginLeft: 2,
                                             }}>
                                                 {entry.citationCount}x cited
@@ -202,7 +235,7 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                         transition={{duration: 0.2}}
                                         style={{
                                             flexShrink: 0, marginTop: 4,
-                                            color: mutedText,
+                                            color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)",
                                         }}
                                     >
                                         <ChevronDown size={14} strokeWidth={2} />
@@ -221,23 +254,30 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                         style={{overflow: "hidden"}}
                                     >
                                         <div style={{
-                                            padding: "0 12px 10px 48px",
-                                            borderTop: isDark ? "0.5px solid rgba(255,255,255,0.06)" : "0.5px solid rgba(255,255,255,0.30)",
-                                            margin: "0 8px",
-                                            paddingTop: 8,
+                                            padding: `0 ${SPACE["3"]}px ${SPACE["2"] + 2}px 48px`,
+                                            borderTop: isDark
+                                                ? "1px solid var(--strict-gold-border)"
+                                                : "0.5px solid var(--dt-glass-border-subtle)",
+                                            margin: `0 ${SPACE["2"]}px`,
+                                            paddingTop: SPACE["2"],
                                         }}>
                                             <p style={{
-                                                fontSize: 12, lineHeight: 1.65,
-                                                color: bodyText,
-                                                fontFamily: "Georgia, 'Times New Roman', serif",
+                                                fontSize: TYPE_SCALE.sm,
+                                                lineHeight: 1.65,
+                                                color: isDark
+                                                    ? "var(--strict-text-body)"
+                                                    : "var(--dt-text-secondary)",
+                                                fontFamily: isDark
+                                                    ? "var(--strict-prose-font)"
+                                                    : FONT.sans,
                                                 margin: 0,
                                                 whiteSpace: "pre-wrap",
                                                 maxHeight: 200,
                                                 overflowY: "auto",
                                                 scrollbarWidth: "thin",
                                                 scrollbarColor: isDark
-                                                    ? "rgba(255,255,255,0.10) transparent"
-                                                    : "rgba(46,31,8,0.10) transparent",
+                                                    ? "var(--strict-scrollbar) transparent"
+                                                    : "var(--dt-text-quaternary) transparent",
                                             }}>
                                                 {entry.text.length > 800
                                                     ? entry.text.slice(0, 800) + "..."
@@ -247,9 +287,10 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
                                             {/* Turn indices */}
                                             {entry.turnIndices.length > 0 && (
                                                 <p style={{
-                                                    fontSize: 10, color: mutedText,
-                                                    fontFamily: font, marginTop: 8,
-                                                    margin: "8px 0 0",
+                                                    fontSize: TYPE_SCALE.xs - 1,
+                                                    color: isDark ? "var(--strict-text-dim)" : "var(--dt-text-tertiary)",
+                                                    fontFamily: FONT.sans,
+                                                    margin: `${SPACE["2"]}px 0 0`,
                                                 }}>
                                                     Cited in turn{entry.turnIndices.length > 1 ? "s" : ""}{" "}
                                                     {entry.turnIndices.map((ti, i) => (
