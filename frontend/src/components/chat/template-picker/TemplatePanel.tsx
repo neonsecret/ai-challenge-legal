@@ -121,7 +121,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                         style={{
                             position: "fixed",
                             ...(isMobile
-                                ? {left: 0, right: 0, bottom: 0, top: "5dvh", borderRadius: "20px 20px 0 0"}
+                                ? {left: 0, right: 0, bottom: 0, top: "20dvh", borderRadius: "20px 20px 0 0"}
                                 : {top: 8, right: 8, bottom: 8, width: "min(90vw, 480px)", borderRadius: 20}),
                             zIndex: 61,
                             display: "flex",
@@ -162,14 +162,15 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                     display: "flex",
                                     alignItems: "center",
                                     justifyContent: "center",
-                                    width: 28,
-                                    height: 28,
-                                    borderRadius: 8,
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: RADIUS.md,
                                     background: "var(--doc-close-btn-bg)",
                                     border: "0.5px solid var(--doc-close-btn-border)",
                                     cursor: "pointer",
                                     color: "var(--doc-close-btn-color)",
                                     transition: `all ${TIMING.instant}`,
+                                    flexShrink: 0,
                                 }}
                             >
                                 <X size={14} strokeWidth={2} />
@@ -185,7 +186,14 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                             flexDirection: "column",
                             gap: SPACE[2],
                         }}>
-                            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap"}}>
+                            <div style={{
+                                display: "flex",
+                                gap: SPACE[1],
+                                overflowX: "auto",
+                                WebkitOverflowScrolling: "touch",
+                                scrollbarWidth: "none",
+                                paddingBottom: 2,
+                            }}>
                                 {JURISDICTIONS.map((j) => (
                                     <PillButton
                                         key={j}
@@ -195,7 +203,14 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                     />
                                 ))}
                             </div>
-                            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap"}}>
+                            <div style={{
+                                display: "flex",
+                                gap: SPACE[1],
+                                overflowX: "auto",
+                                WebkitOverflowScrolling: "touch",
+                                scrollbarWidth: "none",
+                                paddingBottom: 2,
+                            }}>
                                 {categories.map((c) => (
                                     <PillButton
                                         key={c}
@@ -209,7 +224,17 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                         </div>
 
                         {/* Template list */}
-                        <div style={{flex: 1, overflowY: "auto", padding: SPACE[4], display: "flex", flexDirection: "column", gap: SPACE[2]}}>
+                        <div style={{
+                            flex: 1,
+                            overflowY: "auto",
+                            WebkitOverflowScrolling: "touch",
+                            overscrollBehavior: "contain",
+                            padding: SPACE[4],
+                            paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: SPACE[2],
+                        }}>
                             {/* Custom document option */}
                             <button
                                 onClick={() => handleSelect({slug: CUSTOM_SLUG, name: t("template.custom_document")})}
@@ -298,8 +323,10 @@ function PillButton({label, active, onClick, textTransform}: {label: string; act
                 fontSize: TYPE_SCALE.xs,
                 fontWeight: active ? 500 : 400,
                 padding: `${SPACE[1]}px ${SPACE[2]}px`,
+                minHeight: 32,
                 borderRadius: RADIUS.sm,
                 cursor: "pointer",
+                flexShrink: 0,
                 background: active ? "var(--doc-pill-active-bg)" : "var(--doc-pill-inactive-bg)",
                 border: active
                     ? "1px solid var(--doc-pill-active-border)"
