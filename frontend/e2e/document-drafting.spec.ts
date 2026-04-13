@@ -87,7 +87,10 @@ function sseBody(events: Array<{ event: string; data: object }>): string {
     .join("");
 }
 
-/** SSE that generates document v1 */
+/** SSE that generates document v1.
+ *  fields must be non-empty so DocumentCard.isReady=true, which renders the
+ *  Preview button and Download PDF link (T12, T13, T16). Without fields the
+ *  card shows "AI is filling fields…" and the action buttons are hidden. */
 const SSE_WITH_DOC_V1 = sseBody([
   { event: "answer", data: { answer: "Na základě zákoníku práce [DOC-1]...", sources: [], confidence: 0.9 } },
   {
@@ -97,12 +100,14 @@ const SSE_WITH_DOC_V1 = sseBody([
       template_slug: "zaloba_neplatnost_vypovedi",
       template_name: "Žaloba na neplatnost výpovědi",
       version: 1,
+      fields: { zalobce: "Jan Novák", zalovany: "Firma s.r.o." },
     },
   },
   { event: "done", data: {} },
 ]);
 
-/** SSE that updates the same document to version 2 */
+/** SSE that updates the same document to version 2.
+ *  fields included so isReady=true in version-update tests (T14, T17). */
 const SSE_WITH_DOC_V2 = sseBody([
   { event: "answer", data: { answer: "Dokument byl upraven.", sources: [], confidence: 0.9 } },
   {
@@ -112,6 +117,7 @@ const SSE_WITH_DOC_V2 = sseBody([
       template_slug: "zaloba_neplatnost_vypovedi",
       template_name: "Žaloba na neplatnost výpovědi",
       version: 2,
+      fields: { zalobce: "Jan Novák", zalovany: "Firma s.r.o." },
     },
   },
   { event: "done", data: {} },
