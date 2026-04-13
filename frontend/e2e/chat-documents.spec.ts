@@ -8,7 +8,7 @@
  *   CD-3   "Vlastní dokument" option appears exactly once in template picker
  *   CD-4   Drafting indicator visible during SSE stream, hidden after done
  *   CD-10  LaTeX button hidden when /tex HEAD returns 422 (NEO-1972)
- *   CD-11  LaTeX button hidden in DocumentViewer when /tex HEAD returns 422 (NEO-1984)
+ *   CD-11  LaTeX button hidden in DocumentViewer when /tex HEAD returns 422 (NEO-1985)
  *   CD-12  LaTeX button visible in DocumentViewer when /tex HEAD returns 200 (NEO-2003)
  *
  * Run: npx playwright test e2e/chat-documents.spec.ts
