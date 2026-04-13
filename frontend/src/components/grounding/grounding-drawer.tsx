@@ -123,7 +123,7 @@ export function GroundingDrawer({
 
                         {/* Content */}
                         <div className="flex-1 overflow-hidden min-h-0">
-                            <GroundingView answer={answer} sources={sources}/>
+                            <GroundingView answer={answer} sources={sources} isMobile={isMobile}/>
                         </div>
                     </motion.div>
                 </>

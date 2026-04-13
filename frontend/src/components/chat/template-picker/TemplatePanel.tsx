@@ -82,8 +82,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const filtered = templates.filter((t: Template) => {
         const jMatch = !jurisdiction || t.jurisdiction.toUpperCase() === jurisdiction.toUpperCase() || (jurisdiction === "General" && !t.jurisdiction)
         const cMatch = !category || t.category.toLowerCase() === category.toLowerCase()
-        // Exclude __custom__ — it is rendered separately as a hardcoded button above the list
-        return jMatch && cMatch && t.slug !== CUSTOM_SLUG
+        return jMatch && cMatch
     })
 
     return (
@@ -323,7 +322,7 @@ function PillButton({label, active, onClick, textTransform}: {label: string; act
                 fontSize: TYPE_SCALE.xs,
                 fontWeight: active ? 500 : 400,
                 padding: `${SPACE[1]}px ${SPACE[2]}px`,
-                minHeight: 32,
+                minHeight: 44,
                 borderRadius: RADIUS.sm,
                 cursor: "pointer",
                 flexShrink: 0,

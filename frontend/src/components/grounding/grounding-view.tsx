@@ -20,7 +20,6 @@ export type {SourceRef}
 interface GroundingViewProps {
     answer: string
     sources: SourceRef[]
-    isDark?: boolean
     isMobile?: boolean
     focusDocId?: string
     focusPage?: number
@@ -233,7 +232,6 @@ interface SourceCitationCardProps {
     isActive: boolean
     activePage: number | null
     onPageClick: (page: number) => void
-    isDark?: boolean
     /** Compact horizontal-strip mode — narrower card for the bottom sources bar */
     compact?: boolean
 }

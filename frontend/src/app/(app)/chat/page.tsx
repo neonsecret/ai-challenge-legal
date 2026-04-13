@@ -1045,7 +1045,7 @@ export default function ChatPage() {
                         {panelTab === "source" && (
                             <div id="unified-panel-source" role="tabpanel" className="flex-1 overflow-hidden min-h-0">
                                 <GroundingErrorBoundary onReset={() => setPanelOpen(false)}>
-                                    <GroundingView answer={drawerData.answer} sources={drawerData.sources} isDark={isDark} isMobile={isMobile} focusDocId={drawerData.focusDocId} focusPage={drawerData.focusPage} focusSeq={drawerData.focusSeq}/>
+                                    <GroundingView answer={drawerData.answer} sources={drawerData.sources} isMobile={isMobile} focusDocId={drawerData.focusDocId} focusPage={drawerData.focusPage} focusSeq={drawerData.focusSeq}/>
                                 </GroundingErrorBoundary>
                             </div>
                         )}
