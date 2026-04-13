@@ -3,10 +3,11 @@
  * NEO-1855
  *
  * Covers:
- *   CD-1  Documents persist after navigating away and back to /chat
- *   CD-2  Document delete — clicking delete removes the card from the DOM
- *   CD-3  "Vlastní dokument" option appears exactly once in template picker
- *   CD-4  Drafting indicator visible during SSE stream, hidden after done
+ *   CD-1   Documents persist after navigating away and back to /chat
+ *   CD-2   Document delete — clicking delete removes the card from the DOM
+ *   CD-3   "Vlastní dokument" option appears exactly once in template picker
+ *   CD-4   Drafting indicator visible during SSE stream, hidden after done
+ *   CD-10  LaTeX button hidden when /tex HEAD returns 422 (NEO-1972)
  *
  * Run: npx playwright test e2e/chat-documents.spec.ts
  */
@@ -610,6 +611,58 @@ test("CD-9: template selection is included in all consecutive query POST bodies"
     }).toPass({ timeout: 15_000 });
 
     expect(capturedBodies[1]["template_slug"]).toBe("zaloba_neplatnost_vypovedi");
+  } finally {
+    await context.close();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CD-10 — LaTeX download button hidden when /tex HEAD returns 422 (NEO-1972)
+// ---------------------------------------------------------------------------
+test("CD-10: LaTeX download button is hidden when the /tex HEAD request returns 422", async ({ browser }) => {
+  // DocumentCard.tsx fires HEAD /tex once the document reaches isReady=true (fields
+  // populated). It gates the .tex link on the response: 200 → hasLatex=true (show),
+  // non-ok (e.g. 422) → hasLatex=false (hide). This test verifies the hide path.
+  const [page, context] = await createSeededPage(browser);
+  try {
+    await mockBaseRoutes(page);
+    // SSE_WITH_DOC_READY includes populated fields so DocumentCard enters isReady=true,
+    // which is the prerequisite for the HEAD availability check to fire.
+    await page.route("**/api/v1/query/stream", (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_READY })
+    );
+    // Return 422 for HEAD — template has no LaTeX source. Any other method falls through
+    // (the download link won't be rendered, so no GET will occur in practice).
+    await page.route("**/api/v1/conversations/*/documents/*/tex", (route: Route) => {
+      if (route.request().method() === "HEAD") {
+        route.fulfill({ status: 422 });
+      } else {
+        route.continue();
+      }
+    });
+
+    await page.goto(`${FRONTEND}/chat`);
+
+    // Register the HEAD watcher after navigation, before triggering the query.
+    // DocumentCard fires the HEAD check only after isReady=true — this is safe.
+    const texHeadDone = page.waitForResponse(
+      (resp) => resp.url().includes("/tex") && resp.request().method() === "HEAD",
+      { timeout: 20_000 }
+    );
+
+    await clickFollowUp(page);
+
+    // Wait for document card to reach isReady=true (fields populated → v1 badge visible)
+    await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 15_000 });
+
+    // Wait for the HEAD /tex request to resolve — proves the availability check ran
+    // and returned 422, which keeps hasLatex=false in DocumentCard state.
+    const headResp = await texHeadDone;
+    expect(headResp.status()).toBe(422);
+
+    // After HEAD returned 422, hasLatex=false — the LaTeX download link must not be in the DOM.
+    const latexLink = page.locator('a[title="Download LaTeX source"]');
+    await expect(latexLink).not.toBeVisible({ timeout: 2_000 });
   } finally {
     await context.close();
   }
