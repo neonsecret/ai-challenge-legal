@@ -1,5 +1,6 @@
 "use client"
 
+import {useState} from "react"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
 import type {Template} from "@/types/documents"
 
@@ -9,9 +10,16 @@ interface TemplateCardProps {
 }
 
 export function TemplateCard({template, onSelect}: TemplateCardProps) {
+    const [active, setActive] = useState(false)
+
     return (
         <button
             onClick={() => onSelect({slug: template.slug, name: template.name, jurisdiction: template.jurisdiction || undefined})}
+            onMouseEnter={() => setActive(true)}
+            onMouseLeave={() => setActive(false)}
+            onTouchStart={() => setActive(true)}
+            onTouchEnd={() => setActive(false)}
+            onTouchCancel={() => setActive(false)}
             style={{
                 display: "flex",
                 flexDirection: "column",
@@ -20,21 +28,14 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 padding: SPACE[4],
                 borderRadius: RADIUS.lg,
                 width: "100%",
+                minHeight: 44,
                 textAlign: "left",
                 cursor: "pointer",
-                background: "var(--doc-card-bg)",
-                border: "1px solid var(--doc-card-border)",
+                background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",
+                border: `1px solid ${active ? "var(--doc-card-hover-border)" : "var(--doc-card-border)"}`,
                 backdropFilter: "blur(8px)",
                 WebkitBackdropFilter: "blur(8px)",
                 transition: `all ${TIMING.fast} ${EASE.out}`,
-            }}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.background = "var(--doc-card-hover-bg)"
-                e.currentTarget.style.borderColor = "var(--doc-card-hover-border)"
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--doc-card-bg)"
-                e.currentTarget.style.borderColor = "var(--doc-card-border)"
             }}
         >
             {/* Name */}

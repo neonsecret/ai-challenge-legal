@@ -20,7 +20,6 @@ export type {SourceRef}
 interface GroundingViewProps {
     answer: string
     sources: SourceRef[]
-    isDark?: boolean
     isMobile?: boolean
     focusDocId?: string
     focusPage?: number
@@ -69,7 +68,7 @@ function resolveSource(
 
 const crossfade = {duration: TIMING.fast.endsWith("ms") ? parseFloat(TIMING.fast) / 1000 : parseFloat(TIMING.fast)}
 
-export function GroundingView({answer, sources: rawSources, isDark = false, isMobile = false, focusDocId, focusPage, focusSeq = 0}: GroundingViewProps) {
+export function GroundingView({answer, sources: rawSources, isMobile = false, focusDocId, focusPage, focusSeq = 0}: GroundingViewProps) {
     // Normalize sources — filter out malformed entries and coerce fields to safe types
     const sources = useMemo(() => {
         const arr = Array.isArray(rawSources) ? rawSources : []
@@ -193,15 +192,18 @@ export function GroundingView({answer, sources: rawSources, isDark = false, isMo
             flexShrink: 0,
             overflowX: "auto",
             overflowY: "hidden",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
             display: "flex",
             gap: SPACE['2'],
             padding: SPACE['2'],
             paddingBottom: isMobile ? `max(${SPACE['2']}px, env(safe-area-inset-bottom))` : SPACE['2'],
+            paddingLeft: `max(${SPACE['2']}px, env(safe-area-inset-left))`,
+            paddingRight: `max(${SPACE['2']}px, env(safe-area-inset-right))`,
             minHeight: 0,
             maxHeight: 124,
             borderTop: `0.5px solid var(--gm-border-outer, var(--dt-glass-border-subtle))`,
             scrollbarWidth: "none",
-            WebkitOverflowScrolling: "touch",
         }}>
             {sources.map((source, i) => (
                 <SourceCitationCard
@@ -230,7 +232,6 @@ interface SourceCitationCardProps {
     isActive: boolean
     activePage: number | null
     onPageClick: (page: number) => void
-    isDark?: boolean
     /** Compact horizontal-strip mode — narrower card for the bottom sources bar */
     compact?: boolean
 }

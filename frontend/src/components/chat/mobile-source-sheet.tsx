@@ -209,7 +209,6 @@ export function MobileSourceSheet({
                     <GroundingView
                         answer={answer}
                         sources={sources}
-                        isDark={true}
                         isMobile={true}
                         focusDocId={focusDocId}
                         focusPage={focusPage}

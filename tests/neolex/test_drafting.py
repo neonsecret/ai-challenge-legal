@@ -955,7 +955,7 @@ class TestDocumentTex:
             assert "application/x-tex" in resp.headers["content-type"]
             # Field value injected into body
             assert b"Jan Novak" in resp.content or b"Jan Nov" in resp.content or b"Jan" in resp.content
-            # Content-Disposition uses template_slug-vN.tex (NEO-1852)
+            # Content-Disposition uses {template_slug}-v{version}.tex (per NEO-1852)
             assert "test_template-v1.tex" in resp.headers["content-disposition"]
             # Security headers
             assert resp.headers["cache-control"] == "no-store, private"
@@ -1211,7 +1211,7 @@ class TestLatexToHtmlBody:
         from neolex.services.pdf_generator import _latex_to_html_body
 
         # Test in context: bare \vspace{...} alone produces <p><br></p> which
-        # the empty-paragraph cleanup pass removes, so embed it between words.
+        # the empty-paragraph cleanup pass removes, so we embed it between words.
         result = _latex_to_html_body(r"before\vspace{1em}after")
         assert "<br>" in result
 
@@ -1257,10 +1257,10 @@ class TestLatexToHtmlBody:
         assert "</p><p>" in result
 
     def test_bare_curly_year_passes_through(self):
-        """Bare {2023} in body must appear verbatim — no mangling by regex passes.
+        """Bare {2023} in body must appear verbatim — no KeyError, no corruption.
 
-        Guard against any regex substitution that might misparse brace groups
-        as named back-references or consume the digits, causing silent corruption.
+        Regression guard: if _HTML_TEMPLATE.format() re-parsed substituted values,
+        {2023} would raise an IndexError or be silently dropped.
         """
         from neolex.services.pdf_generator import _latex_to_html_body
 
