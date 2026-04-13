@@ -9,6 +9,7 @@ The evaluation is:
 - Sampled: respects RAGAS_SAMPLE_RATE (0.0–1.0)
 - Fault-tolerant: any exception is caught and logged as a warning, never propagated
 - Conditional on Langfuse: silently no-ops when LANGFUSE_ENABLED is false
+- Optional: silently no-ops when the 'eval' extra group is not installed (ragas absent)
 """
 
 from __future__ import annotations
@@ -22,6 +23,17 @@ from neolex.config import settings
 from neolex.observability import get_langfuse, is_enabled
 
 logger = logging.getLogger(__name__)
+
+# ragas is an optional eval-only dependency (pyproject.toml [dependency-groups] eval).
+# It must NOT be installed in the production venv — only when running benchmarks via
+# `uv sync --group eval`.  This flag lets production code degrade gracefully.
+try:
+    import ragas  # noqa: F401
+
+    _RAGAS_AVAILABLE = True
+except ImportError:
+    _RAGAS_AVAILABLE = False
+    logger.debug("ragas not installed — RAGAS background evaluation disabled")
 
 
 def _build_ragas_llm():
@@ -127,6 +139,10 @@ async def run_ragas_eval(
         corpus:      Corpus identifier (e.g. "difc", "czech").
         answer_type: Query answer type (e.g. "free_text", "boolean").
     """
+    if not _RAGAS_AVAILABLE:
+        logger.debug("RAGAS eval skipped (ragas not installed)")
+        return
+
     if not is_enabled():
         logger.debug("RAGAS eval skipped (Langfuse disabled)")
         return

@@ -1,6 +1,6 @@
 # NeoLex Dependency Vulnerability Status
 
-**Last Scanned:** 2026-03-26
+**Last Scanned:** 2026-04-13
 **Tool:** pip-audit 2.10.0
 **Scope:** All installed Python packages in the conda/pip environment
 
@@ -44,7 +44,7 @@ These packages are imported by the NeoLex FastAPI application or arlc/ pipeline.
 | pypdf        | 6.9.1   | CVE-2026-33699                                 | Medium | 6.9.2       | Patch next sprint |
 | pip          | 25.1    | CVE-2025-8869, CVE-2026-1703                   | Low    | 26.0+       | Non-blocking      |
 
-**Assessment (2026-03-26):** No Critical (CVSS >= 9.0) vulnerabilities found in the
+**Assessment (2026-04-13):** No Critical (CVSS >= 9.0) vulnerabilities found in the
 runtime path. All medium-severity issues are accepted for this sprint and scheduled for
 patching in the next dependency update cycle. None of the CVEs in `aiohttp`, `requests`,
 or `urllib3` have publicly available proof-of-concept exploits at the time of this audit.
@@ -53,8 +53,8 @@ or `urllib3` have publicly available proof-of-concept exploits at the time of th
 
 ## Research/ML Environment — Vulnerabilities
 
-These packages are only used in benchmark scripts (`benchmarks/`) and are NOT part of
-the deployed NeoLex application.
+These packages are only used in benchmark scripts (`benchmarks/`) or the eval dependency
+group (`uv sync --group eval`) and are NOT part of the deployed NeoLex application.
 
 | Package   | Version | CVE(s)                                    | Fix Version | Notes                                   |
 |-----------|---------|-------------------------------------------|-------------|-----------------------------------------|
@@ -62,7 +62,7 @@ the deployed NeoLex application.
 | pillow    | 10.4.0  | CVE-2026-25990                            | 12.1.1      | Not imported by NeoLex API              |
 | gradio    | 6.6.0   | CVE-2026-28414                            | 6.7.0       | Not imported by NeoLex API              |
 | pyasn1    | 0.6.1   | CVE-2026-23490, CVE-2026-30922            | 0.6.3       | Transitive dep (via cryptography/oauth) |
-| diskcache | 5.6.3   | CVE-2025-69872                            | n/a         | Benchmark/research only                 |
+| diskcache | 5.6.3   | CVE-2025-69872                            | n/a         | **MITIGATED 2026-04-13** — removed from production venv; eval-only group |
 | pygments  | 2.19.1  | CVE-2026-4539                             | n/a         | Dev tooling only                        |
 | wheel     | 0.45.1  | CVE-2026-24049                            | 0.46.2      | Build tool — not runtime                |
 
@@ -105,7 +105,7 @@ pip install wheel>=0.46.2 pip>=26.0
 | CVE-2026-1703           | pip       | Build tool, not runtime                       | Engineering | 2026-03-26 |
 | CVE-2026-4539           | pygments  | Dev tooling, not in production deployment     | Engineering | 2026-03-26 |
 | CVE-2026-24049          | wheel     | Build tool, not runtime                       | Engineering | 2026-03-26 |
-| CVE-2025-69872          | diskcache | Benchmark/research only, not deployed         | Engineering | 2026-03-26 |
+| CVE-2025-69872          | diskcache | **Mitigated 2026-04-13**: ragas/diskcache/instructor removed from production venv (NEO-1747). Only installed via `uv sync --group eval` for benchmarks. `neolex/services/ragas_background.py` guards with `_RAGAS_AVAILABLE` flag. | Engineering | 2026-04-13 |
 
 ---
 
@@ -117,3 +117,6 @@ pip install wheel>=0.46.2 pip>=26.0
   only `pyproject.toml` dependencies to reduce the attack surface.
 - `pip-audit` uses the PyPI Advisory Database (OSV). Cross-reference with
   NVD (https://nvd.nist.gov) for CVSS scores and additional context.
+- **Eval extras** (`ragas`, `diskcache`, `instructor`) must only be installed when
+  running benchmarks: `uv sync --group eval`. Never run `uv sync --group eval` on
+  the production backend host.

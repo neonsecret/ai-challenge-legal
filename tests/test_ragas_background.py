@@ -6,6 +6,7 @@ Covers:
 - Langfuse disabled → early no-op
 - Empty answer or empty contexts → early no-op
 - Happy path: scores are pushed to Langfuse with the correct metric names
+- ragas unavailable → early no-op (CVE-2025-69872 remediation: ragas is eval-only)
 """
 
 from __future__ import annotations
@@ -50,6 +51,30 @@ async def _call_eval(**overrides):
 
 
 # ---------------------------------------------------------------------------
+# 0. ragas unavailable → early no-op (production guard)
+# ---------------------------------------------------------------------------
+
+
+class TestRagasUnavailable:
+    @pytest.mark.asyncio
+    async def test_skips_when_ragas_not_installed(self):
+        """_RAGAS_AVAILABLE=False must short-circuit before any eval work."""
+        with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", False),
+            patch("neolex.services.ragas_background.is_enabled", return_value=True),
+            patch("neolex.services.ragas_background.asyncio.to_thread") as mock_thread,
+        ):
+            await _call_eval()
+            mock_thread.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_exception_when_ragas_not_installed(self):
+        """Missing ragas must never raise."""
+        with patch("neolex.services.ragas_background._RAGAS_AVAILABLE", False):
+            await _call_eval()
+
+
+# ---------------------------------------------------------------------------
 # 1. Langfuse disabled → early return, no RAGAS call
 # ---------------------------------------------------------------------------
 
@@ -58,6 +83,7 @@ class TestLangfuseDisabled:
     @pytest.mark.asyncio
     async def test_skips_when_langfuse_disabled(self):
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=False),
             patch("neolex.services.ragas_background.asyncio.to_thread") as mock_thread,
         ):
@@ -67,8 +93,10 @@ class TestLangfuseDisabled:
     @pytest.mark.asyncio
     async def test_no_exception_when_langfuse_disabled(self):
         """Langfuse disabled must never raise."""
-        with patch("neolex.services.ragas_background.is_enabled", return_value=False):
-            # Should complete without raising anything
+        with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
+            patch("neolex.services.ragas_background.is_enabled", return_value=False),
+        ):
             await _call_eval()
 
 
@@ -82,6 +110,7 @@ class TestSamplingLogic:
     async def test_rate_zero_always_skips(self):
         """RAGAS_SAMPLE_RATE=0.0 must skip 100% of queries."""
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.settings") as mock_settings,
             patch("neolex.services.ragas_background.random.random", return_value=0.0),
@@ -98,6 +127,7 @@ class TestSamplingLogic:
         mock_langfuse = MagicMock()
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -115,6 +145,7 @@ class TestSamplingLogic:
     async def test_rate_half_skips_when_random_above(self):
         """With rate=0.5, a random value of 0.7 must skip."""
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.settings") as mock_settings,
             patch("neolex.services.ragas_background.random.random", return_value=0.7),
@@ -131,6 +162,7 @@ class TestSamplingLogic:
         mock_langfuse = MagicMock()
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -153,6 +185,7 @@ class TestEmptyInputGuards:
     @pytest.mark.asyncio
     async def test_empty_answer_skips_ragas(self):
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.settings") as mock_settings,
             patch("neolex.services.ragas_background.random.random", return_value=0.0),
@@ -165,6 +198,7 @@ class TestEmptyInputGuards:
     @pytest.mark.asyncio
     async def test_empty_contexts_skips_ragas(self):
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.settings") as mock_settings,
             patch("neolex.services.ragas_background.random.random", return_value=0.0),
@@ -185,6 +219,7 @@ class TestErrorHandling:
     async def test_ragas_exception_does_not_propagate(self):
         """A crash inside _run_ragas_sync must be swallowed, not raised."""
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=MagicMock()),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -205,6 +240,7 @@ class TestErrorHandling:
         import logging
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=MagicMock()),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -228,6 +264,7 @@ class TestErrorHandling:
         mock_langfuse.create_score.side_effect = ConnectionError("Langfuse unreachable")
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -255,6 +292,7 @@ class TestHappyPath:
         mock_langfuse = MagicMock()
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -278,6 +316,7 @@ class TestHappyPath:
         mock_langfuse = MagicMock()
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -301,6 +340,7 @@ class TestHappyPath:
         mock_langfuse = MagicMock()
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
@@ -322,6 +362,7 @@ class TestHappyPath:
         mock_langfuse = MagicMock()
 
         with (
+            patch("neolex.services.ragas_background._RAGAS_AVAILABLE", True),
             patch("neolex.services.ragas_background.is_enabled", return_value=True),
             patch("neolex.services.ragas_background.get_langfuse", return_value=mock_langfuse),
             patch("neolex.services.ragas_background.settings") as mock_settings,
