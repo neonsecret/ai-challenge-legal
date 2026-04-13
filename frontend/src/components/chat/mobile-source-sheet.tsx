@@ -165,7 +165,7 @@ export function MobileSourceSheet({
                         width: 24,
                         height: 3,
                         borderRadius: 1,
-                        background: "rgba(201,168,76,0.3)",
+                        background: "var(--dt-color-gold-glow)",
                     }} />
                 </div>
 
@@ -188,14 +188,15 @@ export function MobileSourceSheet({
                     </span>
                     <button
                         onClick={onClose}
+                        aria-label="Close source panel"
                         style={{
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            width: 28,
-                            height: 28,
+                            width: 44,
+                            height: 44,
                             borderRadius: 6,
-                            background: "rgba(201,168,76,0.05)",
+                            background: "var(--strict-gold-badge-bg)",
                             border: "1px solid var(--strict-gold-border)",
                             cursor: "pointer",
                             color: "var(--strict-text-dim)",
@@ -210,7 +211,6 @@ export function MobileSourceSheet({
                     <GroundingView
                         answer={answer}
                         sources={sources}
-                        isDark={true}
                         isMobile={true}
                         focusDocId={focusDocId}
                         focusPage={focusPage}

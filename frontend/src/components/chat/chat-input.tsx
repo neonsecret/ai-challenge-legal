@@ -90,14 +90,10 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
     const glowShadow = focused
         ? isGlassmorphic
             ? "0 0 0 2px rgba(201,168,76, 0.08)"
-            : isDark
-                ? "inset 0 1px 0 rgba(255,255,255,0.10), 0 0 0 3px rgba(201,168,76,0.08), 0 2px 16px rgba(201,168,76,0.10)"
-                : "inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(196,124,0,0.06), 0 2px 16px rgba(196,124,0,0.08)"
+            : "inset 0 1px 0 rgba(255,255,255,0.80), 0 0 0 3px rgba(196,124,0,0.06), 0 2px 16px rgba(196,124,0,0.08)"
         : isGlassmorphic
             ? "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 16px rgba(0,0,0,0.25)"
-            : isDark
-                ? "inset 0 1px 0 rgba(255,255,255,0.08)"
-                : "inset 0 1px 0 rgba(255,255,255,0.70)"
+            : "inset 0 1px 0 rgba(255,255,255,0.70)"
 
     return (
         <>

@@ -2066,15 +2066,6 @@ button:active:not(:disabled):not(.no-press-scale) {
    when .dark is active on <html>.
    ============================================================ */
 
-/* Bottom nav pill — V3 glass treatment */
-.dark .bottom-nav-pill {
-    background: var(--v3-glass-elevated-bg) !important;
-    border: 1px solid var(--v3-glass-elevated-border) !important;
-    backdrop-filter: var(--v3-glass-elevated-blur) !important;
-    -webkit-backdrop-filter: var(--v3-glass-elevated-blur) !important;
-    box-shadow: var(--v3-glass-elevated-shadow) !important;
-}
-
 /* Animate glass-in entry — unchanged keyframe, but honor V3 tokens */
 .dark .animate-glass-in {
     animation: glass-in 0.22s cubic-bezier(0.32, 0.72, 0, 1) both;
