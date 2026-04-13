@@ -19,11 +19,11 @@ interface GroundingDrawerProps {
 }
 
 export function GroundingDrawer({
-                                    open,
-                                    onOpenChange,
-                                    answer,
-                                    sources,
-                                }: GroundingDrawerProps) {
+    open,
+    onOpenChange,
+    answer,
+    sources,
+}: GroundingDrawerProps) {
     const isMobile = useIsMobile()
 
     return (
@@ -66,7 +66,13 @@ export function GroundingDrawer({
                                     paddingLeft: "env(safe-area-inset-left)",
                                     paddingRight: "env(safe-area-inset-right)",
                                 }
-                                : {top: 8, right: 8, bottom: 8, width: "min(90vw, 1200px)", borderRadius: 20}),
+                                : {
+                                    top: 8,
+                                    right: 8,
+                                    bottom: 8,
+                                    width: "min(90vw, 1200px)",
+                                    borderRadius: 20,
+                                }),
                             zIndex: 61,
                             display: "flex",
                             flexDirection: "column",
@@ -90,7 +96,7 @@ export function GroundingDrawer({
                             background: "var(--doc-panel-header-bg)",
                         }}>
                             <span style={{
-                                fontSize: 12,
+                                fontSize: "12px",
                                 fontWeight: 700,
                                 textTransform: "uppercase",
                                 letterSpacing: "0.12em",
