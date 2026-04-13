@@ -70,21 +70,22 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
         onTemplateSelect?.(template)
     }, [onTemplateSelect])
 
+    // isGlassmorphic = isDark, so the non-glassmorphic path is always light mode
     const sendBg = hasText && !disabled
         ? isGlassmorphic
             ? "linear-gradient(135deg, rgba(201,168,76,0.22), rgba(201,168,76,0.12))"
-            : isDark ? "linear-gradient(135deg, #C9A84C, #e8cc7a)" : "#5c2e08"
+            : "var(--dt-preview-btn-bg)"
         : isGlassmorphic
             ? "rgba(50,50,50,0.40)"
-            : isDark ? "rgba(255,255,255,0.08)" : "rgba(92,46,8,0.12)"
+            : "var(--dt-accent-tint)"
 
     const sendColor = hasText && !disabled
-        ? isGlassmorphic ? "var(--strict-gold-base)" : isDark ? "#0F1623" : "#f5e6d0"
-        : isGlassmorphic ? "rgba(255,255,255,0.25)" : isDark ? "rgba(255,255,255,0.30)" : "#b29254"
+        ? isGlassmorphic ? "var(--strict-gold-base)" : "var(--dt-preview-btn-text)"
+        : isGlassmorphic ? "rgba(255,255,255,0.25)" : "var(--dt-accent-color)"
 
     const borderColor = focused
-        ? isGlassmorphic ? "rgba(201,168,76, 0.2)" : isDark ? "rgba(201,168,76,0.40)" : "rgba(196,124,0,0.35)"
-        : isGlassmorphic ? "var(--strict-input-border)" : isDark ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.55)"
+        ? isGlassmorphic ? "rgba(201,168,76, 0.2)" : "var(--dt-accent-border-strong)"
+        : isGlassmorphic ? "var(--strict-input-border)" : "var(--dt-glass-border)"
 
     const glowShadow = focused
         ? isGlassmorphic
@@ -106,9 +107,7 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                     borderRadius: isGlassmorphic ? 8 : 16,
                     background: isGlassmorphic
                         ? focused ? "var(--strict-input-bg-focused)" : "var(--strict-input-bg)"
-                        : isDark
-                            ? focused ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.06)"
-                            : focused ? "rgba(255,255,255,0.30)" : "rgba(255,255,255,0.22)",
+                        : focused ? "var(--dt-glass-bg)" : "var(--dt-glass-bg-subtle)",
                     backdropFilter: isGlassmorphic ? "blur(15px)" : "var(--dt-glass-blur)",
                     WebkitBackdropFilter: isGlassmorphic ? "blur(15px)" : "var(--dt-glass-blur)",
                     border: `${isGlassmorphic ? "1px" : "0.5px"} solid ${borderColor}`,
@@ -127,8 +126,8 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                         font: "14px/1.5 Georgia, serif",
                         letterSpacing: "0.01em",
                     } : {
-                        color: isDark ? "rgba(255,255,255,0.92)" : "#2e1f08",
-                        caretColor: isDark ? "#C9A84C" : "#c9a230",
+                        color: "var(--dt-text-secondary)",
+                        caretColor: "var(--dt-color-gold-base)",
                         fontSize: "14px",
                         fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
                         letterSpacing: "-0.006em",
@@ -145,7 +144,7 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                     <div style={{display: "flex", alignItems: "center", gap: 6}}>
                         <span style={{
                             fontSize: "11px",
-                            color: isGlassmorphic ? "rgba(255,255,255,0.22)" : isDark ? "rgba(255,255,255,0.20)" : "rgba(46,31,8,0.25)",
+                            color: isGlassmorphic ? "rgba(255,255,255,0.22)" : "var(--dt-text-quaternary)",
                             fontFamily: "system-ui, sans-serif",
                             userSelect: "none",
                             transition: "opacity 0.2s",

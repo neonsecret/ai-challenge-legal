@@ -24,35 +24,15 @@ export function BottomNav() {
     // Dark desktop: navigation lives in the sidebar rail
     if (isDark && !isMobile) return null;
 
-    const pill = isDark ? {
-        // Dark (Strict): glass with gold border — mobile only
-        background: "rgba(13,10,18,0.85)",
-        border: "1px solid rgba(201,168,76,0.08)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03)",
-    } : {
-        // Light — cool grey-slate (matches sidebar token --glass-bg-nav)
-        background: "rgba(248,250,252,0.88)",
-        border: "0.5px solid rgba(99,102,241,0.18)",
-        boxShadow: [
-            "inset 0 1.5px 0 rgba(255,255,255,0.90)",
-            "inset 1px 0 0 rgba(255,255,255,0.50)",
-            "inset -1px 0 0 rgba(255,255,255,0.20)",
-            "0 4px 20px rgba(30,50,100,0.10)",
-            "0 1px 3px rgba(30,50,100,0.06)",
-        ].join(", "),
-    };
-
-    const activeColor = isDark ? "#C9A84C" : "#4F46E5";
-    const inactiveColor = isDark ? "rgba(255,255,255,0.60)" : "rgba(30,50,100,0.45)";
-    const activeBg = isDark ? "rgba(201,168,76,0.16)" : "rgba(99,102,241,0.12)";
-    const activeBorder = isDark ? "0.5px solid rgba(201,168,76,0.30)" : "0.5px solid rgba(99,102,241,0.22)";
-
     return (
         <div
+            className="bottom-nav-pill"
             suppressHydrationWarning
             style={{
                 position: "fixed",
-                bottom: isMobile ? "12px" : "20px",
+                bottom: isMobile
+                    ? "calc(env(safe-area-inset-bottom, 0px) + 12px)"
+                    : "20px",
                 left: "50%",
                 transform: "translateX(-50%)",
                 zIndex: 50,
@@ -60,11 +40,13 @@ export function BottomNav() {
                 alignItems: "center",
                 gap: "1px",
                 padding: isMobile ? "3px 3px" : "4px 5px",
-                backdropFilter: isDark ? "blur(10px)" : "blur(32px) saturate(180%)",
-                WebkitBackdropFilter: isDark ? "blur(10px)" : "blur(32px) saturate(180%)",
+                backdropFilter: "var(--nav-pill-blur)",
+                WebkitBackdropFilter: "var(--nav-pill-blur)",
                 borderRadius: "22px",
                 maxWidth: "calc(100vw - 24px)",
-                ...pill,
+                background: "var(--nav-pill-bg)",
+                border: "1px solid var(--nav-pill-border)",
+                boxShadow: "var(--nav-pill-shadow)",
             }}
         >
             {navItemDefs.map(({href, labelKey, icon: Icon}) => {
@@ -82,28 +64,31 @@ export function BottomNav() {
                             borderRadius: "16px",
                             textDecoration: "none",
                             transition: "all 0.14s ease",
-                            background: isActive ? activeBg : "transparent",
-                            boxShadow: isActive && !isDark ? "inset 0 1px 0 rgba(255,255,255,0.80), 0 1px 4px rgba(30,50,100,0.08)" : "none",
-                            border: isActive ? activeBorder : "0.5px solid transparent",
+                            background: isActive ? "var(--nav-active-bg)" : "transparent",
+                            boxShadow: isActive ? "var(--nav-active-shadow)" : "none",
+                            border: isActive ? "var(--nav-active-border)" : "0.5px solid transparent",
                         }}
                         onMouseEnter={(e) => {
-                            if (!isActive) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)";
+                            if (!isActive) e.currentTarget.style.background = "var(--dt-button-bg-hover)";
                         }}
                         onMouseLeave={(e) => {
                             if (!isActive) e.currentTarget.style.background = "transparent";
                         }}
                     >
-                        <Icon size={isMobile ? 16 : 18} strokeWidth={isActive ? 2 : 1.6}
-                              style={{color: isActive ? activeColor : inactiveColor}}/>
+                        <Icon
+                            size={isMobile ? 16 : 18}
+                            strokeWidth={isActive ? 2 : 1.6}
+                            style={{color: isActive ? "var(--nav-active-color)" : "var(--nav-inactive-color)"}}
+                        />
                         <span suppressHydrationWarning style={{
                             fontSize: isMobile ? "9px" : "10px",
                             fontWeight: isActive ? 600 : 400,
-                            color: isActive ? activeColor : inactiveColor,
+                            color: isActive ? "var(--nav-active-color)" : "var(--nav-inactive-color)",
                             fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
                             letterSpacing: "0.01em",
                         }}>
-              {t(labelKey)}
-            </span>
+                            {t(labelKey)}
+                        </span>
                     </Link>
                 );
             })}
@@ -112,7 +97,7 @@ export function BottomNav() {
             <div style={{
                 width: 1,
                 height: 28,
-                background: isDark ? "rgba(255,255,255,0.10)" : "rgba(46,31,8,0.12)",
+                background: "var(--nav-sep-color)",
                 margin: "0 2px"
             }}/>
 
@@ -132,10 +117,10 @@ export function BottomNav() {
                     border: "0.5px solid transparent",
                     cursor: "pointer",
                     transition: "all 0.14s ease",
-                    color: isDark ? "rgba(255,255,255,0.42)" : "rgba(46,31,8,0.48)",
+                    color: "var(--nav-toggle-color)",
                 }}
                 onMouseEnter={(e) => {
-                    e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)";
+                    e.currentTarget.style.background = "var(--dt-button-bg-hover)";
                 }}
                 onMouseLeave={(e) => {
                     e.currentTarget.style.background = "transparent";
@@ -151,8 +136,8 @@ export function BottomNav() {
                     fontFamily: "-apple-system, BlinkMacSystemFont, system-ui, sans-serif",
                     letterSpacing: "0.01em"
                 }}>
-          {isDark ? t("theme_toggle.light") : t("theme_toggle.dark")}
-        </span>
+                    {isDark ? t("theme_toggle.light") : t("theme_toggle.dark")}
+                </span>
             </button>
 
             {/* Language toggle */}

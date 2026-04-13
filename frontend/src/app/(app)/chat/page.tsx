@@ -520,7 +520,7 @@ export default function ChatPage() {
                     documentCount={docState.count}
                 />
                 {/* Messages */}
-                <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? `${SPACE['4']}px ${SPACE['3']}px 90px` : `${SPACE['6']}px ${SPACE['6']}px`, minHeight: 0}}>
+                <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? `${SPACE['4']}px ${SPACE['3']}px calc(env(safe-area-inset-bottom, 0px) + 96px)` : `${SPACE['6']}px ${SPACE['6']}px`, minHeight: 0}}>
                     {messages.length === 0 ? (
                         <>
                             <EmptyState
