@@ -93,16 +93,16 @@ def _run_ragas_sync(question: str, answer: str, contexts: list[str]) -> dict[str
         show_progress=False,
     )
 
-    # Prefer per-sample scores (RAGAS ≥0.2) for the single sample we evaluated.
+    # Per-sample scores (RAGAS ≥0.3). dict(result) fallback removed — EvaluationResult
+    # dropped __iter__ in 0.3.x so dict(result) raises TypeError.
     try:
         per_sample = list(result.scores)
         if per_sample:
             return {k: float(v) for k, v in per_sample[0].items() if v is not None}
-    except AttributeError:
-        pass
+    except AttributeError as exc:
+        raise RuntimeError("ragas EvaluationResult has no usable scores interface") from exc
 
-    # Fall back to aggregate scores when per-sample API is unavailable.
-    return {k: float(v) for k, v in dict(result).items() if v is not None}
+    return {}
 
 
 async def run_ragas_eval(
