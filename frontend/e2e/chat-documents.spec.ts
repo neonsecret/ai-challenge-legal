@@ -8,6 +8,7 @@
  *   CD-3   "Vlastní dokument" option appears exactly once in template picker
  *   CD-4   Drafting indicator visible during SSE stream, hidden after done
  *   CD-10  LaTeX button hidden when /tex HEAD returns 422 (NEO-1972)
+ *   CD-11  LaTeX button hidden in DocumentViewer when /tex HEAD returns 422 (NEO-1984)
  *
  * Run: npx playwright test e2e/chat-documents.spec.ts
  */
@@ -662,6 +663,67 @@ test("CD-10: LaTeX download button is hidden when the /tex HEAD request returns 
 
     // After HEAD returned 422, hasLatex=false — the LaTeX download link must not be in the DOM.
     const latexLink = page.locator('a[title="Download LaTeX source"]');
+    await expect(latexLink).not.toBeVisible({ timeout: 2_000 });
+  } finally {
+    await context.close();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CD-11 — LaTeX download button hidden in DocumentViewer when /tex HEAD → 422
+// ---------------------------------------------------------------------------
+test("CD-11: LaTeX download button is hidden inside DocumentViewer when the /tex HEAD request returns 422", async ({ browser }) => {
+  // DocumentViewer.tsx fires HEAD /tex when it mounts (open effect, lines 88-95).
+  // It gates the download link at line 281 on hasLatex state. This test verifies
+  // the hide path inside the viewer — mirrors CD-10 which tests DocumentCard.
+  const [page, context] = await createSeededPage(browser);
+  try {
+    await mockBaseRoutes(page);
+    // SSE_WITH_DOC_READY: populated fields → DocumentCard enters isReady=true → Preview button visible
+    await page.route("**/api/v1/query/stream", (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_READY })
+    );
+    // PDF endpoint — needed so DocumentViewer renders without error
+    await page.route("**/api/v1/conversations/*/documents/*/pdf", (route: Route) =>
+      route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.4" })
+    );
+    // Return 422 for HEAD /tex — template has no LaTeX source in the viewer context
+    await page.route("**/api/v1/conversations/*/documents/*/tex", (route: Route) => {
+      if (route.request().method() === "HEAD") {
+        route.fulfill({ status: 422 });
+      } else {
+        route.continue();
+      }
+    });
+
+    await page.goto(`${FRONTEND}/chat`);
+    await clickFollowUp(page);
+
+    // Wait for document card to reach isReady=true (v1 badge visible = fields populated)
+    await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 15_000 });
+
+    // Register HEAD watcher BEFORE clicking Preview — DocumentViewer fires HEAD
+    // immediately on mount (the `open` effect), so the watcher must be in place first.
+    const texHeadDone = page.waitForResponse(
+      (resp) => resp.url().includes("/tex") && resp.request().method() === "HEAD",
+      { timeout: 10_000 }
+    );
+
+    // Click Preview to open DocumentViewer
+    const previewBtn = page.locator('button[aria-label="Preview"]').first();
+    await expect(previewBtn).toBeVisible({ timeout: 5_000 });
+    await previewBtn.click();
+
+    // Viewer must open (close button confirms it)
+    await expect(page.locator('button[aria-label="Close document viewer"]')).toBeVisible({ timeout: 5_000 });
+
+    // Wait for HEAD /tex to resolve — confirms the availability check ran and returned 422
+    const headResp = await texHeadDone;
+    expect(headResp.status()).toBe(422);
+
+    // After HEAD returned 422, hasLatex=false — LaTeX link must NOT appear in the viewer.
+    // DocumentViewer renders both title and aria-label on the link (lines 285-286).
+    const latexLink = page.locator('a[title="Download LaTeX source"], a[aria-label="Download LaTeX source"]');
     await expect(latexLink).not.toBeVisible({ timeout: 2_000 });
   } finally {
     await context.close();
