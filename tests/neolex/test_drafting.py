@@ -1257,10 +1257,10 @@ class TestLatexToHtmlBody:
         assert "</p><p>" in result
 
     def test_bare_curly_year_passes_through(self):
-        """Bare {2023} in body must appear verbatim — no KeyError, no corruption.
+        """Bare {2023} in body must appear verbatim — no mangling by regex passes.
 
-        Regression guard: if _HTML_TEMPLATE.format() re-parsed substituted values,
-        {2023} would raise an IndexError or be silently dropped.
+        Guard against any regex substitution that might misparse brace groups
+        as named back-references or consume the digits, causing silent corruption.
         """
         from neolex.services.pdf_generator import _latex_to_html_body
 
