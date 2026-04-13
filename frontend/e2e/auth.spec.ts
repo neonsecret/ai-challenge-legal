@@ -30,11 +30,10 @@ const MOCK_USER = {
 // ---------------------------------------------------------------------------
 // Scenario 1 — Auth retry on /chat OAuth redirect
 // ---------------------------------------------------------------------------
-// TODO(NEO-1946): Scenario 1 skipped — the chat page's auth guard is a one-shot
-// fetch (chat/page.tsx:191-198) that redirects immediately on a 401 without retry.
-// The useAuth retry logic (use-auth.ts) is only used on the login page, not on
-// /chat. The test expected a retry that the production code does not implement.
-// Re-enable if a retry guard is added to the chat page.
+// TODO(NEO-1946): Scenario 1 skipped — chat/page.tsx uses its own one-shot auth
+// guard (lines 191-198) and does not call useAuth at all, so the retry logic in
+// use-auth.ts:59-60 never fires on this page. The chat guard redirects immediately
+// on a 401 without any retry. Re-enable if a retry guard is added to chat/page.tsx.
 test.skip("Scenario 1: auth retry on /chat — succeeds after first 401", async ({ page }) => {
   let callCount = 0;
 
@@ -102,7 +101,7 @@ test("Scenario 2: navigating to non-existent path renders gracefully without Inv
 // ---------------------------------------------------------------------------
 // Scenario 3 — Google OAuth redirect flow (Google side mocked)
 // ---------------------------------------------------------------------------
-test("Scenario 3: Google OAuth redirect flow — mocked Google, real backend callback", async ({ page }) => {
+test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to error page", async ({ page }) => {
   // We intercept the GET /auth/google redirect (which would go to Google OAuth)
   // and redirect straight to /login?error=oauth_denied — no real backend callback needed.
   //
