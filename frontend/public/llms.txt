@@ -1,0 +1,31 @@
+# Vitreon Legal
+
+> AI-powered legal research platform providing source-grounded answers from Czech, DIFC, UK, and Australian statutes and court decisions.
+
+## Docs
+
+- [Homepage](https://vitreon.app): Legal AI research platform with source-grounded answers, document drafting, and multi-jurisdiction support.
+- [Privacy Policy](https://vitreon.app/privacy): GDPR-compliant privacy policy, data controller in Prague, Czech Republic.
+- [Terms of Service](https://vitreon.app/terms): Service terms governed by Czech law and Czech courts.
+
+## Key Facts
+
+- Founded in 2025 by Viacheslav Ivannikov
+- Headquartered in Prague, Czech Republic
+- Jurisdictions: Czech Republic, DIFC (Dubai), United Kingdom, Australia
+- GaRAGe benchmark: 0.824 RAF (+36% above published SOTA of 0.607, per ACL 2025)
+- LEXam Open EN: 0.691 (+21% above Claude 3.7-S baseline of 0.572, per ICLR 2026)
+- ARLC 2026 competition: 4th place out of 80 teams ($32K prize pool, Dubai AI Week)
+- 9 Czech legal document templates with statutory grounding
+- 100% citation accuracy — every answer cites exact page and clause
+- Pricing: Free ($0, 3/day), Starter ($29/mo), Pro ($179/mo), Enterprise ($499/mo)
+- Stack: FastAPI backend, Next.js frontend, PostgreSQL + pgvector, custom-trained embeddings
+
+## Contact
+
+- Website: https://vitreon.app
+- Legal: legal@vitreon.app
+- Enterprise: enterprise@vitreon.app
+- Privacy: privacy@vitreon.app
+- Security: security@vitreon.app
+- Billing: billing@vitreon.app

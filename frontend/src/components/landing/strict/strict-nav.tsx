@@ -10,6 +10,8 @@ import { useI18n } from "@/lib/i18n";
 const NAV_LINKS = [
   { href: "#features", labelKey: "strict.nav_features" },
   { href: "#pricing", labelKey: "strict.pricing_label" },
+  { href: "/benchmarks", labelKey: "strict.nav_benchmarks" },
+  { href: "/blog", labelKey: "strict.nav_blog" },
 ] as const;
 
 export function StrictNav() {

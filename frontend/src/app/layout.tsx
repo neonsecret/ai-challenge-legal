@@ -19,8 +19,176 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-    title: "Vitreon Legal — Your AI Legal Counsel",
-    description: "AI-powered legal research and document analysis",
+    metadataBase: new URL("https://vitreon.app"),
+    title: {
+        default: "Vitreon Legal — Your AI Legal Counsel",
+        template: "%s | Vitreon Legal",
+    },
+    description:
+        "AI-powered legal research platform providing source-grounded answers from statutes and court decisions. Every answer cites the exact page and clause. Supports Czech, DIFC, UK, and Australian jurisdictions.",
+    keywords: [
+        "legal research",
+        "AI legal assistant",
+        "legal AI",
+        "court decisions",
+        "case law",
+        "Czech law",
+        "DIFC law",
+        "legal document drafting",
+    ],
+    authors: [{name: "Viacheslav Ivannikov"}],
+    creator: "Vitreon Legal",
+    publisher: "Vitreon Legal",
+    openGraph: {
+        title: "Vitreon Legal — Your AI Legal Counsel",
+        description:
+            "AI-powered legal research platform with source-grounded answers from statutes and court decisions. 100% citation coverage across Czech, DIFC, UK, and Australian jurisdictions.",
+        url: "https://vitreon.app",
+        siteName: "Vitreon Legal",
+        locale: "en",
+        type: "website",
+        images: [
+            {
+                url: "/opengraph-image.png",
+                width: 1200,
+                height: 630,
+                alt: "Vitreon Legal — AI-Powered Legal Research Platform",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: "Vitreon Legal — Your AI Legal Counsel",
+        description:
+            "AI-powered legal research with source-grounded answers. 100% citation coverage across Czech, DIFC, UK, and Australian jurisdictions.",
+        images: ["/opengraph-image.png"],
+    },
+};
+
+const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "Organization",
+            "@id": "https://vitreon.app/#organization",
+            "name": "Vitreon Legal",
+            "url": "https://vitreon.app",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://vitreon.app/vitreon-logo.svg",
+            },
+            "description":
+                "AI-powered legal research platform providing source-grounded answers from statutes and court decisions for Czech, DIFC, UK, and Australian law.",
+            "foundingDate": "2025",
+            "founder": {
+                "@type": "Person",
+                "@id": "https://vitreon.app/#founder",
+                "name": "Viacheslav Ivannikov",
+                "jobTitle": "Founder & CEO",
+                "knowsAbout": [
+                    "Legal AI",
+                    "Retrieval Augmented Generation",
+                    "Legal Research",
+                    "Czech Law",
+                    "Embedding Models",
+                    "Natural Language Processing",
+                ],
+            },
+            "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Prague",
+                "addressCountry": "CZ",
+            },
+            "contactPoint": [
+                {
+                    "@type": "ContactPoint",
+                    "email": "legal@vitreon.app",
+                    "contactType": "customer service",
+                },
+                {
+                    "@type": "ContactPoint",
+                    "email": "enterprise@vitreon.app",
+                    "contactType": "sales",
+                },
+            ],
+            "sameAs": [],
+            "knowsAbout": [
+                "Legal Research",
+                "Czech Law",
+                "DIFC Law",
+                "UK Law",
+                "Australian Law",
+                "Court Decisions",
+                "Legal AI",
+                "Retrieval Augmented Generation",
+                "Legal Document Drafting",
+                "Case Law Analysis",
+            ],
+        },
+        {
+            "@type": "SoftwareApplication",
+            "@id": "https://vitreon.app/#software",
+            "name": "Vitreon Legal",
+            "url": "https://vitreon.app",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "description":
+                "AI legal research platform with source-grounded answers from statutes and court decisions. Supports Czech, DIFC, UK, and Australian jurisdictions.",
+            "offers": [
+                {
+                    "@type": "Offer",
+                    "name": "Free",
+                    "price": "0",
+                    "priceCurrency": "USD",
+                    "description": "3 queries per day",
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Starter",
+                    "price": "29",
+                    "priceCurrency": "USD",
+                    "description": "30 queries per day",
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Pro",
+                    "price": "179",
+                    "priceCurrency": "USD",
+                    "description": "200 queries per day",
+                },
+                {
+                    "@type": "Offer",
+                    "name": "Enterprise",
+                    "price": "499",
+                    "priceCurrency": "USD",
+                    "description": "Unlimited queries",
+                },
+            ],
+            "featureList": [
+                "Source-grounded legal answers with page and clause citations",
+                "Czech law coverage including statutes and court decisions",
+                "DIFC, UK, and Australian jurisdiction support",
+                "9 Czech legal document templates",
+                "Legal document drafting with statutory grounding",
+                "Multi-jurisdiction legal research",
+                "100% citation coverage",
+            ],
+            "provider": {
+                "@id": "https://vitreon.app/#organization",
+            },
+        },
+        {
+            "@type": "WebSite",
+            "@id": "https://vitreon.app/#website",
+            "name": "Vitreon Legal",
+            "url": "https://vitreon.app",
+            "description": "AI-powered legal research and document analysis",
+            "inLanguage": ["cs", "en"],
+            "publisher": {
+                "@id": "https://vitreon.app/#organization",
+            },
+        },
+    ],
 };
 
 export default function RootLayout({
@@ -29,12 +197,18 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
+        // TODO: Make lang dynamic when URL-based locale routing is added (e.g. /cs/ -> lang="cs")
         <html
             lang="en"
             suppressHydrationWarning
             className={`${playfair.variable} ${inter.variable} h-full antialiased`}
         >
         <head>
+            {/* JSON-LD structured data for search engines and AI crawlers */}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{__html: JSON.stringify(jsonLd)}}
+            />
             {/* Unified color-mode FOUC prevention — runs sync before paint.
                 Priority: vitreon-color-mode > vitreon-design-version (migration) > theme (migration) > system */}
             {/* Tell dark-mode browser extensions this page manages its own colors */}
