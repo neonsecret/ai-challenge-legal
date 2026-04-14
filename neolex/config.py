@@ -9,6 +9,7 @@ Environment variables:
     ALLOWED_ORIGINS             Comma-separated CORS origins (default: http://localhost:3000)
     NEOLEX_DATA_DIR             Data directory (default: data)
     REQUEST_TIMEOUT_SECONDS     Per-request timeout in seconds (default: 30)
+    QUERY_PIPELINE_TIMEOUT_SECONDS  Internal timeout for /api/v1/query handler (default: 90)
     LOG_FORMAT                  "json" | "human" | auto-detect from TTY
     LOG_LEVEL                   Python log level (default: INFO)
     DATABASE_URL                PostgreSQL async URL (postgresql+asyncpg://...)
@@ -63,8 +64,12 @@ class Settings:
     ]
     # Data directory for documents and client indexes
     data_dir: str = os.environ.get("NEOLEX_DATA_DIR", "data")
-    # Per-request timeout (seconds). 0 disables the timeout.
+    # Per-request timeout (seconds) for the global middleware. 0 disables it.
     request_timeout_seconds: float = float(os.environ.get("REQUEST_TIMEOUT_SECONDS", "30"))
+    # Internal timeout for the non-streaming /api/v1/query pipeline handler.
+    # Longer than the middleware default because LLM generation can exceed 30s
+    # on local hardware when the remote GPU node is offline.
+    query_pipeline_timeout_seconds: float = float(os.environ.get("QUERY_PIPELINE_TIMEOUT_SECONDS", "90"))
 
     # --- PostgreSQL (auth + billing tables) ---
     database_url: str = os.environ.get("DATABASE_URL", "")

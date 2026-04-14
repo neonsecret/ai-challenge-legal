@@ -248,21 +248,28 @@ async def query(
 
     state = request.app.state
     try:
-        result = await run_single_question(
-            question=body.question,
-            answer_type=body.answer_type,
-            semaphore=state.semaphore,
-            route_fn=state.route_fn,
-            retrieve_fn=state.retrieve_fn,
-            answer_fn=state.answer_fn,
-            corpus=corpus,
-            laws=body.laws,
-            user_id=str(user_id),
-            user_email=user.email,
-            subscription_plan=user.subscription_status,
+        result = await asyncio.wait_for(
+            run_single_question(
+                question=body.question,
+                answer_type=body.answer_type,
+                semaphore=state.semaphore,
+                route_fn=state.route_fn,
+                retrieve_fn=state.retrieve_fn,
+                answer_fn=state.answer_fn,
+                corpus=corpus,
+                laws=body.laws,
+                user_id=str(user_id),
+                user_email=user.email,
+                subscription_plan=user.subscription_status,
+            ),
+            timeout=settings.query_pipeline_timeout_seconds,
         )
     except asyncio.TimeoutError as err:
-        logger.error("Pipeline timeout for question: %.80s", body.question)
+        logger.error(
+            "Pipeline timeout (%.0fs) for question: %.80s",
+            settings.query_pipeline_timeout_seconds,
+            body.question,
+        )
         raise HTTPException(
             status_code=504,
             detail={"error": "Pipeline timeout", "detail": "Query timed out. Please try again."},

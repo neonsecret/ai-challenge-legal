@@ -9,6 +9,11 @@ Configuration:
 The timeout applies to the entire request including pipeline execution.
 Query endpoints typically take 3-15s; 30s is a generous upper bound that
 still protects against stuck requests consuming server resources.
+
+Long-running endpoints (/api/v1/query, /api/v1/query/stream) are exempt from
+the global timeout and manage their own internal timeouts. This avoids the
+middleware cutting off legitimate pipeline responses (LLM latency can exceed
+30s when running on local hardware without the remote GPU node).
 """
 
 from __future__ import annotations
@@ -23,9 +28,9 @@ from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
-# Health endpoints are exempt — they must always respond even if the server is
-# under load. Auth failures also return quickly; we want 401 not 504.
-_EXEMPT_PREFIXES = ("/health", "/api/v1/query/stream")
+# Endpoints exempt from the global timeout. These endpoints either stream
+# responses (SSE) or manage their own internal timeout via asyncio.wait_for().
+_EXEMPT_PREFIXES = ("/health", "/api/v1/query")
 
 
 class TimeoutMiddleware(BaseHTTPMiddleware):

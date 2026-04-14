@@ -57,7 +57,7 @@ def select_test_questions(questions, n=20):
     return selected[:n]
 
 
-def test_single_question(q, verbose=True):
+def run_pipeline_question(q, verbose=True):
     """Run a single question through the full pipeline. Returns result dict."""
     q["id"][:12]
     question = q["question"]
@@ -234,7 +234,7 @@ def main():
     for i, q in enumerate(selected):
         print(f"[{i + 1}/{len(selected)}] ({q['answer_type']}) {q['question'][:70]}...")
         t0 = time.perf_counter()
-        r = test_single_question(q)
+        r = run_pipeline_question(q)
         elapsed = time.perf_counter() - t0
         print(f"  [{elapsed:.1f}s] {'OK' if r['success'] else 'ERRORS: ' + ', '.join(r['errors'])}\n")
         results.append(r)
