@@ -19,7 +19,6 @@ from neolex.db.operational_models import (
     RateLimit,
     ReindexJob,
 )
-from neolex.db.postgres import AsyncSessionLocal
 
 
 def _to_dict(obj) -> dict:
@@ -360,8 +359,14 @@ async def get_audit_db():
     """Async context manager that yields an AuditDB instance.
 
     Commits on clean exit, rolls back on exception.
+
+    Uses a lazy import of AsyncSessionLocal so that test fixtures that
+    replace neolex.db.postgres.AsyncSessionLocal (e.g. install_null_pool_docs_engine)
+    are always respected, even after module-level imports have frozen.
     """
-    async with AsyncSessionLocal() as session:
+    from neolex.db.postgres import AsyncSessionLocal as _SessionLocal  # lazy — always current
+
+    async with _SessionLocal() as session:
         try:
             yield AuditDB(session)
             await session.commit()

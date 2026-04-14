@@ -82,12 +82,19 @@ async def live_client():
     from neolex.config import settings  # noqa: I001
     from neolex.db.models import Session as DBSession
     from neolex.db.models import User
-    from neolex.db.postgres import get_db
+    from neolex.db.postgres import engine as _engine, get_db
     from sqlalchemy import select
 
     _int_raw_token = secrets.token_urlsafe(32)
     _int_token_hash = hashlib.sha256(_int_raw_token.encode()).hexdigest()
     _int_user_id = uuid.uuid4()
+
+    # Dispose stale pool connections acquired by function-scoped loops in earlier
+    # test modules (e.g. test_auth, test_billing, test_drafting). Those loops close
+    # at teardown, leaving asyncpg Futures bound to dead loops in the pool.
+    # pool_pre_ping cannot rescue them — the ping itself tries to await on a dead
+    # loop. Disposing here forces fresh connections in the current module-scoped loop.
+    await _engine.dispose()
 
     # Seed a test user + session before app startup.
     # The app uses session-cookie auth — API key Bearer headers are not supported.
