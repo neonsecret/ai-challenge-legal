@@ -37,10 +37,10 @@ export default defineConfig({
   ...(process.env.TEST_START_SERVER
     ? {
         webServer: {
-          command: "npm run dev",
+          command: "npm run build && npm run start -- --hostname 127.0.0.1 --port 3000",
           url: "http://localhost:3000",
           reuseExistingServer: true,
-          timeout: 60_000,
+          timeout: 180_000,
         },
       }
     : {}),

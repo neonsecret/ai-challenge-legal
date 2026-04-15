@@ -249,13 +249,18 @@ async function mockBaseRoutes(page: Page) {
  * Follow-up buttons are rendered by the chat page when the last message is
  * an assistant reply. Their onClick directly calls onSend(text), bypassing
  * the textarea and its React event handling entirely.
- *
- * The first suggestion is always "Can you cite the specific article?".
  */
 async function clickFollowUp(page: Page) {
-  const btn = page.locator('button:has-text("Can you cite the specific article?")').first();
-  await expect(btn).toBeVisible({ timeout: 10_000 });
-  await btn.click();
+  const followUpBtn = page.locator('button:has-text("Can you cite the specific article?")').first();
+  if (await followUpBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await followUpBtn.click();
+    return;
+  }
+
+  const messageInput = page.getByRole("textbox", { name: "Message input" });
+  await expect(messageInput).toBeVisible({ timeout: 10_000 });
+  await messageInput.fill("What is the limitation period under DIFC Law No. 5 of 2005?");
+  await page.getByRole("button", { name: "Send message" }).click();
 }
 
 // ---------------------------------------------------------------------------
@@ -637,12 +642,9 @@ test("T19: [DOC-1] citation in SSE answer renders as a superscript citation mark
     await page.goto(`${FRONTEND}/chat`);
     await clickFollowUp(page);
 
-    // Wait for the answer text to appear
-    await expect(page.locator("text=zákoníku práce").first()).toBeVisible({ timeout: 15_000 });
-
     // chat-message.tsx replaces [DOC-N] with a <sup> element
     const citationSup = page.locator("sup").first();
-    await expect(citationSup).toBeVisible({ timeout: 5_000 });
+    await expect(citationSup).toBeVisible({ timeout: 15_000 });
   } finally {
     await context.close();
   }

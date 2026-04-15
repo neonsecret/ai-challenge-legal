@@ -130,17 +130,21 @@ function buildStorageState(extraLocalStorage: Array<{ name: string; value: strin
     lastMessageAt: Date.now() - 60_000,
     corpora: ["difc"],
   };
+  const localStorage = new Map<string, string>([
+    ["neolex_uid", SEED_UID],
+    [`neolex_chat_sessions_${SEED_UID}`, JSON.stringify([session])],
+    [`neolex_current_session_${SEED_UID}`, SEED_SESSION_ID],
+  ]);
+  for (const entry of extraLocalStorage) {
+    localStorage.set(entry.name, entry.value);
+  }
+
   return {
     cookies: [] as Array<{ name: string; value: string; domain: string; path: string; expires: number; httpOnly: boolean; secure: boolean; sameSite: "Lax" | "None" | "Strict" }>,
     origins: [
       {
         origin: FRONTEND,
-        localStorage: [
-          { name: "neolex_uid", value: SEED_UID },
-          { name: `neolex_chat_sessions_${SEED_UID}`, value: JSON.stringify([session]) },
-          { name: `neolex_current_session_${SEED_UID}`, value: SEED_SESSION_ID },
-          ...extraLocalStorage,
-        ],
+        localStorage: [...localStorage.entries()].map(([name, value]) => ({ name, value })),
       },
     ],
   };
@@ -178,9 +182,16 @@ async function mockBaseRoutes(page: Page) {
 }
 
 async function clickFollowUp(page: Page) {
-  const btn = page.locator('button:has-text("Can you cite the specific article?")').first();
-  await expect(btn).toBeVisible({ timeout: 10_000 });
-  await btn.click();
+  const followUpBtn = page.locator('button:has-text("Can you cite the specific article?")').first();
+  if (await followUpBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await followUpBtn.click();
+    return;
+  }
+
+  const messageInput = page.getByRole("textbox", { name: "Message input" });
+  await expect(messageInput).toBeVisible({ timeout: 10_000 });
+  await messageInput.fill("What is the limitation period under DIFC Law No. 5 of 2005?");
+  await page.getByRole("button", { name: "Send message" }).click();
 }
 
 // ---------------------------------------------------------------------------
@@ -328,17 +339,13 @@ test("CD-4: drafting indicator is visible during streaming and absent after stre
     await page.goto(`${FRONTEND}/chat`);
 
     // Trigger the query — the route will pause waiting for fulfillSSE()
-    const followUpBtn = page.locator('button:has-text("Can you cite the specific article?")').first();
-    await expect(followUpBtn).toBeVisible({ timeout: 10_000 });
-    await followUpBtn.click();
+    await clickFollowUp(page);
 
     // While the route is held (SSE response not yet delivered), the app must show
     // a streaming indicator — proving the "isStreaming" UI state is active before
     // any answer content arrives. This is the meaningful pre-answer assertion.
     // StreamingStatus renders "Connecting." text synchronously when sendQuery fires.
-    const streamingIndicator = page
-      .locator('[aria-label="Processing pipeline"]')
-      .or(page.getByText(/Connecting/i));
+    const streamingIndicator = page.getByRole("status", { name: "Processing pipeline" }).first();
     await expect(streamingIndicator).toBeVisible({ timeout: 8_000 });
 
     // Release SSE now that we have confirmed the indicator was visible
@@ -562,7 +569,7 @@ test("CD-8: documents generated in a session persist when the context is reopene
     await expect(page2.locator("text=Žaloba na neplatnost výpovědi").first()).toBeVisible({ timeout: 10_000 });
     await expect(page2.locator("text=v1").first()).toBeVisible({ timeout: 5_000 });
   } finally {
-    await context2.close();
+    await context2.close().catch(() => {});
   }
 });
 

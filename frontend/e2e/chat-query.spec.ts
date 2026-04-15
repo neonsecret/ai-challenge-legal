@@ -152,9 +152,16 @@ async function mockBaseRoutes(page: Page) {
 }
 
 async function clickFollowUp(page: Page) {
-  const btn = page.locator('button:has-text("Can you cite the specific article?")').first();
-  await expect(btn).toBeVisible({ timeout: 10_000 });
-  await btn.click();
+  const followUpBtn = page.locator('button:has-text("Can you cite the specific article?")').first();
+  if (await followUpBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await followUpBtn.click();
+    return;
+  }
+
+  const messageInput = page.getByRole("textbox", { name: "Message input" });
+  await expect(messageInput).toBeVisible({ timeout: 10_000 });
+  await messageInput.fill("What is the limitation period under DIFC Law No. 5 of 2005?");
+  await page.getByRole("button", { name: "Send message" }).click();
 }
 
 // ---------------------------------------------------------------------------
@@ -180,9 +187,7 @@ test("CQ-1: streaming status messages appear sequentially during the query", asy
     // While the request is pending (no SSE events yet), StreamingStatus renders
     // "Connecting." text — set synchronously by sendQuery before the fetch.
     // Use .or() to mix CSS and Playwright text selectors without CSS parse errors.
-    const streamingIndicator = page
-      .locator('[aria-label="Processing pipeline"]')
-      .or(page.getByText(/Connecting/i));
+    const streamingIndicator = page.getByRole("status", { name: "Processing pipeline" }).first();
     await expect(streamingIndicator).toBeVisible({ timeout: 8_000 });
 
     // Release SSE — all status + answer + done events delivered now

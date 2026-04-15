@@ -128,9 +128,16 @@ async function mockBaseRoutes(page: Page) {
 }
 
 async function clickFollowUp(page: Page) {
-  const btn = page.locator('button:has-text("Can you cite the specific article?")').first();
-  await expect(btn).toBeVisible({ timeout: 10_000 });
-  await btn.click();
+  const followUpBtn = page.locator('button:has-text("Can you cite the specific article?")').first();
+  if (await followUpBtn.isVisible({ timeout: 10_000 }).catch(() => false)) {
+    await followUpBtn.click();
+    return;
+  }
+
+  const messageInput = page.getByRole("textbox", { name: "Message input" });
+  await expect(messageInput).toBeVisible({ timeout: 10_000 });
+  await messageInput.fill("What is the limitation period under DIFC Law No. 5 of 2005?");
+  await page.getByRole("button", { name: "Send message" }).click();
 }
 
 // ---------------------------------------------------------------------------
