@@ -12,6 +12,15 @@ export interface SourceRef {
     category?: string | null
     ecli?: string | null
     legal_thesis?: string | null
+    media_type?: string | null
+}
+
+/** Check if a source is a TXT document.
+ *  Checks media_type first (authoritative when backend populates it),
+ *  then falls back to doc_id suffix for custom corpus TXT documents. */
+export function isTxtSource(source: { doc_id: string; media_type?: string | null }): boolean {
+    if (source.media_type === "text/plain") return true
+    return source.doc_id.toLowerCase().endsWith(".txt")
 }
 
 /**

@@ -263,7 +263,7 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 transition: "background 0.12s",
                                             }}
                                         >
-                                            {/* PDF badge */}
+                                            {/* File type badge */}
                                             <div style={{
                                                 width: "28px", height: "28px", borderRadius: "6px",
                                                 background: "rgba(201,168,76,0.04)",
@@ -271,7 +271,9 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                                 flexShrink: 0,
                                             }}>
-                                                <span style={{fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.4)"}}>PDF</span>
+                                                <span style={{fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.4)"}}>
+                                                    {doc.filename.toLowerCase().endsWith(".txt") ? "TXT" : "PDF"}
+                                                </span>
                                             </div>
 
                                             {/* Name + meta */}

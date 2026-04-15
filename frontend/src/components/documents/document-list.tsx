@@ -28,6 +28,10 @@ function formatDateFull(iso: string): string {
     });
 }
 
+function isTxtFile(doc: Document): boolean {
+    return doc.media_type === "text/plain" || Boolean(doc.filename?.toLowerCase().endsWith(".txt"));
+}
+
 interface DocumentListProps {
     documents: Document[];
     loading: boolean;
@@ -86,7 +90,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                 }}>
                     <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "8px"}}>⬚</div>
                     <p style={{fontSize: "11px", color: "rgba(200,210,230,0.22)", margin: 0, fontFamily: "system-ui, sans-serif"}}>No documents uploaded yet</p>
-                    <p style={{fontSize: "9px", color: "rgba(200,210,230,0.16)", marginTop: "3px", fontFamily: "system-ui, sans-serif"}}>Upload a PDF above to get started</p>
+                    <p style={{fontSize: "9px", color: "rgba(200,210,230,0.16)", marginTop: "3px", fontFamily: "system-ui, sans-serif"}}>Upload a PDF or TXT above to get started</p>
                 </div>
             );
         }
@@ -94,7 +98,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
             <div style={{display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1.5px dashed rgba(255,255,255,0.35)", borderRadius: "14px", padding: "48px 24px", textAlign: "center", fontFamily}}>
                 <FileText size={32} style={{color: "rgba(46,31,8,0.25)", marginBottom: "12px"}} />
                 <p style={{fontSize: "13px", color: labelColor, margin: 0}}>No documents uploaded yet</p>
-                <p style={{fontSize: "11px", color: "rgba(46,31,8,0.35)", marginTop: "4px"}}>Upload a PDF above to get started</p>
+                <p style={{fontSize: "11px", color: "rgba(46,31,8,0.35)", marginTop: "4px"}}>Upload a PDF or TXT above to get started</p>
             </div>
         );
     }
@@ -117,7 +121,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             transition: "all 0.12s",
                         }}
                     >
-                        {/* PDF badge */}
+                        {/* File type badge */}
                         <div style={{
                             width: "22px", height: "22px", borderRadius: "4px",
                             background: "rgba(201,168,76,0.05)",
@@ -125,7 +129,9 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             display: "flex", alignItems: "center", justifyContent: "center",
                             flexShrink: 0,
                         }}>
-                            <span style={{fontSize: "6px", fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.7)", lineHeight: 1}}>PDF</span>
+                            <span style={{fontSize: "6px", fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.7)", lineHeight: 1}}>
+                                {doc.filename.toLowerCase().endsWith(".txt") ? "TXT" : "PDF"}
+                            </span>
                         </div>
 
                         {/* Name + meta */}

@@ -13,6 +13,7 @@ import { useState } from "react"
 import { X } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import type { Source } from "@/components/chat/use-query-stream"
+import { isTxtSource } from "@/components/grounding/grounding-utils"
 
 interface SourcePanelV2Props {
     sources: Source[]
@@ -218,7 +219,7 @@ export function SourcePanelV2({ sources, initialIndex = 0, onClose }: SourcePane
                         >
                             {getDocName(active)}
                         </p>
-                        <PageBadge pages={active.page_numbers} />
+                        {!isTxtSource(active) && <PageBadge pages={active.page_numbers} />}
                     </div>
 
                     <p
