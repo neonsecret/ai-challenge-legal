@@ -8,7 +8,7 @@
 4. Agent is the production path (`use_agent=True`); deterministic pipeline for benchmarks only
 5. All status messages must be user-friendly — no internal details (model names, fallback info, algorithm names)
 6. It's 2026 — latest LLMs are Claude Sonnet/Opus 4.6, Haiku 4.5, GPT-5.4, Gemini 3.1 Pro. We use Claude Sonnet 4.6 (via Vertex AI) for answers, Haiku 4.5 for fast tasks (query formulation, follow-ups).
-7. It is very imporant to remember that is is a production level application, which includes we don't apply any shortcuts or easy solutions/quick wins. each problem has to be thoroughly investigated for reasons why it appears, proper analytics conducted, and a production ready solution has to be implemeneted.
+7. It is very imporant to remember that is a production level application, which includes we don't apply any shortcuts or easy solutions/quick wins. each problem has to be thoroughly investigated for reasons why it appears, proper analytics conducted, and a production ready solution has to be implemeneted.
 8. Use teammates and subagents to not clutter your own context. Ignore this if you're a subagent or a teammate yourself.
 9. When writing code, modularize, don't write unreadable code, follow pep8, try writing tests that will actually test something reasonable with real data, not just test something that's obvious to work.
 10. don't blindly discard ideas without properly analyzing them first, sometimes a system might work but needs minor fixes, but sometimes it's a non-fitting idea from the start.
@@ -20,8 +20,8 @@
 16. Never re-order, re-sort, or relabel accumulated documents — the LLM sees [DOC-N] labels during tool calls and the same labels must stay consistent in the system prompt and final source mapping. Sorting by score, deduplication, or any reindexing breaks the citation chain. Speed optimizations must never change what the LLM sees or how its output maps to sources — always run a benchmark before and after.
 17. Don't procrastinate — when optimizations or fixes are identified, implement them immediately in the same session. Don't defer to "later" or "future session" unless blocked by external dependencies (e.g. hardware unavailable).
 18. Always test your own changes end-to-end before deploying — run actual queries via the API, verify the frontend renders correctly, check that sub-components (PDF viewer, streaming, citations) work with real data, not just compile checks. Force-rebuild the frontend (`rm -rf .next && npm run build`) when UI changes aren't taking effect.
-20. When writing implementation plans, give agents clear direction but don't micromanage — let them write clean modularized code with freedom on exact structure.
-19. Pre-commit hooks (ruff + bandit) are configured — all code must pass linting and security scanning before commit. Always run security reviews (bandit/semgrep) after significant changes. Every feature must be PEP 8 compliant, production-hardened, and grounded end-to-end (citations must trace back to real source chunks, not regex-matched text).
+19. When writing implementation plans, give agents clear direction but don't micromanage — let them write clean modularized code with freedom on exact structure.
+20. Pre-commit hooks (ruff + bandit) are configured — all code must pass linting and security scanning before commit. Always run security reviews (bandit/semgrep) after significant changes. Every feature must be PEP 8 compliant, production-hardened, and grounded end-to-end (citations must trace back to real source chunks, not regex-matched text).
 
 ## Infrastructure
 

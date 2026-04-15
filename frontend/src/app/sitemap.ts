@@ -33,6 +33,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
             priority: 0.6,
         },
         {
+            url: "https://vitreon.app/blog/arlc-2026-results",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: "https://vitreon.app/blog/czech-legal-ai-sota",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
             url: "https://vitreon.app/faq",
             changeFrequency: "monthly",
             priority: 0.5,

@@ -234,7 +234,7 @@ export default function CzechLegalAIPost() {
                         (anglicky).
                     </BodyText>
 
-                    <Heading>100% přesnost citací</Heading>
+                    <Heading>100% pokrytí citací</Heading>
 
                     <BodyText>
                         Každá odpověď vygenerovaná Vitreon Legal obsahuje citace na přesnou stránku,
