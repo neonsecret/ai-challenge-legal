@@ -16,10 +16,9 @@ export interface SourceRef {
 }
 
 /** Check if a source is a TXT document.
- *  Priority order:
- *  1. source_type === "txt"  — authoritative once NEO-2092 backend propagation lands
- *  2. media_type === "text/plain" — MIME-based fallback
- *  3. doc_id ends with ".txt" — last-resort for hypothetical named doc_ids (UUIDs won't match) */
+ *  Checks source_type === "txt" first (backend field from NEO-2092),
+ *  falls back to media_type === "text/plain".
+ *  doc_id is always a UUID in corpus sources — no extension fallback. */
 export function isTxtSource(source: {
     doc_id: string
     source_type?: string | null
@@ -27,7 +26,7 @@ export function isTxtSource(source: {
 }): boolean {
     if (source.source_type === "txt") return true
     if (source.media_type === "text/plain") return true
-    return source.doc_id.toLowerCase().endsWith(".txt")
+    return false
 }
 
 /**
