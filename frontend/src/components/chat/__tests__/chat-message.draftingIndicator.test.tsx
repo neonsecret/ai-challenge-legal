@@ -16,6 +16,18 @@ import { describe, it, expect, vi } from "vitest"
 // vi.mock() calls are hoisted by Vitest to run before any imports below.
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }))
+vi.mock("@/lib/i18n", () => ({
+    useI18n: () => ({
+        locale: "en" as const,
+        setLocale: vi.fn(),
+        t: (key: string) => {
+            const translations: Record<string, string> = {
+                "template.drafting": "Drafting document...",
+            }
+            return translations[key] ?? key
+        },
+    }),
+}))
 vi.mock("react-markdown", () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }))
 vi.mock("remark-gfm", () => ({ default: () => () => {} }))
 vi.mock("unist-util-visit", () => ({ visit: () => {} }))

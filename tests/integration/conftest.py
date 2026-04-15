@@ -219,3 +219,138 @@ async def verified_user(client, registered_user):
     # Clear cookies set during email verification so each test starts without a pre-existing session
     client.cookies.clear()
     return email, password
+
+
+# ---------------------------------------------------------------------------
+# Drafting test fixtures (for document API integration tests)
+# ---------------------------------------------------------------------------
+
+
+async def _create_test_user(email: str, verified: bool = True) -> tuple[str, str]:
+    """Create a user in the DB. Returns (email, user_id)."""
+    import hashlib
+    from datetime import UTC, datetime
+
+    from neolex.db.models import User
+    from neolex.db.postgres import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as session:
+        user = User(
+            email=email,
+            name="Test User",
+            password_hash=hashlib.sha256(b"test_password_placeholder").hexdigest(),
+            email_verified=verified,
+            created_at=datetime.now(UTC),
+            subscription_status="starter",
+            monthly_queries_used=0,
+            daily_queries_used=0,
+            max_corpora=1,
+        )
+        session.add(user)
+        await session.flush()
+        user_id = str(user.id)
+        await session.commit()
+
+    return email, user_id
+
+
+@pytest.fixture
+async def test_user(unique_email) -> tuple[str, str]:
+    """Create a verified test user. Yields (email, user_id)."""
+    email, user_id = await _create_test_user(unique_email, verified=True)
+    yield email, user_id
+
+
+@pytest.fixture(autouse=True)
+async def mock_llm_calls():
+    """Mock LLM calls to avoid expensive API calls in tests."""
+    mock_result = {
+        "answer": "This is a mocked LLM response for testing.",
+        "chunk_pages": [],
+        "ttft_ms": 100,
+        "tpot_ms": 10.0,
+        "total_time_ms": 500,
+        "input_tokens": 100,
+        "output_tokens": 50,
+        "model_name": "claude-sonnet-4-6-test",
+    }
+    with (
+        patch("neolex.routers.query.run_single_question", new_callable=AsyncMock, return_value=mock_result),
+        patch("neolex.services.conversation.create_pipeline_job", new_callable=AsyncMock, return_value=uuid.uuid4()),
+        patch("neolex.services.conversation.complete_pipeline_job", new_callable=AsyncMock),
+        patch("neolex.services.conversation.fail_pipeline_job", new_callable=AsyncMock),
+    ):
+        yield mock_result
+
+
+@pytest.fixture
+async def test_client(test_user, mock_llm_calls) -> AsyncClient:
+    """Authenticated AsyncClient with real DB for integration testing.
+
+    - Auth is mocked via dependency override
+    - DB is real (PostgreSQL via NullPool)
+    - LLM/pipeline is mocked (avoid external API calls)
+    """
+    import asyncio as _asyncio
+
+    from neolex.auth.middleware import get_api_key
+    from neolex.db.postgres import AsyncSessionLocal, get_db
+    from neolex.main import app
+
+    email, user_id = test_user
+    user_uuid = uuid.UUID(user_id)
+
+    app.state.ready = True
+    app.state.semaphore = _asyncio.Semaphore(5)
+    app.state.workers = 5
+
+    async def mock_get_api_key():
+        return {
+            "user_id": str(user_uuid),
+            "email": email,
+            "client_slug": user_id,
+            "scope": "admin",
+            "key_hash": f"session:{user_id}",
+            "key_prefix": "session",
+            "name": "Test User",
+        }
+
+    async def mock_get_db():
+        async with AsyncSessionLocal() as session:
+            yield session
+
+    app.dependency_overrides[get_api_key] = mock_get_api_key
+    app.dependency_overrides[get_db] = mock_get_db
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+        headers={"X-Requested-With": "XMLHttpRequest"},
+    ) as client:
+        yield client
+
+    app.dependency_overrides.pop(get_api_key, None)
+    app.dependency_overrides.pop(get_db, None)
+
+
+@pytest.fixture
+async def conversation_record(test_user) -> str:
+    """Create a conversation record in DB. Returns conversation ID."""
+    from sqlalchemy import text
+
+    from neolex.db.postgres import AsyncSessionLocal
+
+    conv_id = uuid.uuid4()
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(
+            text("""
+                INSERT INTO conversation_messages (id, conversation_id, user_id, role, content, created_at)
+                VALUES (:id, :conv_id, :user_id, 'user', 'test message', NOW())
+                ON CONFLICT (id) DO NOTHING
+            """),
+            {"id": str(uuid.uuid4()), "conv_id": str(conv_id), "user_id": test_user[1]},
+        )
+        await session.commit()
+
+    return str(conv_id)

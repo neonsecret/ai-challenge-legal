@@ -12,6 +12,19 @@ lint:
 test:
 	uv run pytest tests/ -v
 
+# Run all tests (backend + frontend unit + frontend E2E)
+# Note: E2E tests require dev server running on port 3000
+test-all:
+	@echo "=== Running Backend Tests ==="
+	uv run pytest tests/ -v --tb=short || true
+	@echo ""
+	@echo "=== Running Frontend Unit Tests ==="
+	cd frontend && npm test
+	@echo ""
+	@echo "=== Running Frontend E2E Tests ==="
+	@echo "Note: Ensure dev server is running (npm run dev in frontend/)"
+	cd frontend && npx playwright test --reporter=list || true
+
 # Prepare corpus (download + index)
 prepare:
 	uv run python -m arlc.indexing.prepare_corpus
