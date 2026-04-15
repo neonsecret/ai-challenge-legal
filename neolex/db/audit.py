@@ -195,6 +195,7 @@ class AuditDB:
         filename: str,
         size_bytes: int,
         upload_ts: str,
+        file_type: str = "pdf",
     ) -> None:
         existing = await self._session.execute(
             select(Document).where(Document.doc_id == doc_id, Document.client_slug == client_slug),
@@ -208,6 +209,7 @@ class AuditDB:
                     size_bytes=size_bytes,
                     upload_ts=upload_ts,
                     indexed=False,
+                    file_type=file_type,
                 ),
             )
 

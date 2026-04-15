@@ -34,6 +34,27 @@ MAX_COMPRESSION_RATIO = 100  # Max compression ratio per file
 
 
 # ---------------------------------------------------------------------------
+# Content validation helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_valid_text_content(data: bytes) -> bool:
+    """Return True if data is valid UTF-8 text with no binary markers.
+
+    Rejects files that:
+    - Contain null bytes (binary indicator)
+    - Cannot be decoded as strict UTF-8
+    """
+    if b"\x00" in data:
+        return False
+    try:
+        data.decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Path helpers
 # ---------------------------------------------------------------------------
 
@@ -63,27 +84,36 @@ def save_upload(
     content: bytes,
     collection: str = "My Documents",
 ) -> dict:
-    """Save uploaded PDF bytes to the client's docs directory.
+    """Save uploaded PDF or TXT bytes to the client's docs directory.
 
+    File type is determined by the filename extension (.txt → text, anything else → PDF).
     Returns document metadata dict (matches DocumentMeta schema).
     Raises ValueError for invalid file type or size.
     """
-    # Validate size (Rule 2: missing validation)
+    # Validate size
     if len(content) > MAX_UPLOAD_BYTES:
         raise ValueError(f"File too large: {len(content)} bytes (max {MAX_UPLOAD_BYTES})")
 
-    # Validate PDF magic bytes (Rule 2: file type guard)
-    if not content.startswith(PDF_MAGIC):
-        raise ValueError("Not a valid PDF — file must start with %PDF")
+    # Determine file type and validate content accordingly
+    file_ext = Path(filename).suffix.lower()
+    if file_ext == ".txt":
+        file_type = "txt"
+        if not _is_valid_text_content(content):
+            raise ValueError("Not a valid text file — file contains null bytes or is not valid UTF-8")
+    else:
+        # Treat as PDF for any other extension (including no extension)
+        file_type = "pdf"
+        if not content.startswith(PDF_MAGIC):
+            raise ValueError("Not a valid PDF — file must start with %PDF")
 
     doc_id = str(uuid.uuid4())
     upload_ts = datetime.datetime.utcnow().isoformat()
 
     docs_dir = client_docs_dir(client_slug)
-    # Sanitize filename: strip path components, keep only basename
-    # Sanitize: strip path components, restrict to safe chars, enforce .pdf extension.
+    # Sanitize: strip path components, restrict to safe chars, preserve real extension.
     stem = re.sub(r"[^a-zA-Z0-9._\- ]", "_", Path(filename).stem)[:180].strip("._- ") or "document"
-    safe_filename = f"{stem}.pdf"
+    safe_ext = ".txt" if file_type == "txt" else ".pdf"
+    safe_filename = f"{stem}{safe_ext}"
     dest = docs_dir / f"{doc_id}_{safe_filename}"
     dest.write_bytes(content)
 
@@ -96,6 +126,7 @@ def save_upload(
         "client_slug": client_slug,
         "path": str(dest),
         "collection": collection,
+        "file_type": file_type,
     }
 
 
@@ -197,10 +228,10 @@ def extract_zip_safely(
     max_files: int = MAX_ZIP_FILES,
     max_total_bytes: int = MAX_ZIP_EXTRACTED_BYTES,
 ) -> tuple[list[tuple[str, bytes]], list[tuple[str, str]]]:
-    """Extract PDFs from a ZIP archive with comprehensive security checks.
+    """Extract PDFs and TXT files from a ZIP archive with comprehensive security checks.
 
-    Returns ``(valid_pdfs, skipped_files)`` where:
-    - *valid_pdfs*: list of ``(filename, pdf_bytes)`` tuples
+    Returns ``(valid_files, skipped_files)`` where:
+    - *valid_files*: list of ``(filename, file_bytes)`` tuples for accepted PDF/TXT entries
     - *skipped_files*: list of ``(filename, reason)`` tuples
 
     Raises :class:`ValueError` for zip bombs, path traversal, encrypted
@@ -211,7 +242,7 @@ def extract_zip_safely(
     if not zipfile.is_zipfile(io.BytesIO(zip_bytes)):
         raise ValueError("Uploaded file is not a valid ZIP archive.")
 
-    valid_pdfs: list[tuple[str, bytes]] = []
+    valid_files: list[tuple[str, bytes]] = []
     skipped_files: list[tuple[str, str]] = []
 
     with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
@@ -282,14 +313,12 @@ def extract_zip_safely(
                     f"Possible zip bomb or archive too large.",
                 )
 
-            # --- Non-PDF files ---
-            if not basename.lower().endswith(".pdf"):
+            # --- Accept only PDF and TXT ---
+            lname = basename.lower()
+            is_pdf = lname.endswith(".pdf")
+            is_txt = lname.endswith(".txt")
+            if not is_pdf and not is_txt:
                 skipped_files.append((basename, "skipped_not_pdf"))
-                continue
-
-            # --- PDF magic bytes ---
-            if not data.startswith(PDF_MAGIC):
-                skipped_files.append((basename, "skipped_invalid"))
                 continue
 
             # --- Empty files ---
@@ -297,11 +326,20 @@ def extract_zip_safely(
                 skipped_files.append((basename, "skipped_empty"))
                 continue
 
+            # --- Content validation per file type ---
+            if is_pdf and not data.startswith(PDF_MAGIC):
+                skipped_files.append((basename, "skipped_invalid"))
+                continue
+
+            if is_txt and not _is_valid_text_content(data):
+                skipped_files.append((basename, "skipped_invalid"))
+                continue
+
             # --- Individual file size limit ---
             if len(data) > MAX_UPLOAD_BYTES:
                 skipped_files.append((basename, "skipped_too_large"))
                 continue
 
-            valid_pdfs.append((basename, data))
+            valid_files.append((basename, data))
 
-    return valid_pdfs, skipped_files
+    return valid_files, skipped_files

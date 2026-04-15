@@ -36,6 +36,12 @@ from neolex.db.postgres import get_db, init_db
 # Minimal valid PDF bytes (magic bytes only — sufficient for upload validation tests).
 _PDF_STUB = b"%PDF-1.4\n%%EOF\n"
 
+# Minimal valid UTF-8 text content for TXT upload tests.
+_TXT_STUB = b"This is a sample legal text document.\n"
+
+# Binary content that masquerades as text (contains null byte — should be rejected).
+_BINARY_STUB = b"Not text\x00binary garbage\x01\x02"
+
 
 # ---------------------------------------------------------------------------
 # NullPool engine — prevents cross-loop connection reuse (pytest-asyncio auto mode)
@@ -460,15 +466,16 @@ class TestDocumentEndpointAuth:
 class TestDocumentUploadValidation:
     """Upload input validation: MIME type, file size, empty file (DOC-02, DOC-03, DOC-04)."""
 
-    async def test_non_pdf_mime_type_returns_415(self, authed_docs_client: AsyncClient):
-        """POST with text/plain MIME type must be rejected with 415 (DOC-03)."""
+    async def test_unsupported_mime_type_returns_415(self, authed_docs_client: AsyncClient):
+        """POST with an unsupported MIME type must be rejected with 415."""
         resp = await authed_docs_client.post(
             "/api/v1/documents",
-            files={"file": ("note.txt", b"plain text", "text/plain")},
+            files={"file": ("doc.docx", b"PK\x03\x04", "application/msword")},
             data={"collection": "My Docs"},
         )
         assert resp.status_code == 415
         assert "application/pdf" in resp.json()["detail"]
+        assert "text/plain" in resp.json()["detail"]
 
     async def test_oversized_content_length_returns_413(self, authed_docs_client: AsyncClient):
         """POST with Content-Length > 50 MB must be rejected with 413 before reading (DOC-02)."""
@@ -495,6 +502,39 @@ class TestDocumentUploadValidation:
         """DELETE with a doc_id containing invalid characters must return 400."""
         resp = await authed_docs_client.delete("/api/v1/documents/invalid!doc@id")
         assert resp.status_code == 400
+
+    async def test_text_plain_charset_mime_is_accepted(self, authed_docs_client: AsyncClient):
+        """POST with 'text/plain; charset=utf-8' MIME must not be rejected at the MIME guard."""
+        # charset-qualified MIME reaches save_upload (binary content triggers 415 there)
+        resp = await authed_docs_client.post(
+            "/api/v1/documents",
+            files={"file": ("note.txt", _BINARY_STUB, "text/plain; charset=utf-8")},
+            data={"collection": "My Docs"},
+        )
+        # 415 from content check (binary), NOT from MIME guard (which now accepts text/plain)
+        assert resp.status_code == 415
+        assert "null bytes" in resp.json()["detail"] or "UTF-8" in resp.json()["detail"]
+
+    async def test_binary_content_as_txt_returns_415(self, authed_docs_client: AsyncClient):
+        """POST with text/plain MIME but binary content (null bytes) must return 415 (AC-2)."""
+        resp = await authed_docs_client.post(
+            "/api/v1/documents",
+            files={"file": ("malicious.txt", _BINARY_STUB, "text/plain")},
+            data={"collection": "My Docs"},
+        )
+        assert resp.status_code == 415
+        assert "null bytes" in resp.json()["detail"] or "UTF-8" in resp.json()["detail"]
+
+    async def test_oversized_txt_content_length_returns_413(self, authed_docs_client: AsyncClient):
+        """POST with Content-Length > 50 MB for a .txt file must be rejected with 413 (AC-3)."""
+        over_limit = 50 * 1024 * 1024 + 1
+        resp = await authed_docs_client.post(
+            "/api/v1/documents",
+            files={"file": ("big.txt", _TXT_STUB, "text/plain")},
+            data={"collection": "My Docs"},
+            headers={"Content-Length": str(over_limit)},
+        )
+        assert resp.status_code == 413
 
 
 class TestDocumentListEndpoint:

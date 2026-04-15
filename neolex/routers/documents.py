@@ -178,11 +178,12 @@ async def upload_document(
     key_row: dict = Depends(get_api_key),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
-    """Upload a PDF document into the client's private corpus.
+    """Upload a PDF or TXT document into the client's private corpus.
 
     - Checks subscription plan limits → 403 for free tier, 429 when exceeded
-    - Validates MIME type (PDF only) → 415 on mismatch
+    - Validates MIME type (application/pdf or text/plain) → 415 on mismatch
     - Validates file size (≤50MB) → 413 on oversize
+    - Validates content (PDF magic bytes for PDFs; UTF-8 + no null bytes for TXT) → 415
     - Saves to data/clients/<slug>/docs/
     - Triggers background reindex and returns job_id
     """
@@ -198,8 +199,10 @@ async def upload_document(
         raise HTTPException(status_code=401, detail="Authentication required")
 
     # --- Validate content type ---
+    # Strip charset suffix so "text/plain; charset=utf-8" matches "text/plain"
     ct = (file.content_type or "").lower()
-    if ct not in ("application/pdf",):
+    ct_base = ct.split(";")[0].strip()
+    if ct_base not in ("application/pdf", "text/plain"):
         async with get_audit_db() as audit_db:
             await audit_db.log_event(
                 key_hash=key_row["key_hash"],
@@ -210,7 +213,7 @@ async def upload_document(
             )
         raise HTTPException(
             status_code=415,
-            detail=f"Unsupported file type '{ct}'. Only application/pdf is accepted.",
+            detail=f"Unsupported file type '{ct}'. Only application/pdf and text/plain are accepted.",
         )
 
     # --- Early Content-Length guard (reject before buffering) ---
@@ -240,7 +243,7 @@ async def upload_document(
             )
         raise HTTPException(
             status_code=400,
-            detail="File is empty (0 bytes). Upload a valid PDF document.",
+            detail="File is empty (0 bytes). Upload a valid PDF or text document.",
         )
 
     if len(content) > MAX_UPLOAD_BYTES:
@@ -291,6 +294,7 @@ async def upload_document(
             filename=meta["filename"],
             size_bytes=meta["size_bytes"],
             upload_ts=meta["upload_ts"],
+            file_type=meta.get("file_type", "pdf"),
         )
 
     # --- Write sidecar .meta file ---
@@ -408,7 +412,7 @@ async def upload_zip(
 
     # --- Extract safely (runs sync I/O in thread) ---
     try:
-        valid_pdfs, skipped_files = await asyncio.to_thread(
+        valid_files, skipped_files = await asyncio.to_thread(
             extract_zip_safely,
             zip_bytes,
         )
@@ -427,12 +431,12 @@ async def upload_zip(
             )
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if not valid_pdfs and not skipped_files:
+    if not valid_files and not skipped_files:
         raise HTTPException(status_code=400, detail="ZIP archive is empty.")
 
     # --- Pre-check plan limits BEFORE saving any files ---
-    total_new_size = sum(len(data) for _, data in valid_pdfs)
-    new_count = len(valid_pdfs)
+    total_new_size = sum(len(data) for _, data in valid_files)
+    new_count = len(valid_files)
 
     status = user.subscription_status
     if status in ("free", "trial"):
@@ -493,26 +497,26 @@ async def upload_zip(
             ),
         )
 
-    # --- Save each valid PDF ---
+    # --- Save each valid file ---
     file_results: list[ZipUploadResult] = []
     uploaded_doc_ids: list[str] = []
     total_uploaded_bytes = 0
 
-    for pdf_name, pdf_bytes in valid_pdfs:
+    for entry_name, entry_bytes in valid_files:
         try:
             meta = await asyncio.to_thread(
                 save_upload,
                 client_slug,
-                pdf_name,
-                pdf_bytes,
+                entry_name,
+                entry_bytes,
                 collection,
             )
         except ValueError as exc:
             file_results.append(
                 ZipUploadResult(
-                    filename=pdf_name,
+                    filename=entry_name,
                     status="error",
-                    size_bytes=len(pdf_bytes),
+                    size_bytes=len(entry_bytes),
                     error=str(exc),
                 ),
             )
@@ -526,6 +530,7 @@ async def upload_zip(
                 filename=meta["filename"],
                 size_bytes=meta["size_bytes"],
                 upload_ts=meta["upload_ts"],
+                file_type=meta.get("file_type", "pdf"),
             )
 
         # Write sidecar .meta
