@@ -376,10 +376,33 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                         {/* Document Content — TXT or PDF */}
                         {isTxt ? (
                             txtError ? (
-                                <div style={{flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: SPACE[8]}}>
+                                <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: SPACE[4], padding: SPACE[8]}}>
                                     <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: "var(--doc-text-secondary)", margin: 0, textAlign: "center"}}>
-                                        Could not load document. Try again.
+                                        Document preview not available.
                                     </p>
+                                    {txtUrl && (
+                                        <a
+                                            href={txtUrl}
+                                            download={docName ? `${docName}.txt` : "document.txt"}
+                                            style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: SPACE[2],
+                                                fontFamily: FONT.sans,
+                                                fontSize: TYPE_SCALE.sm,
+                                                color: "var(--doc-close-btn-color)",
+                                                background: "var(--doc-close-btn-bg)",
+                                                border: "0.5px solid var(--doc-close-btn-border)",
+                                                borderRadius: RADIUS.sm,
+                                                padding: `${SPACE[2]}px ${SPACE[3]}px`,
+                                                textDecoration: "none",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            <Download size={13} strokeWidth={1.8} />
+                                            Download file
+                                        </a>
+                                    )}
                                 </div>
                             ) : txtContent !== null ? (
                                 <div style={{flex: 1, overflow: "hidden", display: "flex", flexDirection: "column"}}>
