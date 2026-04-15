@@ -128,10 +128,10 @@ class TestExtractTextFileCp1250:
             os.unlink(path)
 
         combined = " ".join(c["text"] for c in chunks)
-        # Verify no replacement characters or garbled output
-        assert "?" not in combined or "Zákon" in combined, "Czech characters should be decoded without replacement"
-        assert "Zákon" in combined or "zákon" in combined.lower()
-        assert "zákoník" in combined or "zakonik" not in combined.lower()
+        # Directly assert the expected Czech characters are present — cp1250
+        # decoding must preserve them without replacement or garbling.
+        assert "Zákon" in combined, "cp1250 decoding must preserve 'Zákon' without replacement characters"
+        assert "zákoník" in combined, "cp1250 decoding must preserve 'zákoník'"
 
     def test_cp1250_chunks_have_line_metadata(self):
         from arlc.indexing.indexer import extract_text_file

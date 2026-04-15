@@ -370,8 +370,9 @@ _TXT_ENCODINGS = ("utf-8", "cp1250", "iso-8859-2")
 def extract_text_file(path: str) -> list[dict]:
     """Extract text chunks from a plain-text file with encoding fallback.
 
-    Tries UTF-8 first, then cp1250, then iso-8859-2 (common for Czech legal
-    text).  Raises ``ValueError`` if none of the encodings succeed.
+    Tries UTF-8 first, then cp1250, then falls back to iso-8859-2 with
+    ``errors='replace'`` so the function always succeeds even for unrecognised
+    byte sequences.  Never raises ``ValueError``.
 
     Splits the file into blank-line-delimited paragraphs and applies the same
     ``split_page_into_chunks`` logic used for PDFs, but tracks
@@ -381,11 +382,12 @@ def extract_text_file(path: str) -> list[dict]:
     (str), chunk_idx (int).  The caller is responsible for mapping start_line
     into the DB's ``page`` column.
     """
-    raw = open(path, "rb").read()
+    with open(path, "rb") as fh:
+        raw = fh.read()
 
     decoded: str | None = None
     used_encoding: str | None = None
-    for enc in _TXT_ENCODINGS:
+    for enc in _TXT_ENCODINGS[:-1]:  # try strict decodings first
         try:
             decoded = raw.decode(enc)
             used_encoding = enc
@@ -394,10 +396,11 @@ def extract_text_file(path: str) -> list[dict]:
             continue
 
     if decoded is None:
-        raise ValueError(
-            f"Cannot decode {os.path.basename(path)}: tried {', '.join(_TXT_ENCODINGS)}.  "
-            "File may be binary or use an unsupported encoding."
-        )
+        # Last-resort fallback: iso-8859-2 with replacement characters so we
+        # never hard-fail on files with unexpected byte sequences.
+        last_enc = _TXT_ENCODINGS[-1]
+        decoded = raw.decode(last_enc, errors="replace")
+        used_encoding = last_enc
 
     if used_encoding != "utf-8":
         print(f"  [txt] {os.path.basename(path)} decoded as {used_encoding}")

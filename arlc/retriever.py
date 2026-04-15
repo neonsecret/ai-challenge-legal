@@ -148,13 +148,16 @@ class PageResult:
     text: str
     chunk_id: str = ""
     # Court decision metadata — populated only when source_type == "court_decision"
-    source_type: str | None = None  # "statute" | "court_decision"
+    source_type: str | None = None  # "statute" | "court_decision" | "txt"
     case_number: str | None = None  # e.g. "21 Cdo 1234/2023"
     ecli: str | None = None  # ECLI identifier
     decision_date: str | None = None  # ISO date string e.g. "2023-06-15"
     court: str | None = None  # e.g. "Nejvyssi soud"
     category: str | None = None  # A–E
     legal_thesis: str | None = None  # Pravni veta
+    # TXT-source line range — populated only when source_type == "txt"
+    start_line: int | None = None
+    end_line: int | None = None
 
 
 def _is_qwen_reranker() -> bool:
@@ -2621,9 +2624,10 @@ def _retrieve_pages_simple(
             pass
 
     # Aggregate chunks to pages, pick best per (doc_id, page).
-    # Value tuple: (score, text, chunk_id, court_meta_dict)
+    # Value tuple: (score, text, chunk_id, court_meta_dict, start_line, end_line)
     # court_meta_dict is non-empty only for court_decision source_type.
-    page_scores: dict[tuple[str, int], tuple[float, str, str, dict]] = {}
+    # start_line/end_line are non-None only for txt source_type.
+    page_scores: dict[tuple[str, int], tuple[float, str, str, dict, int | None, int | None]] = {}
     for chunk in ranked:
         doc_id = chunk["metadata"].get("doc_id", chunk["metadata"]["pdf_id"])
         page = int(chunk["metadata"]["page"])
@@ -2644,7 +2648,9 @@ def _retrieve_pages_simple(
                         "legal_thesis",
                     )
                 }
-            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""), court_meta)
+            sl = chunk["metadata"].get("start_line")
+            el = chunk["metadata"].get("end_line")
+            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""), court_meta, sl, el)
 
     # Inject top fused result if the reranker dropped it — the embedding model's
     # best pick often outperforms the reranker on cross-language queries.
@@ -2667,13 +2673,22 @@ def _retrieve_pages_simple(
                         "legal_thesis",
                     )
                 }
-            page_scores[ft_key] = (0.5, vector_top["text"], vector_top["metadata"].get("chunk_id", ""), ft_court_meta)
+            ft_sl = vector_top["metadata"].get("start_line")
+            ft_el = vector_top["metadata"].get("end_line")
+            page_scores[ft_key] = (
+                0.5,
+                vector_top["text"],
+                vector_top["metadata"].get("chunk_id", ""),
+                ft_court_meta,
+                ft_sl,
+                ft_el,
+            )
 
     # Sort by score descending, apply per-doc and total limits
     sorted_pages = sorted(page_scores.items(), key=lambda x: x[1][0], reverse=True)
     doc_counts: dict[str, int] = {}
     results: list[PageResult] = []
-    for (doc_id, page), (score, text, chunk_id, court_meta) in sorted_pages:
+    for (doc_id, page), (score, text, chunk_id, court_meta, start_line, end_line) in sorted_pages:
         if len(results) >= max_total:
             break
         if doc_counts.get(doc_id, 0) >= max_per_doc:
@@ -2693,6 +2708,8 @@ def _retrieve_pages_simple(
                 court=court_meta.get("court"),
                 category=court_meta.get("category"),
                 legal_thesis=court_meta.get("legal_thesis"),
+                start_line=start_line,
+                end_line=end_line,
             )
         )
 
