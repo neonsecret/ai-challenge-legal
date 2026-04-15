@@ -149,8 +149,8 @@ _BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech", "uk", "au"})
 UNLIMITED_DAILY_QUERIES = 0
 
 _PLAN_DAILY_LIMITS: dict[str, int] = {
-    "free": 3,
-    "trial": 3,
+    "free": settings.free_daily_limit,
+    "trial": settings.free_daily_limit,
     "starter": settings.starter_daily_limit,
     "pro": settings.pro_daily_limit,
     "enterprise": settings.enterprise_daily_limit,  # UNLIMITED_DAILY_QUERIES (0) = unlimited

@@ -21,8 +21,8 @@ Environment variables:
     AUTH_ENABLED                Enable auth middleware (default: false)
     RESEND_API_KEY              Resend transactional email API key
     EMAIL_FROM                  Sender address (default: noreply@vitreon.app)
-    FREE_MONTHLY_LIMIT          Monthly query limit for free tier (default: 5)
-    STARTER_DAILY_LIMIT         Daily query limit for Starter plan (default: 50)
+    FREE_DAILY_LIMIT            Daily query limit for free tier (default: 3)
+    STARTER_DAILY_LIMIT         Daily query limit for Starter plan (default: 30)
     STARTER_MAX_CORPORA         Max corpus uploads for Starter (default: 1)
     PRO_DAILY_LIMIT             Daily query limit for Pro plan (default: 500)
     PRO_MAX_CORPORA             Max corpus uploads for Pro (default: 3)
@@ -89,8 +89,8 @@ class Settings:
     # --- Subscription plan limits ---
     # Pricing based on Sonnet 4.6: $3/$15 per M tokens, avg $0.044/query, worst $0.165/query
     # Free: loss leader. Starter: break-even ~22 queries/day. Pro: break-even ~75/day.
-    free_monthly_limit: int = int(os.environ.get("FREE_MONTHLY_LIMIT", "3"))
-    starter_daily_limit: int = int(os.environ.get("STARTER_DAILY_LIMIT", "50"))
+    free_daily_limit: int = int(os.environ.get("FREE_DAILY_LIMIT", "3"))
+    starter_daily_limit: int = int(os.environ.get("STARTER_DAILY_LIMIT", "30"))
     starter_max_corpora: int = int(os.environ.get("STARTER_MAX_CORPORA", "2"))
     pro_daily_limit: int = int(os.environ.get("PRO_DAILY_LIMIT", "200"))
     pro_max_corpora: int = int(os.environ.get("PRO_MAX_CORPORA", "5"))
