@@ -86,3 +86,26 @@ def test_boolean_answer_preserved():
     result = pipeline_dict_to_response(_make_result(answer=True, answer_type="boolean"))
     assert result.answer is True
     assert isinstance(result.answer, bool)
+
+
+def test_start_line_zero_preserved():
+    # start_line=0 is a valid 0-indexed line number; must NOT be coerced to None
+    result = _make_result(chunk_pages=[{"doc_id": "doc1.txt", "page_numbers": [1], "start_line": 0, "end_line": 42}])
+    source = pipeline_dict_to_response(result).sources[0]
+    assert source.start_line == 0, "start_line=0 must be preserved, not coerced to None"
+    assert source.end_line == 42
+
+
+def test_start_line_absent_is_none():
+    # When start_line/end_line are not in the chunk dict, they must be None
+    result = _make_result(chunk_pages=[{"doc_id": "doc1.txt", "page_numbers": [1]}])
+    source = pipeline_dict_to_response(result).sources[0]
+    assert source.start_line is None
+    assert source.end_line is None
+
+
+def test_start_line_positive_preserved():
+    result = _make_result(chunk_pages=[{"doc_id": "doc1.txt", "page_numbers": [1], "start_line": 100, "end_line": 150}])
+    source = pipeline_dict_to_response(result).sources[0]
+    assert source.start_line == 100
+    assert source.end_line == 150
