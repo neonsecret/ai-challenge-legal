@@ -82,7 +82,7 @@ export function GroundingView({answer, sources: rawSources, isMobile = false, fo
                 url: toSafeStringOrNull(s.url),
                 chunk_id: toSafeStringOrNull(s.chunk_id),
                 page_numbers: s.page_numbers.map(p => toSafeNumber(p)),
-                source_type: s.source_type === "court_decision" ? "court_decision" as const : s.source_type === "statute" ? "statute" as const : null,
+                source_type: s.source_type === "court_decision" ? "court_decision" as const : s.source_type === "statute" ? "statute" as const : s.source_type === "txt" ? "txt" as const : null,
                 case_number: toSafeStringOrNull(s.case_number),
                 decision_date: toSafeStringOrNull(s.decision_date),
                 court: toSafeStringOrNull(s.court),
