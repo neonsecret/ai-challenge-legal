@@ -9,6 +9,7 @@ import {
     SourceRef,
     isWebSource,
     isCourtDecision,
+    isTxtSource,
     getDomain,
     formatCzechDate,
 } from "./grounding-utils"
@@ -258,6 +259,8 @@ function SourceCitationCard({
             ? `${source.case_number ?? source.doc_id}${source.ecli ? ` (${source.ecli})` : ""}`
             : isWeb
             ? (source.url || source.doc_id.replace(/^web:/, ""))
+            : isTxtSource(source)
+            ? `${source.doc_id} (L. ${source.page_numbers.join(", ")})`
             : `${source.doc_id} (p. ${source.page_numbers.join(", ")})`
         navigator.clipboard.writeText(text).then(() => {
             setCopied(true)
@@ -378,7 +381,7 @@ function SourceCitationCard({
                                             transition: `all ${TIMING.instant} ${EASE.out}`,
                                         }}
                                     >
-                                        p.{page}
+                                        {isTxtSource(source) ? `L.${page}` : `p.${page}`}
                                     </button>
                                 )
                             })}
@@ -527,7 +530,7 @@ function SourceCitationCard({
                                     transition: `all ${TIMING.instant} ${EASE.out}`,
                                 }}
                             >
-                                p.{page}
+                                {isTxtSource(source) ? `L.${page}` : `p.${page}`}
                             </button>
                         )
                     })}
