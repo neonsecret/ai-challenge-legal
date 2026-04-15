@@ -122,17 +122,26 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                         }}
                     >
                         {/* File type badge */}
-                        <div style={{
-                            width: "22px", height: "22px", borderRadius: "4px",
-                            background: "rgba(201,168,76,0.05)",
-                            border: "1px solid rgba(201,168,76,0.08)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            flexShrink: 0,
-                        }}>
-                            <span style={{fontSize: "6px", fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.7)", lineHeight: 1}}>
-                                {doc.filename.toLowerCase().endsWith(".txt") ? "TXT" : "PDF"}
-                            </span>
-                        </div>
+                        {(() => {
+                            const isTxt = isTxtFile(doc);
+                            return (
+                                <div style={{
+                                    width: "22px", height: "22px", borderRadius: "4px",
+                                    background: isTxt ? "rgba(56,178,172,0.05)" : "rgba(201,168,76,0.05)",
+                                    border: `1px solid ${isTxt ? "rgba(56,178,172,0.08)" : "rgba(201,168,76,0.08)"}`,
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    flexShrink: 0,
+                                }}>
+                                    <span style={{
+                                        fontSize: "6px", fontFamily: "system-ui, sans-serif",
+                                        color: isTxt ? "rgba(56,178,172,0.7)" : "rgba(201,168,76,0.7)",
+                                        lineHeight: 1,
+                                    }}>
+                                        {isTxt ? "TXT" : "PDF"}
+                                    </span>
+                                </div>
+                            );
+                        })()}
 
                         {/* Name + meta */}
                         <div style={{flex: 1, minWidth: 0}}>
@@ -219,7 +228,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                     onMouseLeave={() => setHoveredRowId(null)}
                 >
                     <div style={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
-                        <FileText size={16} style={{flexShrink: 0, color: "#c47c00"}}/>
+                        <FileText size={16} style={{flexShrink: 0, color: isTxtFile(doc) ? "#0d7377" : "#c47c00"}}/>
                         <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", fontWeight: 500, color: textPrimary}} title={doc.filename}>{doc.filename}</span>
                     </div>
                     <span className="hidden sm:block" style={{width: "80px", textAlign: "right", fontSize: "12px", color: labelColor, fontVariantNumeric: "tabular-nums"}}>{formatSize(doc.size_bytes)}</span>

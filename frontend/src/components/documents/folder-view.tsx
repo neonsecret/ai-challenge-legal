@@ -34,6 +34,10 @@ function formatDate(iso: string): string {
     });
 }
 
+function isTxtFile(doc: Document): boolean {
+    return doc.media_type === "text/plain" || Boolean(doc.filename?.toLowerCase().endsWith(".txt"));
+}
+
 export function FolderView({documents, loading, onDelete, onRefresh}: FolderViewProps) {
     const {isDark} = useColorMode();
     const {t} = useI18n();
@@ -264,17 +268,25 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                             }}
                                         >
                                             {/* File type badge */}
-                                            <div style={{
-                                                width: "28px", height: "28px", borderRadius: "6px",
-                                                background: "rgba(201,168,76,0.04)",
-                                                border: "1px solid rgba(201,168,76,0.06)",
-                                                display: "flex", alignItems: "center", justifyContent: "center",
-                                                flexShrink: 0,
-                                            }}>
-                                                <span style={{fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.4)"}}>
-                                                    {doc.filename.toLowerCase().endsWith(".txt") ? "TXT" : "PDF"}
-                                                </span>
-                                            </div>
+                                            {(() => {
+                                                const isTxt = isTxtFile(doc);
+                                                return (
+                                                    <div style={{
+                                                        width: "28px", height: "28px", borderRadius: "6px",
+                                                        background: isTxt ? "rgba(56,178,172,0.04)" : "rgba(201,168,76,0.04)",
+                                                        border: `1px solid ${isTxt ? "rgba(56,178,172,0.06)" : "rgba(201,168,76,0.06)"}`,
+                                                        display: "flex", alignItems: "center", justifyContent: "center",
+                                                        flexShrink: 0,
+                                                    }}>
+                                                        <span style={{
+                                                            fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif",
+                                                            color: isTxt ? "rgba(56,178,172,0.5)" : "rgba(201,168,76,0.4)",
+                                                        }}>
+                                                            {isTxt ? "TXT" : "PDF"}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })()}
 
                                             {/* Name + meta */}
                                             <div style={{flex: 1, minWidth: 0}}>
@@ -405,6 +417,21 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                         }}
                                     >
                                         <CheckCircle2 size={15} style={{flexShrink: 0, color: doc.indexed ? "#16a34a" : "rgba(46,31,8,0.22)"}}/>
+                                        {(() => {
+                                            const isTxt = isTxtFile(doc);
+                                            return (
+                                                <span style={{
+                                                    flexShrink: 0, fontSize: "8px", lineHeight: 1,
+                                                    fontFamily: "system-ui, sans-serif",
+                                                    padding: "2px 4px", borderRadius: "3px",
+                                                    color: isTxt ? "#0d7377" : "rgba(46,31,8,0.45)",
+                                                    background: isTxt ? "rgba(56,178,172,0.08)" : "rgba(201,168,76,0.06)",
+                                                    border: `1px solid ${isTxt ? "rgba(56,178,172,0.22)" : "rgba(201,168,76,0.18)"}`,
+                                                }}>
+                                                    {isTxt ? "TXT" : "PDF"}
+                                                </span>
+                                            );
+                                        })()}
                                         <div style={{flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", fontWeight: 500, color: textColor}} title={doc.filename}>{doc.filename}</div>
                                         <span className="hidden sm:block" style={{flexShrink: 0, width: "72px", textAlign: "right", fontSize: "11px", color: labelColor}}>{formatSize(doc.size_bytes)}</span>
                                         <span className="hidden sm:block" style={{flexShrink: 0, width: "88px", textAlign: "right", fontSize: "11px", color: labelColor}}>{formatDate(doc.uploaded_at)}</span>
