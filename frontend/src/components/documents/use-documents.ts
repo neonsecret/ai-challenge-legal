@@ -10,7 +10,6 @@ export interface Document {
     uploaded_at: string;
     indexed?: boolean;
     collection?: string;
-    media_type?: string | null;
 }
 
 export interface ReindexJob {
@@ -64,7 +63,6 @@ export function useDocuments() {
                 uploaded_at: d.upload_ts ?? d.uploaded_at ?? "",
                 indexed: d.indexed ?? false,
                 collection: (d.collection as string) ?? "My Documents",
-                media_type: (d.media_type as string | null) ?? null,
             }));
             setDocuments(docs);
         } catch (e) {

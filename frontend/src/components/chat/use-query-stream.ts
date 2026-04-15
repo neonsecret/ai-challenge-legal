@@ -134,7 +134,6 @@ export interface Source {
     category?: string | null      // A-E
     ecli?: string | null
     legal_thesis?: string | null  // právní věta
-    media_type?: string | null    // MIME type, e.g. "text/plain" for TXT corpus docs
 }
 
 export interface Progress {

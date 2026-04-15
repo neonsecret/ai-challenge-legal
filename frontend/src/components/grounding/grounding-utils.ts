@@ -12,29 +12,22 @@ export interface SourceRef {
     category?: string | null
     ecli?: string | null
     legal_thesis?: string | null
-    media_type?: string | null
 }
 
-/** Check if an uploaded Document is a TXT file.
- *  Checks media_type first, then falls back to filename extension.
+/** Check if an uploaded Document is a TXT file by filename extension.
  *  Used in document-list and folder-view to differentiate TXT from PDF badges. */
-export function isTxtFile(doc: { media_type?: string | null; filename?: string }): boolean {
-    if (doc.media_type === "text/plain") return true
+export function isTxtFile(doc: { filename?: string }): boolean {
     return Boolean(doc.filename?.toLowerCase().endsWith(".txt"))
 }
 
 /** Check if a source is a TXT document.
- *  Checks source_type === "txt" first (backend field from NEO-2092),
- *  falls back to media_type === "text/plain".
+ *  Uses source_type === "txt" (backend field from NEO-2092).
  *  doc_id is always a UUID in corpus sources — no extension fallback. */
 export function isTxtSource(source: {
     doc_id: string
     source_type?: string | null
-    media_type?: string | null
 }): boolean {
-    if (source.source_type === "txt") return true
-    if (source.media_type === "text/plain") return true
-    return false
+    return source.source_type === "txt"
 }
 
 /**
