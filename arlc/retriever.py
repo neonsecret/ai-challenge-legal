@@ -364,6 +364,32 @@ def _get_sync_engine():
 # ---------------------------------------------------------------------------
 
 
+def _apply_metadata_extra(meta: dict, metadata_extra: dict | None) -> None:
+    """Populate *meta* with fields stored in the metadata_extra JSONB column.
+
+    Handles fields written by build_index():
+    - entities   : pipe-separated entity string
+    - chunk_type : optional structural label
+    - source_type: "pdf" | "txt" | "court_decision" (citation rendering hint)
+    - start_line : 1-based start line for TXT chunks
+    - end_line   : 1-based end line for TXT chunks
+
+    Mutates *meta* in-place; safe to call with metadata_extra=None.
+    """
+    if not metadata_extra:
+        return
+    if metadata_extra.get("entities"):
+        meta["entities"] = metadata_extra["entities"]
+    if metadata_extra.get("chunk_type"):
+        meta["chunk_type"] = metadata_extra["chunk_type"]
+    if metadata_extra.get("source_type"):
+        meta["source_type"] = metadata_extra["source_type"]
+    if metadata_extra.get("start_line") is not None:
+        meta["start_line"] = metadata_extra["start_line"]
+    if metadata_extra.get("end_line") is not None:
+        meta["end_line"] = metadata_extra["end_line"]
+
+
 def search_chunks_vector(
     query_embedding: list[float],
     top_k: int = 50,
@@ -420,8 +446,7 @@ def search_chunks_vector(
             "source_file": row.source_file,
             "chunk_id": row.chunk_id,
         }
-        if row.metadata_extra and row.metadata_extra.get("entities"):
-            meta["entities"] = row.metadata_extra["entities"]
+        _apply_metadata_extra(meta, row.metadata_extra)
         metadatas.append(meta)
         # neg_ip is negative inner product; convert to cosine distance for compat
         distances.append(1.0 + float(row.neg_ip))
@@ -915,8 +940,7 @@ def get_chunks_by_ids(chunk_ids: list[str], corpus: str | None = None) -> dict:
         ids.append(row.chunk_id)
         documents.append(row.text)
         meta = {"doc_id": row.doc_id, "pdf_id": row.pdf_id, "page": row.page, "source_file": row.source_file}
-        if row.metadata_extra and row.metadata_extra.get("entities"):
-            meta["entities"] = row.metadata_extra["entities"]
+        _apply_metadata_extra(meta, row.metadata_extra)
         metadatas.append(meta)
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
@@ -952,11 +976,7 @@ def _load_all_chunks(corpus: str = "difc"):
             "page": row.page,
             "source_file": row.source_file,
         }
-        if row.metadata_extra:
-            if row.metadata_extra.get("entities"):
-                meta["entities"] = row.metadata_extra["entities"]
-            if row.metadata_extra.get("chunk_type"):
-                meta["chunk_type"] = row.metadata_extra["chunk_type"]
+        _apply_metadata_extra(meta, row.metadata_extra)
 
         if pdf_id not in doc_text_index:
             doc_text_index[pdf_id] = ""

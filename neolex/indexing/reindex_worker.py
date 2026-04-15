@@ -99,26 +99,31 @@ def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> tup
 
     Returns (doc_count, chunks_skipped).
     """
-    # Count PDFs from meta files to avoid double-counting UUID-prefixed ones
+    # Count indexed documents from meta files, supporting PDF and TXT formats.
+    # Avoid double-counting UUID-prefixed file names by resolving via meta sidecars.
     meta_files = list(docs_dir.glob("*.meta"))
-    doc_ids_with_pdfs = set()
+    doc_ids_with_docs = set()
 
     for meta_path in meta_files:
         try:
             meta = json.loads(meta_path.read_text())
             doc_id = meta.get("doc_id", "")
-            pdf_path = next(docs_dir.glob(f"{doc_id}_*"), None)
-            if pdf_path and pdf_path.exists():
-                doc_ids_with_pdfs.add(doc_id)
+            # Accept any supported extension (.pdf or .txt).
+            doc_path = next(
+                (p for p in docs_dir.glob(f"{doc_id}_*") if p.suffix in {".pdf", ".txt"}),
+                None,
+            )
+            if doc_path and doc_path.exists():
+                doc_ids_with_docs.add(doc_id)
         except Exception:
             pass
 
-    doc_count = len(doc_ids_with_pdfs)
+    doc_count = len(doc_ids_with_docs)
     chunks_skipped = 0
 
     # Attempt real arlc indexing
     try:
-        _run_arlc_indexing(client_slug, docs_dir, index_dir, list(doc_ids_with_pdfs))
+        _run_arlc_indexing(client_slug, docs_dir, index_dir, list(doc_ids_with_docs))
     except Exception as exc:
         # Check if this is an HTTP 400 from llama-server (bad chunk)
         is_http_error = False
