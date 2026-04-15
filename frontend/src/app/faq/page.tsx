@@ -96,7 +96,7 @@ const FAQ_ITEMS: { question: string; answer: string }[] = [
     {
         question: "Can I upload my own documents?",
         answer:
-            "Yes. Paid plans allow you to upload your own PDF documents to create a custom research corpus. Uploaded documents are indexed and searchable alongside the built-in legal corpus. This is useful for firm-specific precedents, contract databases, or specialized document collections.",
+            "Yes. Paid plans allow you to upload your own PDF or TXT documents to create a custom research corpus. Uploaded documents are indexed and searchable alongside the built-in legal corpus. This is useful for firm-specific precedents, contract databases, or specialized document collections.",
     },
 ];
 

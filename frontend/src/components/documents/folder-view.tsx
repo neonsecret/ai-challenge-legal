@@ -5,6 +5,7 @@ import {useColorMode} from "@/lib/color-mode";
 import {Folder, ChevronDown, ChevronRight, Trash2, CheckCircle2, Pencil, Check, X} from "lucide-react";
 import type {Document} from "./use-documents";
 import {useI18n} from "@/lib/i18n";
+import {isTxtFile} from "@/components/grounding/grounding-utils";
 
 const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
@@ -250,7 +251,9 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                             {/* Expanded PDF items */}
                             {isExpanded && (
                                 <div style={{paddingLeft: "18px", marginBottom: "2px"}}>
-                                    {folder.docs.map((doc) => (
+                                    {folder.docs.map((doc) => {
+                                        const isTxt = isTxtFile(doc);
+                                        return (
                                         <div
                                             key={doc.document_id}
                                             onMouseEnter={() => setHoveredRowId(doc.document_id)}
@@ -263,15 +266,20 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 transition: "background 0.12s",
                                             }}
                                         >
-                                            {/* PDF badge */}
+                                            {/* File type badge */}
                                             <div style={{
                                                 width: "28px", height: "28px", borderRadius: "6px",
-                                                background: "rgba(201,168,76,0.04)",
-                                                border: "1px solid rgba(201,168,76,0.06)",
+                                                background: isTxt ? "var(--dt-color-teal-tint)" : "rgba(201,168,76,0.04)",
+                                                border: `1px solid ${isTxt ? "var(--dt-color-teal-border)" : "rgba(201,168,76,0.06)"}`,
                                                 display: "flex", alignItems: "center", justifyContent: "center",
                                                 flexShrink: 0,
                                             }}>
-                                                <span style={{fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.4)"}}>PDF</span>
+                                                <span style={{
+                                                    fontSize: "10px", lineHeight: 1, fontFamily: "system-ui, sans-serif",
+                                                    color: isTxt ? "var(--dt-teal-on-surface)" : "rgba(201,168,76,0.4)",
+                                                }}>
+                                                    {isTxt ? "TXT" : "PDF"}
+                                                </span>
                                             </div>
 
                                             {/* Name + meta */}
@@ -327,7 +335,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                                 )}
                                             </div>
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
@@ -389,7 +398,9 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                         </button>
                         {isExpanded && (
                             <div style={{borderTop: "0.5px solid rgba(255,255,255,0.25)"}}>
-                                {folder.docs.map((doc, idx) => (
+                                {folder.docs.map((doc, idx) => {
+                                    const isTxt = isTxtFile(doc);
+                                    return (
                                     <div
                                         key={doc.document_id}
                                         onMouseEnter={() => setHoveredRowId(doc.document_id)}
@@ -403,6 +414,16 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                         }}
                                     >
                                         <CheckCircle2 size={15} style={{flexShrink: 0, color: doc.indexed ? "#16a34a" : "rgba(46,31,8,0.22)"}}/>
+                                        <span style={{
+                                            flexShrink: 0, fontSize: "8px", lineHeight: 1,
+                                            fontFamily: "system-ui, sans-serif",
+                                            padding: "2px 4px", borderRadius: "3px",
+                                            color: isTxt ? "var(--dt-teal-on-surface)" : "rgba(46,31,8,0.45)",
+                                            background: isTxt ? "var(--dt-color-teal-tint)" : "rgba(201,168,76,0.06)",
+                                            border: `1px solid ${isTxt ? "var(--dt-color-teal-border)" : "rgba(201,168,76,0.18)"}`,
+                                        }}>
+                                            {isTxt ? "TXT" : "PDF"}
+                                        </span>
                                         <div style={{flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", fontWeight: 500, color: textColor}} title={doc.filename}>{doc.filename}</div>
                                         <span className="hidden sm:block" style={{flexShrink: 0, width: "72px", textAlign: "right", fontSize: "11px", color: labelColor}}>{formatSize(doc.size_bytes)}</span>
                                         <span className="hidden sm:block" style={{flexShrink: 0, width: "88px", textAlign: "right", fontSize: "11px", color: labelColor}}>{formatDate(doc.uploaded_at)}</span>
@@ -424,7 +445,8 @@ export function FolderView({documents, loading, onDelete, onRefresh}: FolderView
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

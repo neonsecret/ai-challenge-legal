@@ -37,9 +37,10 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
 
     const validate = (file: File): string | null => {
         const isPdf = file.type.includes("pdf") || file.name.toLowerCase().endsWith(".pdf");
+        const isTxt = file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt");
         const isZip = file.type.includes("zip") || file.name.toLowerCase().endsWith(".zip");
-        if (!isPdf && !isZip) return t("documents.upload_pdf_or_zip_only");
-        if (isPdf && file.size > MAX_SIZE)
+        if (!isPdf && !isTxt && !isZip) return t("documents.upload_pdf_or_zip_only");
+        if ((isPdf || isTxt) && file.size > MAX_SIZE)
             return `${t("documents.upload_too_large")} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
         if (isZip && file.size > MAX_ZIP_SIZE)
             return `${t("documents.upload_zip_too_large")} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
@@ -141,7 +142,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                 >
                     <input
                         ref={inputRef} type="file"
-                        accept=".pdf,application/pdf,.zip,application/zip,application/x-zip-compressed"
+                        accept=".pdf,application/pdf,.txt,text/plain,.zip,application/zip,application/x-zip-compressed"
                         style={{display: "none"}} onChange={handleInputChange}
                     />
                     {isUploading ? (
@@ -222,7 +223,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                 <input
                     ref={inputRef}
                     type="file"
-                    accept=".pdf,application/pdf,.zip,application/zip,application/x-zip-compressed"
+                    accept=".pdf,application/pdf,.txt,text/plain,.zip,application/zip,application/x-zip-compressed"
                     style={{display: "none"}}
                     onChange={handleInputChange}
                 />
@@ -260,7 +261,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
                             </span>
                         </div>
                         <div style={{fontSize: "10px", fontFamily: "system-ui, sans-serif", color: "rgba(200,210,230,0.30)", lineHeight: 1.4}}>
-                            PDF, TXT, DOCX — folders or individual files up to 50MB
+                            {t("documents.upload_hint_v2")}
                         </div>
                     </>
                 )}

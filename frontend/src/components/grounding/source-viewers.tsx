@@ -12,6 +12,7 @@ import {
     cleanJudgmentText,
     TEXT_TRUNCATE_LIMIT,
     isCourtDecision,
+    isTxtSource,
     formatCzechDate,
     API_BASE,
 } from "./grounding-utils"
@@ -500,7 +501,8 @@ export function TextSourceViewer({source, page, answer, isMobile, onPageClick, p
 
     // Backend confirms a PDF exists for this document — render PDF viewer with text fallback.
     // Skip if we're already a fallback from a failed PDF load (prevents infinite loop).
-    if (chunkContext?.pdf_available && !pdfFailed) {
+    // Also skip for TXT sources — they never have a PDF representation.
+    if (chunkContext?.pdf_available && !pdfFailed && !isTxtSource(source)) {
         return (
             <PdfViewerWithFallback
                 source={source}

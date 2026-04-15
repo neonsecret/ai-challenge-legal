@@ -87,6 +87,11 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE users ADD COLUMN IF NOT EXISTS corpus_deletion_scheduled_at TIMESTAMPTZ;"),
         )
+        # file_type: 'pdf' | 'txt' — explicit format tag so the indexer can dispatch
+        # without guessing from the filename extension. Existing rows default to 'pdf'.
+        await conn.execute(
+            text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_type TEXT NOT NULL DEFAULT 'pdf';"),
+        )
         # trace_id: Langfuse trace ID stored on assistant messages for feedback linkage.
         await conn.execute(
             text("ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS trace_id TEXT;"),

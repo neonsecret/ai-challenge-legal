@@ -127,13 +127,14 @@ export interface Source {
     url?: string | null           // web source URL
     title?: string | null         // web source title
     chunk_id?: string | null      // database chunk identifier for context window fetch
-    source_type?: "statute" | "court_decision" | null
+    source_type?: "statute" | "court_decision" | "txt" | null
     case_number?: string | null   // e.g. "21 Cdo 1234/2023"
     decision_date?: string | null // ISO date
     court?: string | null         // e.g. "Nejvyssi soud"
     category?: string | null      // A-E
     ecli?: string | null
     legal_thesis?: string | null  // právní věta
+    media_type?: string | null    // MIME type, e.g. "text/plain" for TXT corpus docs
 }
 
 export interface Progress {

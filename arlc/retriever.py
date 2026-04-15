@@ -148,13 +148,16 @@ class PageResult:
     text: str
     chunk_id: str = ""
     # Court decision metadata — populated only when source_type == "court_decision"
-    source_type: str | None = None  # "statute" | "court_decision"
+    source_type: str | None = None  # "statute" | "court_decision" | "txt"
     case_number: str | None = None  # e.g. "21 Cdo 1234/2023"
     ecli: str | None = None  # ECLI identifier
     decision_date: str | None = None  # ISO date string e.g. "2023-06-15"
     court: str | None = None  # e.g. "Nejvyssi soud"
     category: str | None = None  # A–E
     legal_thesis: str | None = None  # Pravni veta
+    # TXT-source line range — populated only when source_type == "txt"
+    start_line: int | None = None
+    end_line: int | None = None
 
 
 def _is_qwen_reranker() -> bool:
@@ -364,6 +367,32 @@ def _get_sync_engine():
 # ---------------------------------------------------------------------------
 
 
+def _apply_metadata_extra(meta: dict, metadata_extra: dict | None) -> None:
+    """Populate *meta* with fields stored in the metadata_extra JSONB column.
+
+    Handles fields written by build_index():
+    - entities   : pipe-separated entity string
+    - chunk_type : optional structural label
+    - source_type: "pdf" | "txt" | "court_decision" (citation rendering hint)
+    - start_line : 1-based start line for TXT chunks
+    - end_line   : 1-based end line for TXT chunks
+
+    Mutates *meta* in-place; safe to call with metadata_extra=None.
+    """
+    if not metadata_extra:
+        return
+    if metadata_extra.get("entities"):
+        meta["entities"] = metadata_extra["entities"]
+    if metadata_extra.get("chunk_type"):
+        meta["chunk_type"] = metadata_extra["chunk_type"]
+    if metadata_extra.get("source_type"):
+        meta["source_type"] = metadata_extra["source_type"]
+    if metadata_extra.get("start_line") is not None:
+        meta["start_line"] = metadata_extra["start_line"]
+    if metadata_extra.get("end_line") is not None:
+        meta["end_line"] = metadata_extra["end_line"]
+
+
 def search_chunks_vector(
     query_embedding: list[float],
     top_k: int = 50,
@@ -420,8 +449,7 @@ def search_chunks_vector(
             "source_file": row.source_file,
             "chunk_id": row.chunk_id,
         }
-        if row.metadata_extra and row.metadata_extra.get("entities"):
-            meta["entities"] = row.metadata_extra["entities"]
+        _apply_metadata_extra(meta, row.metadata_extra)
         metadatas.append(meta)
         # neg_ip is negative inner product; convert to cosine distance for compat
         distances.append(1.0 + float(row.neg_ip))
@@ -915,8 +943,7 @@ def get_chunks_by_ids(chunk_ids: list[str], corpus: str | None = None) -> dict:
         ids.append(row.chunk_id)
         documents.append(row.text)
         meta = {"doc_id": row.doc_id, "pdf_id": row.pdf_id, "page": row.page, "source_file": row.source_file}
-        if row.metadata_extra and row.metadata_extra.get("entities"):
-            meta["entities"] = row.metadata_extra["entities"]
+        _apply_metadata_extra(meta, row.metadata_extra)
         metadatas.append(meta)
     return {"ids": ids, "documents": documents, "metadatas": metadatas}
 
@@ -952,11 +979,7 @@ def _load_all_chunks(corpus: str = "difc"):
             "page": row.page,
             "source_file": row.source_file,
         }
-        if row.metadata_extra:
-            if row.metadata_extra.get("entities"):
-                meta["entities"] = row.metadata_extra["entities"]
-            if row.metadata_extra.get("chunk_type"):
-                meta["chunk_type"] = row.metadata_extra["chunk_type"]
+        _apply_metadata_extra(meta, row.metadata_extra)
 
         if pdf_id not in doc_text_index:
             doc_text_index[pdf_id] = ""
@@ -2601,9 +2624,10 @@ def _retrieve_pages_simple(
             pass
 
     # Aggregate chunks to pages, pick best per (doc_id, page).
-    # Value tuple: (score, text, chunk_id, court_meta_dict)
+    # Value tuple: (score, text, chunk_id, court_meta_dict, start_line, end_line)
     # court_meta_dict is non-empty only for court_decision source_type.
-    page_scores: dict[tuple[str, int], tuple[float, str, str, dict]] = {}
+    # start_line/end_line are non-None only for txt source_type.
+    page_scores: dict[tuple[str, int], tuple[float, str, str, dict, int | None, int | None]] = {}
     for chunk in ranked:
         doc_id = chunk["metadata"].get("doc_id", chunk["metadata"]["pdf_id"])
         page = int(chunk["metadata"]["page"])
@@ -2624,7 +2648,9 @@ def _retrieve_pages_simple(
                         "legal_thesis",
                     )
                 }
-            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""), court_meta)
+            sl = chunk["metadata"].get("start_line")
+            el = chunk["metadata"].get("end_line")
+            page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""), court_meta, sl, el)
 
     # Inject top fused result if the reranker dropped it — the embedding model's
     # best pick often outperforms the reranker on cross-language queries.
@@ -2647,13 +2673,22 @@ def _retrieve_pages_simple(
                         "legal_thesis",
                     )
                 }
-            page_scores[ft_key] = (0.5, vector_top["text"], vector_top["metadata"].get("chunk_id", ""), ft_court_meta)
+            ft_sl = vector_top["metadata"].get("start_line")
+            ft_el = vector_top["metadata"].get("end_line")
+            page_scores[ft_key] = (
+                0.5,
+                vector_top["text"],
+                vector_top["metadata"].get("chunk_id", ""),
+                ft_court_meta,
+                ft_sl,
+                ft_el,
+            )
 
     # Sort by score descending, apply per-doc and total limits
     sorted_pages = sorted(page_scores.items(), key=lambda x: x[1][0], reverse=True)
     doc_counts: dict[str, int] = {}
     results: list[PageResult] = []
-    for (doc_id, page), (score, text, chunk_id, court_meta) in sorted_pages:
+    for (doc_id, page), (score, text, chunk_id, court_meta, start_line, end_line) in sorted_pages:
         if len(results) >= max_total:
             break
         if doc_counts.get(doc_id, 0) >= max_per_doc:
@@ -2673,6 +2708,8 @@ def _retrieve_pages_simple(
                 court=court_meta.get("court"),
                 category=court_meta.get("category"),
                 legal_thesis=court_meta.get("legal_thesis"),
+                start_line=start_line,
+                end_line=end_line,
             )
         )
 

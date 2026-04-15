@@ -1285,15 +1285,24 @@ async def run_agent_turn(
             "text": d.get("text", ""),
             "chunk_id": d.get("chunk_id", ""),
         }
+        # Propagate source_type for all non-default source types
+        src_type = d.get("source_type")
+        if src_type:
+            source["source_type"] = src_type
         # Propagate court decision fields if present (backward-compatible)
-        if d.get("source_type") == "court_decision":
-            source["source_type"] = "court_decision"
+        if src_type == "court_decision":
             source["case_number"] = d.get("case_number", "")
             source["decision_date"] = d.get("decision_date", "")
             source["court"] = d.get("court", "")
             source["category"] = d.get("category", "")
             source["ecli"] = d.get("ecli", "")
             source["legal_thesis"] = d.get("legal_thesis", "")
+        # Propagate TXT line range for citation rendering (L.N instead of p.N)
+        elif src_type == "txt":
+            if d.get("start_line") is not None:
+                source["start_line"] = d["start_line"]
+            if d.get("end_line") is not None:
+                source["end_line"] = d["end_line"]
         sources.append(source)
 
     # Add web sources with a "web:" prefix to distinguish them from corpus docs

@@ -32,6 +32,8 @@ class Document(Base):
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     upload_ts: Mapped[str] = mapped_column(String, nullable=False)
     indexed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # file_type: 'pdf' or 'txt' — lets the indexer dispatch without guessing from filename
+    file_type: Mapped[str] = mapped_column(String, nullable=False, default="pdf", server_default="pdf")
 
 
 class ApiKey(Base):

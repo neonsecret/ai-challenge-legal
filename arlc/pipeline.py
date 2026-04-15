@@ -412,27 +412,46 @@ def _pages_to_chunk_pages(pages) -> list[dict]:
 
     Carries the chunk_id of the first (highest-scored) page seen per doc,
     since callers typically pass pages already sorted by descending score.
+    Also carries start_line/end_line for TXT sources (first page wins, same as
+    chunk_id).
     """
     from collections import defaultdict
 
     by_doc: dict[str, list[int]] = defaultdict(list)
-    # Track the first chunk_id seen per doc (highest-scored when pre-sorted).
+    # Track the first chunk_id / line range seen per doc (highest-scored when pre-sorted).
     doc_chunk_id: dict[str, str] = {}
+    doc_start_line: dict[str, int] = {}
+    doc_end_line: dict[str, int] = {}
 
     for p in pages:
         # Handle both PageResult dataclass and dict
         doc_id = p.doc_id if hasattr(p, "doc_id") else p.get("doc_id", "")
         page_num = p.page_number if hasattr(p, "page_number") else p.get("page_number", p.get("page", 1))
         chunk_id = (p.chunk_id if hasattr(p, "chunk_id") else p.get("chunk_id", "")) or ""
+        start_line = (
+            (p.start_line if hasattr(p, "start_line") else p.get("start_line"))
+            if doc_id not in doc_start_line
+            else None
+        )
+        end_line = (p.end_line if hasattr(p, "end_line") else p.get("end_line")) if doc_id not in doc_end_line else None
         if doc_id:
             by_doc[doc_id].append(page_num)
             if doc_id not in doc_chunk_id and chunk_id:
                 doc_chunk_id[doc_id] = chunk_id
+            if start_line is not None:
+                doc_start_line[doc_id] = start_line
+            if end_line is not None:
+                doc_end_line[doc_id] = end_line
 
-    return [
-        {"doc_id": doc_id, "page_numbers": sorted(set(pns)), "chunk_id": doc_chunk_id.get(doc_id, "")}
-        for doc_id, pns in by_doc.items()
-    ]
+    result = []
+    for doc_id, pns in by_doc.items():
+        entry: dict = {"doc_id": doc_id, "page_numbers": sorted(set(pns)), "chunk_id": doc_chunk_id.get(doc_id, "")}
+        if doc_id in doc_start_line:
+            entry["start_line"] = doc_start_line[doc_id]
+        if doc_id in doc_end_line:
+            entry["end_line"] = doc_end_line[doc_id]
+        result.append(entry)
+    return result
 
 
 def _validate_chunk_pages(answer_result: dict, retrieved_pages) -> list[dict]:
@@ -519,10 +538,13 @@ def _attach_source_text(chunk_pages: list[dict], source_pages: list[dict]) -> No
                 continue
             if not cp.get("text") and sp.get("text"):
                 cp["text"] = sp["text"]
-            # Re-attach court decision metadata absent from LLM-generated chunk_pages
-            if sp.get("source_type") == "court_decision" and not cp.get("source_type"):
-                for field in _court_fields:
-                    cp[field] = sp.get(field)
+            # Re-attach source_type for all non-default types (court_decision, txt)
+            if sp.get("source_type") and not cp.get("source_type"):
+                if sp["source_type"] == "court_decision":
+                    for field in _court_fields:
+                        cp[field] = sp.get(field)
+                else:
+                    cp["source_type"] = sp["source_type"]
             break
 
 
@@ -608,9 +630,12 @@ def _pages_to_source_dicts(pages) -> list[dict]:
                 "score": p.score,
                 "text": p.text,
             }
-            # Include court decision metadata when the source is a court decision
-            if getattr(p, "source_type", None) == "court_decision":
-                d["source_type"] = p.source_type
+            # Propagate source_type for all non-default source types
+            src_type = getattr(p, "source_type", None)
+            if src_type:
+                d["source_type"] = src_type
+            # Include court decision metadata when present
+            if src_type == "court_decision":
                 d["case_number"] = p.case_number
                 d["ecli"] = p.ecli
                 d["decision_date"] = p.decision_date

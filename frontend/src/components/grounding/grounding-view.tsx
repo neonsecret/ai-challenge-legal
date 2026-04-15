@@ -9,6 +9,7 @@ import {
     SourceRef,
     isWebSource,
     isCourtDecision,
+    isTxtSource,
     getDomain,
     formatCzechDate,
 } from "./grounding-utils"
@@ -81,7 +82,7 @@ export function GroundingView({answer, sources: rawSources, isMobile = false, fo
                 url: toSafeStringOrNull(s.url),
                 chunk_id: toSafeStringOrNull(s.chunk_id),
                 page_numbers: s.page_numbers.map(p => toSafeNumber(p)),
-                source_type: s.source_type === "court_decision" ? "court_decision" as const : s.source_type === "statute" ? "statute" as const : null,
+                source_type: s.source_type === "court_decision" ? "court_decision" as const : s.source_type === "statute" ? "statute" as const : s.source_type === "txt" ? "txt" as const : null,
                 case_number: toSafeStringOrNull(s.case_number),
                 decision_date: toSafeStringOrNull(s.decision_date),
                 court: toSafeStringOrNull(s.court),
@@ -258,6 +259,8 @@ function SourceCitationCard({
             ? `${source.case_number ?? source.doc_id}${source.ecli ? ` (${source.ecli})` : ""}`
             : isWeb
             ? (source.url || source.doc_id.replace(/^web:/, ""))
+            : isTxtSource(source)
+            ? `${source.doc_id} (L. ${source.page_numbers.join(", ")})`
             : `${source.doc_id} (p. ${source.page_numbers.join(", ")})`
         navigator.clipboard.writeText(text).then(() => {
             setCopied(true)
@@ -378,7 +381,7 @@ function SourceCitationCard({
                                             transition: `all ${TIMING.instant} ${EASE.out}`,
                                         }}
                                     >
-                                        p.{page}
+                                        {isTxtSource(source) ? `L.${page}` : `p.${page}`}
                                     </button>
                                 )
                             })}
@@ -527,7 +530,7 @@ function SourceCitationCard({
                                     transition: `all ${TIMING.instant} ${EASE.out}`,
                                 }}
                             >
-                                p.{page}
+                                {isTxtSource(source) ? `L.${page}` : `p.${page}`}
                             </button>
                         )
                     })}

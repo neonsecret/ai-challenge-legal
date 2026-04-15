@@ -337,7 +337,10 @@ def split_page_into_chunks(text: str, page_num: int, max_chars: int = 500, overl
 
 
 def extract_pages(pdf_path: str) -> list[dict]:
-    """Extract text from each page of a PDF, returning paragraph-level chunks."""
+    """Extract text from each page of a PDF, returning paragraph-level chunks.
+
+    Returns list of dicts with keys: page (1-based), text, chunk_idx.
+    """
     pdf_file = os.path.basename(pdf_path)
     doc = pymupdf.open(pdf_path)
     chunks = []
@@ -355,6 +358,94 @@ def extract_pages(pdf_path: str) -> list[dict]:
             chunks.extend(page_chunks)
 
     doc.close()
+    return chunks
+
+
+# Candidate encodings for Czech legal text.  UTF-8 is tried first; cp1250 and
+# iso-8859-2 cover legacy Windows and ISO-Latin-2 exports from Czech legal
+# databases.
+_TXT_ENCODINGS = ("utf-8", "cp1250", "iso-8859-2")
+
+
+def extract_text_file(path: str) -> list[dict]:
+    """Extract text chunks from a plain-text file with encoding fallback.
+
+    Tries UTF-8 first, then cp1250, then falls back to iso-8859-2 with
+    ``errors='replace'`` so the function always succeeds even for unrecognised
+    byte sequences.  Never raises ``ValueError``.
+
+    Splits the file into blank-line-delimited paragraphs and applies the same
+    ``split_page_into_chunks`` logic used for PDFs, but tracks
+    ``start_line`` / ``end_line`` (1-indexed) instead of ``page_num``.
+
+    Returns list of dicts with keys: start_line (int), end_line (int), text
+    (str), chunk_idx (int).  The caller is responsible for mapping start_line
+    into the DB's ``page`` column.
+    """
+    with open(path, "rb") as fh:
+        raw = fh.read()
+
+    decoded: str | None = None
+    used_encoding: str | None = None
+    for enc in _TXT_ENCODINGS[:-1]:  # try strict decodings first
+        try:
+            decoded = raw.decode(enc)
+            used_encoding = enc
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if decoded is None:
+        # Last-resort fallback: iso-8859-2 with replacement characters so we
+        # never hard-fail on files with unexpected byte sequences.
+        last_enc = _TXT_ENCODINGS[-1]
+        decoded = raw.decode(last_enc, errors="replace")
+        used_encoding = last_enc
+
+    if used_encoding != "utf-8":
+        print(f"  [txt] {os.path.basename(path)} decoded as {used_encoding}")
+
+    lines = decoded.splitlines()
+
+    # Build paragraph spans: (start_line_1based, end_line_1based, text)
+    paragraphs: list[tuple[int, int, str]] = []
+    para_lines: list[str] = []
+    para_start = 1
+
+    for i, line in enumerate(lines, start=1):
+        if line.strip():
+            if not para_lines:
+                para_start = i
+            para_lines.append(line)
+        else:
+            if para_lines:
+                paragraphs.append((para_start, i - 1, "\n".join(para_lines)))
+                para_lines = []
+
+    if para_lines:
+        paragraphs.append((para_start, len(lines), "\n".join(para_lines)))
+
+    if not paragraphs:
+        return []
+
+    chunks: list[dict] = []
+    global_chunk_idx = 0
+
+    for start_line, end_line, para_text in paragraphs:
+        # Re-use the same chunking logic as PDFs; pass start_line as the
+        # surrogate page number so split_page_into_chunks works unchanged.
+        sub_chunks = split_page_into_chunks(para_text, start_line)
+        for sc in sub_chunks:
+            chunks.append(
+                {
+                    "start_line": start_line,
+                    "end_line": end_line,
+                    "text": sc["text"],
+                    "chunk_idx": global_chunk_idx,
+                }
+            )
+            global_chunk_idx += 1
+
     return chunks
 
 
@@ -391,24 +482,26 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
     """
     ef = _get_embedding_function()
 
-    pdf_files = sorted(f for f in os.listdir(DOCUMENTS_DIR) if f.endswith(".pdf"))
-    print(f"Indexing {len(pdf_files)} PDF files (model={EMBEDDING_MODEL}, corpus={corpus})...")
+    all_doc_files = sorted(f for f in os.listdir(DOCUMENTS_DIR) if f.endswith(".pdf") or f.endswith(".txt"))
+    print(f"Indexing {len(all_doc_files)} document(s) (model={EMBEDDING_MODEL}, corpus={corpus})...")
 
     all_ids: list[str] = []
     all_texts: list[str] = []
     all_metadatas: list[dict] = []
-    # (idx, pdf_id, summary, chunk_text, chunk_key) for concurrent context generation
+    # (idx, doc_id, summary, chunk_text, chunk_key) for concurrent context generation
     pending_contexts: list[tuple] = []
 
-    for pdf_file in pdf_files:
-        pdf_id = pdf_file.replace(".pdf", "")
-        pdf_path = os.path.join(DOCUMENTS_DIR, pdf_file)
+    for doc_file in all_doc_files:
+        is_txt = doc_file.endswith(".txt")
+        # Strip extension to get a stable doc identifier used for chunk IDs.
+        doc_stem = doc_file[:-4] if is_txt else doc_file.replace(".pdf", "")
+        doc_path = os.path.join(DOCUMENTS_DIR, doc_file)
 
-        # For custom corpora, PDFs are named {uuid}_{filename}.pdf.
+        # For custom corpora, files are named {uuid}_{filename}.ext.
         # Read the .meta sidecar to get the canonical doc_id (pure UUID),
         # so doc_ids filtering matches what the frontend sends.
-        canonical_doc_id = pdf_id
-        meta_path = os.path.join(DOCUMENTS_DIR, pdf_id.split("_")[0] + ".meta")
+        canonical_doc_id = doc_stem
+        meta_path = os.path.join(DOCUMENTS_DIR, doc_stem.split("_")[0] + ".meta")
         if os.path.exists(meta_path):
             try:
                 with open(meta_path) as _mf:
@@ -418,32 +511,59 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
             except Exception:
                 pass
 
-        chunks = extract_pages(pdf_path)
+        # Dispatch extraction by file type.
+        if is_txt:
+            try:
+                chunks = extract_text_file(doc_path)
+            except ValueError as exc:
+                print(f"  [SKIP] {doc_file}: {exc}")
+                continue
+            source_type = "txt"
+        else:
+            chunks = extract_pages(doc_path)
+            source_type = "pdf"
 
-        # SAC: generate per-document summary from first 2-3 pages
-        first_pages_text = "\n\n".join(c["text"] for c in chunks if c["page"] <= 3)
-        summary = _generate_doc_summary(pdf_id, first_pages_text) if first_pages_text else ""
+        # SAC: generate per-document summary from the first ~3 pages / paragraphs.
+        if is_txt:
+            first_chunk_texts = [c["text"] for c in chunks[:3]]
+        else:
+            first_chunk_texts = [c["text"] for c in chunks if c["page"] <= 3]
+        first_text = "\n\n".join(first_chunk_texts)
+        summary = _generate_doc_summary(doc_stem, first_text) if first_text else ""
         if summary:
-            print(f"  SAC summary for {pdf_file}: {summary}")
+            print(f"  SAC summary for {doc_file}: {summary}")
 
         for chunk_info in chunks:
-            chunk_id = f"{pdf_id}_{chunk_info['page']}_{chunk_info['chunk_idx']}"
+            if is_txt:
+                # Use start_line as the positional key for chunk IDs (analogous to page).
+                pos_key = chunk_info["start_line"]
+                chunk_id = f"{doc_stem}_L{pos_key}_{chunk_info['chunk_idx']}"
+                # page column stores start_line for TXT (DB column is NOT NULL).
+                db_page = chunk_info["start_line"]
+            else:
+                pos_key = chunk_info["page"]
+                chunk_id = f"{doc_stem}_{pos_key}_{chunk_info['chunk_idx']}"
+                db_page = chunk_info["page"]
+
             all_ids.append(chunk_id)
             all_texts.append(chunk_info["text"])  # raw text; SAC prefix prepended below
-            # Entity extraction at index time
             entities = extract_entities_from_chunk(chunk_info["text"])
-            all_metadatas.append(
-                {
-                    "pdf_id": pdf_id,
-                    "doc_id": canonical_doc_id,  # canonical UUID from .meta (matches frontend doc_ids)
-                    "page": chunk_info["page"],  # 1-based, used for grounding
-                    "source_file": pdf_file,
-                    "entities": "|".join(entities),
-                },
-            )
+            meta_entry: dict = {
+                "pdf_id": doc_stem,
+                "doc_id": canonical_doc_id,
+                "page": db_page,
+                "source_file": doc_file,
+                "entities": "|".join(entities),
+                "source_type": source_type,
+            }
+            if is_txt:
+                meta_entry["start_line"] = chunk_info["start_line"]
+                meta_entry["end_line"] = chunk_info["end_line"]
+            all_metadatas.append(meta_entry)
+
             if summary:
-                chunk_key = f"{chunk_info['page']}_{chunk_info['chunk_idx']}"
-                pending_contexts.append((len(all_ids) - 1, pdf_id, summary, chunk_info["text"], chunk_key))
+                chunk_key = f"{pos_key}_{chunk_info['chunk_idx']}"
+                pending_contexts.append((len(all_ids) - 1, doc_stem, summary, chunk_info["text"], chunk_key))
 
     # Generate per-chunk contexts concurrently.
     # Fast path (70%+ of chunks): rule-based header extraction — no LLM call.
@@ -515,15 +635,23 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
 
                 vec_str = "[" + ",".join(str(float(x)) for x in emb) + "]"
 
-                # Store entities, doc_type, court_division in metadata_extra JSONB
+                # Store entities, source_type, doc_type, court_division, and
+                # TXT-specific line range in metadata_extra JSONB.
                 extra: dict = {}
                 entities_str = meta.get("entities", "")
                 if entities_str:
                     extra["entities"] = entities_str
+                # source_type distinguishes pdf vs txt chunks for citation rendering.
+                extra["source_type"] = meta.get("source_type", "pdf")
                 if meta.get("doc_type"):
                     extra["doc_type"] = meta["doc_type"]
                 if meta.get("court_division"):
                     extra["court_division"] = meta["court_division"]
+                # TXT line-range metadata for citation grounding.
+                if meta.get("start_line") is not None:
+                    extra["start_line"] = meta["start_line"]
+                if meta.get("end_line") is not None:
+                    extra["end_line"] = meta["end_line"]
 
                 conn.execute(
                     sa_text("""

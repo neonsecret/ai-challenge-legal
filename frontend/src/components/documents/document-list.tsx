@@ -4,6 +4,7 @@ import {useState} from "react";
 import {FileText, Trash2} from "lucide-react";
 import {useColorMode} from "@/lib/color-mode";
 import type {Document} from "./use-documents";
+import {isTxtFile} from "@/components/grounding/grounding-utils";
 
 function formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
@@ -86,7 +87,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                 }}>
                     <div style={{fontSize: "18px", color: "rgba(201,168,76,0.25)", marginBottom: "8px"}}>⬚</div>
                     <p style={{fontSize: "11px", color: "rgba(200,210,230,0.22)", margin: 0, fontFamily: "system-ui, sans-serif"}}>No documents uploaded yet</p>
-                    <p style={{fontSize: "9px", color: "rgba(200,210,230,0.16)", marginTop: "3px", fontFamily: "system-ui, sans-serif"}}>Upload a PDF above to get started</p>
+                    <p style={{fontSize: "9px", color: "rgba(200,210,230,0.16)", marginTop: "3px", fontFamily: "system-ui, sans-serif"}}>Upload a PDF or TXT above to get started</p>
                 </div>
             );
         }
@@ -94,7 +95,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
             <div style={{display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1.5px dashed rgba(255,255,255,0.35)", borderRadius: "14px", padding: "48px 24px", textAlign: "center", fontFamily}}>
                 <FileText size={32} style={{color: "rgba(46,31,8,0.25)", marginBottom: "12px"}} />
                 <p style={{fontSize: "13px", color: labelColor, margin: 0}}>No documents uploaded yet</p>
-                <p style={{fontSize: "11px", color: "rgba(46,31,8,0.35)", marginTop: "4px"}}>Upload a PDF above to get started</p>
+                <p style={{fontSize: "11px", color: "rgba(46,31,8,0.35)", marginTop: "4px"}}>Upload a PDF or TXT above to get started</p>
             </div>
         );
     }
@@ -103,7 +104,9 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
     if (isDark) {
         return (
             <div style={{display: "flex", flexDirection: "column", gap: "2px"}}>
-                {documents.map((doc) => (
+                {documents.map((doc) => {
+                    const isTxt = isTxtFile(doc);
+                    return (
                     <div
                         key={doc.document_id}
                         onMouseEnter={() => setHoveredRowId(doc.document_id)}
@@ -117,15 +120,21 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             transition: "all 0.12s",
                         }}
                     >
-                        {/* PDF badge */}
+                        {/* File type badge */}
                         <div style={{
                             width: "22px", height: "22px", borderRadius: "4px",
-                            background: "rgba(201,168,76,0.05)",
-                            border: "1px solid rgba(201,168,76,0.08)",
+                            background: isTxt ? "var(--dt-color-teal-tint)" : "rgba(201,168,76,0.05)",
+                            border: `1px solid ${isTxt ? "var(--dt-color-teal-border)" : "rgba(201,168,76,0.08)"}`,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             flexShrink: 0,
                         }}>
-                            <span style={{fontSize: "6px", fontFamily: "system-ui, sans-serif", color: "rgba(201,168,76,0.7)", lineHeight: 1}}>PDF</span>
+                            <span style={{
+                                fontSize: "6px", fontFamily: "system-ui, sans-serif",
+                                color: isTxt ? "var(--dt-teal-on-surface)" : "rgba(201,168,76,0.7)",
+                                lineHeight: 1,
+                            }}>
+                                {isTxt ? "TXT" : "PDF"}
+                            </span>
                         </div>
 
                         {/* Name + meta */}
@@ -182,7 +191,8 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             )}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         );
     }
@@ -213,7 +223,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                     onMouseLeave={() => setHoveredRowId(null)}
                 >
                     <div style={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
-                        <FileText size={16} style={{flexShrink: 0, color: "#c47c00"}}/>
+                        <FileText size={16} style={{flexShrink: 0, color: isTxtFile(doc) ? "var(--dt-teal-on-surface)" : "#c47c00"}}/>
                         <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", fontWeight: 500, color: textPrimary}} title={doc.filename}>{doc.filename}</span>
                     </div>
                     <span className="hidden sm:block" style={{width: "80px", textAlign: "right", fontSize: "12px", color: labelColor, fontVariantNumeric: "tabular-nums"}}>{formatSize(doc.size_bytes)}</span>

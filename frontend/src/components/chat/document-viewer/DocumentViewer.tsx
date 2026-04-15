@@ -63,9 +63,11 @@ interface DocumentViewerProps {
     chatId: string
     docId: string | null
     docName?: string
+    /** MIME type of the document — "text/plain" switches to the TXT viewer path */
+    mediaType?: string
 }
 
-export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, docName}: DocumentViewerProps) {
+export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, docName, mediaType}: DocumentViewerProps) {
     const isMobile = useIsMobile()
     const [pdfErrorKind, setPdfErrorKind] = useState<"timeout" | "error" | null>(null)
     const [retryKey, setRetryKey] = useState(0)
@@ -74,13 +76,38 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
     const panelRef = useRef<HTMLDivElement>(null)
     const titleId = useId()
 
-    const pdfUrl = docId
+    // TXT detection — mediaType is authoritative; docName suffix is a fallback
+    const isTxt = mediaType === "text/plain" || (docName?.toLowerCase().endsWith(".txt") ?? false)
+
+    const pdfUrl = docId && !isTxt
         ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/pdf`
         : null
 
-    const texUrl = docId
+    const txtUrl = docId && isTxt
+        ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/txt`
+        : null
+
+    const texUrl = docId && !isTxt
         ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/tex`
         : null
+
+    // TXT content — fetched when isTxt and viewer opens
+    const [txtContent, setTxtContent] = useState<string | null>(null)
+    const [txtError, setTxtError] = useState(false)
+    useEffect(() => {
+        if (!open || !isTxt || !txtUrl) { setTxtContent(null); setTxtError(false); return }
+        const controller = new AbortController()
+        setTxtContent(null)
+        setTxtError(false)
+        fetch(txtUrl, {credentials: "include", signal: controller.signal})
+            .then(async res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`)
+                return res.text()
+            })
+            .then(text => { if (!controller.signal.aborted) setTxtContent(text) })
+            .catch(() => { if (!controller.signal.aborted) setTxtError(true) })
+        return () => controller.abort()
+    }, [open, isTxt, txtUrl])
 
     // HEAD-check the .tex endpoint when the viewer opens. Only show the download
     // button when the template has a LaTeX source (200 OK); 422 means unavailable.
@@ -255,12 +282,35 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                                     Modify
                                 </button>
 
-                                {/* Download */}
+                                {/* Download PDF — hidden for TXT documents */}
                                 {pdfUrl && (
                                     <a
                                         href={pdfUrl}
                                         download={docName ? `${docName}.pdf` : "document.pdf"}
                                         title="Download PDF"
+                                        style={{
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 8,
+                                            background: "var(--doc-close-btn-bg)",
+                                            border: "0.5px solid var(--doc-close-btn-border)",
+                                            color: "var(--doc-close-btn-color)",
+                                        }}
+                                    >
+                                        <Download size={13} strokeWidth={1.8} />
+                                    </a>
+                                )}
+
+                                {/* Download TXT — shown for TXT documents */}
+                                {txtUrl && (
+                                    <a
+                                        href={txtUrl}
+                                        download={docName ? `${docName}.txt` : "document.txt"}
+                                        title="Download TXT"
+                                        aria-label="Download TXT"
                                         style={{
                                             display: "inline-flex",
                                             alignItems: "center",
@@ -323,8 +373,58 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
                             </div>
                         </div>
 
-                        {/* PDF Content */}
-                        {pdfErrorKind !== null ? (
+                        {/* Document Content — TXT or PDF */}
+                        {isTxt ? (
+                            txtError ? (
+                                <div style={{flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: SPACE[4], padding: SPACE[8]}}>
+                                    <p style={{fontFamily: FONT.sans, fontSize: TYPE_SCALE.sm, color: "var(--doc-text-secondary)", margin: 0, textAlign: "center"}}>
+                                        Document preview not available.
+                                    </p>
+                                    {txtUrl && (
+                                        <a
+                                            href={txtUrl}
+                                            download={docName ? `${docName}.txt` : "document.txt"}
+                                            style={{
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                gap: SPACE[2],
+                                                fontFamily: FONT.sans,
+                                                fontSize: TYPE_SCALE.sm,
+                                                color: "var(--doc-close-btn-color)",
+                                                background: "var(--doc-close-btn-bg)",
+                                                border: "0.5px solid var(--doc-close-btn-border)",
+                                                borderRadius: RADIUS.sm,
+                                                padding: `${SPACE[2]}px ${SPACE[3]}px`,
+                                                textDecoration: "none",
+                                                cursor: "pointer",
+                                            }}
+                                        >
+                                            <Download size={13} strokeWidth={1.8} />
+                                            Download file
+                                        </a>
+                                    )}
+                                </div>
+                            ) : txtContent !== null ? (
+                                <div style={{flex: 1, overflow: "hidden", display: "flex", flexDirection: "column"}}>
+                                    <pre style={{
+                                        flex: 1,
+                                        overflowY: "auto",
+                                        margin: 0,
+                                        padding: `${SPACE[6]}px`,
+                                        fontFamily: FONT.mono,
+                                        fontSize: TYPE_SCALE.sm,
+                                        lineHeight: 1.7,
+                                        color: "var(--doc-text-secondary)",
+                                        whiteSpace: "pre-wrap",
+                                        wordBreak: "break-word",
+                                    }}>
+                                        {txtContent}
+                                    </pre>
+                                </div>
+                            ) : (
+                                <PdfLoadingSkeleton />
+                            )
+                        ) : pdfErrorKind !== null ? (
                             <div style={{
                                 flex: 1,
                                 display: "flex",
