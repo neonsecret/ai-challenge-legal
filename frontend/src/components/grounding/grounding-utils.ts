@@ -5,7 +5,7 @@ export interface SourceRef {
     url?: string | null
     title?: string | null
     chunk_id?: string | null
-    source_type?: "statute" | "court_decision" | null
+    source_type?: "statute" | "court_decision" | "txt" | null
     case_number?: string | null
     decision_date?: string | null
     court?: string | null
@@ -16,9 +16,16 @@ export interface SourceRef {
 }
 
 /** Check if a source is a TXT document.
- *  Checks media_type first (authoritative when backend populates it),
- *  then falls back to doc_id suffix for custom corpus TXT documents. */
-export function isTxtSource(source: { doc_id: string; media_type?: string | null }): boolean {
+ *  Priority order:
+ *  1. source_type === "txt"  — authoritative once NEO-2092 backend propagation lands
+ *  2. media_type === "text/plain" — MIME-based fallback
+ *  3. doc_id ends with ".txt" — last-resort for hypothetical named doc_ids (UUIDs won't match) */
+export function isTxtSource(source: {
+    doc_id: string
+    source_type?: string | null
+    media_type?: string | null
+}): boolean {
+    if (source.source_type === "txt") return true
     if (source.media_type === "text/plain") return true
     return source.doc_id.toLowerCase().endsWith(".txt")
 }
