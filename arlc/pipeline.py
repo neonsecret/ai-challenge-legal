@@ -538,10 +538,13 @@ def _attach_source_text(chunk_pages: list[dict], source_pages: list[dict]) -> No
                 continue
             if not cp.get("text") and sp.get("text"):
                 cp["text"] = sp["text"]
-            # Re-attach court decision metadata absent from LLM-generated chunk_pages
-            if sp.get("source_type") == "court_decision" and not cp.get("source_type"):
-                for field in _court_fields:
-                    cp[field] = sp.get(field)
+            # Re-attach source_type for all non-default types (court_decision, txt)
+            if sp.get("source_type") and not cp.get("source_type"):
+                if sp["source_type"] == "court_decision":
+                    for field in _court_fields:
+                        cp[field] = sp.get(field)
+                else:
+                    cp["source_type"] = sp["source_type"]
             break
 
 
@@ -627,9 +630,12 @@ def _pages_to_source_dicts(pages) -> list[dict]:
                 "score": p.score,
                 "text": p.text,
             }
-            # Include court decision metadata when the source is a court decision
-            if getattr(p, "source_type", None) == "court_decision":
-                d["source_type"] = p.source_type
+            # Propagate source_type for all non-default source types
+            src_type = getattr(p, "source_type", None)
+            if src_type:
+                d["source_type"] = src_type
+            # Include court decision metadata when present
+            if src_type == "court_decision":
                 d["case_number"] = p.case_number
                 d["ecli"] = p.ecli
                 d["decision_date"] = p.decision_date

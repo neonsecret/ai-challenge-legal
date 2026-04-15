@@ -38,20 +38,31 @@ MAX_COMPRESSION_RATIO = 100  # Max compression ratio per file
 # ---------------------------------------------------------------------------
 
 
+# Encoding fallback chain — matches the indexer's _TXT_ENCODINGS so uploaded files
+# that the indexer can read are never rejected by the upload validator.
+_TEXT_ENCODINGS = ("utf-8", "cp1250", "iso-8859-2")
+
+
 def _is_valid_text_content(data: bytes) -> bool:
-    """Return True if data is valid UTF-8 text with no binary markers.
+    """Return True if *data* looks like text rather than binary content.
+
+    Accepts UTF-8, cp1250, and iso-8859-2 encoded files — the same set the
+    indexer tries — so Czech legal documents in legacy encodings are not
+    incorrectly rejected at upload time.
 
     Rejects files that:
-    - Contain null bytes (binary indicator)
-    - Cannot be decoded as strict UTF-8
+    - Contain null bytes (reliable binary/executable marker)
+    - Cannot be decoded by any of the supported encodings (strict mode)
     """
     if b"\x00" in data:
         return False
-    try:
-        data.decode("utf-8")
-        return True
-    except UnicodeDecodeError:
-        return False
+    for enc in _TEXT_ENCODINGS:
+        try:
+            data.decode(enc)
+            return True
+        except UnicodeDecodeError:
+            continue
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +110,9 @@ def save_upload(
     if file_ext == ".txt":
         file_type = "txt"
         if not _is_valid_text_content(content):
-            raise ValueError("Not a valid text file — file contains null bytes or is not valid UTF-8")
+            raise ValueError(
+                "Not a valid text file — file contains null bytes or cannot be decoded as UTF-8, cp1250, or iso-8859-2"
+            )
     else:
         # Treat as PDF for any other extension (including no extension)
         file_type = "pdf"
@@ -318,7 +331,7 @@ def extract_zip_safely(
             is_pdf = lname.endswith(".pdf")
             is_txt = lname.endswith(".txt")
             if not is_pdf and not is_txt:
-                skipped_files.append((basename, "skipped_not_pdf"))
+                skipped_files.append((basename, "skipped_unsupported_format"))
                 continue
 
             # --- Empty files ---

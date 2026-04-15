@@ -15,6 +15,14 @@ export interface SourceRef {
     media_type?: string | null
 }
 
+/** Check if an uploaded Document is a TXT file.
+ *  Checks media_type first, then falls back to filename extension.
+ *  Used in document-list and folder-view to differentiate TXT from PDF badges. */
+export function isTxtFile(doc: { media_type?: string | null; filename?: string }): boolean {
+    if (doc.media_type === "text/plain") return true
+    return Boolean(doc.filename?.toLowerCase().endsWith(".txt"))
+}
+
 /** Check if a source is a TXT document.
  *  Checks source_type === "txt" first (backend field from NEO-2092),
  *  falls back to media_type === "text/plain".

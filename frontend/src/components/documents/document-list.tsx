@@ -4,6 +4,7 @@ import {useState} from "react";
 import {FileText, Trash2} from "lucide-react";
 import {useColorMode} from "@/lib/color-mode";
 import type {Document} from "./use-documents";
+import {isTxtFile} from "@/components/grounding/grounding-utils";
 
 function formatSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
@@ -26,10 +27,6 @@ function formatDateFull(iso: string): string {
         hour: "2-digit",
         minute: "2-digit",
     });
-}
-
-function isTxtFile(doc: Document): boolean {
-    return doc.media_type === "text/plain" || Boolean(doc.filename?.toLowerCase().endsWith(".txt"));
 }
 
 interface DocumentListProps {
@@ -107,7 +104,9 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
     if (isDark) {
         return (
             <div style={{display: "flex", flexDirection: "column", gap: "2px"}}>
-                {documents.map((doc) => (
+                {documents.map((doc) => {
+                    const isTxt = isTxtFile(doc);
+                    return (
                     <div
                         key={doc.document_id}
                         onMouseEnter={() => setHoveredRowId(doc.document_id)}
@@ -122,26 +121,21 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                         }}
                     >
                         {/* File type badge */}
-                        {(() => {
-                            const isTxt = isTxtFile(doc);
-                            return (
-                                <div style={{
-                                    width: "22px", height: "22px", borderRadius: "4px",
-                                    background: isTxt ? "rgba(56,178,172,0.05)" : "rgba(201,168,76,0.05)",
-                                    border: `1px solid ${isTxt ? "rgba(56,178,172,0.08)" : "rgba(201,168,76,0.08)"}`,
-                                    display: "flex", alignItems: "center", justifyContent: "center",
-                                    flexShrink: 0,
-                                }}>
-                                    <span style={{
-                                        fontSize: "6px", fontFamily: "system-ui, sans-serif",
-                                        color: isTxt ? "rgba(56,178,172,0.7)" : "rgba(201,168,76,0.7)",
-                                        lineHeight: 1,
-                                    }}>
-                                        {isTxt ? "TXT" : "PDF"}
-                                    </span>
-                                </div>
-                            );
-                        })()}
+                        <div style={{
+                            width: "22px", height: "22px", borderRadius: "4px",
+                            background: isTxt ? "var(--dt-color-teal-tint)" : "rgba(201,168,76,0.05)",
+                            border: `1px solid ${isTxt ? "var(--dt-color-teal-border)" : "rgba(201,168,76,0.08)"}`,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            flexShrink: 0,
+                        }}>
+                            <span style={{
+                                fontSize: "6px", fontFamily: "system-ui, sans-serif",
+                                color: isTxt ? "var(--dt-teal-on-surface)" : "rgba(201,168,76,0.7)",
+                                lineHeight: 1,
+                            }}>
+                                {isTxt ? "TXT" : "PDF"}
+                            </span>
+                        </div>
 
                         {/* Name + meta */}
                         <div style={{flex: 1, minWidth: 0}}>
@@ -197,7 +191,8 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                             )}
                         </div>
                     </div>
-                ))}
+                    );
+                })}
             </div>
         );
     }
@@ -228,7 +223,7 @@ export function DocumentList({documents, loading, onDelete}: DocumentListProps) 
                     onMouseLeave={() => setHoveredRowId(null)}
                 >
                     <div style={{display: "flex", alignItems: "center", gap: "8px", minWidth: 0}}>
-                        <FileText size={16} style={{flexShrink: 0, color: isTxtFile(doc) ? "#0d7377" : "#c47c00"}}/>
+                        <FileText size={16} style={{flexShrink: 0, color: isTxtFile(doc) ? "var(--dt-teal-on-surface)" : "#c47c00"}}/>
                         <span style={{overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: "13px", fontWeight: 500, color: textPrimary}} title={doc.filename}>{doc.filename}</span>
                     </div>
                     <span className="hidden sm:block" style={{width: "80px", textAlign: "right", fontSize: "12px", color: labelColor, fontVariantNumeric: "tabular-nums"}}>{formatSize(doc.size_bytes)}</span>

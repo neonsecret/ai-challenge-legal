@@ -641,6 +641,7 @@ async def list_documents(
                 "upload_ts": row["upload_ts"],
                 "indexed": bool(row["indexed"]),
                 "collection": meta_collections.get(doc_id, "My Documents"),
+                "file_type": row.get("file_type", "pdf"),
             },
         )
 
@@ -1065,3 +1066,47 @@ async def get_document_pdf(
         )
 
     raise HTTPException(status_code=404, detail="PDF not found")
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/documents/{doc_id}/txt  — serve corpus TXT for source viewer
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{doc_id}/txt")
+async def get_document_txt(
+    doc_id: str,
+    key_row: dict = Depends(get_api_key),
+) -> FileResponse:
+    """Serve the raw TXT content for a given doc_id.
+
+    Corpus documents (shared public law texts) are served to all authenticated
+    users. Client-uploaded documents are scoped to the client's own corpus.
+    """
+    if not re.fullmatch(r"[A-Za-z0-9_\-]+", doc_id):
+        raise HTTPException(status_code=400, detail="Invalid doc_id format")
+
+    client_slug = key_row["client_slug"]
+
+    # 1. Corpus documents (shared law texts stored in data/documents/)
+    corpus_path = Path(settings.data_dir) / "documents" / f"{doc_id}.txt"
+    if corpus_path.exists():
+        logger.info("Serving shared corpus TXT %s to client %s", doc_id[:16], client_slug)
+        return FileResponse(
+            path=str(corpus_path),
+            media_type="text/plain; charset=utf-8",
+            filename=f"{doc_id}.txt",
+            headers=_PDF_CACHE_HEADERS,
+        )
+
+    # 2. Client-uploaded documents (tenant-scoped)
+    client_dir = client_docs_dir(client_slug)
+    for f in client_dir.glob(f"{doc_id}_*.txt"):
+        return FileResponse(
+            path=str(f),
+            media_type="text/plain; charset=utf-8",
+            filename=f.name,
+            headers=_PDF_CACHE_HEADERS,
+        )
+
+    raise HTTPException(status_code=404, detail="TXT document not found")

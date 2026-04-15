@@ -45,8 +45,10 @@ class TestIsValidTextContent:
     def test_null_byte_returns_false(self):
         assert _is_valid_text_content(b"text\x00here") is False
 
-    def test_invalid_utf8_sequence_returns_false(self):
-        assert _is_valid_text_content(b"\xff\xfe invalid") is False
+    def test_non_utf8_bytes_accepted_via_iso8859_fallback(self):
+        # iso-8859-2 defines all 256 codepoints, so any null-free byte sequence
+        # is accepted.  Non-UTF-8 bytes without null bytes are NOT rejected.
+        assert _is_valid_text_content(b"\xff\xfe invalid") is True
 
     def test_czech_legal_text_returns_true(self):
         czech = "Zákon č. 89/2012 Sb., občanský zákoník".encode("utf-8")
@@ -111,12 +113,19 @@ class TestSaveUploadTXT:
             with pytest.raises(ValueError, match="null bytes|UTF-8"):
                 save_upload("client1", "malicious.txt", _BINARY_STUB)
 
-    def test_invalid_utf8_txt_raises(self, tmp_path: Path):
-        """AC-2: non-UTF-8 bytes with .txt extension are rejected."""
+    def test_cp1250_encoded_txt_is_accepted(self, tmp_path: Path):
+        """Extended encoding support: cp1250 bytes are accepted (Czech legal docs).
+
+        iso-8859-2 accepts all 256 byte values, so the only rejection path
+        for text files is null bytes.  This confirms legacy encodings are not
+        incorrectly rejected at upload time.
+        """
+        # "Zákon č. 89/2012 Sb." encoded as cp1250 — valid cp1250, invalid UTF-8
+        cp1250_bytes = "Zákon č. 89/2012 Sb.".encode("cp1250")
         with patch("neolex.services.document_manager.settings") as mock_settings:
             mock_settings.data_dir = str(tmp_path)
-            with pytest.raises(ValueError, match="null bytes|UTF-8"):
-                save_upload("client1", "bad_encoding.txt", b"\xff\xfe not valid utf-8")
+            meta = save_upload("client1", "zakon.txt", cp1250_bytes)
+        assert meta["file_type"] == "txt"
 
     def test_oversized_txt_raises(self, tmp_path: Path):
         """AC-3: oversized .txt file is rejected."""
@@ -175,7 +184,7 @@ class TestExtractZipSafelyTXT:
         assert "notes.txt" in names
         assert len(skipped) == 1
         assert skipped[0][0] == "readme.md"
-        assert skipped[0][1] == "skipped_not_pdf"
+        assert skipped[0][1] == "skipped_unsupported_format"
 
     def test_binary_txt_in_zip_is_skipped_as_invalid(self):
         """Binary content with .txt extension inside ZIP is skipped (not raised)."""
