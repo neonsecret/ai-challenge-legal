@@ -790,7 +790,7 @@ class TestBillingStatus:
         assert resp.status_code == 200
         data = resp.json()
         assert data["plan"] == "free"
-        assert data["daily_queries_limit"] == 3
+        assert data["daily_queries_limit"] == settings.free_daily_limit
         assert data["daily_queries_used"] == 0
         assert data["corpora_used"] == 0
 
@@ -869,6 +869,20 @@ class TestHelperFunctions:
         from neolex.routers.stripe_router import _max_corpora_for_plan
 
         assert _max_corpora_for_plan("unknown_plan") == 0
+
+    def test_plan_limit_defaults_match_pricing_page(self):
+        """Default config values must match the advertised pricing (CLAUDE.md / billing page)."""
+        assert settings.starter_daily_limit == 30, "Starter plan must default to 30/day per pricing page"
+        assert settings.free_daily_limit == 3, "Free plan must default to 3/day per pricing page"
+
+    def test_plan_daily_limits_dict_uses_settings(self):
+        """_PLAN_DAILY_LIMITS must read all limits from settings, not hardcoded values."""
+        from neolex.routers.query import _PLAN_DAILY_LIMITS
+
+        assert _PLAN_DAILY_LIMITS["free"] == settings.free_daily_limit
+        assert _PLAN_DAILY_LIMITS["trial"] == settings.free_daily_limit
+        assert _PLAN_DAILY_LIMITS["starter"] == settings.starter_daily_limit
+        assert _PLAN_DAILY_LIMITS["pro"] == settings.pro_daily_limit
 
 
 # ---------------------------------------------------------------------------

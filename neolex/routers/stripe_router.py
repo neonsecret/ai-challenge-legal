@@ -45,7 +45,7 @@ _PLAN_INTERVAL_TO_PRICE: dict[tuple[str, str], str] = {}
 # Plan limits for billing-status response
 _PLAN_LIMITS: dict[str, dict] = {
     "free": {
-        "daily_limit": 3,
+        "daily_limit": settings.free_daily_limit,
         "monthly_limit": None,
         "max_corpora": 0,
         "max_docs_per_corpus": 0,
