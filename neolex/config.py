@@ -24,7 +24,7 @@ Environment variables:
     FREE_DAILY_LIMIT            Daily query limit for free tier (default: 3)
     STARTER_DAILY_LIMIT         Daily query limit for Starter plan (default: 30)
     STARTER_MAX_CORPORA         Max corpus uploads for Starter (default: 1)
-    PRO_DAILY_LIMIT             Daily query limit for Pro plan (default: 500)
+    PRO_DAILY_LIMIT             Daily query limit for Pro plan (default: 200)
     PRO_MAX_CORPORA             Max corpus uploads for Pro (default: 3)
     ENTERPRISE_DAILY_LIMIT      Daily query limit for Enterprise (0=unlimited)
     ENTERPRISE_MAX_CORPORA      Max corpus uploads for Enterprise (default: 10)
@@ -91,13 +91,13 @@ class Settings:
     # Free: loss leader. Starter: break-even ~22 queries/day. Pro: break-even ~75/day.
     free_daily_limit: int = int(os.environ.get("FREE_DAILY_LIMIT", "3"))
     starter_daily_limit: int = int(os.environ.get("STARTER_DAILY_LIMIT", "30"))
-    starter_max_corpora: int = int(os.environ.get("STARTER_MAX_CORPORA", "2"))
+    starter_max_corpora: int = int(os.environ.get("STARTER_MAX_CORPORA", "1"))
     pro_daily_limit: int = int(os.environ.get("PRO_DAILY_LIMIT", "200"))
-    pro_max_corpora: int = int(os.environ.get("PRO_MAX_CORPORA", "5"))
+    pro_max_corpora: int = int(os.environ.get("PRO_MAX_CORPORA", "3"))
     # Enterprise daily limit: 0 is the sentinel for "unlimited" (no cap enforced).
     # This convention is relied upon by UNLIMITED_DAILY_QUERIES in neolex.routers.query.
     enterprise_daily_limit: int = int(os.environ.get("ENTERPRISE_DAILY_LIMIT", "0"))
-    enterprise_max_corpora: int = int(os.environ.get("ENTERPRISE_MAX_CORPORA", "20"))
+    enterprise_max_corpora: int = int(os.environ.get("ENTERPRISE_MAX_CORPORA", "10"))
 
     # --- Per-corpus document/size limits ---
     starter_max_docs_per_corpus: int = int(os.environ.get("STARTER_MAX_DOCS_PER_CORPUS", "50"))
