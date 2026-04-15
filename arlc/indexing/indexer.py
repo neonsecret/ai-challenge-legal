@@ -513,11 +513,7 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
 
         # Dispatch extraction by file type.
         if is_txt:
-            try:
-                chunks = extract_text_file(doc_path)
-            except ValueError as exc:
-                print(f"  [SKIP] {doc_file}: {exc}")
-                continue
+            chunks = extract_text_file(doc_path)
             source_type = "txt"
         else:
             chunks = extract_pages(doc_path)
