@@ -336,7 +336,7 @@ export function ChatHeader({
                                         <button
                                             key={c.name}
                                             onClick={() => {
-                                                setSelectedCorporaId(c.corpus_id)
+                                                setSelectedCorporaId(`${c.corpus_id}:${c.name}`)
                                                 setSelectedCollection(c.name)
                                                 localStorage.setItem("neolex_selected_collection", c.name)
                                                 if (c.doc_ids?.length) localStorage.setItem("neolex_selected_doc_ids", JSON.stringify(c.doc_ids))
