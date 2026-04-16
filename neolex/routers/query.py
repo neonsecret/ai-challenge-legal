@@ -170,7 +170,7 @@ def _resolve_corpora_id(corpora_id: str, client_slug: str) -> list[str] | None:
             if collection == collection_name and doc_id:
                 doc_ids.append(doc_id)
         except Exception:
-            pass
+            logger.warning("Failed to read meta file %s", meta_path, exc_info=True)
 
     return doc_ids if doc_ids else None
 
@@ -881,11 +881,12 @@ async def list_corpora(
                     },
                 )
 
-        # Fallback: no .meta files but chunks exist — show single entry
+        # Fallback: no .meta files but chunks exist — show single entry.
+        # No `id` field: collection-scoped querying via corpora_id is not
+        # available without .meta files, so the frontend should not offer it.
         if not corpora:
             corpora.append(
                 {
-                    "id": f"{client_slug}:My Documents",
                     "name": "My Documents",
                     "corpus_id": client_slug,
                     "indexed": True,

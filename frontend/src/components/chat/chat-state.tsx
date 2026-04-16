@@ -655,6 +655,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         setCurrentSessionId(null)
         activeAssistantId.current = null
         traceRef.current = []
+        setSelectedCorporaId(null)
     }, [stream.isStreaming, stream.abort])
 
     const deleteSession = useCallback((id: string) => {
