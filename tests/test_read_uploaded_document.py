@@ -176,10 +176,10 @@ class TestReadUploadedDocumentSecurity:
         assert requested in custom_doc_ids
 
     def test_pagination_cap_20_pages(self):
-        """page_end - page_start > 20 must be rejected."""
-        page_start, page_end = 1, 22  # 22 - 1 = 21 pages > 20
-        assert (page_end - page_start) > 20
+        """page_end - page_start >= 20 must be rejected (cap is strictly < 20 difference)."""
+        page_start, page_end = 1, 21  # 21 - 1 = 20 >= 20 → rejected
+        assert (page_end - page_start) >= 20
 
     def test_pagination_within_cap(self):
-        page_start, page_end = 1, 21  # 21 - 1 = 20 pages == cap
-        assert (page_end - page_start) <= 20
+        page_start, page_end = 1, 20  # 20 - 1 = 19 < 20 → allowed (20 pages)
+        assert (page_end - page_start) < 20
