@@ -414,8 +414,11 @@ async def query_stream(
         if corpus in _BUILTIN_CORPORA and corpus != client_slug:
             # Hybrid mode: builtin jurisdiction + custom corpus collection.
             # Keep corpus as the builtin jurisdiction; pass custom collection separately.
+            # Clear body.doc_ids so jurisdiction search runs unfiltered — the frontend
+            # may have sent the collection's doc UUIDs which don't exist in the builtin corpus.
             custom_corpus = client_slug
             custom_doc_ids = resolved_doc_ids
+            body = body.model_copy(update={"doc_ids": None})
         else:
             # Custom-only mode: no builtin jurisdiction selected (or corpus is same as client_slug).
             body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": client_slug})
