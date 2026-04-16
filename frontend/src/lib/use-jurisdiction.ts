@@ -13,8 +13,12 @@ export function useJurisdiction() {
     );
 
     useEffect(() => {
-        const stored = localStorage.getItem(STORAGE_KEY) as Jurisdiction | null;
-        if (stored) setJurisdictionState(stored);
+        const stored = localStorage.getItem(STORAGE_KEY);
+        // "custom" was removed as a jurisdiction — migrate to default
+        if (stored && stored !== "custom") setJurisdictionState(stored as Jurisdiction);
+        else if (stored === "custom") {
+            localStorage.setItem(STORAGE_KEY, DEFAULT_JURISDICTION);
+        }
 
         const handler = (e: Event) => {
             const detail = (e as CustomEvent<Jurisdiction>).detail;

@@ -876,6 +876,8 @@ def build_agent_graph():
                     exclude_doc_pages=exclude,
                     on_status=on_status,
                     doc_ids=state.get("doc_ids"),
+                    custom_corpus=state.get("custom_corpus"),
+                    custom_doc_ids=state.get("custom_doc_ids"),
                 )
             except Exception:
                 _search_failed = True
@@ -1099,6 +1101,9 @@ async def run_agent_turn(
     template_field_descriptions: dict[str, str] | None = None,
     chat_documents: list[dict] | None = None,
     draft_document_fn: Callable | None = None,
+    # --- Hybrid search: builtin corpus + custom corpus collection ---
+    custom_corpus: str | None = None,
+    custom_doc_ids: list[str] | None = None,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -1148,6 +1153,9 @@ async def run_agent_turn(
         "template_field_descriptions": template_field_descriptions or {},
         "chat_documents": chat_documents or [],
         "_draft_document_fn": draft_document_fn,
+        # Hybrid search: builtin corpus + custom corpus collection
+        "custom_corpus": custom_corpus,
+        "custom_doc_ids": custom_doc_ids,
     }
 
     graph = _get_agent_graph()

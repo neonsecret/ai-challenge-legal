@@ -31,6 +31,8 @@ def execute_search(
     on_status: Callable[[str], None] | None = None,
     cached_target_docs: list[str] | None = None,
     doc_ids: list[str] | None = None,
+    custom_corpus: str | None = None,
+    custom_doc_ids: list[str] | None = None,
 ) -> list[SourceDocument]:
     """Search the legal corpus, always returning fresh results.
 
@@ -109,6 +111,8 @@ def execute_search(
         on_status=on_status,
         laws=law_filters,
         doc_ids=doc_ids,
+        custom_corpus=custom_corpus,
+        custom_doc_ids=custom_doc_ids,
     )
 
     # Filter out already-seen docs and take top_k new

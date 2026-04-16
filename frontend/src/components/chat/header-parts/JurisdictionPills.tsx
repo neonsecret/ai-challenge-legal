@@ -37,11 +37,6 @@ export function JurisdictionPills({
             longPressFiredRef.current = false
             return
         }
-        if (key === "custom") {
-            if (jurisdiction !== key) onSetJurisdiction(key)
-            onSetLawPaneOpen(false)
-            return
-        }
         const newCorpus = jurisdictionToCorpus(key)
         const hasLawPane = (key === "uk" || key === "au") && availableLaws.length > 0 && jurisdiction === key
 
@@ -96,7 +91,7 @@ export function JurisdictionPills({
             scrollbarWidth: "none",
             WebkitOverflowScrolling: "touch",
         }}>
-            {(["difc", "cz", "uk", "au", "custom"] as Jurisdiction[]).map((key) => {
+            {(["difc", "cz", "uk", "au"] as Jurisdiction[]).map((key) => {
                 const config = JURISDICTIONS[key]
                 const isActive = jurisdiction === key
 

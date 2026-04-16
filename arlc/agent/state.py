@@ -131,3 +131,6 @@ class AgentState(TypedDict):
     template_field_descriptions: NotRequired[dict[str, str]]  # field hints for prompt
     chat_documents: NotRequired[list[dict]]  # existing docs [{id, template_slug, fields, version}]
     _draft_document_fn: NotRequired[Callable | None]  # async (action, fields, doc_id) -> dict
+    # --- Hybrid search: builtin corpus + custom corpus collection ---
+    custom_corpus: NotRequired[str | None]
+    custom_doc_ids: NotRequired[list[str] | None]

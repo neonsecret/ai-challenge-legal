@@ -714,9 +714,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             {id: assistantId, role: "assistant", content: null, sources: [], confidence: null},
         ])
         const laws = (jurisdiction === "uk" || jurisdiction === "au") && selectedLaws.length > 0 ? selectedLaws : undefined
-        // Custom corpus: read selected doc_ids from localStorage to filter by collection
+        // Custom corpus collection: read selected doc_ids from localStorage when a collection is active
         let docIds: string[] | undefined
-        if (jurisdiction === "custom" && typeof window !== "undefined") {
+        if (selectedCorporaId && typeof window !== "undefined") {
             const selectedDocIdsRaw = localStorage.getItem("neolex_selected_doc_ids")
             if (selectedDocIdsRaw) {
                 try {

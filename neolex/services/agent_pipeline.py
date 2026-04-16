@@ -95,6 +95,9 @@ async def run_agent_question(
     # --- Observability ---
     user_email: str | None = None,
     subscription_plan: str | None = None,
+    # --- Hybrid search: builtin corpus + custom corpus collection ---
+    custom_corpus: str | None = None,
+    custom_doc_ids: list[str] | None = None,
 ) -> dict:
     """Run a question through the LangGraph agent.
 
@@ -201,6 +204,8 @@ async def run_agent_question(
             template_field_descriptions=template_field_descriptions,
             chat_documents=chat_documents,
             draft_document_fn=draft_document_fn,
+            custom_corpus=custom_corpus,
+            custom_doc_ids=custom_doc_ids,
         )
     except Exception:
         if trace is not None:

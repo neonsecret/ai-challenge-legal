@@ -50,11 +50,4 @@ export const SAMPLE_QUESTIONS: Record<Jurisdiction, string[]> = {
         "What are the elements of a criminal charge for assault under Australian common law?",
         "What disclosure obligations apply to financial services licensees under the Corporations Act?",
     ],
-    custom: [
-        "What is the limitation period for a contract claim?",
-        "What are the grounds for termination of employment?",
-        "What fiduciary duties does a director owe to a company?",
-        "How is liability for defective products regulated?",
-        "What constitutes unjust enrichment?",
-    ],
 };

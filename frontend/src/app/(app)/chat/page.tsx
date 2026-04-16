@@ -113,6 +113,7 @@ export default function ChatPage() {
         stream, handleSend,
         sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
         setMessageFeedback,
+        selectedCorporaId, setSelectedCorporaId,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
     const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, isDraftingMode, clearError, abort} = stream
@@ -300,12 +301,10 @@ export default function ChatPage() {
             .finally(() => setCorporaLoading(false))
     }, [])
 
-    // Fetch corpora when switching to custom jurisdiction
+    // Fetch available corpora on mount (custom collections are an add-on layer, not tied to jurisdiction)
     useEffect(() => {
-        if (jurisdiction === "custom") {
-            fetchCorpora() // eslint-disable-line react-hooks/set-state-in-effect
-        }
-    }, [jurisdiction, fetchCorpora])
+        fetchCorpora() // eslint-disable-line react-hooks/set-state-in-effect
+    }, [fetchCorpora])
 
     // Reset preview when jurisdiction changes
     useEffect(() => {
@@ -518,6 +517,8 @@ export default function ChatPage() {
                     availableCorpora={availableCorpora}
                     corporaLoading={corporaLoading}
                     documentCount={docState.count}
+                    selectedCorporaId={selectedCorporaId}
+                    setSelectedCorporaId={setSelectedCorporaId}
                 />
                 {/* Messages */}
                 <div ref={scrollAreaRef} style={{flex: 1, overflowY: "auto", padding: isMobile ? `${SPACE['4']}px ${SPACE['3']}px calc(env(safe-area-inset-bottom, 0px) + 96px)` : `${SPACE['6']}px ${SPACE['6']}px`, minHeight: 0}}>

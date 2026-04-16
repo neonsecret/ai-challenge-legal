@@ -275,12 +275,13 @@ async def query(
         if corpus != key_row["client_slug"]:
             raise HTTPException(status_code=403, detail="Access denied to this corpus")
 
-    # Resolve corpora_id → doc_ids when a custom collection is selected
+    # Resolve corpora_id → doc_ids when a custom collection is selected.
+    # Non-streaming endpoint uses the deterministic pipeline (benchmarks only),
+    # so hybrid search is not supported here — custom corpus overrides builtin.
     if body.corpora_id:
         resolved_doc_ids = _resolve_corpora_id(body.corpora_id, key_row["client_slug"])
         if resolved_doc_ids is None:
             raise HTTPException(status_code=400, detail="Invalid or inaccessible corpora_id")
-        # corpora_id-resolved doc_ids override any manually provided doc_ids
         body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": key_row["client_slug"]})
         corpus = body.corpus
 
@@ -392,13 +393,22 @@ async def query_stream(
             raise HTTPException(status_code=403, detail="Access denied to this corpus")
 
     # Resolve corpora_id → doc_ids when a custom collection is selected
+    custom_corpus: str | None = None
+    custom_doc_ids: list[str] | None = None
     if body.corpora_id:
         resolved_doc_ids = _resolve_corpora_id(body.corpora_id, key_row["client_slug"])
         if resolved_doc_ids is None:
             raise HTTPException(status_code=400, detail="Invalid or inaccessible corpora_id")
-        # corpora_id-resolved doc_ids override any manually provided doc_ids
-        body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": key_row["client_slug"]})
-        corpus = body.corpus
+        client_slug = key_row["client_slug"]
+        if corpus in _BUILTIN_CORPORA and corpus != client_slug:
+            # Hybrid mode: builtin jurisdiction + custom corpus collection.
+            # Keep corpus as the builtin jurisdiction; pass custom collection separately.
+            custom_corpus = client_slug
+            custom_doc_ids = resolved_doc_ids
+        else:
+            # Custom-only mode: no builtin jurisdiction selected (or corpus is same as client_slug).
+            body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": client_slug})
+            corpus = body.corpus
 
     # Create pipeline job for persistent status tracking
     from neolex.services.conversation import (
@@ -580,6 +590,8 @@ async def query_stream(
                             chat_documents=chat_documents,
                             user_email=user.email,
                             subscription_plan=user.subscription_status,
+                            custom_corpus=custom_corpus,
+                            custom_doc_ids=custom_doc_ids,
                         ),
                         timeout=AGENT_TIMEOUT_SECONDS,
                     )

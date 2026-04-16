@@ -2372,6 +2372,8 @@ def _retrieve_pages_simple(
     laws: list[str] | None = None,
     cached_query_emb=None,
     doc_ids: list[str] | None = None,
+    custom_corpus: str | None = None,
+    custom_doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
     """Simplified retrieval for non-DIFC corpora: hybrid search + cross-encoder reranking.
 
@@ -2474,13 +2476,21 @@ def _retrieve_pages_simple(
                 return []
             return _search_court_decisions_sync(question, query_emb, limit=top_k)
 
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        def _custom_vec():
+            if not custom_corpus or not custom_doc_ids:
+                return None
+            return search_chunks_vector(query_emb, top_k=top_k, corpus=custom_corpus, doc_ids=custom_doc_ids)
+
+        _n_workers = 4 if (custom_corpus and custom_doc_ids) else 3
+        with ThreadPoolExecutor(max_workers=_n_workers) as executor:
             vec_fut = executor.submit(_vec)
             bm25_fut = executor.submit(_bm25)
             court_fut = executor.submit(_court)
+            custom_vec_fut = executor.submit(_custom_vec)
             vector_results = vec_fut.result()
             bm25_chunk_ids = bm25_fut.result()
             court_chunks = court_fut.result()
+            custom_vector_results = custom_vec_fut.result()
 
         # Build chunk lookup from statute vector results (already has text + metadata)
         chunk_by_id: dict[str, dict] = {}
@@ -2515,6 +2525,21 @@ def _retrieve_pages_simple(
         for rank, cd in enumerate(court_chunks):
             ecli = cd["chunk_id"]
             rrf_scores[ecli] = rrf_scores.get(ecli, 0.0) + 0.5 / (_rrf_k + rank + 1)
+
+        # Custom corpus vector signal (weight 0.7 — same as builtin vector signal).
+        # Merges custom corpus documents into the same RRF ranking so they compete
+        # uniformly with builtin corpus results through reranking and page assembly.
+        if custom_vector_results is not None:
+            for i in range(len(custom_vector_results["ids"][0])):
+                cid = custom_vector_results["ids"][0][i]
+                if cid not in chunk_by_id:
+                    chunk_by_id[cid] = {
+                        "chunk_id": cid,
+                        "text": custom_vector_results["documents"][0][i],
+                        "metadata": custom_vector_results["metadatas"][0][i],
+                        "distance": custom_vector_results["distances"][0][i],
+                    }
+                rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + i + 1)
 
         # Fetch text/metadata for BM25-only statute hits not in vector results
         bm25_only_ids = [cid for cid in bm25_chunk_ids if cid not in chunk_by_id]
@@ -2554,16 +2579,53 @@ def _retrieve_pages_simple(
             _vec_span.update(output={"num_results": len(vector_results["ids"][0]) if vector_results.get("ids") else 0})
             _vec_span.end()
 
-        chunks = []
-        for i in range(len(vector_results["ids"][0])):
-            chunks.append(
-                {
-                    "chunk_id": vector_results["ids"][0][i],
+        # Hybrid: run custom corpus vector search if present
+        custom_vector_results = None
+        if custom_corpus and custom_doc_ids:
+            custom_vector_results = search_chunks_vector(
+                query_emb, top_k=top_k, corpus=custom_corpus, doc_ids=custom_doc_ids
+            )
+
+        if custom_vector_results is not None:
+            # Merge builtin + custom via RRF (same weights as BM25 fusion path)
+            _rrf_k = 60
+            rrf_scores: dict[str, float] = {}
+            chunk_by_id: dict[str, dict] = {}
+
+            for i in range(len(vector_results["ids"][0])):
+                cid = vector_results["ids"][0][i]
+                chunk_by_id[cid] = {
+                    "chunk_id": cid,
                     "text": vector_results["documents"][0][i],
                     "metadata": vector_results["metadatas"][0][i],
                     "distance": vector_results["distances"][0][i],
                 }
-            )
+                rrf_scores[cid] = 0.7 / (_rrf_k + i + 1)
+
+            for i in range(len(custom_vector_results["ids"][0])):
+                cid = custom_vector_results["ids"][0][i]
+                if cid not in chunk_by_id:
+                    chunk_by_id[cid] = {
+                        "chunk_id": cid,
+                        "text": custom_vector_results["documents"][0][i],
+                        "metadata": custom_vector_results["metadatas"][0][i],
+                        "distance": custom_vector_results["distances"][0][i],
+                    }
+                rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + i + 1)
+
+            fused_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
+            chunks = [chunk_by_id[cid] for cid in fused_ids if cid in chunk_by_id]
+        else:
+            chunks = []
+            for i in range(len(vector_results["ids"][0])):
+                chunks.append(
+                    {
+                        "chunk_id": vector_results["ids"][0][i],
+                        "text": vector_results["documents"][0][i],
+                        "metadata": vector_results["metadatas"][0][i],
+                        "distance": vector_results["distances"][0][i],
+                    }
+                )
 
     # Filter by law prefixes if specified (Czech corpus law selector).
     # Court decisions (source_type == "court_decision") bypass the statute prefix filter —
@@ -2736,6 +2798,8 @@ def retrieve_pages(
     on_status=None,
     laws: list[str] | None = None,
     doc_ids: list[str] | None = None,
+    custom_corpus: str | None = None,
+    custom_doc_ids: list[str] | None = None,
 ) -> list[PageResult]:
     """Retrieve the best pages for answering a question.
 
@@ -2784,6 +2848,8 @@ def retrieve_pages(
             laws=laws,
             cached_query_emb=_question_emb,
             doc_ids=doc_ids,
+            custom_corpus=custom_corpus,
+            custom_doc_ids=custom_doc_ids,
         )
 
     # Per-type configs inspired by IAS Partners dual-pipeline (guy4)

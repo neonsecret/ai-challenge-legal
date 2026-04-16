@@ -1,4 +1,4 @@
-export type Jurisdiction = "difc" | "cz" | "eu" | "uk" | "us" | "au" | "all" | "custom";
+export type Jurisdiction = "difc" | "cz" | "eu" | "uk" | "us" | "au" | "all";
 
 export interface JurisdictionConfig {
     name: string;
@@ -50,12 +50,6 @@ export const JURISDICTIONS: Record<Jurisdiction, JurisdictionConfig> = {
         color: "#d4af37",
         description: "All Jurisdictions",
     },
-    custom: {
-        name: "Custom",
-        code: "\u2699",
-        color: "#d4af37",
-        description: "Custom corpus",
-    },
 };
 
 export const JURISDICTION_ORDER: Jurisdiction[] = [
@@ -79,12 +73,6 @@ export function jurisdictionToCorpus(j: Jurisdiction): string {
             return "uk";
         case "au":
             return "au";
-        case "custom":
-            // Custom corpus name is stored separately in localStorage
-            if (typeof window !== "undefined") {
-                return localStorage.getItem("neolex_custom_corpus") || "difc";
-            }
-            return "difc";
         default:
             return "difc"; // Other jurisdictions default to DIFC for now
     }

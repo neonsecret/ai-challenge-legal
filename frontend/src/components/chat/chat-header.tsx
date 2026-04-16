@@ -1,7 +1,6 @@
 "use client"
 
 import {useState} from "react"
-import {useRouter} from "next/navigation"
 import {SquarePen, History, BookOpen} from "lucide-react"
 import {type Jurisdiction} from "@/lib/jurisdictions"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
@@ -63,6 +62,9 @@ export interface ChatHeaderProps {
     corporaLoading: boolean
 
     documentCount: number
+
+    selectedCorporaId: string | null
+    setSelectedCorporaId: (id: string | null) => void
 }
 
 export function ChatHeader({
@@ -77,8 +79,8 @@ export function ChatHeader({
     corpusBlocked, onSetCorpusBlocked, showCorpusBlocked,
     availableCorpora, corporaLoading,
     documentCount,
+    selectedCorporaId, setSelectedCorporaId,
 }: ChatHeaderProps) {
-    const router = useRouter()
     // Track selected collection in state so clicking a pill re-renders immediately.
     // Initialized from localStorage so it survives page navigation.
     const [selectedCollection, setSelectedCollection] = useState<string | null>(
@@ -269,8 +271,8 @@ export function ChatHeader({
                 />
             )}
 
-            {/* ── Custom corpus selector pills ── */}
-            {jurisdiction === "custom" && (
+            {/* ── Custom corpus collection pills (shown whenever user has collections) ── */}
+            {availableCorpora.length > 0 && (
                 <div style={{
                     padding: isMobile ? `${SPACE[2]}px ${SPACE[3]}px` : `${SPACE[2]}px ${SPACE[6]}px`,
                     borderBottom: isStrict ? "1px solid var(--strict-gold-border)" : "0.5px solid var(--dt-glass-border-subtle)",
@@ -294,40 +296,51 @@ export function ChatHeader({
                         <span style={{fontSize: TYPE_SCALE.sm, color: "var(--dt-text-quaternary)", fontFamily: FONT.sans, whiteSpace: "nowrap"}}>
                             Loading...
                         </span>
-                    ) : availableCorpora.length > 0 ? (() => {
-                        const isAllActive = !selectedCollection
-                        const corpusId = availableCorpora[0]?.corpus_id ?? ""
+                    ) : (() => {
+                        const isNoneActive = !selectedCorporaId
                         const totalDocs = availableCorpora.reduce((sum, c) => sum + (c.doc_count ?? c.doc_ids?.length ?? 0), 0)
 
                         return (
                             <>
                                 <button
-                                    key="__all__"
+                                    key="__none__"
                                     onClick={() => {
-                                        localStorage.setItem("neolex_custom_corpus", corpusId)
-                                        localStorage.setItem("neolex_custom_corpus_name", "All Documents")
+                                        setSelectedCorporaId(null)
+                                        setSelectedCollection(null)
                                         localStorage.removeItem("neolex_selected_collection")
                                         localStorage.removeItem("neolex_selected_doc_ids")
-                                        setSelectedCollection(null)
                                     }}
-                                    style={pillStyle(isAllActive)}
-                                    {...pillHover(isAllActive)}
+                                    style={pillStyle(isNoneActive)}
+                                    {...pillHover(isNoneActive)}
+                                >
+                                    None
+                                </button>
+                                <button
+                                    key="__all__"
+                                    onClick={() => {
+                                        const corpusId = availableCorpora[0]?.corpus_id ?? ""
+                                        setSelectedCorporaId(corpusId)
+                                        setSelectedCollection("__all__")
+                                        localStorage.setItem("neolex_selected_collection", "__all__")
+                                        localStorage.removeItem("neolex_selected_doc_ids")
+                                    }}
+                                    style={pillStyle(selectedCollection === "__all__" && !!selectedCorporaId)}
+                                    {...pillHover(selectedCollection === "__all__" && !!selectedCorporaId)}
                                 >
                                     All ({totalDocs})
                                 </button>
                                 {availableCorpora.map((c) => {
-                                    const isActive = selectedCollection === c.name
+                                    const isActive = selectedCollection === c.name && !!selectedCorporaId
                                     const docCount = c.doc_count ?? c.doc_ids?.length ?? 0
                                     return (
                                         <button
                                             key={c.name}
                                             onClick={() => {
-                                                localStorage.setItem("neolex_custom_corpus", c.corpus_id)
-                                                localStorage.setItem("neolex_custom_corpus_name", c.name)
+                                                setSelectedCorporaId(c.corpus_id)
+                                                setSelectedCollection(c.name)
                                                 localStorage.setItem("neolex_selected_collection", c.name)
                                                 if (c.doc_ids?.length) localStorage.setItem("neolex_selected_doc_ids", JSON.stringify(c.doc_ids))
                                                 else localStorage.removeItem("neolex_selected_doc_ids")
-                                                setSelectedCollection(c.name)
                                             }}
                                             title={`${c.name} (${docCount} ${docCount === 1 ? "doc" : "docs"})`}
                                             style={pillStyle(isActive)}
@@ -339,15 +352,7 @@ export function ChatHeader({
                                 })}
                             </>
                         )
-                    })() : (
-                        <button
-                            onClick={() => router.push("/documents")}
-                            style={pillStyle(false)}
-                            {...pillHover(false)}
-                        >
-                            Upload documents to get started
-                        </button>
-                    )}
+                    })()}
                 </div>
             )}
         </>
