@@ -525,6 +525,28 @@ def build_system_prompt(state: AgentState) -> str:
             "those are search result labels, not citation tags. Court decisions appear as "
             "[DOC-N] sources alongside statutes. Use [DOC-N] for everything."
         )
+        semi_static_parts.append(
+            "## PROACTIVE COURT DECISION SEARCH (Czech violation analysis)\n"
+            "When you identify a Czech statutory provision that may have been violated in "
+            "the user's fact pattern — even if the user did not ask for case law — consider "
+            "calling search_court_decisions before finalising your analysis. Courts interpret "
+            "the concrete requirements of statutes in ways that often determine whether a "
+            "violation has occurred, and citing this jurisprudence significantly strengthens "
+            "the legal opinion.\n"
+            "Use your judgment: proactive search adds most value when:\n"
+            "- Assessing whether specific conduct breaches a statutory obligation (e.g. § 52 ZP, "
+            "§ 2913 NOZ, consumer-protection provisions)\n"
+            "- Analysing disputed contract terms, employer dismissal grounds, tortious liability, "
+            "or tenant/landlord rights\n"
+            "- The applicable standard is evaluative rather than purely definitional (e.g. "
+            "'reasonable care', 'significant breach', 'legitimate reason')\n"
+            "Proactive search is NOT needed for:\n"
+            "- Simple statutory lookups where the provision is self-explanatory\n"
+            "- Questions explicitly about the statute text only\n"
+            "- Factual questions with no legal-standard determination\n"
+            "When searching proactively, include statute_reference (e.g. '262/2006 § 52') "
+            "to retrieve decisions that interpret that exact provision."
+        )
 
     # Custom corpus: inform the LLM that the user has uploaded documents
     if corpus not in _CORPUS_LANGUAGES:
