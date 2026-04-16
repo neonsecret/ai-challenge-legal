@@ -1716,6 +1716,7 @@ def _doc_fusion_select(
     max_docs: int = 3,
     answer_type: str = "",
     cached_query_emb=None,
+    corpus: str = "difc",
 ) -> list[str] | None:
     """Select target documents using multi-signal fusion.
 
@@ -1743,19 +1744,19 @@ def _doc_fusion_select(
     # Signals are independent: 3 text search queries + 1 embedding + 1 vector query.
     # Parallelizing cuts wall-clock time from sum(all) to max(any).
     query_emb = cached_query_emb if cached_query_emb is not None else embed_query(question)
-    dense_n = min(fusion_top_k, get_chunk_count("difc"))
+    dense_n = min(fusion_top_k, get_chunk_count(corpus))
 
     def _sig_bm25_std():
-        return _search_chunks_text_scored(question, top_k=fusion_top_k, corpus="difc")
+        return _search_chunks_text_scored(question, top_k=fusion_top_k, corpus=corpus)
 
     def _sig_vector():
-        return search_chunks_vector(query_emb, top_k=dense_n, corpus="difc")
+        return search_chunks_vector(query_emb, top_k=dense_n, corpus=corpus)
 
     def _sig_bm25_doc():
-        return _search_docs_text_scored(question, top_k=fusion_top_k, corpus="difc")
+        return _search_docs_text_scored(question, top_k=fusion_top_k, corpus=corpus)
 
     def _sig_bm25_p1():
-        return _search_chunks_text_page1_scored(question, top_k=fusion_top_k, corpus="difc")
+        return _search_chunks_text_page1_scored(question, top_k=fusion_top_k, corpus=corpus)
 
     with ThreadPoolExecutor(max_workers=4) as executor:
         fut_bm25_std = executor.submit(_sig_bm25_std)
@@ -2917,12 +2918,13 @@ def retrieve_pages(
         # run cross-encoder reranking within the selected docs.
         # This is superior to _retrieve_pages_fallback (inverse-rank scoring, no CE)
         # and recovers the _doc_fusion_select dead code path (disabled since pgvector migration).
-        # Only for DIFC corpus — non-DIFC returns early via _retrieve_pages_simple.
+        # corpus is forwarded so non-DIFC corpora work correctly via this path too.
         fusion_docs = _doc_fusion_select(
             question,
             max_docs=type_cfg.get("max_docs", 3),
             answer_type=answer_type,
             cached_query_emb=_question_emb,
+            corpus=corpus,
         )
         if fusion_docs:
             if on_status:
