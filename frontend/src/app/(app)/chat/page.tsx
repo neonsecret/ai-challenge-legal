@@ -306,6 +306,21 @@ export default function ChatPage() {
         fetchCorpora() // eslint-disable-line react-hooks/set-state-in-effect
     }, [fetchCorpora])
 
+    // Restore selectedCorporaId from localStorage once corpora are loaded.
+    // Guard: only run when corpora have loaded AND selectedCorporaId is still null (i.e. not yet
+    // set by the user this session). This mirrors what ChatHeader does for the visual pill.
+    useEffect(() => {
+        if (availableCorpora.length === 0 || selectedCorporaId !== null) return
+        const stored = localStorage.getItem("neolex_selected_collection")
+        if (!stored) return
+        if (stored === "__all__") {
+            setSelectedCorporaId(availableCorpora[0].corpus_id)
+        } else {
+            const match = availableCorpora.find(c => c.name === stored)
+            if (match) setSelectedCorporaId(match.corpus_id)
+        }
+    }, [availableCorpora, selectedCorporaId, setSelectedCorporaId])
+
     // Reset preview when jurisdiction changes
     useEffect(() => {
         setPreviewIndex(null) // eslint-disable-line react-hooks/set-state-in-effect
