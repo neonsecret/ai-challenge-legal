@@ -49,15 +49,23 @@ async def load_history(user_id: str, conversation_id: str) -> list[dict]:
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(ConversationMessage.role, ConversationMessage.content)
+            # Subquery grabs the newest N rows (DESC + LIMIT), outer query
+            # re-orders them oldest-first so the agent sees chronological flow.
+            newest = (
+                select(
+                    ConversationMessage.role,
+                    ConversationMessage.content,
+                    ConversationMessage.created_at,
+                )
                 .where(
                     ConversationMessage.user_id == uid,
                     ConversationMessage.conversation_id == cid,
                 )
-                .order_by(ConversationMessage.created_at.asc())
-                .limit(MAX_HISTORY_TURNS),
+                .order_by(ConversationMessage.created_at.desc())
+                .limit(MAX_HISTORY_TURNS)
+                .subquery()
             )
+            result = await session.execute(select(newest.c.role, newest.c.content).order_by(newest.c.created_at.asc()))
             rows = result.all()
             return [{"role": row.role, "content": row.content} for row in rows]
     except Exception:
