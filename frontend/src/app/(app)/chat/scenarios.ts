@@ -136,39 +136,6 @@ export const CZ_SCENARIOS: DemoScenario[] = [
     },
 ]
 
-export const CUSTOM_SCENARIOS: DemoScenario[] = [
-    {
-        jurisdiction: "Custom",
-        question: "Summarize the key provisions in my uploaded documents",
-        answer: "",
-        pdfTitle: "Your Uploaded Document",
-        pdfArticleHeader: "Section 1 — Key Provisions",
-        pdfClauses: [
-            {id: "1.1", text: "Upload your contracts, agreements, or legal documents to get AI-powered analysis with source citations."},
-            {id: "1.2", text: "Vitreon Legal will search through your documents, identify relevant clauses, and provide grounded answers."},
-            {id: "1.3", text: "All analysis is performed privately — your documents are never shared or used for training."},
-        ],
-        highlightRange: [0, 1],
-        sourceBadge: "Your Documents",
-        pageBadge: "",
-    },
-    {
-        jurisdiction: "Custom",
-        question: "What obligations does this agreement impose on the parties?",
-        answer: "",
-        pdfTitle: "Your Uploaded Document",
-        pdfArticleHeader: "Article 5 — Obligations of the Parties",
-        pdfClauses: [
-            {id: "5.1", text: "Each party shall perform its obligations under this Agreement in good faith and in accordance with applicable law."},
-            {id: "5.2", text: "The Service Provider shall deliver all work product in accordance with the specifications set out in Schedule A."},
-            {id: "5.3", text: "The Client shall provide timely feedback and all necessary information to enable performance of the Services."},
-        ],
-        highlightRange: [1, 2],
-        sourceBadge: "Your Documents",
-        pageBadge: "",
-    },
-]
-
 export const UK_SCENARIOS: DemoScenario[] = [
     {
         jurisdiction: "United Kingdom",
@@ -276,5 +243,4 @@ export const PREVIEW_SCENARIOS_MAP: Record<string, DemoScenario[]> = {
     cz: CZ_SCENARIOS,
     uk: UK_SCENARIOS,
     au: AU_SCENARIOS,
-    custom: CUSTOM_SCENARIOS,
 }
