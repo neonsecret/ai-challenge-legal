@@ -2957,6 +2957,10 @@ def retrieve_pages(
     if custom_corpus and custom_doc_ids:
         if on_status:
             on_status("retrieving:searching custom corpus")
+        # top_k=50: conservative candidate pool for custom corpus — matches the lower
+        # bound of _SIMPLE_TOP_K_BY_TYPE (date/number/name types); we don't have
+        # answer_type-specific tuning for custom corpora yet so a single conservative
+        # value is used to cap reranker latency without sacrificing recall.
         custom_vector = search_chunks_vector(_question_emb, top_k=50, corpus=custom_corpus, doc_ids=custom_doc_ids)
         if custom_vector and custom_vector.get("ids") and custom_vector["ids"][0]:
             custom_chunks = [
@@ -2968,7 +2972,11 @@ def retrieve_pages(
                 }
                 for i in range(len(custom_vector["ids"][0]))
             ]
-            custom_ranked = rerank_chunks(question, custom_chunks[:40], top_k=20, answer_type=answer_type)
+            # 40 chunks: reranker pool cap, same as _retrieve_pages_simple; fetching
+            # more candidates yields diminishing returns at significant latency cost.
+            custom_ranked = rerank_chunks(
+                question, custom_chunks[:40], top_k=20, answer_type=answer_type, on_status=on_status
+            )
             # Convert custom ranked chunks to PageResults
             custom_page_map: dict[tuple[str, int], tuple[float, str, str, str | None, int | None, int | None]] = {}
             for chunk in custom_ranked:
