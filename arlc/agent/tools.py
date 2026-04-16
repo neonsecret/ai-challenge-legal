@@ -291,6 +291,66 @@ def format_web_results(results: list[dict]) -> str:
     return "<web_content>\n" + "\n---\n".join(parts) + "\n</web_content>"
 
 
+def fetch_uploaded_document_chunks(
+    doc_id: str,
+    corpus: str,
+    page_start: int,
+    page_end: int,
+) -> list[dict]:
+    """Fetch chunks from an uploaded document via sync DB query.
+
+    Returns rows as dicts with keys: chunk_id, page, text.
+    Enforces a LIMIT 30 at the DB level.
+    """
+    from sqlalchemy import text as sa_text
+    from sqlalchemy.orm import Session as SASession
+
+    from arlc.retriever import _get_sync_engine
+
+    engine = _get_sync_engine()
+    sql = sa_text(
+        """
+        SELECT chunk_id, page, text
+        FROM chunks
+        WHERE corpus = :corpus
+          AND doc_id = :doc_id
+          AND page >= :page_start
+          AND (:page_end < 0 OR page <= :page_end)
+        ORDER BY page, chunk_id
+        LIMIT 30
+        """
+    )
+    params = {"corpus": corpus, "doc_id": doc_id, "page_start": page_start, "page_end": page_end}
+    with SASession(engine) as session:
+        rows = session.execute(sql, params).fetchall()
+    return [{"chunk_id": row[0], "page": row[1], "text": row[2]} for row in rows]
+
+
+def format_uploaded_document(doc_id: str, chunks: list[dict], page_start: int, page_end: int) -> str:
+    """Format uploaded document chunks as tagged content for the LLM."""
+
+    def _esc(s: str) -> str:
+        return re.sub(r"</uploaded_document_content>", "&lt;/uploaded_document_content&gt;", s, flags=re.IGNORECASE)
+
+    if not chunks:
+        end_label = "end" if page_end < 0 else str(page_end)
+        return (
+            f'<uploaded_document_content doc_id="{doc_id}" pages="{page_start}-{end_label}">\n'
+            f"No content found for this document in the requested page range.\n"
+            f"</uploaded_document_content>"
+        )
+
+    actual_start = min(c["page"] for c in chunks)
+    actual_end = max(c["page"] for c in chunks)
+    lines = [f"[page {c['page']}] {_esc(c['text'])}" for c in chunks]
+    content = "\n".join(lines)
+    return (
+        f'<uploaded_document_content doc_id="{doc_id}" pages="{actual_start}-{actual_end}">\n'
+        f"{content}\n"
+        f"</uploaded_document_content>"
+    )
+
+
 def verify_source_relevance(answer: str, docs: list[SourceDocument]) -> list[SourceDocument]:
     """Flag sources with low keyword overlap against the answer.
 
