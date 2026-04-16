@@ -317,7 +317,7 @@ export default function ChatPage() {
             setSelectedCorporaId(availableCorpora[0].corpus_id)
         } else {
             const match = availableCorpora.find(c => c.name === stored)
-            if (match) setSelectedCorporaId(match.corpus_id)
+            if (match) setSelectedCorporaId(`${match.corpus_id}:${match.name}`)
         }
     }, [availableCorpora, selectedCorporaId, setSelectedCorporaId])
 
