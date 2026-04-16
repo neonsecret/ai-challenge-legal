@@ -84,7 +84,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
         : null
 
     const txtUrl = docId && isTxt
-        ? `${API_BASE}/api/v1/conversations/${encodeURIComponent(chatId)}/documents/${encodeURIComponent(docId)}/txt`
+        ? `${API_BASE}/api/v1/documents/${encodeURIComponent(docId)}/txt`
         : null
 
     const texUrl = docId && !isTxt
