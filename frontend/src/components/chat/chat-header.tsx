@@ -307,6 +307,7 @@ export function ChatHeader({
                                     key="__none__"
                                     onClick={() => {
                                         setSelectedCorporaId(null)
+                                        localStorage.removeItem("neolex_selected_corpora_id")
                                         localStorage.removeItem("neolex_selected_doc_ids")
                                     }}
                                     style={pillStyle(isNoneActive)}
@@ -319,6 +320,7 @@ export function ChatHeader({
                                     onClick={() => {
                                         const corpusId = availableCorpora[0]?.corpus_id ?? ""
                                         setSelectedCorporaId(corpusId)
+                                        localStorage.setItem("neolex_selected_corpora_id", corpusId)
                                         localStorage.removeItem("neolex_selected_doc_ids")
                                     }}
                                     style={pillStyle(selectedCollection === "__all__" && !!selectedCorporaId)}
@@ -333,7 +335,9 @@ export function ChatHeader({
                                         <button
                                             key={c.name}
                                             onClick={() => {
-                                                setSelectedCorporaId(`${c.corpus_id}:${c.name}`)
+                                                const id = `${c.corpus_id}:${c.name}`
+                                                setSelectedCorporaId(id)
+                                                localStorage.setItem("neolex_selected_corpora_id", id)
                                                 if (c.doc_ids?.length) localStorage.setItem("neolex_selected_doc_ids", JSON.stringify(c.doc_ids))
                                                 else localStorage.removeItem("neolex_selected_doc_ids")
                                             }}
