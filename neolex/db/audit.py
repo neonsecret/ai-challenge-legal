@@ -253,20 +253,29 @@ class AuditDB:
         limit: int,
         now: float,
     ) -> tuple[int, bool]:
-        result = await self._session.execute(select(RateLimit).where(RateLimit.bucket == bucket))
-        rl = result.scalar_one_or_none()
-
-        if rl is None:
-            self._session.add(RateLimit(bucket=bucket, window_start=now, request_count=1))
-            return 1, 1 > limit
-
-        if (now - rl.window_start) >= window_seconds:
-            rl.window_start = now
-            rl.request_count = 1
-            return 1, 1 > limit
-
-        rl.request_count += 1
-        return rl.request_count, rl.request_count > limit
+        # Atomic upsert: insert first hit or reset+increment an expired window in one statement.
+        # Eliminates TOCTOU race where two concurrent inserts both see count=0 and each write 1.
+        result = await self._session.execute(
+            text("""
+                INSERT INTO rate_limits (bucket, window_start, request_count)
+                VALUES (:bucket, :now, 1)
+                ON CONFLICT (bucket) DO UPDATE SET
+                    window_start = CASE
+                        WHEN :now - rate_limits.window_start >= :window_seconds
+                        THEN :now
+                        ELSE rate_limits.window_start
+                    END,
+                    request_count = CASE
+                        WHEN :now - rate_limits.window_start >= :window_seconds
+                        THEN 1
+                        ELSE rate_limits.request_count + 1
+                    END
+                RETURNING request_count
+            """),
+            {"bucket": bucket, "now": now, "window_seconds": window_seconds},
+        )
+        count: int = result.scalar_one()
+        return count, count > limit
 
     async def get_ip_failure_count(self, bucket: str) -> tuple[int, float] | None:
         """Return (request_count, window_start) or None."""
