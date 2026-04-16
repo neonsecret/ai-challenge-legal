@@ -209,49 +209,63 @@ _ACTIVE_STATUSES = {"free", "trial", "starter", "pro", "enterprise"}
 async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     """Check and increment usage counters per plan. Raises 402/429 when exceeded.
 
-    Uses atomic UPDATE ... WHERE to prevent race conditions on concurrent requests.
+    Combines daily-reset check and increment into a single atomic SQL statement to prevent
+    the race where two concurrent workers both see a stale pre-reset counter and each
+    write back count+1 instead of 1 and 2 respectively.
     """
-    from sqlalchemy import update as sql_update
-
     status = user.subscription_status
     now = datetime.now(UTC)
 
-    # Whitelist: reject any unknown/canceled status
     if status not in _ACTIVE_STATUSES:
         raise HTTPException(status_code=402, detail="Active subscription required.")
 
-    # All plans use daily limits (free=3/day, starter=30/day, etc.)
     daily_limit = _PLAN_DAILY_LIMITS.get(status, 0)
-
-    # Reset daily counter if before today
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    if user.daily_queries_reset_at is None or user.daily_queries_reset_at < today_start:
-        await db.execute(
-            sql_update(User).where(User.id == user.id).values(daily_queries_used=0, daily_queries_reset_at=today_start),
-        )
-        await db.commit()
-        await db.refresh(user)
 
     if daily_limit == UNLIMITED_DAILY_QUERIES:
-        # Unlimited plan (enterprise) — atomic increment for tracking, no cap enforced
         await db.execute(
-            sql_update(User).where(User.id == user.id).values(daily_queries_used=User.daily_queries_used + 1),
+            text("""
+                UPDATE users SET
+                    daily_queries_used = CASE
+                        WHEN daily_queries_reset_at IS NULL OR daily_queries_reset_at < :today_start
+                        THEN 1
+                        ELSE daily_queries_used + 1
+                    END,
+                    daily_queries_reset_at = :today_start
+                WHERE id = :user_id
+            """),
+            {"today_start": today_start, "user_id": user.id},
         )
         await db.commit()
-    elif daily_limit > 0:
+    else:
+        # WHERE clause enforces the cap: rows match only if reset is due OR used < limit.
+        # No rows updated (RETURNING NULL) means the cap is hit.
         result = await db.execute(
-            sql_update(User)
-            .where(User.id == user.id, User.daily_queries_used < daily_limit)
-            .values(daily_queries_used=User.daily_queries_used + 1)
-            .returning(User.daily_queries_used),
+            text("""
+                UPDATE users SET
+                    daily_queries_used = CASE
+                        WHEN daily_queries_reset_at IS NULL OR daily_queries_reset_at < :today_start
+                        THEN 1
+                        ELSE daily_queries_used + 1
+                    END,
+                    daily_queries_reset_at = :today_start
+                WHERE id = :user_id
+                AND (
+                    daily_queries_reset_at IS NULL
+                    OR daily_queries_reset_at < :today_start
+                    OR daily_queries_used < :daily_limit
+                )
+                RETURNING daily_queries_used
+            """),
+            {"today_start": today_start, "user_id": user.id, "daily_limit": daily_limit},
         )
         new_count = result.scalar_one_or_none()
+        await db.commit()
         if new_count is None:
             raise HTTPException(
                 status_code=429,
                 detail=f"Daily limit reached ({daily_limit}/day on {status.title()}). Resets at midnight UTC.",
             )
-        await db.commit()
 
 
 @router.post("/query", response_model=QueryResponse)

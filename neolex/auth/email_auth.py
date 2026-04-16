@@ -41,16 +41,14 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# In-memory fallback for rate limiting when the audit DB is unavailable.
-# Keyed by "auth_{action}:{ip}", values are lists of time.monotonic() timestamps.
-_fallback_rates: dict[str, list[float]] = {}
-_FALLBACK_WINDOW = 300  # 5 minutes
-_FALLBACK_MAX = 10
-_last_fallback_cleanup: float = 0.0
-
 
 async def _auth_rate_check(request: Request, action: str) -> None:
-    """Per-IP rate limiter for auth endpoints (10 attempts / 5 min)."""
+    """Per-IP rate limiter for auth endpoints (10 attempts / 5 min).
+
+    Fails closed: rejects with 503 when the rate-limit DB is unavailable.
+    A per-worker in-memory fallback would let attackers bypass limits by
+    rotating across uvicorn workers (each worker has independent memory).
+    """
     from neolex.db.audit import get_audit_db
 
     ip = getattr(request.client, "host", None) or "unknown"
@@ -68,20 +66,8 @@ async def _auth_rate_check(request: Request, action: str) -> None:
     except HTTPException:
         raise
     except Exception:
-        # Fallback: in-memory rate limiting when audit DB is unavailable
-        global _last_fallback_cleanup
-        now = time.monotonic()
-        # Evict stale buckets every FALLBACK_WINDOW seconds to prevent unbounded growth
-        if now - _last_fallback_cleanup >= _FALLBACK_WINDOW:
-            stale = [k for k, v in _fallback_rates.items() if not v or all(now - t >= _FALLBACK_WINDOW for t in v)]
-            for k in stale:
-                del _fallback_rates[k]
-            _last_fallback_cleanup = now
-        attempts = _fallback_rates.setdefault(bucket, [])
-        attempts[:] = [t for t in attempts if now - t < _FALLBACK_WINDOW]
-        if len(attempts) >= _FALLBACK_MAX:
-            raise HTTPException(status_code=429, detail="Too many attempts. Try again later.") from None
-        attempts.append(now)
+        logger.error("Rate limit DB unavailable for auth_%s; rejecting request for safety", action, exc_info=True)
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable. Please try again later.")
 
 
 def _hash_password(password: str) -> str:
