@@ -1,6 +1,6 @@
 "use client"
 
-import {useMemo, useCallback} from "react"
+import {useMemo, useCallback, useRef, useLayoutEffect} from "react"
 import {AnimatePresence, motion} from "motion/react"
 import {useI18n} from "@/lib/i18n"
 import ReactMarkdown from "react-markdown"
@@ -235,18 +235,29 @@ export function ChatMessage({
         [content, sources, isStreaming],
     )
 
+    // Refs keep citationButtonComponent stable during streaming (deps = [dark, isStreaming] only).
+    // useLayoutEffect syncs them after each render so the callback always reads latest values.
+    const contentRef = useRef(content)
+    const sourcesRef = useRef(sources)
+    const onSourceClickRef = useRef(onSourceClick)
+    useLayoutEffect(() => {
+        contentRef.current = content
+        sourcesRef.current = sources
+        onSourceClickRef.current = onSourceClick
+    })
+
     const citationButtonComponent = useCallback(
         (props: Record<string, unknown>) => (
             <CitationButton
                 {...(props as Omit<import("@/components/chat/message-parts/MessageCitations").CitationButtonProps, "isDark" | "sources" | "content" | "onSourceClick" | "isStreaming">)}
                 isDark={dark}
-                sources={sources}
-                content={content}
-                onSourceClick={onSourceClick}
+                sources={sourcesRef.current ?? []}
+                content={contentRef.current}
+                onSourceClick={onSourceClickRef.current}
                 isStreaming={isStreaming}
             />
         ),
-        [dark, sources, content, onSourceClick, isStreaming],
+        [dark, isStreaming],
     )
 
     // Stable object reference so ReactMarkdown skips re-parsing on every streaming token.
@@ -411,33 +422,7 @@ export function ChatMessage({
                                 remarkRehypeOptions={{
                                     passThrough: ["citationRef" as import("mdast").Nodes["type"]],
                                 }}
-                                components={{
-                                    h2: ({node: _node, children, ...props}) => (
-                                        <h2 {...props} style={{
-                                            fontSize: TYPE_SCALE.lg,
-                                            fontFamily: dark ? "Georgia, serif" : FONT.sans,
-                                            color: dark ? "var(--strict-text-primary)" : undefined,
-                                            fontWeight: dark ? "normal" : undefined,
-                                        }}>{children}</h2>
-                                    ),
-                                    h3: ({node: _node, children, ...props}) => (
-                                        <h3 {...props} style={{
-                                            fontSize: TYPE_SCALE.md,
-                                            fontFamily: dark ? "Georgia, serif" : FONT.sans,
-                                            color: dark ? "var(--strict-text-primary)" : undefined,
-                                            fontWeight: dark ? "normal" : undefined,
-                                        }}>{children}</h3>
-                                    ),
-                                    strong: ({node: _node, children, ...props}) => (
-                                        <strong {...props}>{children}</strong>
-                                    ),
-                                    a: ({node: _node, children, href, ...props}) => {
-                                        const safe = href && /^https?:\/\//i.test(href) ? href : undefined
-                                        return <a {...props} href={safe} target="_blank" rel="noopener noreferrer">{children}</a>
-                                    },
-                                    // @ts-expect-error — citationbutton is a custom element from our rehype plugin
-                                    citationbutton: citationButtonComponent,
-                                }}
+                                components={markdownComponents}
                             >
                                 {content}
                             </ReactMarkdown>
