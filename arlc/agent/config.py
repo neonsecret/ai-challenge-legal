@@ -8,6 +8,7 @@ import os
 
 # --- Search ---
 SEARCH_TOP_K: int = int(os.environ.get("AGENT_SEARCH_TOP_K", "3"))
+SEARCH_TOP_K_THOROUGH: int = int(os.environ.get("AGENT_SEARCH_TOP_K_THOROUGH", "10"))
 SEARCH_MAX_PER_DOC: int = int(os.environ.get("AGENT_SEARCH_MAX_PER_DOC", "3"))
 SEARCH_ANSWER_TYPE: str = "free_text"
 
