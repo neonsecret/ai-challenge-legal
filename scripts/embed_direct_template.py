@@ -68,7 +68,6 @@ import argparse
 import logging
 import math
 import sys
-import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np

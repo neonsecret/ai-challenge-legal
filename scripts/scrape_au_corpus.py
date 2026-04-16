@@ -396,7 +396,6 @@ def main() -> None:
     session.headers.update(HEADERS)
 
     manifest = load_manifest()
-    downloaded_names = {d["short_name"] for d in manifest if d.get("status") == "downloaded"}
 
     stats = {"downloaded": 0, "skipped": 0, "failed": 0}
 
