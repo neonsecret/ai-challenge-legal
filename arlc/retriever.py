@@ -1963,81 +1963,6 @@ def prewarm() -> None:
     logger.info("Caches ready.")
 
 
-def detect_multi_hop(question: str) -> bool:
-    """Detect if question requires multi-hop cross-document retrieval.
-
-    Returns True if:
-    - Question contains 2+ case numbers (e.g., "CFI 010/2024 and CFI 016/2025")
-    - Question contains cross-document comparison indicators
-
-    Multi-hop questions need to retrieve chunks from multiple documents
-    to enable cross-document comparison/synthesis.
-    """
-    # Count case numbers in the question
-    case_pattern = r"(?:SCT|CFI|CA|ARB|ENF|DEC|TCD)\s+\d{3}/\d{4}"
-    case_matches = re.findall(case_pattern, question, re.IGNORECASE)
-    if len(case_matches) >= 2:
-        return True
-
-    # Check for cross-document comparison indicators
-    cross_doc_indicators = [
-        r"\bboth case(?:s)?\b",
-        r"\bany of the same\b",
-        r"\bcommon to both\b",
-        r"\bbetween\b",
-        r"\bwhich case\b",
-        r"\bany main party\b",
-        r"\bany judge\b",
-        r"\bsame judge\b",
-        r"\beither\b",
-        r"\bacross\b",
-    ]
-
-    q_lower = question.lower()
-    for indicator in cross_doc_indicators:
-        if re.search(indicator, q_lower):
-            return True
-
-    return False
-
-
-def decompose_query(question: str) -> list[str]:
-    """Decompose a multi-hop question into 2 independent sub-questions.
-
-    Uses Haiku (fast, ~200ms) to split cross-document questions into
-    separate sub-questions that can be answered independently.
-
-    Example:
-        Input: "Is there any judge common to CFI 010/2024 and CFI 016/2025?"
-        Output: ["Who was the judge in CFI 010/2024?",
-                 "Who was the judge in CFI 016/2025?"]
-
-    Returns empty list on failure (timeout, API error, etc.).
-    """
-    try:
-        client = _get_anthropic_client()
-        response = client.messages.create(
-            model=_HAIKU_MODEL,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"Split this legal question into 2 independent sub-questions, "
-                        f"one per document/case. Output each on a separate line.\n"
-                        f"Question: {question}"
-                    ),
-                },
-            ],
-            max_tokens=150,
-            temperature=0.0,
-        )
-        content = response.content[0].text.strip() if response.content else ""
-        sub_queries = [line.strip() for line in content.split("\n") if line.strip()]
-        return sub_queries[:2]  # Return at most 2 sub-queries
-    except Exception:
-        return []
-
-
 def _extract_article_filter(question: str) -> str | None:
     """Extract article number for metadata filtering.
 
@@ -2069,32 +1994,10 @@ def retrieve(
     Inspired by CPBD (Azamat Yelmagambetov, 1st place) who swept 22 depth values per type.
 
     NEW: Metadata-aware filtering when question mentions specific articles.
-    NEW: Query decomposition for multi-hop cross-document questions.
     """
     # Per-type retrieval depth: RETRIEVAL_CONFIGS[answer_type]["top_k"] overrides n_results
     if answer_type and answer_type in RETRIEVAL_CONFIGS:
         n_results = RETRIEVAL_CONFIGS[answer_type]["top_k"]
-    # Multi-hop query decomposition: disabled for now (causes pipeline hangs in parallel)
-    if False and detect_multi_hop(question):
-        sub_queries = decompose_query(question)
-        if len(sub_queries) >= 2:
-            logger.debug("[MULTI-HOP] Decomposed into %d sub-queries", len(sub_queries))
-            # Retrieve chunks for each sub-query
-            all_chunks = []
-            seen_ids = set()
-            for sub_q in sub_queries[:2]:  # Process at most 2 sub-queries
-                sub_chunks = retrieve(sub_q, n_results=n_results, use_hyde=use_hyde)
-                # Deduplicate by chunk_id (preserve first occurrence)
-                for chunk in sub_chunks:
-                    if chunk["chunk_id"] not in seen_ids:
-                        seen_ids.add(chunk["chunk_id"])
-                        all_chunks.append(chunk)
-            logger.debug(
-                "[MULTI-HOP] Retrieved %d unique chunks from %d sub-queries", len(all_chunks), len(sub_queries)
-            )
-            return all_chunks
-        # If decomposition failed, fall through to standard retrieval
-        logger.debug("[MULTI-HOP] Decomposition failed, using standard retrieval")
 
     # Step 0: Extract article filter for metadata-aware retrieval
     article_filter = _extract_article_filter(question)

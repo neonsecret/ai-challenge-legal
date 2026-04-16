@@ -34,7 +34,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 import time
 from collections.abc import Callable
 
@@ -243,149 +242,6 @@ def list_cases(
 
 
 # ---------------------------------------------------------------------------
-# Czech statute extraction for auto-enrichment
-# ---------------------------------------------------------------------------
-
-# Map Czech statute doc_id prefixes to human-readable Czech statute names.
-# These names appear in court decision tsvectors (e.g., "zákoník" and "práce"
-# are separate tokens that help BM25 find decisions discussing this statute).
-_CZECH_STATUTE_NAMES: dict[str, str] = {
-    "zakonik_prace": "zákoník práce",
-    "obcansky_zakonik": "občanský zákoník",
-    "zakon_obch_korporace": "obchodní korporace",
-    "trestni_zakonik": "trestní zákoník",
-    "danovy_rad": "daňový řád",
-    "zakon_dane_prijmu": "daň příjmů",
-    "zakon_dph": "daň přidané hodnoty",
-    "zakon_duchodove_pojisteni": "důchodové pojištění",
-    "zakon_nemocenske_pojisteni": "nemocenské pojištění",
-    "spravni_rad": "správní řád",
-    "zivnostensky_zakon": "živnostenský zákon",
-}
-
-# Common Czech legal boilerplate words to exclude from extracted terms
-_BOILERPLATE_TERMS = frozenset(
-    {
-        "ustanovení",
-        "odstavec",
-        "odstavce",
-        "písmeno",
-        "případě",
-        "přičemž",
-        "zejména",
-        "uvedené",
-        "uvedených",
-        "následující",
-        "předchozí",
-        "podmínek",
-        "podmínky",
-        "stanoví",
-        "příslušný",
-        "příslušné",
-        "příslušných",
-        "smluvní",
-        "právních",
-        "právního",
-        "způsobem",
-        "přiměřeně",
-        "nejpozději",
-        "nejméně",
-        "nejvýše",
-        "alespoň",
-        "povinen",
-        "povinnost",
-        "povinnosti",
-        "oprávněn",
-        "oprávnění",
-        "rozhodnutí",
-        "skutečnosti",
-        "skutečnost",
-        "příslušného",
-        # Common party/entity words — too generic for case law search
-        "zaměstnavatel",
-        "zaměstnavatele",
-        "zaměstnavateli",
-        "zaměstnavatelé",
-        "zaměstnanec",
-        "zaměstnance",
-        "zaměstnanci",
-        "zaměstnanců",
-        "společnost",
-        "společnosti",
-        "účastník",
-        "účastníků",
-        "účastníci",
-        "smlouvy",
-        "smlouva",
-        "smlouvou",
-        "dohody",
-        "dohoda",
-        "dohodou",
-    }
-)
-
-
-def _extract_caselaw_query(docs: list[SourceDocument]) -> str:
-    """Build a focused BM25 query for case law from statute search results.
-
-    Extracts the first § section number + 1-2 key substantive legal terms
-    from the statute text. Keeps the query SHORT to avoid diluting the OR
-    search — with prefix matching, fewer focused terms beat many broad ones.
-
-    Example: statute text about "§ 52 ... nadbytečným ... výpověď" produces
-    query ``"52 nadbytečným výpověď"`` which, via prefix BM25, matches
-    decisions containing "nadbytečným", "nadbytečnost", "výpovědi", etc.
-
-    Parameters
-    ----------
-    docs : list[SourceDocument]
-        Statute search results from execute_search().
-
-    Returns
-    -------
-    str
-        Focused BM25 query string, or empty string if nothing extracted.
-    """
-    first_section = ""
-    statute_name = ""
-    key_terms: list[str] = []
-    _seen: set[str] = set()
-
-    for doc in docs:
-        doc_id = doc.get("doc_id", "")
-        doc_text = doc.get("text", "")
-
-        # Get statute name from doc_id
-        if not statute_name:
-            base_id = re.sub(r"_\d+$", "", doc_id)
-            statute_name = _CZECH_STATUTE_NAMES.get(base_id, "")
-
-        # Get first § section number only
-        if not first_section:
-            m = re.search(r"§\s*(\d+)", doc_text)
-            if m:
-                first_section = m.group(1)
-
-        # Extract substantive legal terms (7+ chars, not boilerplate)
-        for m in re.finditer(r"[a-záčďéěíňóřšťúůýž]{7,}", doc_text.lower()):
-            term = m.group(0)
-            if term not in _seen and term not in _BOILERPLATE_TERMS and len(key_terms) < 2:
-                _seen.add(term)
-                key_terms.append(term)
-
-    # Build focused query: section number + key terms (max 3-4 tokens total)
-    parts: list[str] = []
-    if first_section:
-        parts.append(first_section)
-    parts.extend(key_terms)
-    # Add statute name last (lower priority — helps but not essential)
-    if statute_name and len(parts) < 4:
-        parts.append(statute_name)
-
-    return " ".join(parts)
-
-
-# ---------------------------------------------------------------------------
 # Graph builder
 # ---------------------------------------------------------------------------
 
@@ -546,9 +402,12 @@ def build_agent_graph():
     graph = StateGraph(AgentState)
 
     def reason_node(state: AgentState) -> dict:
-        # First reason call (no AI messages yet) -> use fast Haiku
-        has_prior_ai = any(isinstance(m, AIMessage) for m in state["messages"])
-        llm = full_llm if has_prior_ai else fast_llm
+        # First reason call of this turn (no searches yet) → fast Haiku for
+        # query formulation.  After any search, switch to Sonnet for answer
+        # generation.  Using search_count instead of has_prior_ai so that
+        # multi-turn follow-ups still benefit from Haiku on the first call.
+        use_fast = state["search_count"] == 0
+        llm = fast_llm if use_fast else full_llm
 
         system = build_system_prompt(state)
 
@@ -570,7 +429,7 @@ def build_agent_graph():
         response = llm.invoke(messages)
 
         # Log the agent's decision including which model was used
-        model_name = LLM_MODEL if has_prior_ai else LLM_MODEL_FAST
+        model_name = LLM_MODEL_FAST if use_fast else LLM_MODEL
         if hasattr(response, "tool_calls") and response.tool_calls:
             queries = [tc["args"].get("query", "") for tc in response.tool_calls]
             logger.info(
@@ -607,10 +466,6 @@ def build_agent_graph():
         results_msgs: list[ToolMessage] = []
         new_docs_all: list[SourceDocument] = []
         new_web_sources: list[dict] = []
-        # Czech auto-enrichment: fire once per turn so the agent sees case law
-        # alongside the first statute result without having to decide to search.
-        _caselaw_auto_triggered = False
-
         for tc in last_msg.tool_calls:
             # --- Document draft tool ---
             # document_draft takes no query arg; handle before the query guard so
@@ -1099,71 +954,6 @@ def build_agent_graph():
 
             offset = len(state["accumulated_docs"]) + len(new_docs_all) - len(new_docs)
             doc_text = format_search_results(new_docs, offset=offset)
-
-            # --- Czech auto-enrichment: inject case law as full [DOC-N] sources ---
-            # Fires once per turn when corpus is Czech. Uses statute references
-            # extracted from the statute search results (not the raw query) to
-            # find court decisions that actually cite the relevant statute sections.
-            # Format with format_caselaw_full so the agent sees structured content:
-            # type label, legal thesis (authoritative), anotace (supplementary).
-            if state["corpus"] == "czech" and not _caselaw_auto_triggered:
-                _caselaw_auto_triggered = True
-                try:
-                    from arlc.agent.caselaw_tools import (
-                        execute_caselaw_fetch,
-                        execute_caselaw_search,
-                        format_caselaw_full,
-                    )
-
-                    # Build a focused BM25 query from the statute results:
-                    # section number + 1-2 key legal terms. No JSONB statute_ref
-                    # filter — nsoud.cz metadata only has procedural codes, not
-                    # the substantive statute being interpreted.
-                    caselaw_query = _extract_caselaw_query(new_docs) or query
-                    logger.info(
-                        "[agent] czech auto-enrichment: caselaw_query=%r (original=%r)",
-                        caselaw_query,
-                        query[:60],
-                    )
-
-                    caselaw_summaries = await execute_caselaw_search(
-                        caselaw_query,
-                        limit=5,
-                    )
-                    # Auto-fetch full text for top 5 results so agent has citable content
-                    # (relevant decisions often rank 3-5 due to common-term pollution)
-                    # Deduplicate against already-accumulated docs
-                    _seen = {d.get("ecli", d["doc_id"]) for d in state["accumulated_docs"]}
-                    _seen.update(d.get("ecli", d["doc_id"]) for d in new_docs_all)
-                    caselaw_full_docs = []
-                    for summary in caselaw_summaries[:5]:
-                        ecli = summary.get("ecli", "")
-                        if not ecli or ecli in _seen:
-                            continue
-                        full_doc = await execute_caselaw_fetch(ecli)
-                        if full_doc:
-                            caselaw_full_docs.append(full_doc)
-                            _seen.add(ecli)
-
-                    if caselaw_full_docs:
-                        new_docs_all.extend(caselaw_full_docs)
-                        # Format each as structured [DOC-N] with type label,
-                        # legal thesis, and full reasoning text
-                        case_offset = offset + len(new_docs)
-                        case_parts = [
-                            format_caselaw_full(cdoc, case_offset + j + 1) for j, cdoc in enumerate(caselaw_full_docs)
-                        ]
-                        doc_text = doc_text + "\n---\n" + "\n---\n".join(case_parts)
-                        logger.info(
-                            '[agent] czech auto-enrichment: query="%s" → %d case law docs injected as [DOC-%d]-[DOC-%d]',
-                            query[:60],
-                            len(caselaw_full_docs),
-                            case_offset + 1,
-                            case_offset + len(caselaw_full_docs),
-                        )
-                except Exception:
-                    logger.warning("[agent] czech case law auto-enrichment failed", exc_info=True)
-                    # Non-fatal: statute results are returned as-is
 
             end_tool_span(
                 _corpus_span,
