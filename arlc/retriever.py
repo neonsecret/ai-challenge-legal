@@ -2948,6 +2948,85 @@ def retrieve_pages(
                 cached_query_emb=_question_emb,
             )
 
+    # ── Hybrid mode: merge custom corpus results into DIFC results ──
+    # When both a builtin DIFC jurisdiction and a custom corpus are selected,
+    # the DIFC-specific paths above (targeted / doc-fusion) only search the
+    # builtin corpus.  Search the custom corpus separately and merge via RRF
+    # so custom documents compete fairly with DIFC results through reranking.
+    # Non-DIFC corpora handle this inside _retrieve_pages_simple.
+    if custom_corpus and custom_doc_ids:
+        if on_status:
+            on_status("retrieving:searching custom corpus")
+        custom_vector = search_chunks_vector(_question_emb, top_k=50, corpus=custom_corpus, doc_ids=custom_doc_ids)
+        if custom_vector and custom_vector.get("ids") and custom_vector["ids"][0]:
+            custom_chunks = [
+                {
+                    "chunk_id": custom_vector["ids"][0][i],
+                    "text": custom_vector["documents"][0][i],
+                    "metadata": custom_vector["metadatas"][0][i],
+                    "distance": custom_vector["distances"][0][i],
+                }
+                for i in range(len(custom_vector["ids"][0]))
+            ]
+            custom_ranked = rerank_chunks(question, custom_chunks[:40], top_k=20, answer_type=answer_type)
+            # Convert custom ranked chunks to PageResults
+            custom_page_map: dict[tuple[str, int], tuple[float, str, str, str | None, int | None, int | None]] = {}
+            for chunk in custom_ranked:
+                doc_id = chunk["metadata"].get("doc_id", chunk["metadata"].get("pdf_id", ""))
+                page = int(chunk["metadata"]["page"])
+                score = chunk.get("rerank_score", 0.5)
+                key = (doc_id, page)
+                if key not in custom_page_map or score > custom_page_map[key][0]:
+                    custom_page_map[key] = (
+                        score,
+                        chunk["text"],
+                        chunk["metadata"].get("chunk_id", ""),
+                        chunk["metadata"].get("source_type"),
+                        chunk["metadata"].get("start_line"),
+                        chunk["metadata"].get("end_line"),
+                    )
+            custom_page_results = [
+                PageResult(
+                    doc_id=did,
+                    page_number=pg,
+                    score=sc,
+                    text=tx,
+                    chunk_id=cid,
+                    source_type=st,
+                    start_line=sl,
+                    end_line=el,
+                )
+                for (did, pg), (sc, tx, cid, st, sl, el) in sorted(
+                    custom_page_map.items(), key=lambda x: x[1][0], reverse=True
+                )
+            ]
+            # Merge DIFC + custom results via RRF (k=60, equal weight)
+            _rrf_k = 60
+            merged_scores: dict[tuple[str, int], float] = {}
+            all_by_key: dict[tuple[str, int], PageResult] = {}
+            for rank, r in enumerate(results):
+                key = (r.doc_id, r.page_number)
+                merged_scores[key] = merged_scores.get(key, 0.0) + 1.0 / (_rrf_k + rank + 1)
+                all_by_key[key] = r
+            for rank, r in enumerate(custom_page_results):
+                key = (r.doc_id, r.page_number)
+                merged_scores[key] = merged_scores.get(key, 0.0) + 1.0 / (_rrf_k + rank + 1)
+                if key not in all_by_key:
+                    all_by_key[key] = r
+            merged_keys = sorted(merged_scores, key=lambda k: merged_scores[k], reverse=True)
+            # Apply per-doc and total limits on merged results
+            doc_counts: dict[str, int] = {}
+            merged_results: list[PageResult] = []
+            for k in merged_keys:
+                if len(merged_results) >= max_total:
+                    break
+                r = all_by_key[k]
+                if doc_counts.get(r.doc_id, 0) >= max_per_doc:
+                    continue
+                doc_counts[r.doc_id] = doc_counts.get(r.doc_id, 0) + 1
+                merged_results.append(r)
+            results = merged_results
+
     if on_status and results:
         on_status(f"retrieving:found {len(results)} pages")
 
