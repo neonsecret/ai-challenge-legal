@@ -693,10 +693,10 @@ def build_agent_graph():
                     continue
 
                 # Pagination cap: max 20 pages per call
-                if req_page_end >= 0 and (req_page_end - req_page_start) > 20:
+                if req_page_end >= 0 and (req_page_end - req_page_start) >= 20:
                     results_msgs.append(
                         ToolMessage(
-                            content="Error: page range too large. Reduce page_end - page_start to ≤ 20.",
+                            content="Error: page range too large. Reduce page_end - page_start to < 20 (max 20 pages).",
                             tool_call_id=tc["id"],
                         )
                     )
