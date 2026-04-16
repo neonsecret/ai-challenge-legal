@@ -538,7 +538,29 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                     if (hasPending) {
                         const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
                         ;(async () => {
-                            for (let attempt = 0; attempt < 60; attempt++) {
+                            const fetchLastAnswer = async (): Promise<boolean> => {
+                                try {
+                                    const r2 = await fetch(
+                                        `${API}/api/v1/conversations/${encodeURIComponent(id)}/last-answer`,
+                                        {credentials: "include"},
+                                    )
+                                    if (r2.ok) {
+                                        const data2 = await r2.json()
+                                        if (data2?.answer) {
+                                            loadingSessionRef.current = true
+                                            setMessages(prev2 => prev2.map(m =>
+                                                m.role === "assistant" && (m.content === null || isPipelineStatusContent(m.content))
+                                                    ? {...m, content: data2.answer, ...(data2.sources ? {sources: data2.sources} : {})}
+                                                    : m
+                                            ))
+                                            return true
+                                        }
+                                    }
+                                } catch { /* ignore */ }
+                                return false
+                            }
+
+                            for (let attempt = 0; attempt < 120; attempt++) {
                                 try {
                                     const r = await fetch(
                                         `${API}/api/v1/conversations/${encodeURIComponent(id)}/status`,
@@ -566,36 +588,46 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                                             ))
                                             return
                                         }
-                                        // Still processing — show live status (format raw stage code)
-                                        if (data.status_detail) {
-                                            const friendly = formatStatus(data.status_detail) ?? data.status_detail
-                                            setMessages(prev2 => prev2.map(m =>
-                                                m.role === "assistant" && isReplaceable(m.content)
-                                                    ? {...m, content: `${PIPELINE_STATUS_PREFIX}${friendly}`}
-                                                    : m
-                                            ))
-                                        }
-                                    } else if (r.status === 404) {
-                                        // No pipeline job — try last-answer as fallback
-                                        const r2 = await fetch(
-                                            `${API}/api/v1/conversations/${encodeURIComponent(id)}/last-answer`,
-                                            {credentials: "include"},
-                                        )
-                                        if (r2.ok) {
-                                            const data2 = await r2.json()
-                                            if (data2?.answer) {
+                                        // agent:done means the pipeline finished — answer should be available now.
+                                        // Fetch it directly rather than waiting for status=complete which may lag.
+                                        if (data.status_detail === "agent:done" || data.status === "complete") {
+                                            if (data.answer) {
                                                 loadingSessionRef.current = true
                                                 setMessages(prev2 => prev2.map(m =>
-                                                    m.role === "assistant" && (m.content === null || isPipelineStatusContent(m.content))
-                                                        ? {...m, content: data2.answer}
+                                                    m.role === "assistant" && isReplaceable(m.content)
+                                                        ? {...m, content: data.answer, ...(data.sources ? {sources: data.sources} : {})}
                                                         : m
                                                 ))
                                                 return
                                             }
+                                            if (await fetchLastAnswer()) return
                                         }
+                                        // Still processing — show live status; skip null (hidden) statuses
+                                        if (data.status_detail) {
+                                            const friendly = formatStatus(data.status_detail)
+                                            if (friendly !== null) {
+                                                setMessages(prev2 => prev2.map(m =>
+                                                    m.role === "assistant" && isReplaceable(m.content)
+                                                        ? {...m, content: `${PIPELINE_STATUS_PREFIX}${friendly}`}
+                                                        : m
+                                                ))
+                                            }
+                                        }
+                                    } else if (r.status === 404) {
+                                        // No pipeline job — try last-answer as fallback
+                                        if (await fetchLastAnswer()) return
                                     }
                                 } catch { /* network error, keep trying */ }
                                 await new Promise(resolve => setTimeout(resolve, 3000))
+                            }
+                            // Poll exhausted — make one final attempt to recover the answer
+                            if (!await fetchLastAnswer()) {
+                                loadingSessionRef.current = true
+                                setMessages(prev2 => prev2.map(m =>
+                                    m.role === "assistant" && (m.content === null || isPipelineStatusContent(m.content))
+                                        ? {...m, content: "*The response took too long to load. Please try your question again.*"}
+                                        : m
+                                ))
                             }
                         })()
                     }
