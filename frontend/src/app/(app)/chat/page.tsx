@@ -113,7 +113,6 @@ export default function ChatPage() {
         stream, handleSend,
         sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
         setMessageFeedback,
-        selectedCorporaId, setSelectedCorporaId,
     } = useChatState()
     const {jurisdiction, setJurisdiction} = useJurisdiction()
     const {answer, sources, confidence, isStreaming, streamingStatus, streamingProgress, thinkingPreview, followUps, error, isDraftingMode, clearError, abort} = stream
@@ -701,10 +700,6 @@ export default function ChatPage() {
                         documentCount={docState.count}
                         pendingTemplate={pendingTemplate}
                         onClearTemplate={() => setPendingTemplate(null)}
-                        corpora={availableCorpora}
-                        selectedCorporaId={selectedCorporaId}
-                        onCorporaIdChange={setSelectedCorporaId}
-                        hasMessages={messages.length > 0}
                     />
                     <p style={{
                         fontSize: TYPE_SCALE.xs,
