@@ -139,29 +139,106 @@ class TestRetrievePagesSimpleCzechWithCustomCorpus:
         doc_ids = {r.doc_id for r in results}
         assert "custom-doc-1" not in doc_ids
 
-    def test_worker_count_expression_with_custom_corpus(self):
-        """_n_workers evaluates to 4 when custom_corpus and custom_doc_ids are both set.
+    def test_czech_custom_corpus_issues_two_vector_calls(self):
+        """Czech BM25 path issues 2 search_chunks_vector calls when custom corpus is set.
 
-        This tests the ternary: _n_workers = 4 if (custom_corpus and custom_doc_ids) else 3
+        Regression guard for retriever.py _n_workers=4 branch: verifies that the real
+        _retrieve_pages_simple function actually calls search_chunks_vector for both the
+        builtin Czech corpus and the custom corpus when both are set.
         """
-        custom_corpus = "custom-tenant"
-        custom_doc_ids = ["doc-1"]
-        _n_workers = 4 if (custom_corpus and custom_doc_ids) else 3
-        assert _n_workers == 4
+        builtin_result = _make_vector_result(["cz-chunk-1"])
+        custom_result = _make_vector_result(["custom-chunk-1"], doc_ids=["custom-doc-1"])
 
-    def test_worker_count_expression_without_custom_corpus(self):
-        """_n_workers evaluates to 3 when custom_corpus is None."""
-        custom_corpus = None
-        custom_doc_ids = None
-        _n_workers = 4 if (custom_corpus and custom_doc_ids) else 3
-        assert _n_workers == 3
+        def _search_vector_side_effect(query_emb, top_k=50, corpus="czech", doc_ids=None):
+            if corpus == "custom-tenant":
+                return custom_result
+            return builtin_result
 
-    def test_worker_count_expression_custom_corpus_no_doc_ids(self):
-        """_n_workers evaluates to 3 when custom_corpus is set but doc_ids is empty list."""
-        custom_corpus = "custom-tenant"
-        custom_doc_ids = []  # falsy
-        _n_workers = 4 if (custom_corpus and custom_doc_ids) else 3
-        assert _n_workers == 3
+        with (
+            patch(f"{self.PATCH_BASE}.embed_query", return_value=[0.0] * 4096),
+            patch(f"{self.PATCH_BASE}.search_chunks_vector", side_effect=_search_vector_side_effect) as mock_vec,
+            patch(f"{self.PATCH_BASE}.search_chunks_text", return_value=["cz-chunk-1"]),
+            patch(f"{self.PATCH_BASE}._search_court_decisions_sync", return_value=[]),
+            patch(f"{self.PATCH_BASE}.rerank_chunks", side_effect=lambda q, chunks, **kw: _make_reranked(chunks[:20])),
+            patch(f"{self.PATCH_BASE}.get_chunk_count", return_value=1000),
+            patch(f"{self.PATCH_BASE}.get_chunks_by_ids", return_value={"ids": [], "documents": [], "metadatas": []}),
+        ):
+            from arlc.retriever import _retrieve_pages_simple
+
+            _retrieve_pages_simple(
+                question="test",
+                corpus="czech",
+                custom_corpus="custom-tenant",
+                custom_doc_ids=["custom-doc-1"],
+            )
+
+        assert mock_vec.call_count == 2, (
+            f"Expected 2 vector calls (builtin + custom) in Czech hybrid mode, got {mock_vec.call_count}"
+        )
+        corpora_called = {
+            c.kwargs.get("corpus", c.args[2] if len(c.args) > 2 else None) for c in mock_vec.call_args_list
+        }
+        assert "custom-tenant" in corpora_called, f"Custom corpus not queried: {corpora_called}"
+
+    def test_czech_without_custom_corpus_issues_one_vector_call(self):
+        """Czech BM25 path issues exactly 1 search_chunks_vector call when corpus-only.
+
+        Regression guard: verifies the real _retrieve_pages_simple function takes the
+        3-worker path (no custom vector call) when custom_corpus is None.
+        """
+        builtin_result = _make_vector_result(["cz-chunk-1"])
+
+        with (
+            patch(f"{self.PATCH_BASE}.embed_query", return_value=[0.0] * 4096),
+            patch(f"{self.PATCH_BASE}.search_chunks_vector", return_value=builtin_result) as mock_vec,
+            patch(f"{self.PATCH_BASE}.search_chunks_text", return_value=["cz-chunk-1"]),
+            patch(f"{self.PATCH_BASE}._search_court_decisions_sync", return_value=[]),
+            patch(f"{self.PATCH_BASE}.rerank_chunks", side_effect=lambda q, chunks, **kw: _make_reranked(chunks[:20])),
+            patch(f"{self.PATCH_BASE}.get_chunk_count", return_value=1000),
+            patch(f"{self.PATCH_BASE}.get_chunks_by_ids", return_value={"ids": [], "documents": [], "metadatas": []}),
+        ):
+            from arlc.retriever import _retrieve_pages_simple
+
+            _retrieve_pages_simple(
+                question="test",
+                corpus="czech",
+                custom_corpus=None,
+                custom_doc_ids=None,
+            )
+
+        assert mock_vec.call_count == 1, (
+            f"Expected exactly 1 vector call (builtin only) in Czech corpus-only mode, got {mock_vec.call_count}"
+        )
+
+    def test_czech_empty_custom_doc_ids_issues_one_vector_call(self):
+        """Czech BM25 path with custom_corpus but empty doc_ids issues 1 vector call (no merge).
+
+        Verifies the guard: _n_workers = 4 if (custom_corpus and custom_doc_ids) else 3
+        An empty list is falsy, so only the builtin vector call is issued.
+        """
+        builtin_result = _make_vector_result(["cz-chunk-1"])
+
+        with (
+            patch(f"{self.PATCH_BASE}.embed_query", return_value=[0.0] * 4096),
+            patch(f"{self.PATCH_BASE}.search_chunks_vector", return_value=builtin_result) as mock_vec,
+            patch(f"{self.PATCH_BASE}.search_chunks_text", return_value=["cz-chunk-1"]),
+            patch(f"{self.PATCH_BASE}._search_court_decisions_sync", return_value=[]),
+            patch(f"{self.PATCH_BASE}.rerank_chunks", side_effect=lambda q, chunks, **kw: _make_reranked(chunks[:20])),
+            patch(f"{self.PATCH_BASE}.get_chunk_count", return_value=1000),
+            patch(f"{self.PATCH_BASE}.get_chunks_by_ids", return_value={"ids": [], "documents": [], "metadatas": []}),
+        ):
+            from arlc.retriever import _retrieve_pages_simple
+
+            _retrieve_pages_simple(
+                question="test",
+                corpus="czech",
+                custom_corpus="custom-tenant",
+                custom_doc_ids=[],  # empty → falsy → 3-worker path, no custom vector call
+            )
+
+        assert mock_vec.call_count == 1, (
+            f"Expected 1 vector call (empty doc_ids skips custom corpus), got {mock_vec.call_count}"
+        )
 
     def test_custom_corpus_rrf_weight_0_7(self):
         """Custom corpus vector results enter RRF at weight 0.7 (same as builtin vector)."""
