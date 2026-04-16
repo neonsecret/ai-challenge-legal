@@ -76,6 +76,12 @@ _ocr_model = os.environ.get("MODEL_NAME", "")
 
 _doc_summary_cache: dict[str, str] = {}
 
+# Number of leading chunks/pages used to build the SAC (Summarize-And-Cite) document
+# summary at index time. Legal documents front-load parties, issues, and key facts, so
+# 3 pages/paragraphs reliably capture the essential context without inflating the prompt.
+# TXT: first 3 chunks (~500-700 chars each) ≈ same coverage as 3 PDF pages.
+_SAC_SUMMARY_CHUNKS = 3
+
 # Embedding decontamination insight from guy3 (structure-first methodology)
 # Boilerplate patterns that dominate embedding space, making all pages of the
 # same document cluster together instead of discriminating by content.
@@ -513,21 +519,17 @@ def build_index(corpus: str = "difc", tenant_id: str | None = None):
 
         # Dispatch extraction by file type.
         if is_txt:
-            try:
-                chunks = extract_text_file(doc_path)
-            except ValueError as exc:
-                print(f"  [SKIP] {doc_file}: {exc}")
-                continue
+            chunks = extract_text_file(doc_path)
             source_type = "txt"
         else:
             chunks = extract_pages(doc_path)
             source_type = "pdf"
 
-        # SAC: generate per-document summary from the first ~3 pages / paragraphs.
+        # SAC: generate per-document summary from the first ~_SAC_SUMMARY_CHUNKS pages / paragraphs.
         if is_txt:
-            first_chunk_texts = [c["text"] for c in chunks[:3]]
+            first_chunk_texts = [c["text"] for c in chunks[:_SAC_SUMMARY_CHUNKS]]
         else:
-            first_chunk_texts = [c["text"] for c in chunks if c["page"] <= 3]
+            first_chunk_texts = [c["text"] for c in chunks if c["page"] <= _SAC_SUMMARY_CHUNKS]
         first_text = "\n\n".join(first_chunk_texts)
         summary = _generate_doc_summary(doc_stem, first_text) if first_text else ""
         if summary:
