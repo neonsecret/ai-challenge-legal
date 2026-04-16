@@ -12,6 +12,8 @@ import {TemplatePanel} from "@/components/chat/template-picker/TemplatePanel"
 interface ChatInputProps {
     onSend: (message: string) => void
     disabled?: boolean
+    /** Called when the user clicks Stop while streaming. */
+    onStop?: () => void
     onFocusRef?: React.MutableRefObject<(() => void) | null>
     /** Called when user picks a template from the panel. */
     onTemplateSelect?: (template: {slug: string; name: string}) => void
@@ -23,7 +25,7 @@ interface ChatInputProps {
     onClearTemplate?: () => void
 }
 
-export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate}: ChatInputProps) {
+export function ChatInput({onSend, disabled, onStop, onFocusRef, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate}: ChatInputProps) {
     const ref = useRef<HTMLTextAreaElement>(null)
     const [hasText, setHasText] = useState(false)
     const [focused, setFocused] = useState(false)
@@ -71,7 +73,9 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
     }, [onTemplateSelect])
 
     // isGlassmorphic = isDark, so the non-glassmorphic path is always light mode
-    const sendBg = hasText && !disabled
+    // isActive: streaming (stop button) or has text to send
+    const isActive = !!disabled || hasText
+    const sendBg = isActive
         ? isGlassmorphic
             ? "linear-gradient(135deg, rgba(201,168,76,0.22), rgba(201,168,76,0.12))"
             : "var(--dt-preview-btn-bg)"
@@ -79,7 +83,7 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
             ? "rgba(50,50,50,0.40)"
             : "var(--dt-accent-tint)"
 
-    const sendColor = hasText && !disabled
+    const sendColor = isActive
         ? isGlassmorphic ? "var(--strict-gold-base)" : "var(--dt-preview-btn-text)"
         : isGlassmorphic ? "rgba(255,255,255,0.25)" : "var(--dt-accent-color)"
 
@@ -150,8 +154,8 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                         </span>
                     </div>
                     <button
-                        onClick={handleSend}
-                        disabled={disabled || !hasText}
+                        onClick={disabled ? onStop : handleSend}
+                        disabled={!disabled && !hasText}
                         className="flex items-center justify-center disabled:opacity-30"
                         style={{
                             width: 32,
@@ -160,16 +164,16 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                             background: sendBg,
                             color: sendColor,
                             border: isGlassmorphic
-                                ? `1px solid ${hasText && !disabled ? "rgba(201,168,76, 0.25)" : "rgba(201,168,76, 0.08)"}`
+                                ? `1px solid ${isActive ? "rgba(201,168,76, 0.25)" : "rgba(201,168,76, 0.08)"}`
                                 : "none",
-                            boxShadow: hasText && !disabled
+                            boxShadow: isActive
                                 ? isGlassmorphic ? "0 2px 12px rgba(201,168,76,0.20)" : "0 2px 12px rgba(201,168,76,0.25)"
                                 : "none",
                             transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
                             transform: "scale(1)",
                         }}
                         onMouseEnter={e => {
-                            if (hasText && !disabled) e.currentTarget.style.transform = "scale(1.06)"
+                            if (isActive) e.currentTarget.style.transform = "scale(1.06)"
                         }}
                         onMouseLeave={e => {
                             e.currentTarget.style.transform = "scale(1)"

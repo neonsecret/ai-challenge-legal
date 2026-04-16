@@ -425,9 +425,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     // ── Persistence effects (all gated by hydrated) ──
 
     useEffect(() => {
-        if (!hydrated) return
+        if (!hydrated || stream.isStreaming) return
         saveSessions(sessions)
-    }, [sessions, hydrated])
+    }, [sessions, hydrated, stream.isStreaming])
 
     useEffect(() => {
         if (!hydrated) return

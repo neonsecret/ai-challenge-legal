@@ -711,6 +711,7 @@ export default function ChatPage() {
                     <ChatInput
                         onSend={onSend}
                         disabled={isStreaming}
+                        onStop={abort}
                         onFocusRef={inputFocusRef}
                         onTemplateSelect={handleTemplateSelect}
                         documentCount={docState.count}

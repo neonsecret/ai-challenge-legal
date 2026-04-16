@@ -249,6 +249,35 @@ export function ChatMessage({
         [dark, sources, content, onSourceClick, isStreaming],
     )
 
+    // Stable object reference so ReactMarkdown skips re-parsing on every streaming token.
+    const markdownComponents = useMemo(() => ({
+        h2: ({node: _node, children, ...props}: React.ComponentPropsWithoutRef<"h2"> & {node?: unknown}) => (
+            <h2 {...props} style={{
+                fontSize: TYPE_SCALE.lg,
+                fontFamily: dark ? "Georgia, serif" : FONT.sans,
+                color: dark ? "var(--strict-text-primary)" : undefined,
+                fontWeight: dark ? "normal" : undefined,
+            }}>{children}</h2>
+        ),
+        h3: ({node: _node, children, ...props}: React.ComponentPropsWithoutRef<"h3"> & {node?: unknown}) => (
+            <h3 {...props} style={{
+                fontSize: TYPE_SCALE.md,
+                fontFamily: dark ? "Georgia, serif" : FONT.sans,
+                color: dark ? "var(--strict-text-primary)" : undefined,
+                fontWeight: dark ? "normal" : undefined,
+            }}>{children}</h3>
+        ),
+        strong: ({node: _node, children, ...props}: React.ComponentPropsWithoutRef<"strong"> & {node?: unknown}) => (
+            <strong {...props}>{children}</strong>
+        ),
+        a: ({node: _node, children, href, ...props}: React.ComponentPropsWithoutRef<"a"> & {node?: unknown}) => {
+            const safe = href && /^https?:\/\//i.test(href) ? href : undefined
+            return <a {...props} href={safe} target="_blank" rel="noopener noreferrer">{children}</a>
+        },
+        citationbutton: citationButtonComponent,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any), [dark, citationButtonComponent])
+
     // ── User message ──────────────────────────────────────────────────────────
     if (role === "user") {
         if (dark) {
