@@ -186,6 +186,28 @@ def _resolve_corpora_id(corpora_id: str, client_slug: str) -> list[str] | None:
     return doc_ids if doc_ids else None
 
 
+async def _validate_doc_ids_ownership(
+    doc_ids: list[str],
+    user_id: str,
+    db: AsyncSession,
+) -> None:
+    """Raise 403 if any supplied doc_id has a tenant_id that differs from user_id.
+
+    Builtin corpus chunks have tenant_id IS NULL and are always permitted —
+    the SQL filter excludes them so only tenant-owned rows are checked.
+    """
+    if not doc_ids:
+        return
+    result = await db.execute(
+        text("SELECT DISTINCT tenant_id FROM chunks WHERE doc_id = ANY(:ids) AND tenant_id IS NOT NULL"),
+        {"ids": doc_ids},
+    )
+    user_uuid = uuid.UUID(user_id)
+    for row in result.mappings():
+        if row["tenant_id"] != user_uuid:
+            raise HTTPException(status_code=403, detail="Access denied: doc_ids belong to another tenant")
+
+
 # ---------------------------------------------------------------------------
 # Plan-based query rate limiting
 # ---------------------------------------------------------------------------
@@ -309,6 +331,8 @@ async def query(
             raise HTTPException(status_code=400, detail="Invalid or inaccessible corpora_id")
         body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": key_row["client_slug"]})
         corpus = body.corpus
+    elif body.doc_ids:
+        await _validate_doc_ids_ownership(body.doc_ids, key_row["user_id"], db)
 
     if not getattr(request.app.state, "ready", False):
         raise HTTPException(
@@ -412,6 +436,13 @@ async def query_stream(
     conversation_id = body.conversation_id
     corpus = body.corpus
 
+    logger.info(
+        "[query_stream] corpus=%s corpora_id=%s doc_ids=%s",
+        corpus,
+        body.corpora_id,
+        body.doc_ids[:3] if body.doc_ids else None,
+    )
+
     # Validate corpus access: built-in corpora are open, custom corpora must belong to the user
     if corpus not in _BUILTIN_CORPORA:
         if corpus != key_row["client_slug"]:
@@ -437,6 +468,8 @@ async def query_stream(
             # Custom-only mode: no builtin jurisdiction selected (or corpus is same as client_slug).
             body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": client_slug})
             corpus = body.corpus
+    elif body.doc_ids:
+        await _validate_doc_ids_ownership(body.doc_ids, key_row["user_id"], db)
 
     # Create pipeline job for persistent status tracking
     from neolex.services.conversation import (
