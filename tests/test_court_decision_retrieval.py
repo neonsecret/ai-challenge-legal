@@ -12,7 +12,22 @@ from __future__ import annotations
 
 import pytest
 
-pytestmark = pytest.mark.asyncio(loop_scope="session")
+import arlc.retriever as _retriever
+
+
+@pytest.fixture(scope="class", autouse=True)
+def _reset_embedding_model_after_class():
+    """Reset arlc.retriever._embedding_model after each test class.
+
+    TestSearchCourtDecisionsSync creates _embedding_model via embed_query calls.
+    Without teardown the singleton persists into TestRetrievePagesIncludesCourtDecisions,
+    removing the ~3s embedding model health-check latency from its embed_query call.
+    That timing loss causes the reranker to be invoked on its cold first request,
+    which can fail and fall back to chunks[:top_k] — a statute-first ordering that
+    excludes court decisions from the top-5 results.
+    """
+    yield
+    _retriever._embedding_model = None
 
 
 # ---------------------------------------------------------------------------
