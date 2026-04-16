@@ -535,6 +535,16 @@ def build_system_prompt(state: AgentState) -> str:
             "ALWAYS use search_legal_corpus to find and analyze them — "
             "do NOT tell the user to upload documents.",
         )
+    elif state.get("custom_corpus") and state.get("custom_doc_ids"):
+        semi_static_parts.append(
+            "- The user has ALSO selected a personal document collection alongside "
+            f"the {jurisdiction} jurisdiction. When you search, results from BOTH "
+            "the legal corpus AND the user's uploaded documents will be returned. "
+            "When the user refers to 'my documents', 'uploaded documents', 'my files', "
+            "'my corpus', or 'my contract', they mean their uploaded documents. "
+            "ALWAYS use search_legal_corpus to find them — do NOT tell the user "
+            "to upload or paste documents. They are already available via search.",
+        )
 
     semi_static = "\n".join(semi_static_parts)
 
