@@ -687,7 +687,7 @@ export default function ChatPage() {
 
                 {/* Input */}
                 <div style={{
-                    padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px env(safe-area-inset-bottom, ${SPACE['5']}px)` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
+                    padding: isMobile ? `${SPACE['3']}px ${SPACE['3']}px ${SPACE['2']}px` : `${SPACE['3']}px ${SPACE['6']}px ${SPACE['4']}px`,
                     borderTop: isStrict ? "1px solid var(--strict-footer-border)" : "0.5px solid var(--dt-glass-border)",
                     flexShrink: 0,
                     background: isStrict ? "var(--strict-footer-bg)" : "var(--dt-glass-bg-subtle)",

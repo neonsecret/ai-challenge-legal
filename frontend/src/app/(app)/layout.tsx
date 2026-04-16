@@ -69,6 +69,7 @@ export default function AppLayout({
                                     overflowX: "hidden",
                                     display: "flex",
                                     flexDirection: "column",
+                                    paddingBottom: isMobile ? "calc(env(safe-area-inset-bottom, 0px) + 72px)" : 0,
                                 }}
                             >
                                 {children}
@@ -84,7 +85,7 @@ export default function AppLayout({
                             className="flex-1 overflow-auto min-w-0"
                             style={{
                                 position: "relative",
-                                paddingBottom: "96px",
+                                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
                                 overflowX: "hidden",
                                 maxWidth: "100vw",
                             }}
