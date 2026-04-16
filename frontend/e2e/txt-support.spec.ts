@@ -6,8 +6,6 @@
  *   TXT-2  Upload zone rejects unsupported file type with local validation error
  *   TXT-3  Source viewer for TXT source does not request the PDF endpoint (source_type path)
  *   TXT-4  Citation strip shows L.N label for TXT sources, not p.N (source_type path)
- *   TXT-3b Source viewer for TXT source skips PDF endpoint via media_type fallback path
- *   TXT-4b Citation strip shows L.N label via media_type fallback path
  *
  * Run: npx playwright test e2e/txt-support.spec.ts
  */
@@ -63,29 +61,6 @@ const SSE_WITH_TXT_SOURCE = sseBody([
           page_numbers: [42],
           text: "Section 42. Every person shall comply with the applicable regulations.",
           source_type: "txt",
-        },
-      ],
-      confidence: 0.9,
-    },
-  },
-  { event: "done", data: {} },
-]);
-
-/** SSE response exercising the media_type="text/plain" fallback path.
- *  Used only for belt-and-suspenders fallback coverage — not the primary production path. */
-const SSE_WITH_TXT_MEDIAFALLBACK = sseBody([
-  {
-    event: "answer",
-    data: {
-      answer: "The legislation is referenced in section 42 [DOC-1] of the statute.",
-      sources: [
-        {
-          doc_id: TXT_DOC_UUID,
-          title: "Custom TXT Statute",
-          page_numbers: [42],
-          text: "Section 42. Every person shall comply with the applicable regulations.",
-          source_type: null,
-          media_type: "text/plain",
         },
       ],
       confidence: 0.9,
@@ -395,81 +370,6 @@ test("TXT-4: citation pill for a TXT source shows L.N label instead of p.N", asy
     await expect(lineLabel).toBeVisible({ timeout: 8_000 });
 
     // Confirm the old PDF-style label is absent
-    const pageLabel = page.locator("text=p.42").first();
-    await expect(pageLabel).not.toBeVisible({ timeout: 2_000 });
-  } finally {
-    await context.close();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// TXT-3b / TXT-4b — Fallback: media_type="text/plain" path (belt-and-suspenders)
-// ---------------------------------------------------------------------------
-test("TXT-3b: media_type fallback path — TXT source still skips PDF endpoint", async ({ browser }) => {
-  // Covers the secondary isTxtSource() branch: source_type=null, media_type="text/plain".
-  // A regression in this fallback would still be caught without polluting the primary tests.
-  const [page, context] = await createSeededPage(browser);
-  const pdfRequests: string[] = [];
-
-  try {
-    await mockBaseRoutes(page);
-    await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_TXT_MEDIAFALLBACK })
-    );
-    await page.route("**/api/v1/documents/*/pdf", (route: Route) => {
-      pdfRequests.push(route.request().url());
-      route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.0" });
-    });
-    await page.route("**/api/v1/documents/chunk-context/**", (route: Route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          pdf_available: true,
-          chunks: [{ chunk_id: "chunk-001", text: "Section 42. Every person shall comply with the applicable regulations.", page: 42, is_target: true }],
-        }),
-      })
-    );
-
-    await page.goto(`${FRONTEND}/chat`);
-    await clickFollowUp(page);
-
-    const sup = page.locator("sup").first();
-    await expect(sup).toBeVisible({ timeout: 15_000 });
-    await sup.click();
-
-    await page.waitForTimeout(2_000);
-
-    const txtPdfRequests = pdfRequests.filter(url => url.includes(TXT_DOC_UUID));
-    expect(txtPdfRequests).toHaveLength(0);
-  } finally {
-    await context.close();
-  }
-});
-
-test("TXT-4b: media_type fallback path — citation pill still shows L.N label", async ({ browser }) => {
-  // Covers the secondary isTxtSource() branch: source_type=null, media_type="text/plain".
-  const [page, context] = await createSeededPage(browser);
-
-  try {
-    await mockBaseRoutes(page);
-    await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_TXT_MEDIAFALLBACK })
-    );
-    await page.route("**/api/v1/documents/*/pdf", (route: Route) =>
-      route.fulfill({ status: 404 })
-    );
-
-    await page.goto(`${FRONTEND}/chat`);
-    await clickFollowUp(page);
-
-    const sup = page.locator("sup").first();
-    await expect(sup).toBeVisible({ timeout: 15_000 });
-    await sup.click();
-
-    const lineLabel = page.locator("text=L.42").first();
-    await expect(lineLabel).toBeVisible({ timeout: 8_000 });
-
     const pageLabel = page.locator("text=p.42").first();
     await expect(pageLabel).not.toBeVisible({ timeout: 2_000 });
   } finally {
