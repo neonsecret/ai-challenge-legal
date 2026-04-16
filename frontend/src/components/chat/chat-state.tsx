@@ -130,6 +130,8 @@ interface ChatState {
     newChat: () => void
     deleteSession: (id: string) => void
     setMessageFeedback: (messageId: string, rating: "positive" | "negative", comment?: string) => void
+    selectedCorporaId: string | null
+    setSelectedCorporaId: React.Dispatch<React.SetStateAction<string | null>>
 }
 
 const ChatStateContext = createContext<ChatState | null>(null)
@@ -139,6 +141,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const [selectedCorpus, setSelectedCorpus] = useState("DIFC Law")
     const [selectedLaws, setSelectedLaws] = useState<string[]>([])
     const [useInternet, setUseInternet] = useState(true)
+    const [selectedCorporaId, setSelectedCorporaId] = useState<string | null>(null)
     const [sessions, setSessions] = useState<ChatSession[]>([])
     const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
     // Hydration gate: false during SSR and first client render.
@@ -723,9 +726,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 } catch { /* invalid JSON, ignore — search all docs */ }
             }
         }
-        stream.sendQuery(question, corpus, convId, laws, useInternet, docIds, templateSlug)
+        stream.sendQuery(question, corpus, convId, laws, useInternet, docIds, templateSlug, selectedCorporaId ?? undefined)
         return "ok" as const
-    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, useInternet])
+    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, useInternet, selectedCorporaId])
 
     const currentCorpora = sessions.find(s => s.id === currentSessionId)?.corpora ?? []
 
@@ -748,6 +751,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             stream, handleSend,
             sessions, currentSessionId, currentCorpora, loadSession, newChat, deleteSession,
             setMessageFeedback,
+            selectedCorporaId, setSelectedCorporaId,
         }}>
             {children}
         </ChatStateContext.Provider>

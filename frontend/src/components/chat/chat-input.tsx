@@ -8,6 +8,7 @@ import {useI18n} from "@/lib/i18n"
 import {SPACE} from "@/lib/tokens"
 import {TemplatePicker} from "@/components/chat/template-picker/TemplatePicker"
 import {TemplatePanel} from "@/components/chat/template-picker/TemplatePanel"
+import {ComposeSelectors} from "@/components/chat/compose-selectors"
 
 interface ChatInputProps {
     onSend: (message: string) => void
@@ -21,9 +22,17 @@ interface ChatInputProps {
     pendingTemplate?: {slug: string; name: string} | null
     /** Called when user dismisses the pending template pill. */
     onClearTemplate?: () => void
+    /** Custom corpora collections for compose selectors. */
+    corpora?: Array<{ name: string; corpus_id: string; doc_ids?: string[] }>
+    /** Currently selected corpora_id (null = none). */
+    selectedCorporaId?: string | null
+    /** Callback when user selects a custom corpus. */
+    onCorporaIdChange?: (corporaId: string | null) => void
+    /** True when conversation already has messages (hides compose selectors). */
+    hasMessages?: boolean
 }
 
-export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate}: ChatInputProps) {
+export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, documentCount = 0, pendingTemplate, onClearTemplate, corpora, selectedCorporaId, onCorporaIdChange, hasMessages}: ChatInputProps) {
     const ref = useRef<HTMLTextAreaElement>(null)
     const [hasText, setHasText] = useState(false)
     const [focused, setFocused] = useState(false)
@@ -186,6 +195,14 @@ export function ChatInput({onSend, disabled, onFocusRef, onTemplateSelect, docum
                     </button>
                 </div>
             </div>
+
+            {/* Jurisdiction + corpora selectors — visible only before first message */}
+            <ComposeSelectors
+                corpora={corpora ?? []}
+                selectedCorporaId={selectedCorporaId ?? null}
+                onCorporaIdChange={onCorporaIdChange ?? (() => {})}
+                visible={!hasMessages}
+            />
 
             {/* Toolbar row — below input, outside the box */}
             {onTemplateSelect && (

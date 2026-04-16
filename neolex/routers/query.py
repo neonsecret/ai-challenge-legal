@@ -140,6 +140,41 @@ async def _create_pipeline_document(
 
 _BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech", "uk", "au"})
 
+
+def _resolve_corpora_id(corpora_id: str, client_slug: str) -> list[str] | None:
+    """Resolve a corpora_id ('{client_slug}:{collection_name}') to its doc_ids.
+
+    Returns None if the corpora_id is malformed, belongs to another user,
+    or the collection has no documents.
+    """
+    from pathlib import Path
+
+    parts = corpora_id.split(":", 1)
+    if len(parts) != 2:
+        return None
+    slug, collection_name = parts
+    # Access control: user can only query their own collections
+    if slug != client_slug:
+        return None
+
+    docs_dir = Path(settings.data_dir) / "clients" / slug / "docs"
+    if not docs_dir.exists():
+        return None
+
+    doc_ids: list[str] = []
+    for meta_path in sorted(docs_dir.glob("*.meta")):
+        try:
+            meta = json.loads(meta_path.read_text())
+            doc_id = meta.get("doc_id", "")
+            collection = meta.get("collection", "My Documents")
+            if collection == collection_name and doc_id:
+                doc_ids.append(doc_id)
+        except Exception:
+            pass
+
+    return doc_ids if doc_ids else None
+
+
 # ---------------------------------------------------------------------------
 # Plan-based query rate limiting
 # ---------------------------------------------------------------------------
@@ -239,6 +274,15 @@ async def query(
     if corpus not in _BUILTIN_CORPORA:
         if corpus != key_row["client_slug"]:
             raise HTTPException(status_code=403, detail="Access denied to this corpus")
+
+    # Resolve corpora_id → doc_ids when a custom collection is selected
+    if body.corpora_id:
+        resolved_doc_ids = _resolve_corpora_id(body.corpora_id, key_row["client_slug"])
+        if resolved_doc_ids is None:
+            raise HTTPException(status_code=400, detail="Invalid or inaccessible corpora_id")
+        # corpora_id-resolved doc_ids override any manually provided doc_ids
+        body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": key_row["client_slug"]})
+        corpus = body.corpus
 
     if not getattr(request.app.state, "ready", False):
         raise HTTPException(
@@ -346,6 +390,15 @@ async def query_stream(
     if corpus not in _BUILTIN_CORPORA:
         if corpus != key_row["client_slug"]:
             raise HTTPException(status_code=403, detail="Access denied to this corpus")
+
+    # Resolve corpora_id → doc_ids when a custom collection is selected
+    if body.corpora_id:
+        resolved_doc_ids = _resolve_corpora_id(body.corpora_id, key_row["client_slug"])
+        if resolved_doc_ids is None:
+            raise HTTPException(status_code=400, detail="Invalid or inaccessible corpora_id")
+        # corpora_id-resolved doc_ids override any manually provided doc_ids
+        body = body.model_copy(update={"doc_ids": resolved_doc_ids, "corpus": key_row["client_slug"]})
+        corpus = body.corpus
 
     # Create pipeline job for persistent status tracking
     from neolex.services.conversation import (
@@ -819,6 +872,7 @@ async def list_corpora(
             for name, doc_ids in collections.items():
                 corpora.append(
                     {
+                        "id": f"{client_slug}:{name}",
                         "name": name,
                         "corpus_id": client_slug,
                         "doc_ids": doc_ids,
@@ -831,6 +885,7 @@ async def list_corpora(
         if not corpora:
             corpora.append(
                 {
+                    "id": f"{client_slug}:My Documents",
                     "name": "My Documents",
                     "corpus_id": client_slug,
                     "indexed": True,

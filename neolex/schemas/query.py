@@ -21,6 +21,10 @@ class QueryRequest(BaseModel):
     # Optional list of document IDs to restrict retrieval to specific uploaded documents.
     # Used when the user selects individual documents in a custom corpus instead of "All".
     doc_ids: list[str] | None = Field(default=None, max_length=50)
+    # Optional custom corpus collection ID. Format: "{client_slug}:{collection_name}".
+    # When set, the server resolves doc_ids from the collection's .meta files,
+    # overriding any manually provided doc_ids.
+    corpora_id: str | None = Field(default=None, max_length=128, pattern=r"^[a-zA-Z0-9_.@: -]{1,128}$")
 
     @field_validator("laws")
     @classmethod

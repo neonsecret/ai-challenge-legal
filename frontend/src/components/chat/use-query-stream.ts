@@ -157,7 +157,7 @@ interface StreamState {
 }
 
 export interface UseQueryStreamReturn extends StreamState {
-    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[], templateSlug?: string) => void
+    sendQuery: (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[], templateSlug?: string, corporaId?: string) => void
     clearError: () => void
     abort: () => void
 }
@@ -265,7 +265,7 @@ export function useQueryStream(): UseQueryStreamReturn {
     }, [router])
 
     const sendQuery = useCallback(
-        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[], templateSlug?: string) => {
+        (question: string, corpus?: string, conversationId?: string, laws?: string[], useInternet?: boolean, docIds?: string[], templateSlug?: string, corporaId?: string) => {
             // Abort any existing SSE connection
             if (abortRef.current) {
                 abortRef.current.abort()
@@ -553,6 +553,8 @@ export function useQueryStream(): UseQueryStreamReturn {
                             ...(docIds && docIds.length > 0 ? {doc_ids: docIds} : {}),
                             // Template slug for document drafting — triggers LaTeX generation.
                             ...(templateSlug ? {template_slug: templateSlug} : {}),
+                            // Custom corpora collection filter — restricts search to a specific collection.
+                            ...(corporaId ? {corpora_id: corporaId} : {}),
                             // Agent is the production path — deterministic pipeline is for benchmarks only.
                             use_agent: true,
                             use_internet: useInternet ?? true,
