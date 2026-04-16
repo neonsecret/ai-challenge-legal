@@ -2918,7 +2918,7 @@ def retrieve_pages(
         # run cross-encoder reranking within the selected docs.
         # This is superior to _retrieve_pages_fallback (inverse-rank scoring, no CE)
         # and recovers the _doc_fusion_select dead code path (disabled since pgvector migration).
-        # corpus is forwarded so non-DIFC corpora work correctly via this path too.
+        # corpus is forwarded; non-DIFC corpora never reach here (they return early above).
         fusion_docs = _doc_fusion_select(
             question,
             max_docs=type_cfg.get("max_docs", 3),
