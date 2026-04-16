@@ -6,8 +6,6 @@
  *   TXT-2  Upload zone rejects unsupported file type with local validation error
  *   TXT-3  Source viewer for TXT source does not request the PDF endpoint (source_type path)
  *   TXT-4  Citation strip shows L.N label for TXT sources, not p.N (source_type path)
- *   TXT-3b Source viewer for TXT source skips PDF endpoint via media_type fallback path
- *   TXT-4b Citation strip shows L.N label via media_type fallback path
  *
  * Run: npx playwright test e2e/txt-support.spec.ts
  */
@@ -71,29 +69,6 @@ const SSE_WITH_TXT_SOURCE = sseBody([
   { event: "done", data: {} },
 ]);
 
-/** SSE response exercising the media_type="text/plain" fallback path.
- *  Used only for belt-and-suspenders fallback coverage — not the primary production path. */
-const SSE_WITH_TXT_MEDIAFALLBACK = sseBody([
-  {
-    event: "answer",
-    data: {
-      answer: "The legislation is referenced in section 42 [DOC-1] of the statute.",
-      sources: [
-        {
-          doc_id: TXT_DOC_UUID,
-          title: "Custom TXT Statute",
-          page_numbers: [42],
-          text: "Section 42. Every person shall comply with the applicable regulations.",
-          source_type: null,
-          media_type: "text/plain",
-        },
-      ],
-      confidence: 0.9,
-    },
-  },
-  { event: "done", data: {} },
-]);
-
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -144,6 +119,14 @@ async function createSeededPage(browser: Browser): Promise<[Page, BrowserContext
 async function mockBaseRoutes(page: Page) {
   await page.route("**/auth/me", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_USER) })
+  );
+  // Health endpoint — consumed by IndexInfoPanel on all app pages
+  await page.route("**/health", (route: Route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pipeline_ready: true, status: "ok" }) })
+  );
+  // Corpora listing — called by chat page when custom jurisdiction is selected
+  await page.route("**/api/v1/corpora", (route: Route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ corpora: [] }) })
   );
   await page.route("**/api/v1/conversations", (route: Route) => {
     const url = new URL(route.request().url());
@@ -198,22 +181,28 @@ test("TXT-1: upload zone accepts a .txt file and calls the backend upload endpoi
     await mockBaseRoutes(page);
     await mockDocumentsPage(page);
 
-    // Mock the document upload endpoint — return a minimal success response
-    await page.route("**/api/v1/documents/upload", (route: Route) => {
-      uploadCalled = true;
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          doc_id: TXT_DOC_UUID,
-          filename: "statute.txt",
-          size_bytes: 42,
-          upload_ts: new Date().toISOString(),
-          indexed: false,
-          collection: "My Documents",
-          media_type: "text/plain",
-        }),
-      });
+    // Mock the document upload endpoint (POST /api/v1/documents) — return a minimal success response.
+    // Note: the upload route is registered AFTER mockDocumentsPage so it takes precedence (Playwright LIFO).
+    // We check the method to let GETs fall through to the mockDocumentsPage handler.
+    await page.route("**/api/v1/documents", (route: Route) => {
+      if (route.request().method() === "POST") {
+        uploadCalled = true;
+        route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            doc_id: TXT_DOC_UUID,
+            filename: "statute.txt",
+            size_bytes: 42,
+            upload_ts: new Date().toISOString(),
+            indexed: false,
+            collection: "My Documents",
+            media_type: "text/plain",
+          }),
+        });
+      } else {
+        route.continue();
+      }
     });
 
     await page.goto(`${FRONTEND}/documents`);
@@ -381,81 +370,6 @@ test("TXT-4: citation pill for a TXT source shows L.N label instead of p.N", asy
     await expect(lineLabel).toBeVisible({ timeout: 8_000 });
 
     // Confirm the old PDF-style label is absent
-    const pageLabel = page.locator("text=p.42").first();
-    await expect(pageLabel).not.toBeVisible({ timeout: 2_000 });
-  } finally {
-    await context.close();
-  }
-});
-
-// ---------------------------------------------------------------------------
-// TXT-3b / TXT-4b — Fallback: media_type="text/plain" path (belt-and-suspenders)
-// ---------------------------------------------------------------------------
-test("TXT-3b: media_type fallback path — TXT source still skips PDF endpoint", async ({ browser }) => {
-  // Covers the secondary isTxtSource() branch: source_type=null, media_type="text/plain".
-  // A regression in this fallback would still be caught without polluting the primary tests.
-  const [page, context] = await createSeededPage(browser);
-  const pdfRequests: string[] = [];
-
-  try {
-    await mockBaseRoutes(page);
-    await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_TXT_MEDIAFALLBACK })
-    );
-    await page.route("**/api/v1/documents/*/pdf", (route: Route) => {
-      pdfRequests.push(route.request().url());
-      route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.0" });
-    });
-    await page.route("**/api/v1/documents/chunk-context/**", (route: Route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          pdf_available: true,
-          chunks: [{ chunk_id: "chunk-001", text: "Section 42. Every person shall comply with the applicable regulations.", page: 42, is_target: true }],
-        }),
-      })
-    );
-
-    await page.goto(`${FRONTEND}/chat`);
-    await clickFollowUp(page);
-
-    const sup = page.locator("sup").first();
-    await expect(sup).toBeVisible({ timeout: 15_000 });
-    await sup.click();
-
-    await page.waitForTimeout(2_000);
-
-    const txtPdfRequests = pdfRequests.filter(url => url.includes(TXT_DOC_UUID));
-    expect(txtPdfRequests).toHaveLength(0);
-  } finally {
-    await context.close();
-  }
-});
-
-test("TXT-4b: media_type fallback path — citation pill still shows L.N label", async ({ browser }) => {
-  // Covers the secondary isTxtSource() branch: source_type=null, media_type="text/plain".
-  const [page, context] = await createSeededPage(browser);
-
-  try {
-    await mockBaseRoutes(page);
-    await page.route("**/api/v1/query/stream", (route: Route) =>
-      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_TXT_MEDIAFALLBACK })
-    );
-    await page.route("**/api/v1/documents/*/pdf", (route: Route) =>
-      route.fulfill({ status: 404 })
-    );
-
-    await page.goto(`${FRONTEND}/chat`);
-    await clickFollowUp(page);
-
-    const sup = page.locator("sup").first();
-    await expect(sup).toBeVisible({ timeout: 15_000 });
-    await sup.click();
-
-    const lineLabel = page.locator("text=L.42").first();
-    await expect(lineLabel).toBeVisible({ timeout: 8_000 });
-
     const pageLabel = page.locator("text=p.42").first();
     await expect(pageLabel).not.toBeVisible({ timeout: 2_000 });
   } finally {

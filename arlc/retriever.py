@@ -2635,7 +2635,8 @@ def _retrieve_pages_simple(
         key = (doc_id, page)
         if key not in page_scores or score > page_scores[key][0]:
             court_meta: dict = {}
-            if chunk["metadata"].get("source_type") == "court_decision":
+            _src = chunk["metadata"].get("source_type")
+            if _src == "court_decision":
                 court_meta = {
                     k: chunk["metadata"].get(k)
                     for k in (
@@ -2648,6 +2649,8 @@ def _retrieve_pages_simple(
                         "legal_thesis",
                     )
                 }
+            elif _src is not None:
+                court_meta = {"source_type": _src}
             sl = chunk["metadata"].get("start_line")
             el = chunk["metadata"].get("end_line")
             page_scores[key] = (score, chunk["text"], chunk["metadata"].get("chunk_id", ""), court_meta, sl, el)
@@ -2660,7 +2663,8 @@ def _retrieve_pages_simple(
         ft_key = (ft_doc, ft_page)
         if ft_key not in page_scores:
             ft_court_meta: dict = {}
-            if vector_top["metadata"].get("source_type") == "court_decision":
+            _ft_src = vector_top["metadata"].get("source_type")
+            if _ft_src == "court_decision":
                 ft_court_meta = {
                     k: vector_top["metadata"].get(k)
                     for k in (
@@ -2673,6 +2677,8 @@ def _retrieve_pages_simple(
                         "legal_thesis",
                     )
                 }
+            elif _ft_src is not None:
+                ft_court_meta = {"source_type": _ft_src}
             ft_sl = vector_top["metadata"].get("start_line")
             ft_el = vector_top["metadata"].get("end_line")
             page_scores[ft_key] = (
