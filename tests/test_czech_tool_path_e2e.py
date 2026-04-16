@@ -18,9 +18,6 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/
 
 from arlc.agent.state import SourceDocument
 
-pytestmark = pytest.mark.asyncio(loop_scope="session")
-
-
 # ---------------------------------------------------------------------------
 # Static guard: auto-enrichment must not exist in graph.py
 # ---------------------------------------------------------------------------
