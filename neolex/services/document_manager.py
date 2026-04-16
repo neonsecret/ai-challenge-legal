@@ -274,6 +274,12 @@ def extract_zip_safely(
             if name.endswith("/"):
                 continue
 
+            # --- macOS archive artifacts (silently skip, don't surface to user) ---
+            if name.startswith("__MACOSX/") or os.path.basename(name) in (".DS_Store", "Thumbs.db"):
+                continue
+            if os.path.basename(name).startswith("._"):
+                continue
+
             # --- Path traversal ---
             if ".." in name or name.startswith("/"):
                 raise ValueError(

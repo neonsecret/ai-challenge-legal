@@ -28,6 +28,17 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+# ---------------------------------------------------------------------------
+# Startup dependency check
+# ---------------------------------------------------------------------------
+
+try:
+    import pymupdf  # noqa: F401
+except ImportError:
+    logger.warning(
+        "pymupdf is not installed — PDF corpus indexing jobs will be marked as failed. Run: uv pip install pymupdf"
+    )
+
 
 # ---------------------------------------------------------------------------
 # Job store (PostgreSQL via AuditDB)
@@ -121,17 +132,20 @@ def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> tup
     doc_count = len(doc_ids_with_docs)
     chunks_skipped = 0
 
-    # Attempt real arlc indexing
+    # Attempt real arlc indexing.
+    # Only HTTP 400 from llama-server (bad chunk / context-window overflow) is
+    # treated as a recoverable per-chunk failure — we stub that case and increment
+    # chunks_skipped so the job completes with a warning.
+    # All other exceptions (DB errors, ImportError, network failures, etc.) are
+    # re-raised so run_reindex_job() can mark the job as "failed".
     try:
         _run_arlc_indexing(client_slug, docs_dir, index_dir, list(doc_ids_with_docs))
     except Exception as exc:
-        # Check if this is an HTTP 400 from llama-server (bad chunk)
-        is_http_error = False
+        # Detect HTTP 400 from llama-server specifically
         try:
             import requests
 
             if isinstance(exc, requests.exceptions.HTTPError):
-                is_http_error = True
                 status_code = getattr(exc.response, "status_code", 0)
                 if status_code == 400:
                     logger.error(
@@ -139,29 +153,26 @@ def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> tup
                         exc,
                     )
                     chunks_skipped += 1
-                else:
-                    logger.error(
-                        "llama-server HTTP %d during indexing: %s",
-                        status_code,
-                        exc,
-                    )
+                    # Stub manifest for this HTTP-400 case only
+                    manifest = {
+                        "client_slug": client_slug,
+                        "indexed_at": datetime.datetime.utcnow().isoformat(),
+                        "doc_count": doc_count,
+                        "docs": [str(p) for p in docs_dir.glob("*.meta")],
+                        "stub": True,
+                        "chunks_skipped": chunks_skipped,
+                    }
+                    manifest_path = index_dir / "manifest.json"
+                    manifest_path.write_text(json.dumps(manifest, indent=2))
+                    return doc_count, chunks_skipped
+                # Non-400 HTTP error: re-raise
+                logger.error("llama-server HTTP %d during indexing: %s", status_code, exc)
+                raise
         except ImportError:
             pass
 
-        if not is_http_error:
-            logger.warning("arlc indexing unavailable (falling back to stub): %s", exc)
-
-        # Stub: write a simple manifest so the job is considered complete
-        manifest = {
-            "client_slug": client_slug,
-            "indexed_at": datetime.datetime.utcnow().isoformat(),
-            "doc_count": doc_count,
-            "docs": [str(p) for p in docs_dir.glob("*.meta")],
-            "stub": True,
-            "chunks_skipped": chunks_skipped,
-        }
-        manifest_path = index_dir / "manifest.json"
-        manifest_path.write_text(json.dumps(manifest, indent=2))
+        # Non-HTTP exception (ImportError for arlc, DB error, etc.): re-raise
+        raise
 
     return doc_count, chunks_skipped
 
@@ -271,12 +282,22 @@ async def run_reindex_job(
 
     except Exception as exc:
         logger.exception("Reindex job %s failed: %s", job_id, exc)
-        await update_job(
-            job_id,
-            status="failed",
-            completed_at=datetime.datetime.utcnow().isoformat(),
-            error="Indexing failed. Please try again or contact support.",
-        )
+        try:
+            await update_job(
+                job_id,
+                status="failed",
+                completed_at=datetime.datetime.utcnow().isoformat(),
+                error="Indexing failed. Please try again or contact support.",
+            )
+        except Exception as update_exc:
+            # DB may be down — log at CRITICAL so it surfaces even if the job
+            # row stays stuck in "running". Do not re-raise: the background task
+            # has already failed and there's nothing useful left to do.
+            logger.critical(
+                "Reindex job %s: FAILED to record failure in DB — job may appear stuck as 'running'. DB error: %s",
+                job_id,
+                update_exc,
+            )
 
 
 def _hot_swap_index(app: "FastAPI", client_slug: str, index_dir: Path) -> None:

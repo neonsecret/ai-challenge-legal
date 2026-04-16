@@ -537,8 +537,16 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                     }
                     if (hasPending) {
                         const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
+                        // Use a cancelled flag so this poll doesn't mutate state after
+                        // the user has switched to a different session.
+                        let cancelled = false
+                        // Also check currentSessionIdRef so that if the user switches
+                        // sessions, the old poll stops even if cancelled isn't flipped.
+                        const pollSessionId = id
                         ;(async () => {
+                            const isCancelled = () => cancelled || currentSessionIdRef.current !== pollSessionId
                             const fetchLastAnswer = async (): Promise<boolean> => {
+                                if (isCancelled()) return false
                                 try {
                                     const r2 = await fetch(
                                         `${API}/api/v1/conversations/${encodeURIComponent(id)}/last-answer`,
@@ -561,6 +569,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                             }
 
                             for (let attempt = 0; attempt < 120; attempt++) {
+                                if (isCancelled()) return
                                 try {
                                     const r = await fetch(
                                         `${API}/api/v1/conversations/${encodeURIComponent(id)}/status`,

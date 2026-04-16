@@ -96,6 +96,11 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE conversation_messages ADD COLUMN IF NOT EXISTS trace_id TEXT;"),
         )
+        # chunks.id DEFAULT: ensure gen_random_uuid() is set so INSERTs that
+        # omit id never fail with NotNullViolation (idempotent).
+        await conn.execute(
+            text("ALTER TABLE chunks ALTER COLUMN id SET DEFAULT gen_random_uuid();"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.
