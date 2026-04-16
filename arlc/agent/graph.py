@@ -435,20 +435,27 @@ def _build_llm_pair():
 
 
 _compiled_graph = None
+_graph_lock = asyncio.Lock()
 
 
-def _get_agent_graph():
+async def _get_agent_graph():
     """Return the cached compiled agent graph (singleton).
 
     The graph is stateless — per-request data (``on_status``, docs, messages)
     flows through the ``AgentState`` dict, so a single compiled graph is safe
     to reuse across requests.  This avoids re-building the LLM bindings and
     compiling the StateGraph on every turn.
+
+    Uses an asyncio.Lock to prevent concurrent coroutines from building
+    duplicate graphs during startup.
     """
     global _compiled_graph
-    if _compiled_graph is None:
-        _compiled_graph = build_agent_graph()
-    return _compiled_graph
+    if _compiled_graph is not None:
+        return _compiled_graph
+    async with _graph_lock:
+        if _compiled_graph is None:
+            _compiled_graph = build_agent_graph()
+        return _compiled_graph
 
 
 def build_agent_graph():
@@ -1158,7 +1165,7 @@ async def run_agent_turn(
         "custom_doc_ids": custom_doc_ids,
     }
 
-    graph = _get_agent_graph()
+    graph = await _get_agent_graph()
 
     # --- Streaming state ---
     final_answer_parts: list[str] = []
