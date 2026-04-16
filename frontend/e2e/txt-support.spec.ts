@@ -94,6 +94,24 @@ const SSE_WITH_TXT_MEDIAFALLBACK = sseBody([
   { event: "done", data: {} },
 ]);
 
+/** SSE response with a document_generated event for a TXT file.
+ *  template_name ends in ".txt" so DocumentViewer's isTxt detection triggers.
+ *  Used by TXT-5 to verify the correct /api/v1/documents/{id}/txt endpoint is called. */
+const SSE_WITH_TXT_DOC_GENERATED = sseBody([
+  { event: "answer", data: { answer: "The statute document has been generated.", sources: [], confidence: 0.9 } },
+  {
+    event: "document_generated",
+    data: {
+      doc_id: TXT_DOC_UUID,
+      template_slug: "txt_statute",
+      template_name: "statute.txt",
+      version: 1,
+      fields: { section: "42" },
+    },
+  },
+  { event: "done", data: {} },
+]);
+
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -458,6 +476,67 @@ test("TXT-4b: media_type fallback path — citation pill still shows L.N label",
 
     const pageLabel = page.locator("text=p.42").first();
     await expect(pageLabel).not.toBeVisible({ timeout: 2_000 });
+  } finally {
+    await context.close();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// TXT-5 — DocumentViewer fetches TXT via /api/v1/documents/{id}/txt (not conversations path)
+// ---------------------------------------------------------------------------
+test("TXT-5: DocumentViewer for a TXT document fetches from /api/v1/documents/{id}/txt, not the conversations path", async ({ browser }) => {
+  // Regression guard for NEO-2149: DocumentViewer.tsx previously built txtUrl as
+  //   /api/v1/conversations/{chatId}/documents/{docId}/txt  (404 — endpoint does not exist)
+  // The correct endpoint is:
+  //   /api/v1/documents/{docId}/txt
+  // This test opens the viewer for a .txt-named document and asserts the correct URL is hit.
+  const [page, context] = await createSeededPage(browser);
+  const txtRequests: string[] = [];
+
+  try {
+    await mockBaseRoutes(page);
+    await page.route("**/api/v1/query/stream", (route: Route) =>
+      route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_TXT_DOC_GENERATED })
+    );
+
+    // Intercept TXT fetch — correct endpoint is /api/v1/documents/*/txt (no "conversations" segment)
+    await page.route("**/api/v1/documents/*/txt", (route: Route) => {
+      txtRequests.push(route.request().url());
+      route.fulfill({ status: 200, contentType: "text/plain", body: "Section 42. Every person shall comply with the applicable regulations." });
+    });
+
+    // Intercept the wrong conversations path — must never be called after the fix
+    const wrongPathRequests: string[] = [];
+    await page.route("**/api/v1/conversations/*/documents/*/txt", (route: Route) => {
+      wrongPathRequests.push(route.request().url());
+      route.fulfill({ status: 404, body: "Not Found" });
+    });
+
+    await page.goto(`${FRONTEND}/chat`);
+    await clickFollowUp(page);
+
+    // Wait for document card to enter isReady=true state (v1 badge appears when fields are set)
+    await expect(page.locator("text=v1").first()).toBeVisible({ timeout: 15_000 });
+
+    // Click Preview to open DocumentViewer
+    const previewBtn = page.locator('button[aria-label="Preview"]').first();
+    await expect(previewBtn).toBeVisible({ timeout: 5_000 });
+    await previewBtn.click();
+
+    // Viewer must open (close button confirms the dialog is mounted)
+    await expect(page.locator('button[aria-label="Close document viewer"]')).toBeVisible({ timeout: 5_000 });
+
+    // Wait for the TXT fetch to fire — DocumentViewer's useEffect triggers on open+isTxt
+    await expect(async () => {
+      expect(txtRequests.length).toBeGreaterThan(0);
+    }).toPass({ timeout: 10_000 });
+
+    // The correct endpoint must be called
+    expect(txtRequests[0]).toContain(`/api/v1/documents/${TXT_DOC_UUID}/txt`);
+    expect(txtRequests[0]).not.toContain("conversations");
+
+    // The wrong conversations path must never have been called
+    expect(wrongPathRequests).toHaveLength(0);
   } finally {
     await context.close();
   }
