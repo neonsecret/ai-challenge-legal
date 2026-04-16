@@ -142,7 +142,11 @@ _BUILTIN_CORPORA: frozenset[str] = frozenset({"difc", "czech", "uk", "au"})
 
 
 def _resolve_corpora_id(corpora_id: str, client_slug: str) -> list[str] | None:
-    """Resolve a corpora_id ('{client_slug}:{collection_name}') to its doc_ids.
+    """Resolve a corpora_id to its doc_ids.
+
+    Accepts two formats:
+    - '{client_slug}:{collection_name}' — returns doc_ids for that collection
+    - '{client_slug}' (bare) — returns all doc_ids for that tenant
 
     Returns None if the corpora_id is malformed, belongs to another user,
     or the collection has no documents.
@@ -150,9 +154,14 @@ def _resolve_corpora_id(corpora_id: str, client_slug: str) -> list[str] | None:
     from pathlib import Path
 
     parts = corpora_id.split(":", 1)
-    if len(parts) != 2:
+    if len(parts) == 2:
+        slug, collection_name = parts
+    elif corpora_id == client_slug:
+        slug = corpora_id
+        collection_name = None  # all collections
+    else:
         return None
-    slug, collection_name = parts
+
     # Access control: user can only query their own collections
     if slug != client_slug:
         return None
@@ -167,7 +176,9 @@ def _resolve_corpora_id(corpora_id: str, client_slug: str) -> list[str] | None:
             meta = json.loads(meta_path.read_text())
             doc_id = meta.get("doc_id", "")
             collection = meta.get("collection", "My Documents")
-            if collection == collection_name and doc_id:
+            if collection_name is not None and collection != collection_name:
+                continue
+            if doc_id:
                 doc_ids.append(doc_id)
         except Exception:
             logger.warning("Failed to read meta file %s", meta_path, exc_info=True)
