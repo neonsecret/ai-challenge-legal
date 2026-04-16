@@ -161,6 +161,10 @@ async function clickFollowUp(page: Page) {
   const messageInput = page.getByRole("textbox", { name: "Message input" });
   await expect(messageInput).toBeVisible({ timeout: 10_000 });
   await messageInput.fill("What is the limitation period under DIFC Law No. 5 of 2005?");
+  // fill() sets the DOM value but doesn't fire React's synthetic input event — leaving
+  // hasText=false and the Send button disabled. Dispatch a native input event so React's
+  // onInput handler picks up the value and enables the button.
+  await messageInput.dispatchEvent("input");
   await page.getByRole("button", { name: "Send message" }).click();
 }
 
