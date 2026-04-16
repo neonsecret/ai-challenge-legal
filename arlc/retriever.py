@@ -460,6 +460,12 @@ def search_chunks_vector(
 # Corpora that require morphological query expansion for BM25 (highly inflected languages).
 _MORPHOLOGICAL_CORPORA: frozenset[str] = frozenset({"czech"})
 
+# RRF signal weights used across retrieval paths.
+# Vector search gets 0.7 (embedding models handle semantic similarity well),
+# BM25 gets 0.3 (keyword match for exact legal terms / section numbers),
+# court decisions enter at 0.5 (pre-fused internally from two legs).
+_RRF_VEC_WEIGHT: float = 0.7
+
 
 def _tsquery(query: str, _corpus: str, **extra) -> tuple[str, dict]:
     """Return ``(sql_fn_fragment, bound_params)`` for a tsvector BM25 query.
@@ -889,7 +895,7 @@ def _search_court_decisions_sync(
     row_by_ecli: dict[str, object] = {}
 
     for rank, row in enumerate(vec_rows):
-        rrf_scores[row.ecli] = rrf_scores.get(row.ecli, 0.0) + 0.7 / (_rrf_k + rank + 1)
+        rrf_scores[row.ecli] = rrf_scores.get(row.ecli, 0.0) + _RRF_VEC_WEIGHT / (_rrf_k + rank + 1)
         row_by_ecli.setdefault(row.ecli, row)
 
     for rank, row in enumerate(bm25_rows):
@@ -2514,7 +2520,7 @@ def _retrieve_pages_simple(
 
         # Statute vector signal (weight 0.7 — embedding model handles Czech semantics well)
         for rank, cid in enumerate(vector_results["ids"][0]):
-            rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + rank + 1)
+            rrf_scores[cid] = rrf_scores.get(cid, 0.0) + _RRF_VEC_WEIGHT / (_rrf_k + rank + 1)
 
         # Statute BM25 signal (weight 0.3 — keyword match for exact legal terms / §-numbers)
         for rank, cid in enumerate(bm25_chunk_ids):
@@ -2539,7 +2545,7 @@ def _retrieve_pages_simple(
                         "metadata": custom_vector_results["metadatas"][0][i],
                         "distance": custom_vector_results["distances"][0][i],
                     }
-                rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + i + 1)
+                rrf_scores[cid] = rrf_scores.get(cid, 0.0) + _RRF_VEC_WEIGHT / (_rrf_k + i + 1)
 
         # Fetch text/metadata for BM25-only statute hits not in vector results
         bm25_only_ids = [cid for cid in bm25_chunk_ids if cid not in chunk_by_id]
@@ -2600,7 +2606,7 @@ def _retrieve_pages_simple(
                     "metadata": vector_results["metadatas"][0][i],
                     "distance": vector_results["distances"][0][i],
                 }
-                rrf_scores[cid] = 0.7 / (_rrf_k + i + 1)
+                rrf_scores[cid] = _RRF_VEC_WEIGHT / (_rrf_k + i + 1)
 
             for i in range(len(custom_vector_results["ids"][0])):
                 cid = custom_vector_results["ids"][0][i]
@@ -2611,7 +2617,7 @@ def _retrieve_pages_simple(
                         "metadata": custom_vector_results["metadatas"][0][i],
                         "distance": custom_vector_results["distances"][0][i],
                     }
-                rrf_scores[cid] = rrf_scores.get(cid, 0.0) + 0.7 / (_rrf_k + i + 1)
+                rrf_scores[cid] = rrf_scores.get(cid, 0.0) + _RRF_VEC_WEIGHT / (_rrf_k + i + 1)
 
             fused_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)
             chunks = [chunk_by_id[cid] for cid in fused_ids if cid in chunk_by_id]
