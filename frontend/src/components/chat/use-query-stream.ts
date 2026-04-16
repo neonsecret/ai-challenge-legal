@@ -201,6 +201,11 @@ export function useQueryStream(): UseQueryStreamReturn {
     }, [])
 
     const abort = useCallback(() => {
+        if (intermediateClearTimerRef.current !== null) {
+            clearTimeout(intermediateClearTimerRef.current)
+            intermediateClearTimerRef.current = null
+        }
+        intermediateTimerArmedRef.current = false
         if (abortRef.current) {
             abortRef.current.abort()
             abortRef.current = null

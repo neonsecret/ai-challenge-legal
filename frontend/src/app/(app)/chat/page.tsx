@@ -292,7 +292,6 @@ export default function ChatPage() {
                         localStorage.setItem("neolex_custom_corpus", first.corpus_id)
                         localStorage.setItem("neolex_custom_corpus_name", first.name)
                         // Default: "All" (no collection filter)
-                        localStorage.removeItem("neolex_selected_collection")
                         localStorage.removeItem("neolex_selected_doc_ids")
                     }
                 }
@@ -308,17 +307,11 @@ export default function ChatPage() {
 
     // Restore selectedCorporaId from localStorage once corpora are loaded.
     // Guard: only run when corpora have loaded AND selectedCorporaId is still null (i.e. not yet
-    // set by the user this session). This mirrors what ChatHeader does for the visual pill.
+    // set by the user this session). Restores the authoritative ID written by ChatHeader pill clicks.
     useEffect(() => {
         if (availableCorpora.length === 0 || selectedCorporaId !== null) return
-        const stored = localStorage.getItem("neolex_selected_collection")
-        if (!stored) return
-        if (stored === "__all__") {
-            setSelectedCorporaId(availableCorpora[0].corpus_id)
-        } else {
-            const match = availableCorpora.find(c => c.name === stored)
-            if (match) setSelectedCorporaId(`${match.corpus_id}:${match.name}`)
-        }
+        const stored = localStorage.getItem("neolex_selected_corpora_id")
+        if (stored) setSelectedCorporaId(stored)
     }, [availableCorpora, selectedCorporaId, setSelectedCorporaId])
 
     // Reset preview when jurisdiction changes
@@ -711,6 +704,7 @@ export default function ChatPage() {
                     <ChatInput
                         onSend={onSend}
                         disabled={isStreaming}
+                        onStop={abort}
                         onFocusRef={inputFocusRef}
                         onTemplateSelect={handleTemplateSelect}
                         documentCount={docState.count}

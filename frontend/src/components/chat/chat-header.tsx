@@ -1,6 +1,5 @@
 "use client"
 
-import {useState} from "react"
 import {SquarePen, History, BookOpen} from "lucide-react"
 import {type Jurisdiction} from "@/lib/jurisdictions"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
@@ -81,11 +80,13 @@ export function ChatHeader({
     documentCount,
     selectedCorporaId, setSelectedCorporaId,
 }: ChatHeaderProps) {
-    // Track selected collection in state so clicking a pill re-renders immediately.
-    // Initialized from localStorage so it survives page navigation.
-    const [selectedCollection, setSelectedCollection] = useState<string | null>(
-        () => typeof window !== "undefined" ? localStorage.getItem("neolex_selected_collection") : null
-    )
+    // Derive selected collection from selectedCorporaId (single source of truth).
+    // null → null, "corpusId" (no colon) → "__all__", "corpusId:name" → "name"
+    const selectedCollection = selectedCorporaId === null
+        ? null
+        : selectedCorporaId.includes(":")
+            ? selectedCorporaId.slice(selectedCorporaId.indexOf(":") + 1)
+            : "__all__"
 
     const btnStyle = (active: boolean) => ({
         display: "flex" as const, alignItems: "center" as const, gap: SPACE[1],
@@ -306,8 +307,7 @@ export function ChatHeader({
                                     key="__none__"
                                     onClick={() => {
                                         setSelectedCorporaId(null)
-                                        setSelectedCollection(null)
-                                        localStorage.removeItem("neolex_selected_collection")
+                                        localStorage.removeItem("neolex_selected_corpora_id")
                                         localStorage.removeItem("neolex_selected_doc_ids")
                                     }}
                                     style={pillStyle(isNoneActive)}
@@ -320,8 +320,7 @@ export function ChatHeader({
                                     onClick={() => {
                                         const corpusId = availableCorpora[0]?.corpus_id ?? ""
                                         setSelectedCorporaId(corpusId)
-                                        setSelectedCollection("__all__")
-                                        localStorage.setItem("neolex_selected_collection", "__all__")
+                                        localStorage.setItem("neolex_selected_corpora_id", corpusId)
                                         localStorage.removeItem("neolex_selected_doc_ids")
                                     }}
                                     style={pillStyle(selectedCollection === "__all__" && !!selectedCorporaId)}
@@ -336,9 +335,9 @@ export function ChatHeader({
                                         <button
                                             key={c.name}
                                             onClick={() => {
-                                                setSelectedCorporaId(`${c.corpus_id}:${c.name}`)
-                                                setSelectedCollection(c.name)
-                                                localStorage.setItem("neolex_selected_collection", c.name)
+                                                const id = `${c.corpus_id}:${c.name}`
+                                                setSelectedCorporaId(id)
+                                                localStorage.setItem("neolex_selected_corpora_id", id)
                                                 if (c.doc_ids?.length) localStorage.setItem("neolex_selected_doc_ids", JSON.stringify(c.doc_ids))
                                                 else localStorage.removeItem("neolex_selected_doc_ids")
                                             }}
