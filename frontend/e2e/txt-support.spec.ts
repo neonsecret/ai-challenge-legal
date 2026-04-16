@@ -145,6 +145,14 @@ async function mockBaseRoutes(page: Page) {
   await page.route("**/auth/me", (route: Route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_USER) })
   );
+  // Health endpoint — consumed by IndexInfoPanel on all app pages
+  await page.route("**/health", (route: Route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ pipeline_ready: true, status: "ok" }) })
+  );
+  // Corpora listing — called by chat page when custom jurisdiction is selected
+  await page.route("**/api/v1/corpora", (route: Route) =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ corpora: [] }) })
+  );
   await page.route("**/api/v1/conversations", (route: Route) => {
     const url = new URL(route.request().url());
     if (url.pathname === "/api/v1/conversations") {
@@ -198,22 +206,28 @@ test("TXT-1: upload zone accepts a .txt file and calls the backend upload endpoi
     await mockBaseRoutes(page);
     await mockDocumentsPage(page);
 
-    // Mock the document upload endpoint — return a minimal success response
-    await page.route("**/api/v1/documents/upload", (route: Route) => {
-      uploadCalled = true;
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          doc_id: TXT_DOC_UUID,
-          filename: "statute.txt",
-          size_bytes: 42,
-          upload_ts: new Date().toISOString(),
-          indexed: false,
-          collection: "My Documents",
-          media_type: "text/plain",
-        }),
-      });
+    // Mock the document upload endpoint (POST /api/v1/documents) — return a minimal success response.
+    // Note: the upload route is registered AFTER mockDocumentsPage so it takes precedence (Playwright LIFO).
+    // We check the method to let GETs fall through to the mockDocumentsPage handler.
+    await page.route("**/api/v1/documents", (route: Route) => {
+      if (route.request().method() === "POST") {
+        uploadCalled = true;
+        route.fulfill({
+          status: 201,
+          contentType: "application/json",
+          body: JSON.stringify({
+            doc_id: TXT_DOC_UUID,
+            filename: "statute.txt",
+            size_bytes: 42,
+            upload_ts: new Date().toISOString(),
+            indexed: false,
+            collection: "My Documents",
+            media_type: "text/plain",
+          }),
+        });
+      } else {
+        route.continue();
+      }
     });
 
     await page.goto(`${FRONTEND}/documents`);

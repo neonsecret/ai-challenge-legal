@@ -184,6 +184,135 @@ class TestAttachSourceText:
         _attach_source_text([{"doc_id": "x", "page_numbers": [1]}], [])  # no source pages — no-op
 
 
+class TestRetrievePagesTxtSourceType:
+    """_retrieve_pages_simple propagates source_type=txt to PageResult (NEO-2144)."""
+
+    def _make_txt_chunk(self, doc_id="txt-doc-001", page=1, chunk_id="chunk-txt-abc"):
+        return {
+            "chunk_id": chunk_id,
+            "text": "§ 1 This is a TXT corpus passage.",
+            "metadata": {
+                "doc_id": doc_id,
+                "pdf_id": doc_id,
+                "page": page,
+                "source_type": "txt",
+                "source_file": "corpus.txt",
+                "chunk_id": chunk_id,
+                "start_line": 1,
+                "end_line": 20,
+            },
+            "distance": 0.1,
+        }
+
+    def test_txt_chunk_source_type_propagates_to_page_result(self):
+        """Main chunk loop must carry source_type=txt through to PageResult."""
+        from unittest.mock import patch
+
+        from arlc.retriever import _retrieve_pages_simple
+
+        chunk = self._make_txt_chunk()
+        vector_results = {
+            "ids": [[chunk["chunk_id"]]],
+            "documents": [[chunk["text"]]],
+            "metadatas": [[chunk["metadata"]]],
+            "distances": [[chunk["distance"]]],
+        }
+
+        with (
+            patch("arlc.retriever.embed_query", return_value=[0.0] * 4096),
+            patch("arlc.retriever.search_chunks_vector", return_value=vector_results),
+            patch("arlc.retriever.rerank_chunks", side_effect=lambda q, chunks, **kw: chunks),
+            patch("arlc.retriever.get_chunk_count", return_value=1),
+        ):
+            results = _retrieve_pages_simple("some query", corpus="uk", max_total=3)
+
+        assert len(results) == 1
+        r = results[0]
+        assert r.source_type == "txt", f"Expected 'txt', got {r.source_type!r}"
+        assert r.doc_id == "txt-doc-001"
+        assert r.start_line == 1
+        assert r.end_line == 20
+
+    def test_court_decision_source_type_unchanged_after_fix(self):
+        """Regression: court_decision source_type must still propagate correctly."""
+        from unittest.mock import patch
+
+        from arlc.retriever import _retrieve_pages_simple
+
+        chunk = {
+            "chunk_id": "ECLI:CZ:NS:2023:21.CDO.1.2023.1",
+            "text": "Pravni veta text",
+            "metadata": {
+                "doc_id": "ECLI:CZ:NS:2023:21.CDO.1.2023.1",
+                "pdf_id": "ECLI:CZ:NS:2023:21.CDO.1.2023.1",
+                "page": 1,
+                "source_type": "court_decision",
+                "source_file": None,
+                "chunk_id": "ECLI:CZ:NS:2023:21.CDO.1.2023.1",
+                "case_number": "21 Cdo 1/2023",
+                "ecli": "ECLI:CZ:NS:2023:21.CDO.1.2023.1",
+                "decision_date": "2023-06-15",
+                "court": "Nejvyssi soud",
+                "category": "A",
+                "legal_thesis": "Pravni veta text",
+            },
+            "distance": 0.2,
+        }
+        vector_results = {
+            "ids": [[chunk["chunk_id"]]],
+            "documents": [[chunk["text"]]],
+            "metadatas": [[chunk["metadata"]]],
+            "distances": [[chunk["distance"]]],
+        }
+
+        with (
+            patch("arlc.retriever.embed_query", return_value=[0.0] * 4096),
+            patch("arlc.retriever.search_chunks_vector", return_value=vector_results),
+            patch("arlc.retriever.rerank_chunks", side_effect=lambda q, chunks, **kw: chunks),
+            patch("arlc.retriever.get_chunk_count", return_value=1),
+        ):
+            results = _retrieve_pages_simple("some query", corpus="uk", max_total=3)
+
+        assert len(results) == 1
+        r = results[0]
+        assert r.source_type == "court_decision"
+        assert r.ecli == "ECLI:CZ:NS:2023:21.CDO.1.2023.1"
+        assert r.case_number == "21 Cdo 1/2023"
+        assert r.court == "Nejvyssi soud"
+
+    def test_txt_vector_top_injection_propagates_source_type(self):
+        """ft_court_meta (vector_top injection) path must also propagate source_type=txt.
+
+        vector_top is injected when reranking drops the top vector result.
+        Simulate by making rerank_chunks return an empty list.
+        """
+        from unittest.mock import patch
+
+        from arlc.retriever import _retrieve_pages_simple
+
+        chunk = self._make_txt_chunk(doc_id="txt-injected-doc", chunk_id="chunk-injected")
+        vector_results = {
+            "ids": [[chunk["chunk_id"]]],
+            "documents": [[chunk["text"]]],
+            "metadatas": [[chunk["metadata"]]],
+            "distances": [[chunk["distance"]]],
+        }
+
+        with (
+            patch("arlc.retriever.embed_query", return_value=[0.0] * 4096),
+            patch("arlc.retriever.search_chunks_vector", return_value=vector_results),
+            # Reranker drops everything — forces vector_top injection code path
+            patch("arlc.retriever.rerank_chunks", return_value=[]),
+            patch("arlc.retriever.get_chunk_count", return_value=1),
+        ):
+            results = _retrieve_pages_simple("some query", corpus="uk", max_total=3)
+
+        assert len(results) == 1
+        r = results[0]
+        assert r.source_type == "txt", f"Expected 'txt' via ft_court_meta path, got {r.source_type!r}"
+        assert r.doc_id == "txt-injected-doc"
+
+
 # ---------------------------------------------------------------------------
 # Integration tests — require PostgreSQL with court_decisions table
 # ---------------------------------------------------------------------------
