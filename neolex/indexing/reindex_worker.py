@@ -148,23 +148,22 @@ def _run_indexing_sync(client_slug: str, docs_dir: Path, index_dir: Path) -> tup
             if isinstance(exc, requests.exceptions.HTTPError):
                 status_code = getattr(exc.response, "status_code", 0)
                 if status_code == 400:
+                    # HTTP 400 from llama-server means a chunk exceeds the context
+                    # window. Stubbing the result is deceptive — it reports N docs
+                    # indexed but writes zero embeddings, so retrieval silently
+                    # returns nothing. Fail loudly so the user knows to split the
+                    # document into smaller files.
                     logger.error(
-                        "llama-server returned 400 during indexing — chunk likely exceeds context window: %s",
+                        "llama-server returned 400 during indexing — one or more chunks exceed "
+                        "the embedding model's context window. Split large documents and retry. "
+                        "Error: %s",
                         exc,
                     )
-                    chunks_skipped += 1
-                    # Stub manifest for this HTTP-400 case only
-                    manifest = {
-                        "client_slug": client_slug,
-                        "indexed_at": datetime.datetime.utcnow().isoformat(),
-                        "doc_count": doc_count,
-                        "docs": [str(p) for p in docs_dir.glob("*.meta")],
-                        "stub": True,
-                        "chunks_skipped": chunks_skipped,
-                    }
-                    manifest_path = index_dir / "manifest.json"
-                    manifest_path.write_text(json.dumps(manifest, indent=2))
-                    return doc_count, chunks_skipped
+                    raise RuntimeError(
+                        "Indexing failed: one or more documents are too large for the embedding "
+                        "model's context window. Please split large documents into smaller files "
+                        "and re-upload."
+                    ) from exc
                 # Non-400 HTTP error: re-raise
                 logger.error("llama-server HTTP %d during indexing: %s", status_code, exc)
                 raise

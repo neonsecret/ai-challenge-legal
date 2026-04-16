@@ -316,21 +316,18 @@ class TestUploadZipIndexesAndAppearsInCorpora:
         )
         assert manifest.get("doc_count") == 1
 
-    def test_http400_from_llama_produces_stub_manifest(
+    def test_http400_from_llama_raises_runtime_error(
         self,
         seeded_docs: tuple[Path, Path, str],
         client_slug: str,
         monkeypatch: pytest.MonkeyPatch,
     ):
-        """HTTP 400 from llama-server produces a stub manifest with chunks_skipped=1.
+        """HTTP 400 from llama-server raises RuntimeError — no deceptive stub.
 
-        This is the only non-re-raising failure path in _run_indexing_sync.
-        When llama-server rejects a chunk (HTTP 400, context window overflow),
-        the function writes a stub manifest, sets chunks_skipped=1, and returns
-        without re-raising — the job is marked complete_with_warnings.
-
-        This tests the exact fallback that Bug B's NotNullViolation bypassed:
-        the indexing pipeline must reach the INSERT step for this path to matter.
+        Previously this wrote a stub manifest claiming docs were indexed while
+        zero embeddings existed. Retrieval silently returned nothing. The correct
+        behavior is to fail with a clear message so the user knows to split large
+        documents. No stub manifest should be written.
         """
         import requests as _requests
 
@@ -348,14 +345,8 @@ class TestUploadZipIndexesAndAppearsInCorpora:
 
         monkeypatch.setattr(rw, "_run_arlc_indexing", http400_arlc)
 
-        # Must NOT raise — HTTP 400 is handled gracefully
-        doc_count, chunks_skipped = rw._run_indexing_sync(client_slug, docs_dir, index_dir)
+        with pytest.raises(RuntimeError, match="context window"):
+            rw._run_indexing_sync(client_slug, docs_dir, index_dir)
 
-        assert isinstance(doc_count, int)
-        assert chunks_skipped == 1, "HTTP 400 must increment chunks_skipped"
-
-        manifest_path = index_dir / "manifest.json"
-        assert manifest_path.exists(), "Stub manifest must be written on HTTP 400"
-        manifest = json.loads(manifest_path.read_text())
-        assert manifest.get("stub") is True, "HTTP-400 fallback path must produce stub=true manifest"
-        assert manifest.get("chunks_skipped") == 1
+        # No stub manifest — failing loudly means no deceptive "indexed" state
+        assert not (index_dir / "manifest.json").exists()

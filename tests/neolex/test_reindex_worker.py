@@ -75,8 +75,14 @@ class TestRunIndexingSync:
 
         assert not (index_dir / "manifest.json").exists()
 
-    def test_reindex_http400_stubs(self, tmp_path: Path):
-        """HTTP 400 from llama-server writes a stub manifest and returns (doc_count, 1)."""
+    def test_reindex_http400_raises(self, tmp_path: Path):
+        """HTTP 400 from llama-server must raise RuntimeError, not stub.
+
+        Previously this wrote a stub manifest claiming N docs were indexed
+        while zero embeddings were written — retrieval silently returned nothing.
+        The correct behavior is to fail loudly with a clear message so the user
+        knows to split large documents.
+        """
         from neolex.indexing.reindex_worker import _run_indexing_sync
 
         docs_dir = tmp_path / "docs"
@@ -87,19 +93,11 @@ class TestRunIndexingSync:
         http_400 = _make_http_error(400)
 
         with patch("neolex.indexing.reindex_worker._run_arlc_indexing", side_effect=http_400):
-            doc_count, chunks_skipped = _run_indexing_sync("test-client", docs_dir, index_dir)
+            with pytest.raises(RuntimeError, match="context window"):
+                _run_indexing_sync("test-client", docs_dir, index_dir)
 
-        assert chunks_skipped == 1
-        assert doc_count == 0  # no meta files in docs_dir
-
-        # Stub manifest must be written
-        manifest_path = index_dir / "manifest.json"
-        assert manifest_path.exists()
-        import json
-
-        manifest = json.loads(manifest_path.read_text())
-        assert manifest["stub"] is True
-        assert manifest["chunks_skipped"] == 1
+        # No stub manifest should be written — the job failed
+        assert not (index_dir / "manifest.json").exists()
 
     def test_reindex_http_non_400_propagates(self, tmp_path: Path):
         """HTTP 503 (or any non-400) from llama-server must re-raise, not stub."""
