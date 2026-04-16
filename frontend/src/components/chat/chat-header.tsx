@@ -1,5 +1,6 @@
 "use client"
 
+import {useState} from "react"
 import {useRouter} from "next/navigation"
 import {SquarePen, History, BookOpen} from "lucide-react"
 import {type Jurisdiction} from "@/lib/jurisdictions"
@@ -78,6 +79,11 @@ export function ChatHeader({
     documentCount,
 }: ChatHeaderProps) {
     const router = useRouter()
+    // Track selected collection in state so clicking a pill re-renders immediately.
+    // Initialized from localStorage so it survives page navigation.
+    const [selectedCollection, setSelectedCollection] = useState<string | null>(
+        () => typeof window !== "undefined" ? localStorage.getItem("neolex_selected_collection") : null
+    )
 
     const btnStyle = (active: boolean) => ({
         display: "flex" as const, alignItems: "center" as const, gap: SPACE[1],
@@ -289,9 +295,7 @@ export function ChatHeader({
                             Loading...
                         </span>
                     ) : availableCorpora.length > 0 ? (() => {
-                        const storedCollection = typeof window !== "undefined"
-                            ? localStorage.getItem("neolex_selected_collection") : null
-                        const isAllActive = !storedCollection
+                        const isAllActive = !selectedCollection
                         const corpusId = availableCorpora[0]?.corpus_id ?? ""
                         const totalDocs = availableCorpora.reduce((sum, c) => sum + (c.doc_count ?? c.doc_ids?.length ?? 0), 0)
 
@@ -304,6 +308,7 @@ export function ChatHeader({
                                         localStorage.setItem("neolex_custom_corpus_name", "All Documents")
                                         localStorage.removeItem("neolex_selected_collection")
                                         localStorage.removeItem("neolex_selected_doc_ids")
+                                        setSelectedCollection(null)
                                     }}
                                     style={pillStyle(isAllActive)}
                                     {...pillHover(isAllActive)}
@@ -311,7 +316,7 @@ export function ChatHeader({
                                     All ({totalDocs})
                                 </button>
                                 {availableCorpora.map((c) => {
-                                    const isActive = storedCollection === c.name
+                                    const isActive = selectedCollection === c.name
                                     const docCount = c.doc_count ?? c.doc_ids?.length ?? 0
                                     return (
                                         <button
@@ -322,6 +327,7 @@ export function ChatHeader({
                                                 localStorage.setItem("neolex_selected_collection", c.name)
                                                 if (c.doc_ids?.length) localStorage.setItem("neolex_selected_doc_ids", JSON.stringify(c.doc_ids))
                                                 else localStorage.removeItem("neolex_selected_doc_ids")
+                                                setSelectedCollection(c.name)
                                             }}
                                             title={`${c.name} (${docCount} ${docCount === 1 ? "doc" : "docs"})`}
                                             style={pillStyle(isActive)}
