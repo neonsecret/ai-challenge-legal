@@ -2702,6 +2702,7 @@ def retrieve_pages(
     answer_type: str = "",
     include_context_pages: bool = False,
     use_llm_rerank: bool = False,
+    use_hyde: bool = True,
     boost_pages: dict[str, int] | None = None,
     case_doc_groups: dict[str, list[str]] | None = None,
     corpus: str = "difc",
