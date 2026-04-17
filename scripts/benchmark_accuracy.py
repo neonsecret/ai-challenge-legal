@@ -7,6 +7,7 @@ Uses the SSE streaming endpoint. Pass --agent to use the LangGraph agent
 """
 
 import json
+import os
 import re
 import sys
 import time
@@ -15,7 +16,7 @@ import requests
 
 USE_AGENT = "--agent" in sys.argv
 
-BASE = "http://localhost:8000"
+BASE = os.environ.get("BACKEND_URL", "http://localhost:8000")
 TIMEOUT = 180
 
 # ── Login ────────────────────────────────────────────────────────────────────
@@ -23,11 +24,17 @@ session = requests.Session()
 # CSRF middleware requires X-Requested-With on all state-mutating requests
 session.headers.update({"X-Requested-With": "XMLHttpRequest"})
 
+_email = os.environ.get("TEST_ADMIN_EMAIL", "admin@vitreon.app")
+_password = os.environ.get("TEST_ADMIN_PASSWORD", "")
+if not _password:
+    print("TEST_ADMIN_PASSWORD not set — export it before running benchmarks")
+    sys.exit(1)
+
 r = session.post(
     f"{BASE}/auth/login",
     json={
-        "email": "admin@vitreon.app",
-        "password": "Vt9mK2xPqL7nR$#8!",
+        "email": _email,
+        "password": _password,
     },
 )
 if r.status_code != 200:
