@@ -2805,6 +2805,7 @@ def retrieve_pages(
                 max_per_doc=1,
                 max_total=1,
                 answer_type=answer_type,
+                corpus=corpus,
                 cached_query_emb=_question_emb,
             )
             seen = {}
@@ -2848,6 +2849,7 @@ def retrieve_pages(
                     max_per_doc,
                     max_total,
                     answer_type,
+                    corpus=corpus,
                     cached_query_emb=_question_emb,
                 )
         else:
@@ -2856,6 +2858,7 @@ def retrieve_pages(
                 max_per_doc,
                 max_total,
                 answer_type,
+                corpus=corpus,
                 cached_query_emb=_question_emb,
             )
 
@@ -3610,6 +3613,7 @@ def _retrieve_pages_fallback(
     max_per_doc: int,
     max_total: int,
     answer_type: str,
+    corpus: str = "difc",
     cached_query_emb=None,
 ) -> list[PageResult]:
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
@@ -3622,6 +3626,7 @@ def _retrieve_pages_fallback(
         # Disabled for exact-match types (date/number/name) where keyword matching suffices.
         use_hyde=(answer_type == "free_text"),
         answer_type=answer_type,
+        corpus=corpus,
         cached_query_emb=cached_query_emb,
     )
 
