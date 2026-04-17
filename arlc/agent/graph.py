@@ -47,6 +47,7 @@ from langchain_core.messages import (
 from langchain_core.tools import tool
 from langgraph.graph import END, StateGraph
 
+from arlc.agent.citation_validator import validate_citations
 from arlc.agent.config import (
     LLM_MAX_TOKENS,
     LLM_MODEL,
@@ -1255,6 +1256,11 @@ async def run_agent_turn(
     # extract it from the final graph output
     if not final_answer:
         logger.warning("[agent] turn produced no answer text")
+
+    # Post-processing: strip hallucinated/weak [DOC-N] citations before any
+    # source-relevance or page-verification steps that rely on citation text.
+    if final_answer and final_docs:
+        final_answer = validate_citations(final_answer, final_docs)
 
     # Post-processing: verify source relevance (informational, not blocking)
     if final_answer and final_docs:

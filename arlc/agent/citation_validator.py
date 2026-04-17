@@ -32,6 +32,15 @@ _CLAIM_CONTEXT_CHARS = 200
 # Below this threshold the citation tag is removed from the answer.
 _MIN_EVIDENCE_SCORE = 0.04
 
+_STOPWORDS = frozenset(
+    "a an the is are was were be been being have has had do does did "
+    "will would could should may might must shall can cannot of in on "
+    "at to for with from by and or but not if as so that this these "
+    "those it its which who whom whose when where why how all any each "
+    "both some no nor more very also just only even still about after "
+    "before between through without during".split(),
+)
+
 
 def filter_hallucinated_indices(answer: str, num_docs: int) -> tuple[str, list[int]]:
     """Remove [DOC-N] tags where N is outside the valid range [1, num_docs].
@@ -85,17 +94,8 @@ def _score_claim_against_doc(claim: str, doc_text: str) -> float:
     if not claim or not doc_text:
         return 0.0
 
-    _stopwords = frozenset(
-        "a an the is are was were be been being have has had do does did "
-        "will would could should may might must shall can cannot of in on "
-        "at to for with from by and or but not if as so that this these "
-        "those it its which who whom whose when where why how all any each "
-        "both some no nor more very also just only even still about after "
-        "before between through without during".split(),
-    )
-
     claim_tokens = re.findall(r"[a-zA-Z0-9\u00c0-\u024f]+", claim.lower())
-    keywords = [t for t in claim_tokens if t not in _stopwords and len(t) >= 3]
+    keywords = [t for t in claim_tokens if t not in _STOPWORDS and len(t) >= 3]
 
     if not keywords:
         return 0.0
