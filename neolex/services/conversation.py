@@ -22,6 +22,7 @@ from neolex.db.postgres import AsyncSessionLocal
 logger = logging.getLogger(__name__)
 
 MAX_HISTORY_TURNS = 10  # 5 Q&A pairs — worst-case context for agent cost control
+CONVERSATION_TITLE_MAX_LEN = 80  # characters before truncation with ellipsis
 
 
 def _to_conv_uuid(conversation_id: str) -> uuid.UUID:
@@ -180,8 +181,8 @@ async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
             conversations = []
             for row in rows:
                 title = row.first_user_content or "New chat"
-                if len(title) > 80:
-                    title = title[:80] + "..."
+                if len(title) > CONVERSATION_TITLE_MAX_LEN:
+                    title = title[:CONVERSATION_TITLE_MAX_LEN] + "..."
                 conversations.append(
                     {
                         "id": str(row.conversation_id),
