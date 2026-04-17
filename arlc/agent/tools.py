@@ -113,6 +113,7 @@ def execute_search(
         doc_ids=doc_ids,
         custom_corpus=custom_corpus,
         custom_doc_ids=custom_doc_ids,
+        use_hyde=False,
     )
 
     # Filter out already-seen docs and take top_k new

@@ -2710,6 +2710,7 @@ def retrieve_pages(
     doc_ids: list[str] | None = None,
     custom_corpus: str | None = None,
     custom_doc_ids: list[str] | None = None,
+    use_hyde: bool = True,
 ) -> list[PageResult]:
     """Retrieve the best pages for answering a question.
 
@@ -2807,6 +2808,7 @@ def retrieve_pages(
                 answer_type=answer_type,
                 corpus=corpus,
                 cached_query_emb=_question_emb,
+                use_hyde=use_hyde,
             )
             seen = {}
             for r in results + fb_results:
@@ -2851,6 +2853,7 @@ def retrieve_pages(
                     answer_type,
                     corpus=corpus,
                     cached_query_emb=_question_emb,
+                    use_hyde=use_hyde,
                 )
         else:
             results = _retrieve_pages_fallback(
@@ -2860,6 +2863,7 @@ def retrieve_pages(
                 answer_type,
                 corpus=corpus,
                 cached_query_emb=_question_emb,
+                use_hyde=use_hyde,
             )
 
     # ── Hybrid mode: merge custom corpus results into DIFC results ──
@@ -3615,6 +3619,7 @@ def _retrieve_pages_fallback(
     answer_type: str,
     corpus: str = "difc",
     cached_query_emb=None,
+    use_hyde: bool = True,
 ) -> list[PageResult]:
     """Retrieve pages using full-corpus hybrid retrieval when no target docs are known."""
     # Use existing hybrid retrieval to get ranked chunks — pass answer_type for per-type depth
@@ -3624,7 +3629,8 @@ def _retrieve_pages_fallback(
         # HyDE improves semantic retrieval for free_text by generating a hypothetical
         # legal passage, bridging the vocabulary gap between question and document text.
         # Disabled for exact-match types (date/number/name) where keyword matching suffices.
-        use_hyde=(answer_type == "free_text"),
+        # Also disabled when use_hyde=False (agent path skips HyDE for lower latency).
+        use_hyde=(use_hyde and answer_type == "free_text"),
         answer_type=answer_type,
         corpus=corpus,
         cached_query_emb=cached_query_emb,
