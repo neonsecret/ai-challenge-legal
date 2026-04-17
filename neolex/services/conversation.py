@@ -57,11 +57,11 @@ async def load_history(user_id: str, conversation_id: str) -> list[dict]:
                     ConversationMessage.user_id == uid,
                     ConversationMessage.conversation_id == cid,
                 )
-                .order_by(ConversationMessage.created_at.asc())
+                .order_by(ConversationMessage.created_at.desc())
                 .limit(MAX_HISTORY_TURNS),
             )
             rows = result.all()
-            return [{"role": row.role, "content": row.content} for row in rows]
+            return [{"role": row.role, "content": row.content} for row in reversed(rows)]
     except Exception:
         logger.exception("Failed to load conversation history for conv=%s", conversation_id)
         return []
