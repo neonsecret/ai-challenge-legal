@@ -20,8 +20,6 @@ import uuid
 
 import pytest
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
 
 import neolex.db.postgres as _pg
 from neolex.db.audit import AuditDB
@@ -34,26 +32,7 @@ from neolex.db.postgres import init_db
 
 
 @pytest.fixture(scope="session", autouse=True)
-def install_null_pool_lifecycle_engine():
-    """Replace the global engine with NullPool to prevent cross-loop connection reuse."""
-    _db_url = _pg._db_url
-    test_engine = create_async_engine(_db_url, poolclass=NullPool)
-    test_sessions = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-
-    old_engine = _pg.engine
-    old_sessions = _pg.AsyncSessionLocal
-
-    _pg.engine = test_engine
-    _pg.AsyncSessionLocal = test_sessions
-
-    yield
-
-    _pg.engine = old_engine
-    _pg.AsyncSessionLocal = old_sessions
-
-
-@pytest.fixture(scope="session", autouse=True)
-def ensure_lifecycle_schema(install_null_pool_lifecycle_engine):  # noqa: ARG001
+def ensure_lifecycle_schema(_install_nullpool_engine):  # noqa: ARG001 — NullPool installed by root conftest
     """Create all PostgreSQL tables once for the lifecycle test session."""
     asyncio.run(init_db())
 

@@ -4,6 +4,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Load .env before any neolex module imports so DATABASE_URL and other env vars
@@ -28,3 +30,42 @@ collect_ignore = [
     "test_agent_tools.py",
     "test_agent_v2.py",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Asyncpg pool isolation — prevent cross-module event-loop contamination
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _install_nullpool_engine():
+    """Replace the global SQLAlchemy engine with a NullPool version for the
+    entire test session.
+
+    asyncpg connections are bound to the event loop that created them.
+    pytest-asyncio (auto mode) creates a new loop per test, so pooled
+    connections from test N become invalid in test N+1's loop. NullPool
+    opens a fresh connection per operation, avoiding cross-loop reuse.
+    """
+    try:
+        import neolex.db.postgres as pg
+    except Exception:
+        yield
+        return
+
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    test_engine = create_async_engine(pg._db_url, poolclass=NullPool)
+    test_sessions = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+    old_engine = pg.engine
+    old_sessions = pg.AsyncSessionLocal
+
+    pg.engine = test_engine
+    pg.AsyncSessionLocal = test_sessions
+
+    yield
+
+    pg.engine = old_engine
+    pg.AsyncSessionLocal = old_sessions

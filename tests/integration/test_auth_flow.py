@@ -21,10 +21,10 @@ from sqlalchemy import select
 # loop as every DB call — avoids "Future attached to a different loop" errors.
 pytestmark = pytest.mark.asyncio(loop_scope="module")
 
+import neolex.db.postgres as pg
 from neolex.auth.session import MAX_SESSIONS_PER_USER, create_session
 from neolex.db.models import Session as DBSession
 from neolex.db.models import User
-from neolex.db.postgres import AsyncSessionLocal, init_db
 
 # ---------------------------------------------------------------------------
 # Schema initialization (idempotent — safe against a live dev DB)
@@ -34,7 +34,7 @@ from neolex.db.postgres import AsyncSessionLocal, init_db
 @pytest.fixture(autouse=True, scope="module")
 async def _ensure_schema():
     """Create all tables and PostgreSQL extensions if not already present."""
-    await init_db()
+    await pg.init_db()
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +53,7 @@ def _test_email() -> str:
 
 async def _cleanup_user(email: str) -> None:
     """Delete the test user and all cascaded rows (sessions, auth_tokens)."""
-    async with AsyncSessionLocal() as db:
+    async with pg.AsyncSessionLocal() as db:
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
         if user:
@@ -188,7 +188,7 @@ async def test_session_committed_before_redirect(client):
         assert session_cookie
 
         # Independent pool connection — simulates /auth/me on a different DB connection
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             token_hash = hash_token(session_cookie)
 
             sess_result = await db.execute(select(DBSession).where(DBSession.token_hash == token_hash))
@@ -235,7 +235,7 @@ async def test_concurrent_session_creation():
     n = MAX_SESSIONS_PER_USER + 2
 
     try:
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             user = User(
                 email=email,
                 email_verified=True,
@@ -249,7 +249,7 @@ async def test_concurrent_session_creation():
             user_id = user.id
 
         async def _create_one(index: int) -> str:
-            async with AsyncSessionLocal() as db:
+            async with pg.AsyncSessionLocal() as db:
                 result = await db.execute(select(User).where(User.id == user_id))
                 u = result.scalar_one()
                 return await create_session(u, db, ip=f"10.0.2.{index}", user_agent=f"concurrent-{index}")
@@ -262,7 +262,7 @@ async def test_concurrent_session_creation():
         # Each session token must be unique (no hash collisions or shared rows)
         assert len(set(tokens)) == n, "Every concurrent session must have a unique token"
 
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             result = await db.execute(select(DBSession).where(DBSession.user_id == user_id))
             final_count = len(result.scalars().all())
 
@@ -345,7 +345,7 @@ async def test_session_limit():
     email = _test_email()
 
     try:
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             user = User(
                 email=email,
                 email_verified=True,
@@ -360,12 +360,12 @@ async def test_session_limit():
 
         # Fill to the cap
         for i in range(MAX_SESSIONS_PER_USER):
-            async with AsyncSessionLocal() as db:
+            async with pg.AsyncSessionLocal() as db:
                 result = await db.execute(select(User).where(User.id == user_id))
                 u = result.scalar_one()
                 await create_session(u, db, ip=f"10.0.1.{i}")
 
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             result = await db.execute(select(DBSession).where(DBSession.user_id == user_id))
             count_at_cap = len(result.scalars().all())
 
@@ -374,12 +374,12 @@ async def test_session_limit():
         )
 
         # One more session — oldest must be evicted, total must stay at MAX
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             result = await db.execute(select(User).where(User.id == user_id))
             u = result.scalar_one()
             await create_session(u, db, ip="10.0.1.99")
 
-        async with AsyncSessionLocal() as db:
+        async with pg.AsyncSessionLocal() as db:
             result = await db.execute(select(DBSession).where(DBSession.user_id == user_id))
             final_count = len(result.scalars().all())
 

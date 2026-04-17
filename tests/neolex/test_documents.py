@@ -23,8 +23,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import neolex.db.postgres as _pg
 from neolex.auth.session import get_current_user
@@ -49,30 +48,7 @@ _BINARY_STUB = b"Not text\x00binary garbage\x01\x02"
 
 
 @pytest.fixture(scope="session", autouse=True)
-def install_null_pool_docs_engine():
-    """Replace the global SQLAlchemy engine with NullPool for document tests.
-
-    NullPool never caches connections, so each test's event loop gets a fresh
-    connection that it owns — avoids asyncpg "bound to a different loop" errors.
-    """
-    _db_url = _pg._db_url
-    test_engine = create_async_engine(_db_url, poolclass=NullPool)
-    test_sessions = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-
-    old_engine = _pg.engine
-    old_sessions = _pg.AsyncSessionLocal
-
-    _pg.engine = test_engine
-    _pg.AsyncSessionLocal = test_sessions
-
-    yield
-
-    _pg.engine = old_engine
-    _pg.AsyncSessionLocal = old_sessions
-
-
-@pytest.fixture(scope="session", autouse=True)
-def ensure_docs_schema(install_null_pool_docs_engine):  # noqa: ARG001
+def ensure_docs_schema(_install_nullpool_engine):  # noqa: ARG001 — NullPool installed by root conftest
     """Create all PostgreSQL tables once for this test session."""
     asyncio.run(init_db())
 
