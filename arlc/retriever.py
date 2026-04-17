@@ -2901,6 +2901,7 @@ def retrieve_pages(
                 max_per_doc=1,
                 max_total=1,
                 answer_type=answer_type,
+                corpus=corpus,
                 cached_query_emb=_question_emb,
             )
             seen = {}
