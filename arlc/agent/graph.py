@@ -435,6 +435,7 @@ def build_agent_graph():
 
         Used by HAIKU_ROUTING_MODE='classifier' to determine whether Haiku is safe.
         Haiku handles greetings/capability questions well; legal research needs Sonnet.
+        Supports English, Czech, and Arabic for NEO-2412.
         """
         lower = text.lower().strip()
         greeting_prefixes = (
@@ -448,6 +449,21 @@ def build_agent_graph():
             "thank you",
             "bye",
             "goodbye",
+            "ahoj",
+            "dobrý den",
+            "dobry den",
+            "děkuji",
+            "dekuji",
+            "na shledanou",
+            "marhaba",
+            "أهلا",
+            "أهلاً",
+            "مرحبا",
+            "مرحب",
+            "شكرا",
+            "شكراً",
+            "مع السلامة",
+            "تحياتي",
         )
         meta_phrases = (
             "what can you do",
@@ -461,6 +477,24 @@ def build_agent_graph():
             "can you help",
             "what do you know",
             "tell me about yourself",
+            "co umíš",
+            "co umis",
+            "co musis delat",
+            "co musis vedet",
+            "kdo jsi",
+            "jak pracujes",
+            "co víš",
+            "co vis",
+            "jaké jsou jurisdikce",
+            "jake jsou jurisdikce",
+            "jake jaziky",
+            "jaké jazyky",
+            "ما الذي يمكنك فعله",
+            "من انت",
+            "ماذا تعرف",
+            "ما هي الاختصاصات",
+            "ما هي اللغات",
+            "هل يمكنك المساعدة",
         )
         if any(lower.startswith(p) for p in greeting_prefixes):
             return True
