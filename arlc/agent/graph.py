@@ -56,6 +56,8 @@ from arlc.agent.config import (
     MAX_HISTORY_MESSAGES,
     MAX_SEARCHES_PER_TURN,
     MAX_WEB_SOURCES,
+    SEARCH_TOP_K,
+    SEARCH_TOP_K_THOROUGH,
     WEB_SEARCH_ENABLED,
 )
 from arlc.agent.prompts import build_document_context, build_system_prompt
@@ -79,7 +81,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def search_legal_corpus(query: str) -> str:
+def search_legal_corpus(query: str, thorough: bool = False) -> str:
     """Search the legal corpus for relevant legislation, regulations, and case law.
 
     Call this tool whenever you need source documents to ground a legal claim, find
@@ -88,7 +90,12 @@ def search_legal_corpus(query: str) -> str:
     terminology — include article numbers, law names, or case identifiers when known.
     Returns document chunks labelled [DOC-N] with the document ID and page number.
     Each call returns only documents not yet retrieved in this conversation.
-    Do NOT call for greetings, general chitchat, or questions unrelated to law."""
+    Do NOT call for greetings, general chitchat, or questions unrelated to law.
+
+    Parameters:
+    - query: search terms in the corpus language
+    - thorough: when True, retrieves 10 documents instead of the default 3. Use for
+      complex questions that require broad coverage of a topic area."""
     raise RuntimeError("search_legal_corpus is schema-only; execution handled by search_node")
 
 
@@ -848,6 +855,9 @@ def build_agent_graph():
             if on_status:
                 on_status("retrieving:searching corpus")
 
+            thorough = bool(tc["args"].get("thorough", False))
+            target_new = SEARCH_TOP_K_THOROUGH if thorough else SEARCH_TOP_K
+
             exclude = {(d["doc_id"], d["page"]) for d in state["accumulated_docs"]}
             exclude.update((d["doc_id"], d["page"]) for d in new_docs_all)
 
@@ -859,7 +869,7 @@ def build_agent_graph():
             _corpus_span = start_tool_span(
                 _obs_trace,
                 name="tool:search_legal_corpus",
-                input_data={"query": query, "corpus": state["corpus"]},
+                input_data={"query": query, "corpus": state["corpus"], "thorough": thorough},
                 metadata={"tool": "search_legal_corpus"},
             )
             _corpus_span_token = set_current_span(_corpus_span) if _corpus_span is not None else None
@@ -874,6 +884,7 @@ def build_agent_graph():
                     corpus=state["corpus"],
                     law_filters=state["selected_laws"] or None,
                     exclude_doc_pages=exclude,
+                    target_new=target_new,
                     on_status=on_status,
                     doc_ids=state.get("doc_ids"),
                     custom_corpus=state.get("custom_corpus"),
