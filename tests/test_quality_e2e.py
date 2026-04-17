@@ -626,18 +626,40 @@ def _postgres_reachable() -> bool:
         return False
 
 
+def _embedding_server_reachable() -> bool:
+    """Check whether the embedding server (llama-server) is responding."""
+    import os
+    import socket
+    from urllib.parse import urlparse
+
+    url = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")
+    parsed = urlparse(url)
+    host = parsed.hostname or "localhost"
+    port = parsed.port or 8088
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(2)
+        s.connect((host, port))
+        s.close()
+        return True
+    except OSError:
+        return False
+
+
 @pytest.mark.integration
 class TestRegressionGuards:
     """End-to-end quality regression guards against known score thresholds.
 
     Requires: live PostgreSQL (indexed chunks), embedding server, LLM credentials.
-    Skipped automatically when no PostgreSQL is reachable at localhost:5432.
+    Skipped automatically when PostgreSQL or the embedding server is unreachable.
     """
 
     @pytest.fixture(autouse=True)
-    def _require_live_postgres(self):
+    def _require_live_infra(self):
         if not _postgres_reachable():
             pytest.skip("No live PostgreSQL at localhost:5432 — skipping regression guard")
+        if not _embedding_server_reachable():
+            pytest.skip("Embedding server not reachable — skipping regression guard")
 
     def _run_golden_set(self, questions: list[dict], corpus: str) -> dict:
         """Run golden questions through the real pipeline, return aggregate scores."""
