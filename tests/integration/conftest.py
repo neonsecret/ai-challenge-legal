@@ -3,17 +3,8 @@
 Uses a real PostgreSQL database — no DB mocking.
 External services (Resend email, per-IP rate limiter) are mocked.
 
-Event-loop isolation note
---------------------------
-pytest-asyncio (auto mode) gives each test its own event loop. asyncpg
-connections are bound to the loop that created them, so a pooled connection
-from test N cannot be reused in test N+1's loop.
-
-Fix: replace the global SQLAlchemy engine with a NullPool engine before any
-test runs. NullPool never caches connections — each DB operation opens and
-closes a fresh connection in the current loop. asyncio.run() calls (used by
-session-scoped sync fixtures) are then safe because their short-lived
-connections die before the next test loop starts.
+NullPool isolation is handled by the root conftest `_install_nullpool_engine`
+session-scoped fixture. This conftest only adds integration-specific fixtures.
 """
 
 import asyncio
@@ -24,8 +15,6 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
 from starlette.middleware.sessions import SessionMiddleware
 
 from neolex.auth import email_auth, oauth
@@ -34,43 +23,12 @@ from neolex.db.models import User
 from neolex.db.postgres import init_db
 
 # ---------------------------------------------------------------------------
-# NullPool engine — must be installed before any DB call
+# One-time schema setup (depends on root _install_nullpool_engine)
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session", autouse=True)
-def install_null_pool_engine():
-    """Replace the global SQLAlchemy engine with a NullPool version.
-
-    This fixture runs once per test session (sync, so it executes before any
-    async test loop is created). NullPool prevents asyncpg connections from
-    being reused across different event loops (one per test in auto mode).
-    """
-    import neolex.db.postgres as pg
-
-    _db_url = pg._db_url
-    test_engine = create_async_engine(_db_url, poolclass=NullPool)
-    test_sessions = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-
-    old_engine = pg.engine
-    old_sessions = pg.AsyncSessionLocal
-
-    pg.engine = test_engine
-    pg.AsyncSessionLocal = test_sessions
-
-    yield
-
-    pg.engine = old_engine
-    pg.AsyncSessionLocal = old_sessions
-
-
-# ---------------------------------------------------------------------------
-# One-time schema setup (runs after NullPool engine is installed)
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture(scope="session", autouse=True)
-def ensure_schema(install_null_pool_engine):  # noqa: ARG001 — depends on NullPool being installed first
+def ensure_schema(_install_nullpool_engine):  # noqa: ARG001 — NullPool must be installed first
     """Create all PostgreSQL tables once for the integration test session.
 
     Uses asyncio.run() which is safe with NullPool: connections are created

@@ -17,8 +17,7 @@ import pytest
 from fastapi import Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import neolex.db.postgres as _pg
 from neolex.auth.session import get_current_user
@@ -54,26 +53,7 @@ _TEST_PRICE_MAP: dict[tuple[str, str], str] = {
 
 
 @pytest.fixture(scope="session", autouse=True)
-def install_null_pool_billing_engine():
-    """Replace global SQLAlchemy engine with NullPool to prevent cross-loop reuse."""
-    _db_url = _pg._db_url
-    test_engine = create_async_engine(_db_url, poolclass=NullPool)
-    test_sessions = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
-
-    old_engine = _pg.engine
-    old_sessions = _pg.AsyncSessionLocal
-
-    _pg.engine = test_engine
-    _pg.AsyncSessionLocal = test_sessions
-
-    yield
-
-    _pg.engine = old_engine
-    _pg.AsyncSessionLocal = old_sessions
-
-
-@pytest.fixture(scope="session", autouse=True)
-def ensure_billing_schema(install_null_pool_billing_engine):  # noqa: ARG001
+def ensure_billing_schema(_install_nullpool_engine):  # noqa: ARG001 — NullPool installed by root conftest
     """Create all tables once for the test session."""
     asyncio.run(init_db())
 
