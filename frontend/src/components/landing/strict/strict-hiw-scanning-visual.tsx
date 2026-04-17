@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { STRICT_HIW } from "@/lib/strict-tokens";
 import { useI18n } from "@/lib/i18n";
 
@@ -24,7 +24,7 @@ export function ScanningVisual({ active }: { active: boolean }) {
   ]);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  const resetAndStart = useCallback(() => {
+  const resetAndStart = () => {
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
     setItems([
@@ -56,11 +56,11 @@ export function ScanningVisual({ active }: { active: boolean }) {
       );
       timersRef.current.push(appearTimer, doneTimer);
     });
-  }, []);
+  };
 
   useEffect(() => {
     if (active) {
-      resetAndStart();
+      startTransition(() => resetAndStart());
     } else {
       timersRef.current.forEach(clearTimeout);
       timersRef.current = [];

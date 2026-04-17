@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, startTransition } from "react"
 import {useTheme} from "@/lib/theme"
 import { useI18n, LOCALES, type Locale } from "@/lib/i18n"
 import { useIsMobile } from "@/hooks/use-mobile"
@@ -15,7 +15,7 @@ export function LanguageToggle() {
     const buttonRef = useRef<HTMLButtonElement>(null)
     const isMobile = useIsMobile()
 
-    useEffect(() => setMounted(true), [])
+    useEffect(() => startTransition(() => setMounted(true)), [])
 
     // Close on outside click
     useEffect(() => {

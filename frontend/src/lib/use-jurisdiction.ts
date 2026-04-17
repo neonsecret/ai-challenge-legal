@@ -1,6 +1,6 @@
 "use client";
 
-import {useState, useEffect} from "react";
+import {useState, useEffect, startTransition} from "react";
 import type {Jurisdiction} from "./jurisdictions";
 
 const STORAGE_KEY = "neolex_jurisdiction";
@@ -15,7 +15,7 @@ export function useJurisdiction() {
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY);
         // "custom" was removed as a jurisdiction — migrate to default
-        if (stored && stored !== "custom") setJurisdictionState(stored as Jurisdiction);
+        if (stored && stored !== "custom") startTransition(() => setJurisdictionState(stored as Jurisdiction));
         else if (stored === "custom") {
             localStorage.setItem(STORAGE_KEY, DEFAULT_JURISDICTION);
         }

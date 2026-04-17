@@ -14,6 +14,7 @@
 
 import {
     createContext,
+    startTransition,
     useCallback,
     useContext,
     useEffect,
@@ -65,7 +66,7 @@ export function DesignVersionProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const stored = readStorage();
-        setVersionState(stored);
+        startTransition(() => setVersionState(stored));
         applyVersion(stored);
     }, []);
 

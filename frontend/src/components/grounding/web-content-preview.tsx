@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useCallback, useEffect} from "react"
+import {useState, useCallback, useEffect, startTransition} from "react"
 import {ExternalLink} from "lucide-react"
 import {cn} from "@/lib/utils"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING, EASE} from "@/lib/tokens"
@@ -24,9 +24,11 @@ export function WebContentPreview({source, answer, isMobile}: {
 
     useEffect(() => {
         let cancelled = false
-        setLoading(true)
-        setError(null)
-        setContent(null)
+        startTransition(() => {
+            setLoading(true)
+            setError(null)
+            setContent(null)
+        })
 
         fetch(`${API_BASE}/api/v1/proxy/web-content?url=${encodeURIComponent(url)}`, {
             credentials: "include",

@@ -13,6 +13,7 @@
 
 import {
     createContext,
+    startTransition,
     useCallback,
     useContext,
     useEffect,
@@ -75,8 +76,10 @@ export function ThemeProvider({children}: {children: ReactNode}) {
     useEffect(() => {
         const stored = readStorage();
         const resolved = resolveTheme(stored);
-        setThemeState(stored);
-        setResolvedTheme(resolved);
+        startTransition(() => {
+            setThemeState(stored);
+            setResolvedTheme(resolved);
+        });
         applyTheme(resolved);
 
         // Re-resolve when OS preference changes and user has "system" set

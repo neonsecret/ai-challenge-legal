@@ -4,7 +4,7 @@
 // module-initialization bug where next-themes' ThemeProvider fails during
 // static prerender specifically for this page.
 
-import {Suspense, useState, useEffect, useCallback} from "react";
+import {Suspense, useState, useEffect, useCallback, startTransition} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
 import {CheckCircle} from "lucide-react";
 
@@ -34,9 +34,11 @@ export default function BillingSuccessClient() {
     const router = useRouter();
 
     useEffect(() => {
-        setMounted(true);
-        // Read theme from DOM — ThemeProvider(attribute="class") sets .dark on <html>
-        setIsDark(document.documentElement.classList.contains("dark"));
+        startTransition(() => {
+            setMounted(true);
+            // Read theme from DOM — ThemeProvider(attribute="class") sets .dark on <html>
+            setIsDark(document.documentElement.classList.contains("dark"));
+        });
     }, []);
 
     const syncSubscription = useCallback((sessionId: string) => {

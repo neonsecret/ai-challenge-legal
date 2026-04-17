@@ -6,6 +6,7 @@
 
 import {
     createContext,
+    startTransition,
     useCallback,
     useContext,
     useEffect,
@@ -95,8 +96,10 @@ export function ColorModeProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const stored = readStoredMode();
         const resolved = stored === "system" ? getSystemPreference() : stored;
-        setModeState(stored);
-        setResolvedMode(resolved);
+        startTransition(() => {
+            setModeState(stored);
+            setResolvedMode(resolved);
+        });
         applyMode(resolved);
         migrateOldKeys();
 

@@ -25,8 +25,7 @@
 // from the DOM class list after mount. See BillingSuccessClient.tsx for the
 // same pattern.
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import React, {useState, useEffect} from "react";
+import React, {useState, useEffect, startTransition} from "react";
 
 const fontStack =
     "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
@@ -41,10 +40,12 @@ export default function GlobalError({
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
-        // Read theme from DOM — layout.tsx inline script sets .dark on <html>
-        // before hydration, so this is reliable even without ThemeProvider.
-        setIsDark(document.documentElement.classList.contains("dark"));
+        startTransition(() => {
+            setMounted(true);
+            // Read theme from DOM — layout.tsx inline script sets .dark on <html>
+            // before hydration, so this is reliable even without ThemeProvider.
+            setIsDark(document.documentElement.classList.contains("dark"));
+        });
     }, []);
 
     const dark = mounted && isDark;
@@ -105,6 +106,7 @@ export default function GlobalError({
                         Try again
                     </button>
                 )}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- global-error bypasses root layout; full reload is safer for error recovery */}
                 <a
                     href="/"
                     style={{

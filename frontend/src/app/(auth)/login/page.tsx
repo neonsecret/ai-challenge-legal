@@ -1,6 +1,6 @@
 "use client";
 
-import {useState, useEffect, Suspense} from "react";
+import {useState, useEffect, startTransition, Suspense} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
 import {useColorMode} from "@/lib/color-mode";
 import {motion, AnimatePresence} from "motion/react";
@@ -167,7 +167,7 @@ function LoginPageContent() {
 
     // Reset register success if there's an error
     useEffect(() => {
-        if (error) setRegisterSuccess(false);
+        if (error) startTransition(() => setRegisterSuccess(false));
     }, [error]);
 
     const switchMode = (newMode: Mode) => {

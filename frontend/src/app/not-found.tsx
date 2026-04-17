@@ -1,7 +1,7 @@
 // Importing the React default export forces eager Turbopack module evaluation.
 // See global-error.tsx for the full explanation.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React from "react";
+import Link from "next/link";
 
 export default function NotFound() {
     return (
@@ -19,9 +19,9 @@ export default function NotFound() {
                 404
             </h1>
             <p style={{opacity: 0.6}}>Page not found</p>
-            <a href="/" style={{marginTop: "16px", opacity: 0.8, textDecoration: "underline"}}>
+            <Link href="/" style={{marginTop: "16px", opacity: 0.8, textDecoration: "underline"}}>
                 Go home
-            </a>
+            </Link>
         </div>
     );
 }

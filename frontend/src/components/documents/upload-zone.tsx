@@ -1,6 +1,6 @@
 "use client";
 
-import {useRef, useState, useCallback, useEffect} from "react";
+import {useRef, useState, useCallback, useEffect, startTransition} from "react";
 import {X, CheckCircle} from "lucide-react";
 import {useColorMode} from "@/lib/color-mode";
 import {useI18n} from "@/lib/i18n";
@@ -29,7 +29,7 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
 
     useEffect(() => {
         if (zipResult) {
-            setZipBanner(zipResult);
+            startTransition(() => setZipBanner(zipResult));
             const timer = setTimeout(() => setZipBanner(null), 5000);
             return () => clearTimeout(timer);
         }
@@ -47,22 +47,19 @@ export function UploadZone({onUpload, uploadProgress, zipResult}: UploadZoneProp
         return null;
     };
 
-    const handleFile = useCallback(
-        async (file: File) => {
-            setValidationError(null);
-            setZipBanner(null);
-            const err = validate(file);
-            if (err) {
-                setValidationError(err);
-                return;
-            }
-            setPendingFile(file);
-            const col = collectionName.trim() || "My Documents";
-            await onUpload(file, col);
-            setPendingFile(null);
-        },
-        [onUpload, collectionName]
-    );
+    const handleFile = async (file: File) => {
+        setValidationError(null);
+        setZipBanner(null);
+        const err = validate(file);
+        if (err) {
+            setValidationError(err);
+            return;
+        }
+        setPendingFile(file);
+        const col = collectionName.trim() || "My Documents";
+        await onUpload(file, col);
+        setPendingFile(null);
+    };
 
     const handleDrop = useCallback(
         (e: React.DragEvent) => {

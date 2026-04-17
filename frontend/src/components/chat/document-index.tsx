@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useRef, useEffect, useCallback} from "react"
+import {useState, useRef, useEffect, useCallback, startTransition} from "react"
 import {motion, AnimatePresence} from "motion/react"
 import {ChevronDown, FileText} from "lucide-react"
 import {FONT, TYPE_SCALE, SPACE, RADIUS, TIMING} from "@/lib/tokens"
@@ -25,7 +25,7 @@ export function DocumentIndex({entries, isDark, focusDocId, onEntryClick}: Docum
         const el = entryRefs.current.get(focusDocId)
         if (el) {
             el.scrollIntoView({behavior: "smooth", block: "center"})
-            setHighlightedId(focusDocId)
+            startTransition(() => setHighlightedId(focusDocId))
             const timer = setTimeout(() => setHighlightedId(null), 1500)
             return () => clearTimeout(timer)
         }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, startTransition } from "react";
 import { STRICT_TYPEWRITER } from "@/lib/strict-tokens";
 
 /**
@@ -56,7 +56,7 @@ export function useStrictTypewriter(
 
     bufferRef.current = "";
     posRef.current = 0;
-    setTypingDone(false);
+    startTransition(() => setTypingDone(false));
     if (answerRef.current) answerRef.current.innerHTML = "";
 
     const tick = () => {

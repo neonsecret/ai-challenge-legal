@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { STRICT_SOURCES, STRICT_PREVIEW } from "@/lib/strict-tokens";
 import { V3_SPRING, V3_FADE_UP } from "@/lib/v3-motion";
@@ -72,8 +72,10 @@ export function StrictPreview() {
   // ── Sources reveal after typing completes ───────────────────────────────────
   useEffect(() => {
     if (typingDone) {
-      setSourcesVisible(true);
-      if (isMobile) setSourcesExpanded(true);
+      startTransition(() => {
+        setSourcesVisible(true);
+        if (isMobile) setSourcesExpanded(true);
+      });
     }
   }, [typingDone, isMobile]);
 

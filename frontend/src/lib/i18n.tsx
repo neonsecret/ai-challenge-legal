@@ -2,6 +2,7 @@
 
 import {
     createContext,
+    startTransition,
     useContext,
     useState,
     useCallback,
@@ -66,16 +67,16 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const stored = localStorage.getItem(STORAGE_KEY)
         if (stored && isLocale(stored)) {
-            setLocaleState(stored)
+            startTransition(() => setLocaleState(stored))
         } else {
             // Check Cloudflare geo cookie first
             const geoMatch = document.cookie.split("; ").find(r => r.startsWith("geo_country="))
             const geoCountry = geoMatch?.split("=")[1]
             const GEO_TO_LOCALE: Record<string, Locale> = { CZ: "cs", DE: "de", AT: "de", RU: "ru", AE: "ar" }
             const geoLocale = geoCountry ? GEO_TO_LOCALE[geoCountry] : undefined
-            setLocaleState(geoLocale ?? detectBrowserLocale())
+            startTransition(() => setLocaleState(geoLocale ?? detectBrowserLocale()))
         }
-        setHydrated(true)
+        startTransition(() => setHydrated(true))
     }, [])
 
     // Apply dir="rtl" for Arabic on <html>

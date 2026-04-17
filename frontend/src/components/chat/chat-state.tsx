@@ -1,6 +1,6 @@
 "use client"
 
-import {createContext, useContext, useState, useRef, useCallback, useEffect, type ReactNode} from "react"
+import {createContext, useContext, useState, useRef, useCallback, useEffect, startTransition, type ReactNode} from "react"
 import {useQueryStream, formatStatus, type Source, type UseQueryStreamReturn} from "./use-query-stream"
 import {useJurisdiction} from "@/lib/use-jurisdiction"
 import {jurisdictionToCorpus} from "@/lib/jurisdictions"
@@ -159,7 +159,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const currentSessionIdRef = useRef<string | null>(null)
     /** Mirror of sessions for use in handleSend without adding sessions to its dependency array. */
     const sessionsRef = useRef(sessions)
-    sessionsRef.current = sessions
+    useEffect(() => { sessionsRef.current = sessions })
     /** When true, the next messages change is from loading an existing session, not from new message activity. */
     const loadingSessionRef = useRef<boolean>(false)
     const {jurisdiction} = useJurisdiction()
@@ -167,7 +167,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     const stream = useQueryStream()
     /** Mirror of isStreaming for handleSend — avoids stale closure over stream.isStreaming. */
     const isStreamingRef = useRef(false)
-    isStreamingRef.current = stream.isStreaming
+    useEffect(() => { isStreamingRef.current = stream.isStreaming })
 
     // ── Mount: load from localStorage (client-only, runs once) ──
     useEffect(() => {
@@ -190,15 +190,17 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                 ),
             }
         })
-        setSessions(sortSessions(patched))
+        startTransition(() => setSessions(sortSessions(patched)))
 
         // Restore current session messages (not new activity — just rehydration)
         if (lastId) {
             const session = patched.find(s => s.id === lastId)
             if (session) {
                 loadingSessionRef.current = true
-                setMessages(session.messages)
-                setCurrentSessionId(lastId)
+                startTransition(() => {
+                    setMessages(session.messages)
+                    setCurrentSessionId(lastId)
+                })
             }
         }
 
@@ -338,7 +340,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             } catch { /* network error — not critical, localStorage sessions still work */ }
         })()
 
-        setHydrated(true)
+        startTransition(() => setHydrated(true))
         return () => { cancelled = true }
     }, [])
 
@@ -373,14 +375,14 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                     : m
             )
         }
-    }, [stream.answer, stream.sources, stream.confidence, stream.traceId, currentSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [stream.answer, stream.sources, stream.confidence, stream.traceId, currentSessionId])
 
     useEffect(() => {
         if (stream.isStreaming && stream.streamingStatus && !traceRef.current.includes(stream.streamingStatus)) {
             traceRef.current = [...traceRef.current, stream.streamingStatus]
             setLiveTrace([...traceRef.current])
         }
-    }, [stream.streamingStatus, stream.isStreaming]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [stream.streamingStatus, stream.isStreaming])
 
     useEffect(() => {
         if (!stream.isStreaming && wasStreamingRef.current) {
@@ -420,7 +422,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             streamingMessagesRef.current = []
         }
         wasStreamingRef.current = stream.isStreaming
-    }, [stream.isStreaming, currentSessionId]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [stream.isStreaming, currentSessionId])
 
     // ── Persistence effects (all gated by hydrated) ──
 
@@ -435,14 +437,14 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
     }, [currentSessionId, hydrated])
 
     // Keep ref in sync so callbacks always read the latest value
-    currentSessionIdRef.current = currentSessionId
+    useEffect(() => { currentSessionIdRef.current = currentSessionId })
 
     useEffect(() => {
         if (!hydrated) return
         if (messages.length === 0) return
 
         const id = currentSessionId ?? `chat-${Date.now()}`
-        if (!currentSessionId) setCurrentSessionId(id)
+        if (!currentSessionId) startTransition(() => setCurrentSessionId(id))
 
         // Check if this messages update is from loading an existing session
         const isLoading = loadingSessionRef.current
@@ -542,7 +544,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
                         const API = process.env.NEXT_PUBLIC_SSE_URL ?? ""
                         // Use a cancelled flag so this poll doesn't mutate state after
                         // the user has switched to a different session.
-                        let cancelled = false
+                        const cancelled = false
                         // Also check currentSessionIdRef so that if the user switches
                         // sessions, the old poll stops even if cancelled isn't flipped.
                         const pollSessionId = id
@@ -649,16 +651,16 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         })
     }, [stream.isStreaming, currentSessionId, messages])
 
-    const newChat = useCallback(() => {
+    const newChat = () => {
         if (stream.isStreaming) stream.abort()
         setMessages([])
         setCurrentSessionId(null)
         activeAssistantId.current = null
         traceRef.current = []
         setSelectedCorporaId(null)
-    }, [stream.isStreaming, stream.abort])
+    }
 
-    const deleteSession = useCallback((id: string) => {
+    const deleteSession = (id: string) => {
         // If deleting the session that's currently streaming, abort the SSE stream first
         if (currentSessionIdRef.current === id && stream.isStreaming) {
             stream.abort()
@@ -673,9 +675,9 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
             credentials: "include",
             headers: {"X-Requested-With": "XMLHttpRequest"},
         }).catch(() => {})
-    }, [newChat, stream.isStreaming, stream.abort])
+    }
 
-    const handleSend = useCallback((question: string, templateSlug?: string): "ok" | "blocked" | "streaming" => {
+    const handleSend = (question: string, templateSlug?: string): "ok" | "blocked" | "streaming" => {
         // Block new queries while one is still streaming (use ref to avoid stale closure)
         if (isStreamingRef.current) return "streaming"
 
@@ -729,7 +731,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         }
         stream.sendQuery(question, corpus, convId, laws, useInternet, docIds, templateSlug, selectedCorporaId ?? undefined)
         return "ok" as const
-    }, [stream.sendQuery, jurisdiction, currentSessionId, selectedLaws, useInternet, selectedCorporaId])
+    }
 
     const currentCorpora = sessions.find(s => s.id === currentSessionId)?.corpora ?? []
 

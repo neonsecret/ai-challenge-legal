@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, startTransition } from "react"
 
 /**
  * Reads the `geo_country` cookie set by the proxy (from Cloudflare's
@@ -15,7 +15,7 @@ export function useGeoCountry(): string | null {
             .split("; ")
             .find((row) => row.startsWith("geo_country="))
         if (match) {
-            setCountry(match.split("=")[1] ?? null)
+            startTransition(() => setCountry(match.split("=")[1] ?? null))
         }
     }, [])
 

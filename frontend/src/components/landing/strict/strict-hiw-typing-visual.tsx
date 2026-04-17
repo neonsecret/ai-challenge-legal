@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { STRICT_TYPEWRITER } from "@/lib/strict-tokens";
 import { useI18n } from "@/lib/i18n";
 
@@ -32,7 +32,7 @@ export function TypingVisual({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (active) {
-      restart();
+      startTransition(() => restart());
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }

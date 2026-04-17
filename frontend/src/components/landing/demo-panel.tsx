@@ -292,7 +292,7 @@ export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
     const chatBottomRef = useRef<HTMLDivElement>(null);
     // Keep activeIdx in a ref so streaming callback reads the latest value
     const activeIdxRef = useRef(activeIdx);
-    activeIdxRef.current = activeIdx;
+    useEffect(() => { activeIdxRef.current = activeIdx });
 
     const scenario = SCENARIOS[activeIdx];
 

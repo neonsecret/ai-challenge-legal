@@ -1,6 +1,6 @@
 "use client";
 
-import {useState, useEffect, useRef} from "react";
+import {useState, useEffect, useRef, startTransition} from "react";
 
 interface UseTypewriterOptions {
     text: string;
@@ -19,12 +19,14 @@ export function useTypewriter({
     const [done, setDone] = useState(false);
     const indexRef = useRef(0);
     const onCompleteRef = useRef(onComplete);
-    onCompleteRef.current = onComplete;
+    useEffect(() => { onCompleteRef.current = onComplete });
 
     useEffect(() => {
         indexRef.current = 0;
-        setDisplayed("");
-        setDone(false);
+        startTransition(() => {
+            setDisplayed("");
+            setDone(false);
+        });
 
         let intervalId: ReturnType<typeof setInterval> | null = null;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { STRICT_HIW } from "@/lib/strict-tokens";
 import { useI18n } from "@/lib/i18n";
 
@@ -27,13 +27,13 @@ export function ResultVisual({ active }: { active: boolean }) {
 
   useEffect(() => {
     if (active) {
-      setHighlightVisible(false);
+      startTransition(() => setHighlightVisible(false));
       timerRef.current = setTimeout(() => {
         setHighlightVisible(true);
       }, STRICT_HIW.resultHighlightDelay);
     } else {
       if (timerRef.current) clearTimeout(timerRef.current);
-      setHighlightVisible(false);
+      startTransition(() => setHighlightVisible(false));
     }
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);

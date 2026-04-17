@@ -1,6 +1,6 @@
 "use client"
 
-import {useRef, useEffect, useCallback, useState, Component, type ErrorInfo, type ReactNode} from "react"
+import {useRef, useEffect, useCallback, useState, startTransition, Component, type ErrorInfo, type ReactNode} from "react"
 import {createPortal} from "react-dom"
 import {useRouter} from "next/navigation"
 import {motion, AnimatePresence} from "motion/react"
@@ -250,7 +250,7 @@ export default function ChatPage() {
     // conversation. Without this, the template pill remains visible in the new chat but the
     // drafting slug is never actually sent, causing a visual/behaviour mismatch.
     useEffect(() => {
-        setPendingTemplate(null)
+        startTransition(() => setPendingTemplate(null))
     }, [currentSessionId])
 
     const onSend = useCallback((question: string) => {

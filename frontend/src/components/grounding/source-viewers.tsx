@@ -1,6 +1,6 @@
 "use client"
 
-import {useState, useEffect, useRef, useMemo} from "react"
+import {useState, useEffect, useRef, useMemo, startTransition} from "react"
 import {ChevronDown, ChevronUp} from "lucide-react"
 import {cn} from "@/lib/utils"
 import {toSafeString, toSafeStringOrNull, toSafeNumber} from "@/lib/utils"
@@ -212,38 +212,31 @@ export function SingleChunkView({source, raw, answer, isMobile, onPageClick}: {
     const breadcrumb = headerMatch?.[2]?.trim() ?? ""
     const body = headerMatch?.[3] ?? raw
 
-    const cleanedBody = useMemo(() => cleanJudgmentText(body), [body])
+    const cleanedBody = cleanJudgmentText(body)
     const needsTruncation = cleanedBody.length > TEXT_TRUNCATE_LIMIT
     const displayBody = expanded || !needsTruncation
         ? cleanedBody
         : cleanedBody.slice(0, TEXT_TRUNCATE_LIMIT)
 
-    const paragraphs = useMemo(() => {
-        return displayBody
-            .split(/\n{2,}/)
-            .map((p) => p.trim())
-            .filter(Boolean)
-    }, [displayBody])
+    const paragraphs = displayBody
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean)
 
-    const fullParagraphs = useMemo(() => {
-        return cleanedBody
-            .split(/\n{2,}/)
-            .map((p) => p.trim())
-            .filter(Boolean)
-    }, [cleanedBody])
+    const fullParagraphs = cleanedBody
+        .split(/\n{2,}/)
+        .map((p) => p.trim())
+        .filter(Boolean)
 
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const firstCitedRef = useRef<HTMLParagraphElement>(null)
 
-    const fullCitationScores = useMemo(
-        () => fullParagraphs.map(p => paragraphCitationScore(p, answer)),
-        [fullParagraphs, answer]
-    )
+    const fullCitationScores = fullParagraphs.map(p => paragraphCitationScore(p, answer))
     const firstCitedIdxFull = fullCitationScores.findIndex(s => s >= CITATION_SCORE_THRESHOLD)
 
     useEffect(() => {
         if (!expanded && needsTruncation && firstCitedIdxFull >= paragraphs.length) {
-            setExpanded(true)
+            startTransition(() => setExpanded(true))
         }
     }, [firstCitedIdxFull, paragraphs.length, needsTruncation, expanded])
 
@@ -428,11 +421,11 @@ export function TextSourceViewer({source, page, answer, isMobile, onPageClick, p
     // Falls back to current single-chunk display while in-flight or on error.
     useEffect(() => {
         if (!source.chunk_id) {
-            setChunkContext(null)
+            startTransition(() => setChunkContext(null))
             return
         }
         let cancelled = false
-        setChunkContext(null)
+        startTransition(() => setChunkContext(null))
         fetch(
             `${API_BASE}/api/v1/documents/chunk-context/${encodeURIComponent(source.chunk_id)}?window=1`,
             {credentials: "include"},

@@ -1,6 +1,6 @@
 "use client"
 
-import {useCallback, useState, useEffect, useRef, useId} from "react"
+import {useCallback, useState, useEffect, useRef, useId, startTransition} from "react"
 import dynamic from "next/dynamic"
 import {motion, AnimatePresence} from "motion/react"
 import {X, Download, MessageSquare, RotateCcw, FileCode} from "lucide-react"
@@ -95,10 +95,9 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
     const [txtContent, setTxtContent] = useState<string | null>(null)
     const [txtError, setTxtError] = useState(false)
     useEffect(() => {
-        if (!open || !isTxt || !txtUrl) { setTxtContent(null); setTxtError(false); return }
+        if (!open || !isTxt || !txtUrl) { startTransition(() => { setTxtContent(null); setTxtError(false) }); return }
         const controller = new AbortController()
-        setTxtContent(null)
-        setTxtError(false)
+        startTransition(() => { setTxtContent(null); setTxtError(false) })
         fetch(txtUrl, {credentials: "include", signal: controller.signal})
             .then(async res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -113,7 +112,7 @@ export function DocumentViewer({open, onClose, onAskToModify, chatId, docId, doc
     // button when the template has a LaTeX source (200 OK); 422 means unavailable.
     const [hasLatex, setHasLatex] = useState(false)
     useEffect(() => {
-        if (!open || !texUrl) { setHasLatex(false); return }
+        if (!open || !texUrl) { startTransition(() => setHasLatex(false)); return }
         const controller = new AbortController()
         fetch(texUrl, {method: "HEAD", credentials: "include", signal: controller.signal})
             .then(res => { if (!controller.signal.aborted) setHasLatex(res.ok) })
