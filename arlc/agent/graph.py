@@ -49,7 +49,9 @@ from langgraph.graph import END, StateGraph
 
 from arlc.agent.citation_validator import validate_citations
 from arlc.agent.config import (
+    HAIKU_ROUTING_MODE,
     LLM_MAX_TOKENS,
+    LLM_MAX_TOKENS_FAST,
     LLM_MODEL,
     LLM_MODEL_FAST,
     MAX_ACCUMULATED_DOCS,
@@ -386,7 +388,7 @@ def _build_llm_pair():
 
     fast = ChatAnthropicVertex(
         model_name=LLM_MODEL_FAST,
-        max_tokens=1024,  # First round only needs short tool calls
+        max_tokens=LLM_MAX_TOKENS_FAST,
         **base_kwargs,
     ).bind_tools(tools)
 
@@ -428,12 +430,61 @@ def build_agent_graph():
     fast_llm, full_llm = _build_llm_pair()
     graph = StateGraph(AgentState)
 
+    def _is_greeting_or_meta(text: str) -> bool:
+        """Return True if the query is a greeting or meta question (not legal research).
+
+        Used by HAIKU_ROUTING_MODE='classifier' to determine whether Haiku is safe.
+        Haiku handles greetings/capability questions well; legal research needs Sonnet.
+        """
+        lower = text.lower().strip()
+        greeting_prefixes = (
+            "hello",
+            "hi ",
+            "hey ",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "thanks",
+            "thank you",
+            "bye",
+            "goodbye",
+        )
+        meta_phrases = (
+            "what can you do",
+            "what are you",
+            "who are you",
+            "help me understand",
+            "how do you work",
+            "what is vitreon",
+            "what jurisdictions",
+            "what languages",
+            "can you help",
+            "what do you know",
+            "tell me about yourself",
+        )
+        if any(lower.startswith(p) for p in greeting_prefixes):
+            return True
+        if any(p in lower for p in meta_phrases):
+            return True
+        return False
+
     def reason_node(state: AgentState) -> dict:
-        # First reason call of this turn (no searches yet) → fast Haiku for
-        # query formulation.  After any search, switch to Sonnet for answer
-        # generation.  Using search_count instead of has_prior_ai so that
-        # multi-turn follow-ups still benefit from Haiku on the first call.
-        use_fast = state["search_count"] == 0
+        # Routing modes (HAIKU_ROUTING_MODE):
+        #   "disabled"     — Sonnet for all calls (option A)
+        #   "search_count" — Haiku on first call before any search (option B, default)
+        #   "classifier"   — Haiku only for greetings/meta, Sonnet for research (option C)
+        if HAIKU_ROUTING_MODE == "disabled":
+            use_fast = False
+        elif HAIKU_ROUTING_MODE == "classifier":
+            last_human = next(
+                (m for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
+                None,
+            )
+            query_text = last_human.content if last_human else ""
+            use_fast = state["search_count"] == 0 and _is_greeting_or_meta(query_text)
+        else:
+            # "search_count" (default): Haiku on turn-1 query formulation only
+            use_fast = state["search_count"] == 0
         llm = fast_llm if use_fast else full_llm
 
         system = build_system_prompt(state)
