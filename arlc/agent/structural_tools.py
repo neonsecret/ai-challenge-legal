@@ -41,18 +41,9 @@ _CZECH_LAW_NAMES: dict[str, str] = {
     "danovy_rad": "Daňový řád (280/2009 Sb.)",
 }
 
-# Article/section patterns per corpus family
-_ARTICLE_RE_DIFC = re.compile(
-    r"Article\s+(\d+)(?:\((\d+)\))?(?:\(([a-z])\))?",
-    re.IGNORECASE,
-)
-_SECTION_RE_UK_AU = re.compile(
-    r"(?:Section|s\.?)\s+(\d+[A-Z]?)(?:\((\d+)\))?",
-    re.IGNORECASE,
-)
-_PARAGRAPH_RE_CZ = re.compile(
-    r"§\s*(\d+[a-z]?)(?:\s+odst\.\s*(\d+))?",
-)
+
+# Max chars returned per case decision preview in list_cases results
+_THESIS_PREVIEW_CHARS = 200
 
 
 async def execute_get_article(
@@ -411,7 +402,7 @@ async def _list_czech_cases(
                 CourtDecision.decision_date,
                 CourtDecision.decision_type,
                 CourtDecision.category,
-                func.left(CourtDecision.legal_thesis, 200).label("thesis_preview"),
+                func.left(CourtDecision.legal_thesis, _THESIS_PREVIEW_CHARS).label("thesis_preview"),
             )
             .order_by(CourtDecision.decision_date.desc())
             .limit(limit)
