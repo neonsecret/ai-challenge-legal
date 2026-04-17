@@ -38,9 +38,10 @@ async def test_load_history_returns_role_content_dicts():
     """load_history returns list of {role, content} dicts."""
     user_id = str(uuid.uuid4())
     conversation_id = str(uuid.uuid4())
+    # DB returns DESC (newest first); code reverses to chronological order.
     rows = [
-        _make_row("user", "What is the limitation period?", 0),
         _make_row("assistant", "Six years under Article 10.", 1),
+        _make_row("user", "What is the limitation period?", 0),
     ]
     mock_session = _make_mock_session(rows)
 
@@ -83,16 +84,20 @@ async def test_load_history_returns_at_most_max_history_turns():
 async def test_load_history_newest_messages_scenario():
     """Simulates the fix: a 20-message conversation should surface messages 11-20.
 
-    Because the subquery orders DESC + LIMIT, then re-sorts ASC, the mock
-    is set up to return what the DB would return after the subquery — the
-    10 newest rows in chronological order. This test documents the contract.
+    DB returns newest 10 in DESC order (msg 20 first). Code reverses to get
+    chronological order (msg 11 first). This test documents that contract.
     """
     user_id = str(uuid.uuid4())
     conversation_id = str(uuid.uuid4())
 
-    # Simulate DB returning messages 11-20 (newest 10) already in ASC order
+    # DB returns DESC (newest first): msg20 … msg11; reversed() gives msg11 … msg20.
     newest_rows = [
-        _make_row("user" if i % 2 == 0 else "assistant", f"msg {i + 11}", i * 10) for i in range(MAX_HISTORY_TURNS)
+        _make_row(
+            "user" if i % 2 == 0 else "assistant",
+            f"msg {10 + MAX_HISTORY_TURNS - i}",
+            (MAX_HISTORY_TURNS - 1 - i) * 10,
+        )
+        for i in range(MAX_HISTORY_TURNS)
     ]
     mock_session = _make_mock_session(newest_rows)
 
