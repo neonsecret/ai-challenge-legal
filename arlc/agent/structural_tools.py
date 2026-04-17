@@ -20,6 +20,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+def _escape_like(value: str) -> str:
+    """Escape SQL LIKE/ILIKE wildcards so user input is treated as literal."""
+    return value.replace("%", "\\%").replace("_", "\\_")
+
+
 # Czech doc_id prefix → human-readable name (mirrors graph.py mapping)
 _CZECH_LAW_NAMES: dict[str, str] = {
     "obcansky_zakonik": "Občanský zákoník (89/2012 Sb.)",
@@ -319,12 +325,12 @@ async def _list_difc_cases(
         if party_name:
             # DIFC doc_ids contain party names separated by hyphens
             # Convert search term to lowercase hyphenated form
-            normalized = party_name.lower().replace(" ", "-")
+            normalized = _escape_like(party_name.lower().replace(" ", "-"))
             stmt = stmt.where(Chunk.doc_id.ilike(f"%{normalized}%"))
 
         if case_number:
             # Case numbers like "CFI-057-2025" or "CA-004-2021"
-            normalized_cn = case_number.lower().replace("/", "-").replace(" ", "-")
+            normalized_cn = _escape_like(case_number.lower().replace("/", "-").replace(" ", "-"))
             stmt = stmt.where(Chunk.doc_id.ilike(f"%{normalized_cn}%"))
 
         result = await session.execute(stmt)
@@ -412,7 +418,8 @@ async def _list_czech_cases(
         )
 
         if case_number:
-            stmt = stmt.where(CourtDecision.case_number.ilike(f"%{case_number}%"))
+            escaped_cn = _escape_like(case_number)
+            stmt = stmt.where(CourtDecision.case_number.ilike(f"%{escaped_cn}%"))
 
         if party_name:
             # Search in full_text or legal_thesis for party name

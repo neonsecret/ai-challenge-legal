@@ -28,7 +28,7 @@ load_dotenv()
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
 TEST_ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL", "admin@vitreon.app")
-TEST_ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "Vt9mK2xPqL7nR$#8!")
+TEST_ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "")
 
 pytestmark = pytest.mark.asyncio(loop_scope="session")
 

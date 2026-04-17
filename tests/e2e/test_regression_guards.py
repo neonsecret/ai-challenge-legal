@@ -32,12 +32,7 @@ import os  # noqa: E402
 os.environ.setdefault("JWT_SECRET_KEY", "ci-test-only-secret-key-not-for-production")
 os.environ.setdefault("ADMIN_EMAILS", "admin@vitreon.app")
 
-# Only set a fallback DATABASE_URL when none is present (avoids overriding the
-# real URL loaded from .env, which caused "role test does not exist" errors).
-os.environ.setdefault(
-    "DATABASE_URL",
-    os.environ.get("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test"),
-)
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5432/test")
 
 
 # ---------------------------------------------------------------------------
