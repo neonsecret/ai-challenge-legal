@@ -72,7 +72,8 @@ async def execute_get_article(
 
     async with async_session() as session:
         if corpus == "czech":
-            doc_id_filter = Chunk.doc_id.like(f"{base_law_id}_%")
+            escaped_law_id = _escape_like(base_law_id)
+            doc_id_filter = Chunk.doc_id.like(f"{escaped_law_id}_%")
         else:
             doc_id_filter = Chunk.doc_id == base_law_id
 
