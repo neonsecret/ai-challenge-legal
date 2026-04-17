@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 MAX_HISTORY_TURNS = 10  # 5 Q&A pairs — worst-case context for agent cost control
 CONVERSATION_TITLE_MAX_LEN = 80  # characters before truncation with ellipsis
+MAX_STORED_QUESTION_LEN = 2000  # DB column limit for stored question text
+MAX_STORED_ANSWER_LEN = 8000  # DB column limit for stored answer text
 
 
 def _to_conv_uuid(conversation_id: str) -> uuid.UUID:
@@ -348,7 +350,7 @@ async def save_turn(
                     conversation_id=cid,
                     user_id=uid,
                     role="user",
-                    content=question[:2000],
+                    content=question[:MAX_STORED_QUESTION_LEN],
                 ),
             )
             session.add(
@@ -356,7 +358,7 @@ async def save_turn(
                     conversation_id=cid,
                     user_id=uid,
                     role="assistant",
-                    content=answer[:8000],
+                    content=answer[:MAX_STORED_ANSWER_LEN],
                     sources_json=sources_json,
                     trace_id=trace_id,
                 ),
@@ -386,7 +388,7 @@ async def create_pipeline_job(
                     id=job_id,
                     user_id=uid,
                     conversation_id=conversation_id,
-                    question=question[:2000],
+                    question=question[:MAX_STORED_QUESTION_LEN],
                     status="processing",
                     status_detail="Processing...",
                 ),
@@ -434,7 +436,7 @@ async def complete_pipeline_job(
                 .values(
                     status="complete",
                     status_detail=None,
-                    answer=answer[:8000],
+                    answer=answer[:MAX_STORED_ANSWER_LEN],
                     sources_json=sources_json,
                     confidence=confidence,
                     updated_at=datetime.now(UTC),
