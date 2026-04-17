@@ -76,6 +76,10 @@ from arlc.constants import DRAFTING_CUSTOM_SLUG, DRAFTING_FREEFORM_SLUG
 
 logger = logging.getLogger(__name__)
 
+# Corpora that have statute page files and support page verification.
+# Court decisions and TXT sources fall through gracefully when not listed here.
+_BUILTIN_CORPORA = frozenset({"difc", "czech", "uk", "au"})
+
 
 # ---------------------------------------------------------------------------
 # Tool schema — what the LLM sees
@@ -1147,6 +1151,63 @@ def _extract_text(content) -> str:
     return str(content)
 
 
+# Max chars per doc included in a regen prompt — caps total context size.
+_REGEN_DOC_CHAR_LIMIT = 1500
+
+
+async def _regen_answer(
+    question: str,
+    docs: list,
+    conversation_history: list[dict] | None,
+) -> str:
+    """Regenerate the answer after hallucinated citation indices were detected.
+
+    Makes a single Sonnet call with all retrieved documents, explicitly
+    constraining the model to cite only DOC-1 through DOC-{len(docs)}.
+    Returns the regenerated text, or empty string on failure.
+    """
+    from langchain_google_vertexai.model_garden import ChatAnthropicVertex
+
+    try:
+        llm = ChatAnthropicVertex(
+            model_name=LLM_MODEL,
+            max_tokens=LLM_MAX_TOKENS,
+            project=os.environ["VERTEX_PROJECT_ID"],
+            location=os.environ.get("VERTEX_LOCATION", "us-east5"),
+        )
+
+        num_docs = len(docs)
+        doc_blocks = []
+        for i, doc in enumerate(docs, 1):
+            text = doc.get("text", "")[:_REGEN_DOC_CHAR_LIMIT]
+            doc_id = doc.get("doc_id", "")
+            doc_blocks.append(f"[DOC-{i}] (source: {doc_id})\n{text}")
+        docs_context = "\n\n".join(doc_blocks)
+
+        system = (
+            f"You are a legal research assistant. "
+            f"Answer the question using ONLY the {num_docs} document(s) listed below. "
+            f"When citing, use [DOC-1] through [DOC-{num_docs}] — no other numbers. "
+            f"If the documents do not contain enough information to answer, say so clearly."
+        )
+
+        history = _convert_history(conversation_history)
+        user_content = f"{docs_context}\n\n---\n\n{question}"
+        messages = [SystemMessage(content=system)] + history + [HumanMessage(content=user_content)]
+
+        response = await llm.ainvoke(messages)
+        text = _extract_text(response.content)
+        logger.info(
+            "[agent] citation_regen: regenerated %d-char answer (num_docs=%d)",
+            len(text),
+            num_docs,
+        )
+        return text
+    except Exception:
+        logger.exception("[agent] citation_regen: regen failed, keeping stripped version")
+        return ""
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -1351,10 +1412,22 @@ async def run_agent_turn(
     if not final_answer:
         logger.warning("[agent] turn produced no answer text")
 
-    # Post-processing: strip hallucinated/weak [DOC-N] citations before any
-    # source-relevance or page-verification steps that rely on citation text.
+    # Post-processing: validate citations and regen if hallucinated indices found.
+    # validate_citations returns (cleaned_answer, should_regen).
+    # A should_regen=True means the model cited a DOC-N that does not exist —
+    # the stripped answer is kept as the fallback while a fresh Sonnet call
+    # regenerates a corrected version grounded in only the actual retrieved docs.
     if final_answer and final_docs:
-        final_answer = validate_citations(final_answer, final_docs)
+        final_answer, should_regen = validate_citations(final_answer, final_docs)
+        if should_regen:
+            from arlc.agent.citation_validator import cross_check_citations, validate_citation_indices
+
+            regen = await _regen_answer(question, final_docs, conversation_history)
+            if regen:
+                # Re-validate regen result — strip only, no recursive regen
+                regen, _, _ = validate_citation_indices(regen, final_docs)
+                regen, _ = cross_check_citations(regen, final_docs)
+                final_answer = regen
 
     # Post-processing: verify source relevance (informational, not blocking)
     if final_answer and final_docs:
@@ -1406,12 +1479,14 @@ async def run_agent_turn(
             },
         )
 
-    # Post-processing: page verification (DIFC only).
+    # Post-processing: page verification (all builtin corpora).
     # Checks that cited pages actually support the answer.  If a page has
     # NO_SUPPORT, the verifier tries to find a better page in the same
-    # document.  This runs synchronously and is non-blocking — if it fails,
-    # the original sources are preserved.
-    if final_answer and sources and corpus == "difc":
+    # document.  Non-blocking — if verification fails for any source type
+    # (e.g. court decisions without page files), the original is preserved.
+    # Previously DIFC-only; extended to czech/uk/au where statute page files
+    # exist.  Court decisions and TXT sources fall through gracefully.
+    if final_answer and sources and corpus in _BUILTIN_CORPORA:
         sources = verify_agent_pages(question, final_answer, sources)
 
     # T-01: Evidence-grounded source re-ranking (all corpora).

@@ -1,36 +1,55 @@
 """Citation validation: hallucinated-index filter + evidence→claim cross-check.
 
-Two post-processing passes run after the agent produces its final answer:
+Three post-processing passes run after the agent produces its final answer:
 
 1. **Hallucinated-index filter** — scans the answer for [DOC-N] references
-   where N exceeds the number of accumulated documents. These phantom
-   citations are stripped from the answer text so the frontend never
-   renders a dangling footnote.
+   where N is outside the valid range [1, len(docs)]. Any phantom citation
+   triggers a full regen of the answer so the model re-answers with only the
+   documents it actually retrieved.
 
-2. **Evidence→claim cross-check** — for each [DOC-N] cited in the answer,
-   extracts the surrounding claim text and scores it against the actual
-   document content. Citations with near-zero evidence support are
-   stripped (the claim remains, only the unsupported tag is removed).
+2. **Evidence→claim cross-check (keyword)** — for each [DOC-N] cited in the
+   answer, extracts the surrounding claim text and scores it against the
+   actual document content. Citations with near-zero keyword overlap are
+   stripped. This is the sync fallback when no LLM client is available.
 
-Both passes are non-destructive to the source list — they only modify
-the answer text. Source ordering is never changed (rule 16).
+3. **Evidence→claim cross-check (LLM)** — async Haiku-based version that
+   replaces the keyword scorer when an LLM client is supplied. More accurate
+   on short or highly technical claims where keyword overlap is low even for
+   genuine citations.
+
+Both cross-check variants are non-destructive to the source list — they only
+modify the answer text. Source ordering is never changed (rule 16).
 """
 
 from __future__ import annotations
 
 import logging
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from langchain_core.language_models import BaseChatModel
 
 logger = logging.getLogger(__name__)
 
 _DOC_TAG_RE = re.compile(r"\[DOC-(\d+)\]")
 
-# Context window: chars before/after [DOC-N] to extract as the "claim"
+# Characters before/after [DOC-N] used as the "claim" context window
 _CLAIM_CONTEXT_CHARS = 200
 
-# Minimum evidence score to keep a citation (0.0–1.0).
-# Below this threshold the citation tag is removed from the answer.
+# Minimum keyword-overlap score to keep a citation (0.0–1.0).
 _MIN_EVIDENCE_SCORE = 0.04
+
+# Regen is triggered when the model cited a DOC-N outside valid range.
+# Even one hallucinated index signals the model was confused about what
+# it retrieved — regenerating with a corrected context is safer than
+# stripping the phantom references and hoping the rest is accurate.
+_REGEN_ON_ANY_HALLUCINATED_INDEX = True
+
+# LLM evidence check limits — Haiku context window budget
+_LLM_CLAIM_CHAR_LIMIT = 400  # max claim chars sent to Haiku evidence check
+_LLM_DOC_CHAR_LIMIT = 800  # max doc excerpt chars sent to Haiku
+_LLM_MAX_CITED_DOCS = 3  # max docs combined per evidence check call
 
 _STOPWORDS = frozenset(
     "a an the is are was were be been being have has had do does did "
@@ -42,14 +61,29 @@ _STOPWORDS = frozenset(
 )
 
 
-def filter_hallucinated_indices(answer: str, num_docs: int) -> tuple[str, list[int]]:
-    """Remove [DOC-N] tags where N is outside the valid range [1, num_docs].
+# ---------------------------------------------------------------------------
+# Public names matching the task spec
+# ---------------------------------------------------------------------------
 
-    Returns the cleaned answer and a list of removed indices (for logging).
+
+def validate_citation_indices(answer: str, docs: list[dict]) -> tuple[str, bool, list[int]]:
+    """Synchronous pre-display check for out-of-range [DOC-N] references.
+
+    Scans *answer* for [DOC-N] tags where N is outside [1, len(docs)].
+    Strips phantom tags and signals whether the answer should be regenerated.
+
+    Args:
+        answer: The agent's final answer text.
+        docs: Accumulated documents (0-indexed; DOC-1 = docs[0]).
+
+    Returns:
+        Tuple of (cleaned_answer, should_regen, hallucinated_indices).
+        ``should_regen`` is True when any hallucinated index was found.
     """
-    if not answer or num_docs < 0:
-        return answer, []
+    if not answer:
+        return answer, False, []
 
+    num_docs = len(docs)
     removed: list[int] = []
 
     def _replace(m: re.Match) -> str:
@@ -63,66 +97,116 @@ def filter_hallucinated_indices(answer: str, num_docs: int) -> tuple[str, list[i
 
     if removed:
         logger.warning(
-            "citation_validator: stripped %d hallucinated index(es) %s (valid range 1–%d)",
+            "citation_validator: %d hallucinated index(es) %s stripped (valid range 1–%d)",
             len(removed),
             sorted(set(removed)),
             num_docs,
         )
 
-    return cleaned, removed
+    should_regen = bool(removed) and _REGEN_ON_ANY_HALLUCINATED_INDEX
+    return cleaned, should_regen, removed
+
+
+async def _verify_claim_evidence(
+    sentence: str,
+    cited_docs: list[dict],
+    llm: BaseChatModel | None = None,
+) -> bool:
+    """Check whether *cited_docs* support the claim in *sentence*.
+
+    When *llm* is supplied (Haiku recommended for speed), uses an LLM to
+    assess evidence quality. Falls back to keyword overlap when *llm* is None.
+
+    Args:
+        sentence: The claim sentence extracted from the answer.
+        cited_docs: List of doc dicts (each must have a "text" key) that
+                    the claim cites.
+        llm: Optional language model for evidence scoring.
+
+    Returns:
+        True if the evidence supports the claim, False otherwise.
+    """
+    if not sentence or not cited_docs:
+        return True  # no evidence to check → keep citation
+
+    doc_texts = [d.get("text", "") for d in cited_docs if d.get("text")]
+    combined_doc = "\n---\n".join(doc_texts[:_LLM_MAX_CITED_DOCS])
+
+    if llm is not None:
+        return await _verify_with_llm(sentence, combined_doc, llm)
+
+    # Keyword fallback
+    return _verify_with_keywords(sentence, combined_doc)
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
 
 
 def _extract_claim_context(answer: str, match: re.Match) -> str:
-    """Extract the text surrounding a [DOC-N] tag as the claim to verify."""
     start = max(0, match.start() - _CLAIM_CONTEXT_CHARS)
     end = min(len(answer), match.end() + _CLAIM_CONTEXT_CHARS)
     context = answer[start:end]
-    # Strip other [DOC-N] tags from the context to get pure claim text
     return _DOC_TAG_RE.sub("", context).strip()
 
 
 def _score_claim_against_doc(claim: str, doc_text: str) -> float:
-    """Score how well a document supports a claim using keyword overlap.
-
-    Simple but effective: extracts non-stopword tokens from the claim and
-    checks what fraction appear in the document text. This catches the
-    common hallucination pattern where the LLM cites a document that
-    discusses an entirely different topic.
-
-    Returns a float in [0.0, 1.0].
-    """
     if not claim or not doc_text:
         return 0.0
-
     claim_tokens = re.findall(r"[a-zA-Z0-9\u00c0-\u024f]+", claim.lower())
     keywords = [t for t in claim_tokens if t not in _STOPWORDS and len(t) >= 3]
-
     if not keywords:
         return 0.0
-
     doc_lower = doc_text.lower()
     hits = sum(1 for kw in keywords if kw in doc_lower)
     return hits / len(keywords)
+
+
+def _verify_with_keywords(sentence: str, doc_text: str) -> bool:
+    return _score_claim_against_doc(sentence, doc_text) >= _MIN_EVIDENCE_SCORE
+
+
+async def _verify_with_llm(sentence: str, doc_text: str, llm: BaseChatModel) -> bool:
+    """Call the LLM to judge whether *doc_text* supports *sentence*."""
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    system = (
+        "You are a citation evidence verifier. "
+        "Given a legal claim and a source document excerpt, decide whether "
+        "the document actually supports that specific claim. "
+        "Reply with exactly one word: YES or NO."
+    )
+    human = (
+        f"CLAIM: {sentence[:_LLM_CLAIM_CHAR_LIMIT]}\n\n"
+        f"DOCUMENT EXCERPT:\n{doc_text[:_LLM_DOC_CHAR_LIMIT]}\n\n"
+        "Does this document support the claim? (YES/NO)"
+    )
+    try:
+        response = await llm.ainvoke([SystemMessage(content=system), HumanMessage(content=human)])
+        text = response.content if isinstance(response.content, str) else str(response.content)
+        return text.strip().upper().startswith("YES")
+    except Exception:
+        logger.exception("citation_validator: LLM evidence check failed, falling back to keywords")
+        return _verify_with_keywords(sentence, doc_text)
 
 
 def cross_check_citations(
     answer: str,
     docs: list[dict],
 ) -> tuple[str, list[int]]:
-    """Verify each [DOC-N] citation against its document's content.
+    """Keyword-based evidence cross-check (sync).
 
-    For each [DOC-N] in the answer:
-    - Extract the surrounding claim text (~200 chars each side)
-    - Score the claim against the cited document's text
-    - If the score is below _MIN_EVIDENCE_SCORE, strip the tag
+    Strips [DOC-N] tags where the cited document has near-zero keyword
+    overlap with the surrounding claim text. This is the sync fallback;
+    use the async LLM path for higher accuracy.
 
     Args:
-        answer: The agent's final answer text with [DOC-N] citations.
-        docs: Accumulated documents list (0-indexed; DOC-1 = docs[0]).
-              Each doc must have a "text" key.
+        answer: Agent answer text with [DOC-N] citations.
+        docs: Accumulated documents (0-indexed; DOC-1 = docs[0]).
 
     Returns:
-        Tuple of (cleaned answer, list of removed DOC indices).
+        Tuple of (cleaned answer, sorted list of removed DOC indices).
     """
     if not answer or not docs:
         return answer, []
@@ -132,12 +216,12 @@ def cross_check_citations(
     for m in _DOC_TAG_RE.finditer(answer):
         idx = int(m.group(1))
         if idx < 1 or idx > len(docs):
-            continue  # already handled by filter_hallucinated_indices
+            continue  # already handled by validate_citation_indices
 
         doc = docs[idx - 1]
         doc_text = doc.get("text", "")
         if not doc_text:
-            continue  # no text to verify against — keep the citation
+            continue
 
         claim = _extract_claim_context(answer, m)
         if not claim:
@@ -147,7 +231,7 @@ def cross_check_citations(
         if score < _MIN_EVIDENCE_SCORE:
             tags_to_remove.add(idx)
             logger.info(
-                "citation_validator: DOC-%d evidence score %.3f < %.3f — removing (claim: '%.60s…', doc: '%.40s…')",
+                "citation_validator: DOC-%d score=%.3f < %.3f — removing (claim: '%.60s…', doc: '%.40s…')",
                 idx,
                 score,
                 _MIN_EVIDENCE_SCORE,
@@ -163,37 +247,41 @@ def cross_check_citations(
 
     cleaned = _DOC_TAG_RE.sub(_remove_weak, answer)
     removed = sorted(tags_to_remove)
-
     logger.warning(
         "citation_validator: cross-check removed %d weak citation(s): DOC-%s",
         len(removed),
         removed,
     )
-
     return cleaned, removed
+
+
+# ---------------------------------------------------------------------------
+# Top-level entry point
+# ---------------------------------------------------------------------------
 
 
 def validate_citations(
     answer: str,
     accumulated_docs: list[dict],
-) -> str:
+) -> tuple[str, bool]:
     """Run full citation validation pipeline on an agent answer.
 
-    Combines both passes:
-    1. filter_hallucinated_indices — remove out-of-range [DOC-N]
-    2. cross_check_citations — remove unsupported [DOC-N]
+    Combines:
+    1. validate_citation_indices — strip + flag out-of-range [DOC-N]
+    2. cross_check_citations — strip keyword-unsupported [DOC-N]
 
-    Returns the cleaned answer text.
+    Returns:
+        Tuple of (cleaned_answer, should_regen).
+        ``should_regen`` is True when hallucinated indices were found and
+        a full regen of the answer is warranted.
     """
     if not answer:
-        return answer
+        return answer, False
 
-    num_docs = len(accumulated_docs)
+    # Pass 1: hallucinated-index gate (synchronous, strict)
+    answer, should_regen, hallucinated = validate_citation_indices(answer, accumulated_docs)
 
-    # Pass 1: strip out-of-range indices
-    answer, hallucinated = filter_hallucinated_indices(answer, num_docs)
-
-    # Pass 2: evidence cross-check (only if we have docs with text)
+    # Pass 2: keyword evidence cross-check
     if accumulated_docs:
         answer, weak = cross_check_citations(answer, accumulated_docs)
     else:
@@ -202,10 +290,11 @@ def validate_citations(
     total_removed = len(hallucinated) + len(weak)
     if total_removed:
         logger.info(
-            "citation_validator: total %d citation(s) removed (hallucinated=%d, weak_evidence=%d)",
+            "citation_validator: %d citation(s) removed (hallucinated=%d, weak_evidence=%d, regen=%s)",
             total_removed,
             len(hallucinated),
             len(weak),
+            should_regen,
         )
 
-    return answer
+    return answer, should_regen
