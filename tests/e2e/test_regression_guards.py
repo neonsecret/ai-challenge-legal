@@ -68,10 +68,15 @@ class TestLoadHistoryOrdering:
             "ORDER BY created_at ASC + LIMIT returns the OLDEST messages. "
             "Fix: use .desc() before .limit() and reverse the result list."
         )
-        assert "reversed(" in source, (
-            "NEO-2228 regression: load_history uses .desc() but does not call reversed(). "
-            "Without reversing, the agent receives messages newest-first instead of "
-            "chronological order."
+        # The fix uses either Python reversed() or SQL-level re-ordering (subquery with
+        # outer .asc()). Both patterns satisfy the invariant — check for either.
+        has_reversed = "reversed(" in source
+        has_sql_reorder = ".asc()" in source and ".subquery()" in source
+        assert has_reversed or has_sql_reorder, (
+            "NEO-2228 regression: load_history uses .desc() to fetch newest N rows but does "
+            "not re-order them chronologically. Either call reversed() on the Python list, "
+            "or use a subquery with outer .order_by(.asc()) so the agent sees messages "
+            "oldest-first."
         )
 
     @pytest.mark.asyncio(loop_scope="session")
