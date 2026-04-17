@@ -482,6 +482,7 @@ def build_agent_graph():
             "co musis delat",
             "co musis vedet",
             "kdo jsi",
+            "jak pracuješ",
             "jak pracujes",
             "co víš",
             "co vis",
