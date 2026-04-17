@@ -46,6 +46,11 @@ _MIN_EVIDENCE_SCORE = 0.04
 # stripping the phantom references and hoping the rest is accurate.
 _REGEN_ON_ANY_HALLUCINATED_INDEX = True
 
+# LLM evidence check limits — Haiku context window budget
+_LLM_CLAIM_CHAR_LIMIT = 400  # max claim chars sent to Haiku evidence check
+_LLM_DOC_CHAR_LIMIT = 800  # max doc excerpt chars sent to Haiku
+_LLM_MAX_CITED_DOCS = 3  # max docs combined per evidence check call
+
 _STOPWORDS = frozenset(
     "a an the is are was were be been being have has had do does did "
     "will would could should may might must shall can cannot of in on "
@@ -102,7 +107,7 @@ def validate_citation_indices(answer: str, docs: list[dict]) -> tuple[str, bool,
     return cleaned, should_regen, removed
 
 
-async def verify_claim_evidence(
+async def _verify_claim_evidence(
     sentence: str,
     cited_docs: list[dict],
     llm: BaseChatModel | None = None,
@@ -125,7 +130,7 @@ async def verify_claim_evidence(
         return True  # no evidence to check → keep citation
 
     doc_texts = [d.get("text", "") for d in cited_docs if d.get("text")]
-    combined_doc = "\n---\n".join(doc_texts[:3])  # cap at 3 docs to limit tokens
+    combined_doc = "\n---\n".join(doc_texts[:_LLM_MAX_CITED_DOCS])
 
     if llm is not None:
         return await _verify_with_llm(sentence, combined_doc, llm)
@@ -173,8 +178,8 @@ async def _verify_with_llm(sentence: str, doc_text: str, llm: BaseChatModel) -> 
         "Reply with exactly one word: YES or NO."
     )
     human = (
-        f"CLAIM: {sentence[:400]}\n\n"
-        f"DOCUMENT EXCERPT:\n{doc_text[:800]}\n\n"
+        f"CLAIM: {sentence[:_LLM_CLAIM_CHAR_LIMIT]}\n\n"
+        f"DOCUMENT EXCERPT:\n{doc_text[:_LLM_DOC_CHAR_LIMIT]}\n\n"
         "Does this document support the claim? (YES/NO)"
     )
     try:

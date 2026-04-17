@@ -76,6 +76,10 @@ from arlc.constants import DRAFTING_CUSTOM_SLUG, DRAFTING_FREEFORM_SLUG
 
 logger = logging.getLogger(__name__)
 
+# Corpora that have statute page files and support page verification.
+# Court decisions and TXT sources fall through gracefully when not listed here.
+_BUILTIN_CORPORA = frozenset({"difc", "czech", "uk", "au"})
+
 
 # ---------------------------------------------------------------------------
 # Tool schema — what the LLM sees
@@ -1482,7 +1486,6 @@ async def run_agent_turn(
     # (e.g. court decisions without page files), the original is preserved.
     # Previously DIFC-only; extended to czech/uk/au where statute page files
     # exist.  Court decisions and TXT sources fall through gracefully.
-    _BUILTIN_CORPORA = frozenset({"difc", "czech", "uk", "au"})
     if final_answer and sources and corpus in _BUILTIN_CORPORA:
         sources = verify_agent_pages(question, final_answer, sources)
 
