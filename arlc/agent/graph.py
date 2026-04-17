@@ -185,6 +185,63 @@ def document_draft(
     raise RuntimeError("document_draft is schema-only; execution handled by search_node")
 
 
+@tool
+def get_article(law_id: str, article: str) -> str:
+    """Retrieve the exact text of a specific article, section, or paragraph from a law.
+
+    Use this when the user asks about a specific provision and you need to quote
+    it precisely — e.g. "Article 14 of the Employment Law", "§ 52 zákoníku práce",
+    "Section 994 of the Companies Act 2006".
+
+    This is a structural lookup (not semantic search) — it finds the exact provision
+    by number. Use search_legal_corpus for broader topic-based retrieval.
+
+    Parameters:
+    - law_id: the document identifier for the law (e.g. "employment_law_difc_law_no_2_of_2019",
+      "zakonik_prace", "companies_act_2006"). Use list_laws to discover available IDs.
+    - article: the article/section/paragraph reference as a string (e.g. "14", "§ 52",
+      "Section 994", "52a").
+    """
+    raise RuntimeError("get_article is schema-only; execution handled by search_node")
+
+
+@tool
+def list_laws(corpus: str) -> str:
+    """List all laws and statutes available in a given corpus.
+
+    Use this when the user asks what laws are available, when you need to discover
+    the exact law_id to pass to get_article, or when the user wants an overview of
+    the legal framework in a jurisdiction.
+
+    Parameters:
+    - corpus: jurisdiction corpus — one of "czech", "difc", "uk", "au".
+    """
+    raise RuntimeError("list_laws is schema-only; execution handled by search_node")
+
+
+@tool
+def list_cases(
+    corpus: str,
+    party_name: str = "",
+    case_number: str = "",
+) -> str:
+    """List court cases available in the corpus, optionally filtered.
+
+    Use this when the user asks about specific litigation, wants to find cases
+    involving a particular party, or needs to locate a case by its reference number.
+
+    For DIFC: searches DIFC court judgments in the corpus.
+    For Czech: searches the Czech Supreme Court (Nejvyšší soud) database.
+    UK and AU do not have case law in the corpus.
+
+    Parameters:
+    - corpus: jurisdiction — "czech" or "difc" (UK/AU unsupported).
+    - party_name: optional party name filter (e.g. "Emirates NBD", "Essar").
+    - case_number: optional case number filter (e.g. "CFI-057-2025", "21 Cdo 1234/2023").
+    """
+    raise RuntimeError("list_cases is schema-only; execution handled by search_node")
+
+
 # ---------------------------------------------------------------------------
 # Czech statute extraction for auto-enrichment
 # ---------------------------------------------------------------------------
@@ -335,6 +392,10 @@ def _extract_caselaw_query(docs: list[SourceDocument]) -> str:
 # Tool names that belong to the case-law budget (not the corpus search cap).
 _CASELAW_TOOLS: frozenset[str] = frozenset({"search_court_decisions", "fetch_court_decision"})
 
+# Structural tools have their own budget — they are cheap DB lookups that
+# must not consume the corpus search cap or the case-law cap.
+_STRUCTURAL_TOOLS: frozenset[str] = frozenset({"get_article", "list_laws", "list_cases"})
+
 
 def should_continue(state: AgentState) -> str:
     """Route the graph after a reason-node invocation.
@@ -351,6 +412,12 @@ def should_continue(state: AgentState) -> str:
     last = state["messages"][-1]
     if not (hasattr(last, "tool_calls") and last.tool_calls):
         return "end"
+
+    # Structural tools (get_article, list_laws, list_cases) are cheap DB
+    # lookups — they bypass both the corpus cap and the case-law cap.
+    has_only_structural = all(tc["name"] in _STRUCTURAL_TOOLS for tc in last.tool_calls)
+    if has_only_structural:
+        return "search"
 
     has_only_caselaw = all(tc["name"] in _CASELAW_TOOLS for tc in last.tool_calls)
     if has_only_caselaw:
@@ -421,7 +488,15 @@ def _build_llm_pair():
         location=os.environ.get("VERTEX_LOCATION", "us-east5"),
     )
 
-    tools = [search_legal_corpus, search_court_decisions, fetch_court_decision, document_draft]
+    tools = [
+        search_legal_corpus,
+        search_court_decisions,
+        fetch_court_decision,
+        document_draft,
+        get_article,
+        list_laws,
+        list_cases,
+    ]
     if WEB_SEARCH_ENABLED:
         tools.append(search_web)
         logger.info("[agent] web search tool enabled")
@@ -442,20 +517,27 @@ def _build_llm_pair():
 
 
 _compiled_graph = None
+_graph_lock = asyncio.Lock()
 
 
-def _get_agent_graph():
+async def _get_agent_graph():
     """Return the cached compiled agent graph (singleton).
 
     The graph is stateless — per-request data (``on_status``, docs, messages)
     flows through the ``AgentState`` dict, so a single compiled graph is safe
     to reuse across requests.  This avoids re-building the LLM bindings and
     compiling the StateGraph on every turn.
+
+    Uses an asyncio.Lock to prevent concurrent coroutines from building
+    duplicate graphs during startup.
     """
     global _compiled_graph
-    if _compiled_graph is None:
-        _compiled_graph = build_agent_graph()
-    return _compiled_graph
+    if _compiled_graph is not None:
+        return _compiled_graph
+    async with _graph_lock:
+        if _compiled_graph is None:
+            _compiled_graph = build_agent_graph()
+        return _compiled_graph
 
 
 def build_agent_graph():
@@ -850,6 +932,98 @@ def build_agent_graph():
                 new_web_sources.extend(web_results)
                 continue
 
+            # --- Structural tools: get_article, list_laws, list_cases ---
+            if tc["name"] in _STRUCTURAL_TOOLS:
+                from arlc.agent.structural_tools import (
+                    execute_get_article,
+                    execute_list_cases,
+                    execute_list_laws,
+                    format_get_article_results,
+                    format_list_cases_results,
+                    format_list_laws_results,
+                )
+
+                _struct_span = start_tool_span(
+                    _obs_trace,
+                    name=f"tool:{tc['name']}",
+                    input_data={k: v for k, v in tc["args"].items() if v},
+                    metadata={"tool": tc["name"]},
+                )
+                try:
+                    if tc["name"] == "get_article":
+                        law_id = tc["args"].get("law_id", "")
+                        article = tc["args"].get("article", "")
+                        if not law_id or not article:
+                            results_msgs.append(
+                                ToolMessage(
+                                    content="Error: both law_id and article are required.",
+                                    tool_call_id=tc["id"],
+                                )
+                            )
+                            end_tool_span(_struct_span, level="WARNING")
+                            continue
+
+                        if on_status:
+                            on_status(f"retrieving:looking up {article}")
+
+                        art_docs = await execute_get_article(law_id, article, state["corpus"])
+                        doc_offset = len(state["accumulated_docs"]) + len(new_docs_all)
+                        content = format_get_article_results(art_docs, law_id, article, offset=doc_offset)
+                        new_docs_all.extend(art_docs)
+                        end_tool_span(
+                            _struct_span,
+                            output_data={"num_chunks": len(art_docs)},
+                            metadata={"tool": "get_article"},
+                        )
+
+                    elif tc["name"] == "list_laws":
+                        corpus_arg = tc["args"].get("corpus", state["corpus"])
+                        if on_status:
+                            on_status(f"retrieving:listing {corpus_arg} laws")
+                        laws_result = await execute_list_laws(corpus_arg)
+                        content = format_list_laws_results(laws_result, corpus_arg)
+                        end_tool_span(
+                            _struct_span,
+                            output_data={"num_laws": len(laws_result)},
+                            metadata={"tool": "list_laws"},
+                        )
+
+                    elif tc["name"] == "list_cases":
+                        corpus_arg = tc["args"].get("corpus", state["corpus"])
+                        party = tc["args"].get("party_name", "")
+                        case_num = tc["args"].get("case_number", "")
+                        if on_status:
+                            on_status("retrieving:listing cases")
+                        cases_result = await execute_list_cases(
+                            corpus=corpus_arg,
+                            party_name=party,
+                            case_number=case_num,
+                        )
+                        content = format_list_cases_results(cases_result, corpus_arg)
+                        end_tool_span(
+                            _struct_span,
+                            output_data={"num_cases": len(cases_result)},
+                            metadata={"tool": "list_cases"},
+                        )
+
+                    else:
+                        content = f"Unknown structural tool: {tc['name']}"
+                        end_tool_span(_struct_span, level="WARNING")
+
+                except Exception:
+                    logger.exception("[agent] structural tool failed: %s", tc["name"])
+                    end_tool_span(_struct_span, level="ERROR")
+                    results_msgs.append(
+                        ToolMessage(
+                            content=f"{tc['name']} failed. Try search_legal_corpus instead.",
+                            tool_call_id=tc["id"],
+                        )
+                    )
+                    continue
+
+                results_msgs.append(ToolMessage(content=content, tool_call_id=tc["id"]))
+                continue
+
             # --- Corpus search tool (default) ---
             # Status: user-facing, no internal details
             if on_status:
@@ -1017,9 +1191,10 @@ def build_agent_graph():
         # Merge web sources from this search with any from prior iterations, capped
         updated_web_sources = (state.get("web_sources", []) + new_web_sources)[:MAX_WEB_SOURCES]
 
-        # Count actual tool calls dispatched, excluding case law tools (they have a
-        # separate DB and should not compete with statute search budget).
-        tool_call_count = sum(1 for tc in last_msg.tool_calls if tc["name"] not in _CASELAW_TOOLS)
+        # Count actual tool calls dispatched, excluding case law and structural tools
+        # (both have separate budgets and must not consume the corpus search cap).
+        _excluded_from_cap = _CASELAW_TOOLS | _STRUCTURAL_TOOLS
+        tool_call_count = sum(1 for tc in last_msg.tool_calls if tc["name"] not in _excluded_from_cap)
 
         return {
             "messages": results_msgs,
@@ -1169,7 +1344,7 @@ async def run_agent_turn(
         "custom_doc_ids": custom_doc_ids,
     }
 
-    graph = _get_agent_graph()
+    graph = await _get_agent_graph()
 
     # --- Streaming state ---
     final_answer_parts: list[str] = []

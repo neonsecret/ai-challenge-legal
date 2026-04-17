@@ -1,4 +1,4 @@
-.PHONY: setup lint test run index prepare demo dev serve logs
+.PHONY: setup lint test e2e run index prepare demo dev serve logs
 
 # Install dependencies
 setup:
@@ -11,6 +11,10 @@ lint:
 # Run tests
 test:
 	uv run pytest tests/ -v
+
+# Run E2E quality tests against the live dev stack (localhost:8000 + DB + embeddings)
+e2e:
+	uv run pytest tests/e2e/ -m e2e -v --tb=short
 
 # Run all tests (backend + frontend unit + frontend E2E)
 # Note: E2E tests require dev server running on port 3000
