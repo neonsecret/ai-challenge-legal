@@ -628,7 +628,6 @@ def _postgres_reachable() -> bool:
 
 def _embedding_server_reachable() -> bool:
     """Check whether the embedding server (llama-server) is responding."""
-    import os
     import socket
     from urllib.parse import urlparse
 
@@ -644,6 +643,22 @@ def _embedding_server_reachable() -> bool:
         return True
     except OSError:
         return False
+
+
+def _llm_credentials_configured() -> bool:
+    """Check whether real LLM credentials are available (not test dummies)."""
+    vertex_id = os.environ.get("VERTEX_PROJECT_ID", "")
+    if vertex_id and vertex_id != "test-project":
+        return True
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return True
+    return False
+
+
+_skip_no_llm = pytest.mark.skipif(
+    not _llm_credentials_configured(),
+    reason="No real LLM credentials — full pipeline guards need VERTEX_PROJECT_ID or ANTHROPIC_API_KEY",
+)
 
 
 @pytest.mark.integration
@@ -752,6 +767,7 @@ class TestRegressionGuards:
 
     # ── Full pipeline guards (retrieval + LLM) ──────────────────────────────
 
+    @_skip_no_llm
     def test_difc_citation_accuracy_above_threshold(self):
         """DIFC pipeline citation accuracy must stay >= {_DIFC_CITATION_THRESHOLD}%."""
         result = self._run_golden_set(_GOLDEN_DIFC, corpus="difc")
@@ -760,6 +776,7 @@ class TestRegressionGuards:
             f"DIFC citation {result['citation_pct']:.1f}% < threshold {_DIFC_CITATION_THRESHOLD}%"
         )
 
+    @_skip_no_llm
     def test_difc_answer_correctness_above_threshold(self):
         """DIFC pipeline answer correctness must stay >= {_DIFC_CORRECT_THRESHOLD}%."""
         result = self._run_golden_set(_GOLDEN_DIFC, corpus="difc")
@@ -767,6 +784,7 @@ class TestRegressionGuards:
             f"DIFC correctness {result['correctness_pct']:.1f}% < threshold {_DIFC_CORRECT_THRESHOLD}%"
         )
 
+    @_skip_no_llm
     def test_difc_grounding_coverage_above_threshold(self):
         """DIFC free-text answers must contain [DOC-N] citations >= {_DIFC_GROUNDING_THRESHOLD}%."""
         result = self._run_golden_set(_GOLDEN_DIFC, corpus="difc")
@@ -774,6 +792,7 @@ class TestRegressionGuards:
             f"DIFC grounding {result['grounding_pct']:.1f}% < threshold {_DIFC_GROUNDING_THRESHOLD}%"
         )
 
+    @_skip_no_llm
     def test_czech_citation_accuracy_above_threshold(self):
         """Czech pipeline citation accuracy must stay >= {_CZECH_CITATION_THRESHOLD}%."""
         result = self._run_golden_set(_GOLDEN_CZECH, corpus="czech")
@@ -782,6 +801,7 @@ class TestRegressionGuards:
             f"Czech citation {result['citation_pct']:.1f}% < threshold {_CZECH_CITATION_THRESHOLD}%"
         )
 
+    @_skip_no_llm
     def test_czech_answer_correctness_above_threshold(self):
         """Czech pipeline answer correctness must stay >= {_CZECH_CORRECT_THRESHOLD}%."""
         result = self._run_golden_set(_GOLDEN_CZECH, corpus="czech")
@@ -789,6 +809,7 @@ class TestRegressionGuards:
             f"Czech correctness {result['correctness_pct']:.1f}% < threshold {_CZECH_CORRECT_THRESHOLD}%"
         )
 
+    @_skip_no_llm
     def test_czech_grounding_coverage_above_threshold(self):
         """Czech free-text answers must contain [DOC-N] citations >= {_CZECH_GROUNDING_THRESHOLD}%."""
         result = self._run_golden_set(_GOLDEN_CZECH, corpus="czech")
