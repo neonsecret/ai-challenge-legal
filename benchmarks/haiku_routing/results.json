@@ -1,0 +1,251 @@
+[
+  {
+    "mode": "search_count",
+    "out_of_corpus": {
+      "accuracy": 0.4,
+      "n": 5,
+      "results": [
+        {
+          "question": "What is the penalty for jaywalking in Prague under Czech law?",
+          "expected_rejection": true,
+          "answer": "The available legal corpus does not contain the relevant provisions of Czech road traffic law (z\u00e1kon \u010d. 361/2000 Sb., o provozu na pozemn\u00edch komunikac\u00edch) that govern pedestrian conduct and jaywalking penalties. The documents retrieved relate to trade licensing and social insurance law, which are not applicable here.\n\nI can provide a general orientation based on publicly available information, but",
+          "rejected": false,
+          "elapsed_s": 40.4
+        },
+        {
+          "question": "How many days of paid vacation are Czech employees entitled to under the 2025 amendment?",
+          "expected_rejection": true,
+          "answer": "\u00a7 212 z\u00e1kon\u00edku pr\u00e1ce stanov\u00ed n\u00e1roky na dovolenou **v t\u00fddnech, nikoli ve dnech**, a v dostupn\u00e9m korpusu nen\u00ed obsa\u017eena \u017e\u00e1dn\u00e1 novela pro rok 2025, kter\u00e1 by tato pravidla m\u011bnila. Na z\u00e1klad\u011b platn\u00e9ho zn\u011bn\u00ed z\u00e1kon\u00edku pr\u00e1ce plat\u00ed n\u00e1sleduj\u00edc\u00ed:\n\n## V\u00fdm\u011bra dovolen\u00e9 (\u00a7 212 z\u00e1kon\u00edku pr\u00e1ce)\n\n| Skupina zam\u011bstnanc\u016f | N\u00e1rok |\n|---|---|\n| Obecn\u011b v\u0161ichni zam\u011bstnanci | **nejm\u00e9n\u011b 4 t\u00fddny** ro\u010dn\u011b |\n| Zam\u011bstnanci st\u00e1tu,",
+          "rejected": true,
+          "elapsed_s": 44.2
+        },
+        {
+          "question": "What is the current Czech minimum wage as of January 2026?",
+          "expected_rejection": true,
+          "answer": "\u00a7 111 z\u00e1kon\u00edku pr\u00e1ce stanov\u00ed pr\u00e1vn\u00ed r\u00e1mec pro v\u00fdpo\u010det minim\u00e1ln\u00ed mzdy [DOC-1], av\u0161ak konkr\u00e9tn\u00ed \u010d\u00edseln\u00e9 hodnoty platn\u00e9 pro rok 2026 jsou vyhla\u0161ov\u00e1ny sd\u011blen\u00edm Ministerstva pr\u00e1ce a soci\u00e1ln\u00edch v\u011bc\u00ed ve Sb\u00edrce z\u00e1kon\u016f v\u017edy do 30. z\u00e1\u0159\u00ed p\u0159edchoz\u00edho roku [DOC-1] \u2014 tyto hodnoty nejsou obsa\u017eeny ve statut\u00e1rn\u00edm textu z\u00e1kon\u00edku pr\u00e1ce v dostupn\u00e9m korpusu.\n\n## Pr\u00e1vn\u00ed r\u00e1mec v\u00fdpo\u010dtu minim\u00e1ln\u00ed mzdy\n\nDle \u00a7 111 odst. 3 z",
+          "rejected": false,
+          "elapsed_s": 42.5
+        },
+        {
+          "question": "What are the GDPR fines levied against Czech companies in 2025?",
+          "expected_rejection": true,
+          "answer": "I don't have access to a database of GDPR enforcement actions or fines in the Czech legal corpus. The Czech law corpus contains statutes and Supreme Court decisions, but not an administrative register of data protection authority penalties.\n\nTo find current 2025 GDPR fines against Czech companies, you would need to:\n\n1. **Czech Data Protection Authority (\u00daOOU)** \u2014 Check their official website for ",
+          "rejected": true,
+          "elapsed_s": 5.4
+        },
+        {
+          "question": "List all Czech court decisions from March 2026 involving cryptocurrency fraud.",
+          "expected_rejection": true,
+          "answer": "I cannot retrieve court decisions from March 2026, as that date is in the future. The Czech Supreme Court case law database in this corpus contains only historical and current decisions, not future ones.\n\nIf you're interested in **existing Czech court decisions** involving cryptocurrency fraud or related financial crimes, I can search the database for you. Please clarify:\n\n1. What **time period** ",
+          "rejected": false,
+          "elapsed_s": 4.2
+        }
+      ]
+    },
+    "in_corpus_first_turn": {
+      "accuracy": 1.0,
+      "n": 5,
+      "results": [
+        {
+          "question": "What is the notice period for terminating an employment contract under Czech Labour Code?",
+          "expected_rejection": false,
+          "answer": "\u00a7 51 z\u00e1kon\u00edku pr\u00e1ce (z\u00e1kon \u010d. 262/2006 Sb.) stanov\u00ed n\u00e1sleduj\u00edc\u00ed v\u00fdpov\u011bdn\u00ed doby p\u0159i skon\u010den\u00ed pracovn\u00edho pom\u011bru v\u00fdpov\u011bd\u00ed:\n\n## Standardn\u00ed v\u00fdpov\u011bdn\u00ed doba\n\nV\u00fdpov\u011bdn\u00ed doba \u010din\u00ed **nejm\u00e9n\u011b 2 m\u011bs\u00edce** [DOC-1]. Tato lh\u016fta plat\u00ed pro v\u00fdpov\u011b\u010f danou jak zam\u011bstnavatelem, tak zam\u011bstnancem v b\u011b\u017en\u00fdch p\u0159\u00edpadech.\n\nV\u00fdpov\u011bdn\u00ed doba za\u010d\u00edn\u00e1 dnem, v n\u011bm\u017e byla v\u00fdpov\u011b\u010f **doru\u010dena druh\u00e9 smluvn\u00ed stran\u011b**, a kon\u010d\u00ed dnem, kter\u00fd s",
+          "rejected": false,
+          "elapsed_s": 43.3
+        },
+        {
+          "question": "Under Czech law, how long can pre-trial detention last?",
+          "expected_rejection": false,
+          "answer": "The corpus does not contain the full text of the Czech Code of Criminal Procedure (trestn\u00ed \u0159\u00e1d, z\u00e1kon \u010d. 141/1961 Sb.), and a direct article lookup is unavailable. However, based on the Supreme Court decisions retrieved and general Czech criminal procedure law (as confirmed by those decisions), here is the authoritative framework:\n\n---\n\n## D\u00e9lka vazby (p\u0159edb\u011b\u017en\u00e9ho zadr\u017een\u00ed) v \u010desk\u00e9m trestn\u00edm pr\u00e1vu",
+          "rejected": false,
+          "elapsed_s": 121.5
+        },
+        {
+          "question": "What grounds allow a Czech landlord to terminate a tenancy without tenant consent?",
+          "expected_rejection": false,
+          "answer": "\u00a7 2288 a \u00a7 2291 ob\u010dansk\u00e9ho z\u00e1kon\u00edku (z\u00e1kon \u010d. 89/2012 Sb.) stanov\u00ed taxativn\u00ed d\u016fvody, na jejich\u017e z\u00e1klad\u011b m\u016f\u017ee pronaj\u00edmatel ukon\u010dit n\u00e1jem bytu bez souhlasu n\u00e1jemce. Rozli\u0161uj\u00ed se t\u0159i kategorie podle z\u00e1va\u017enosti a d\u00e9lky v\u00fdpov\u011bdn\u00ed doby.\n\n---\n\n## I. V\u00fdpov\u011b\u010f s t\u0159\u00edm\u011bs\u00ed\u010dn\u00ed v\u00fdpov\u011bdn\u00ed dobou \u2014 d\u016fvody pro n\u00e1jem na dobu ur\u010ditou i neur\u010ditou (\u00a7 2288 odst. 1)\n\nPronaj\u00edmatel m\u016f\u017ee vypov\u011bd\u011bt **jak\u00fdkoli n\u00e1jem** (a\u0165 ur\u010di",
+          "rejected": false,
+          "elapsed_s": 133.1
+        },
+        {
+          "question": "What is the limitation period for breach of contract claims under Czech law?",
+          "expected_rejection": false,
+          "answer": "## Limitation Period for Breach of Contract Claims under Czech Law\n\nCzech law provides for **two overlapping limitation periods** that apply cumulatively to contractual claims under the Civil Code (z\u00e1kon \u010d. 89/2012 Sb., ob\u010dansk\u00fd z\u00e1kon\u00edk \u2014 \u201eo. z.\"):\n\n---\n\n### 1. Subjective 3-Year Period\nThe standard limitation period is **three years** [DOC-4], running from the day on which the right could have bee",
+          "rejected": false,
+          "elapsed_s": 126.9
+        },
+        {
+          "question": "What are the requirements for a valid will under Czech Civil Code?",
+          "expected_rejection": false,
+          "answer": "Z\u00e1v\u011b\u0165 je platn\u00e1 podle \u010desk\u00e9ho ob\u010dansk\u00e9ho z\u00e1kon\u00edku (z\u00e1kon \u010d. 89/2012 Sb., \u201eNOZ\") pouze tehdy, jsou-li spln\u011bny po\u017eadavky na zp\u016fsobilost po\u0159izovatele i na formu listiny. N\u00ed\u017ee je systematick\u00fd p\u0159ehled.\n\n---\n\n## 1. Zp\u016fsobilost po\u0159izovatele\n\n**Pln\u00e1 sv\u00e9pr\u00e1vnost** je z\u00e1kladn\u00edm p\u0159edpokladem. Nesv\u00e9pr\u00e1vn\u00fd po\u0159izovat nem\u016f\u017ee, s v\u00fdjimkami [DOC-14]:\n\n- **Nezletil\u00ed od 15 let**: M\u016f\u017ee po\u0159izovat bez souhlasu z\u00e1konn\u00e9ho",
+          "rejected": false,
+          "elapsed_s": 381.3
+        }
+      ]
+    },
+    "combined_accuracy": 0.7
+  },
+  {
+    "mode": "disabled",
+    "out_of_corpus": {
+      "accuracy": 0.6,
+      "n": 5,
+      "results": [
+        {
+          "question": "What is the penalty for jaywalking in Prague under Czech law?",
+          "expected_rejection": true,
+          "answer": "The specific provisions governing jaywalking penalties under Czech law (z\u00e1kon \u010d. 361/2000 Sb., o provozu na pozemn\u00edch komunikac\u00edch, particularly \u00a7 125d dealing with pedestrian offences) are not contained in the legal corpus available to me. I am therefore unable to quote the precise penalty figures from a verified source and will not fabricate them.\n\nWhat I can confirm from the corpus is the follo",
+          "rejected": true,
+          "elapsed_s": 176.4
+        },
+        {
+          "question": "How many days of paid vacation are Czech employees entitled to under the 2025 amendment?",
+          "expected_rejection": true,
+          "answer": "## Dovolen\u00e1 dle z\u00e1kon\u00edku pr\u00e1ce \u2014 v\u00fdm\u011bra\n\nZ\u00e1kon\u00edk pr\u00e1ce nestanov\u00ed v\u00fdm\u011bru dovolen\u00e9 v kalend\u00e1\u0159n\u00edch dnech, n\u00fdbr\u017e v **t\u00fddnech**, p\u0159i\u010dem\u017e konkr\u00e9tn\u00ed po\u010det dn\u016f z\u00e1vis\u00ed na d\u00e9lce stanoven\u00e9 t\u00fddenn\u00ed pracovn\u00ed doby zam\u011bstnance. Pr\u00e1vn\u00ed \u00faprava (\u00a7 212 ve spojen\u00ed s \u00a7 213 z\u00e1kon\u00edku pr\u00e1ce) stanov\u00ed tyto minim\u00e1ln\u00ed v\u00fdm\u011bry:\n\n| Kategorie zam\u011bstnanc\u016f | V\u00fdm\u011bra dovolen\u00e9 |\n|---|---|\n| **Obecn\u011b (soukrom\u00fd sektor)** | nejm\u00e9n\u011b **4 ",
+          "rejected": true,
+          "elapsed_s": 53.6
+        },
+        {
+          "question": "What is the current Czech minimum wage as of January 2026?",
+          "expected_rejection": true,
+          "answer": "\u00a7 111 z\u00e1kon\u00edku pr\u00e1ce stanov\u00ed pr\u00e1vn\u00ed r\u00e1mec pro minim\u00e1ln\u00ed mzdu \u2014 konkr\u00e9tn\u00ed v\u00fd\u0161e se v\u0161ak vyhla\u0161uje ka\u017edoro\u010dn\u011b sd\u011blen\u00edm Ministerstva pr\u00e1ce a soci\u00e1ln\u00edch v\u011bc\u00ed ve Sb\u00edrce z\u00e1kon\u016f a mezin\u00e1rodn\u00edch smluv, a to nejpozd\u011bji do 30. z\u00e1\u0159\u00ed p\u0159edchoz\u00edho roku [DOC-1]. P\u0159esn\u00e1 \u010d\u00edseln\u00e1 hodnota pro rok 2026 nen\u00ed obsa\u017eena v z\u00e1konn\u00e9m korpusu dostupn\u00e9m v tomto syst\u00e9mu, a webov\u00e9 vyhled\u00e1v\u00e1n\u00ed je v tomto prost\u0159ed\u00ed deaktivov\u00e1no.\n\n",
+          "rejected": false,
+          "elapsed_s": 43.2
+        },
+        {
+          "question": "What are the GDPR fines levied against Czech companies in 2025?",
+          "expected_rejection": true,
+          "answer": "This question falls outside the scope of what the available legal corpus can answer. The corpus contains Czech statutory law and Supreme Court decisions \u2014 it does **not** contain enforcement records, regulatory decisions, or fine registers issued by the **\u00da\u0159ad pro ochranu osobn\u00edch \u00fadaj\u016f (\u00daOO\u00da)**, which is the Czech supervisory authority responsible for imposing GDPR fines.\n\nTo find specific GDPR f",
+          "rejected": true,
+          "elapsed_s": 41.7
+        },
+        {
+          "question": "List all Czech court decisions from March 2026 involving cryptocurrency fraud.",
+          "expected_rejection": true,
+          "answer": "## Rozhodnut\u00ed z b\u0159ezna 2026 s kl\u00ed\u010dov\u00fdm slovem \u201ekryptom\u011bny\" a \u201epodvod\"\n\nVyhled\u00e1v\u00e1n\u00ed vr\u00e1tilo **10 rozhodnut\u00ed** z b\u0159ezna 2026, kter\u00e1 maj\u00ed tematickou vazbu na kryptom\u011bny. Jejich p\u0159ehled:\n\n### \u00dastavn\u00ed soud (\u00daS)\n| \u010c. v\u011bci | Datum | ECLI |\n|---|---|---|\n| IV.\u00daS 3831/25 | 11. 3. 2026 | ECLI:CZ:US:2026:4.US.3831.25.1 |\n| IV.\u00daS 455/26 | 25. 3. 2026 | ECLI:CZ:US:2026:4.US.455.26.1 |\n| I.\u00daS 402/26 | 10. 3. 20",
+          "rejected": false,
+          "elapsed_s": 24.4
+        }
+      ]
+    },
+    "in_corpus_first_turn": {
+      "accuracy": 1.0,
+      "n": 5,
+      "results": [
+        {
+          "question": "What is the notice period for terminating an employment contract under Czech Labour Code?",
+          "expected_rejection": false,
+          "answer": "\u00a7 51 z\u00e1kon\u00edku pr\u00e1ce stanov\u00ed, \u017ee v\u00fdpov\u011bdn\u00ed doba p\u0159i skon\u010den\u00ed pracovn\u00edho pom\u011bru v\u00fdpov\u011bd\u00ed **\u010din\u00ed nejm\u00e9n\u011b 2 m\u011bs\u00edce** [DOC-1].\n\n## Pravidla v\u00fdpov\u011bdn\u00ed doby\n\n### Obecn\u00e1 d\u00e9lka\nStandardn\u00ed z\u00e1konn\u00e1 v\u00fdpov\u011bdn\u00ed doba jsou **minim\u00e1ln\u011b 2 m\u011bs\u00edce**, a to jak p\u0159i v\u00fdpov\u011bdi dan\u00e9 zam\u011bstnavatelem, tak zam\u011bstnancem [DOC-1].\n\n### V\u00fdjimky \u2013 zkr\u00e1cen\u00e1 v\u00fdpov\u011bdn\u00ed doba (1 m\u011bs\u00edc)\nV\u00fdpov\u011bdn\u00ed doba se zkracuje na **nejm\u00e9n\u011b 1 m\u011bs\u00edc** ",
+          "rejected": false,
+          "elapsed_s": 40.2
+        },
+        {
+          "question": "Under Czech law, how long can pre-trial detention last?",
+          "expected_rejection": false,
+          "answer": "Ustanoven\u00ed \u00a7 72 a n\u00e1sl. trestn\u00edho \u0159\u00e1du (z\u00e1kon \u010d. 141/1961 Sb.) \u2014 prim\u00e1rn\u00ed pramen upravuj\u00edc\u00ed d\u00e9lku vazby \u2014 nen\u00ed v dostupn\u00e9m korpusu obsa\u017een v pln\u00e9m zn\u011bn\u00ed. Dostupn\u00e9 dokumenty korpusu obsahuj\u00ed trestn\u00ed z\u00e1kon\u00edk (hmotn\u00e9 pr\u00e1vo), nikoli trestn\u00ed \u0159\u00e1d (procesn\u00ed pr\u00e1vo). Z dostupn\u00fdch rozhodnut\u00ed NS \u010cR je nicm\u00e9n\u011b mo\u017eno dovodit kl\u00ed\u010dov\u00e9 procesn\u00ed lh\u016fty, a proto odpov\u00edd\u00e1m na z\u00e1klad\u011b t\u011bchto zdroj\u016f dopln\u011bn\u00fdch o obecn\u011b",
+          "rejected": false,
+          "elapsed_s": 135.0
+        },
+        {
+          "question": "What grounds allow a Czech landlord to terminate a tenancy without tenant consent?",
+          "expected_rejection": false,
+          "answer": "\u00a7 2288 a \u00a7 2291 ob\u010dansk\u00e9ho z\u00e1kon\u00edku (z\u00e1k. \u010d. 89/2012 Sb.) stanov\u00ed taxativn\u00ed v\u00fd\u010det d\u016fvod\u016f, pro n\u011b\u017e m\u016f\u017ee pronaj\u00edmatel vypov\u011bd\u011bt n\u00e1jem bytu bez souhlasu n\u00e1jemce. \u010cesk\u00fd pr\u00e1vn\u00ed \u0159\u00e1d rozli\u0161uje dv\u011b z\u00e1kladn\u00ed kategorie v\u00fdpov\u011bdi: v\u00fdpov\u011b\u010f **s t\u0159\u00edm\u011bs\u00ed\u010dn\u00ed v\u00fdpov\u011bdn\u00ed dobou** a v\u00fdpov\u011b\u010f **bez v\u00fdpov\u011bdn\u00ed doby** (okam\u017eit\u00e1). N\u00ed\u017ee je jejich p\u0159ehled.\n\n---\n\n## I. V\u00fdpov\u011b\u010f s t\u0159\u00edm\u011bs\u00ed\u010dn\u00ed v\u00fdpov\u011bdn\u00ed dobou (\u00a7 2288 o. z.)\n\n### A)",
+          "rejected": false,
+          "elapsed_s": 116.0
+        },
+        {
+          "question": "What is the limitation period for breach of contract claims under Czech law?",
+          "expected_rejection": false,
+          "answer": "## Limitation Period for Breach of Contract Claims under Czech Law\n\nUnder the Czech Civil Code (z\u00e1kon \u010d. 89/2012 Sb., ob\u010dansk\u00fd z\u00e1kon\u00edk \u2014 \"o.z.\"), breach of contract claims are governed by a **dual-track limitation system**: a subjective 3-year period running from awareness, capped by an absolute 10-year objective period.\n\n---\n\n### 1. Standard (Subjective) Limitation Period \u2014 3 Years\n\n\u00a7 629 odst. 1",
+          "rejected": false,
+          "elapsed_s": 86.2
+        },
+        {
+          "question": "What are the requirements for a valid will under Czech Civil Code?",
+          "expected_rejection": false,
+          "answer": "\u00a7 1494 ob\u010dansk\u00e9ho z\u00e1kon\u00edku (z\u00e1kon \u010d. 89/2012 Sb.) definuje z\u00e1v\u011b\u0165 jako \u201eodvolateln\u00fd projev v\u016fle, kter\u00fdm z\u016fstavitel pro p\u0159\u00edpad sv\u00e9 smrti osobn\u011b z\u016fstavuje jedn\u00e9 \u010di v\u00edce osob\u00e1m alespo\u0148 pod\u00edl na poz\u016fstalosti, p\u0159\u00edpadn\u011b i odkaz\" [DOC-1]. Pro platnost z\u00e1v\u011bti mus\u00ed b\u00fdt spln\u011bny n\u00e1sleduj\u00edc\u00ed po\u017eadavky:\n\n---\n\n## 1. Zp\u016fsobilost z\u016fstavitele (testament\u00e1rn\u00ed kapacita)\n\nPln\u011b sv\u00e9pr\u00e1vn\u00e1 osoba m\u016f\u017ee po\u0159\u00eddit z\u00e1v\u011b\u0165 v jak\u00e9k",
+          "rejected": false,
+          "elapsed_s": 133.6
+        }
+      ]
+    },
+    "combined_accuracy": 0.8
+  },
+  {
+    "mode": "classifier",
+    "out_of_corpus": {
+      "accuracy": 0.8,
+      "n": 5,
+      "results": [
+        {
+          "question": "What is the penalty for jaywalking in Prague under Czech law?",
+          "expected_rejection": true,
+          "answer": "The available legal corpus does not contain the relevant provisions governing pedestrian traffic offences (jaywalking). The applicable law \u2014 z\u00e1kon \u010d. 361/2000 Sb., o provozu na pozemn\u00edch komunikac\u00edch (z\u00e1kon o silni\u010dn\u00edm provozu) \u2014 is not present in this corpus, and the retrieved documents relate exclusively to trade licensing and social insurance matters, which are unrelated to your question.\n\nAcco",
+          "rejected": false,
+          "elapsed_s": 35.3
+        },
+        {
+          "question": "How many days of paid vacation are Czech employees entitled to under the 2025 amendment?",
+          "expected_rejection": true,
+          "answer": "Z\u00e1kon\u00edk pr\u00e1ce v \u00a7 212 nestanov\u00ed n\u00e1rok na dovolenou v po\u010dtu **dn\u016f**, n\u00fdbr\u017e v **t\u00fddnech** \u2014 a dle dostupn\u00e9ho corpus textu \u017e\u00e1dn\u00e1 novela pro rok 2025 zm\u011bnu v\u00fdm\u011bry dovolen\u00e9 nezav\u00e1d\u00ed.\n\nAktu\u00e1ln\u00ed z\u00e1konn\u00e9 minimum dle \u00a7 212 z\u00e1kon\u00edku pr\u00e1ce je:\n\n| Kategorie zam\u011bstnance | V\u00fdm\u011bra dovolen\u00e9 |\n|---|---|\n| Obecn\u011b (soukrom\u00fd sektor) | **nejm\u00e9n\u011b 4 t\u00fddny** v kalend\u00e1\u0159n\u00edm roce [DOC-1] |\n| Zam\u011bstnanci st\u00e1tu, \u00fazemn\u00ed samosp",
+          "rejected": true,
+          "elapsed_s": 49.3
+        },
+        {
+          "question": "What is the current Czech minimum wage as of January 2026?",
+          "expected_rejection": true,
+          "answer": "\u00a7 111 z\u00e1kon\u00edku pr\u00e1ce stanov\u00ed pr\u00e1vn\u00ed r\u00e1mec pro v\u00fdpo\u010det minim\u00e1ln\u00ed mzdy \u2014 jej\u00ed konkr\u00e9tn\u00ed v\u00fd\u0161i pro ka\u017ed\u00fd rok vyhla\u0161uje do 30. z\u00e1\u0159\u00ed Ministerstvo pr\u00e1ce a soci\u00e1ln\u00edch v\u011bc\u00ed sd\u011blen\u00edm ve Sb\u00edrce z\u00e1kon\u016f a mezin\u00e1rodn\u00edch smluv [DOC-1]. Corpus pr\u00e1vn\u00edch p\u0159edpis\u016f, ke kter\u00e9mu m\u00e1m p\u0159\u00edstup, konkr\u00e9tn\u00ed \u010d\u00edselnou hodnotu minim\u00e1ln\u00ed mzdy pro rok 2026 neobsahuje, nebo\u0165 ta je stanovena vl\u00e1dn\u00edm na\u0159\u00edzen\u00edm/sd\u011blen\u00edm MPSV, nikoli ",
+          "rejected": true,
+          "elapsed_s": 38.6
+        },
+        {
+          "question": "What are the GDPR fines levied against Czech companies in 2025?",
+          "expected_rejection": true,
+          "answer": "GDPR enforcement records \u2014 specifically fines levied by the Czech data protection authority (\u00da\u0159ad pro ochranu osobn\u00edch \u00fadaj\u016f, \u00daOO\u00da) against Czech companies in 2025 \u2014 are **not contained in the available legal corpus**. The corpus covers Czech statutory law (e.g. the Tax Code, the Business Corporations Act) but does not include enforcement decisions or sanction registers of the \u00daOO\u00da.\n\nTo obtain acc",
+          "rejected": true,
+          "elapsed_s": 35.9
+        },
+        {
+          "question": "List all Czech court decisions from March 2026 involving cryptocurrency fraud.",
+          "expected_rejection": true,
+          "answer": "Two important clarifications are necessary before presenting the results.\n\n## Rozsah datab\u00e1ze a omezen\u00ed v\u00fdsledk\u016f\n\n**Datab\u00e1ze judikatury dostupn\u00e1 v tomto syst\u00e9mu pokr\u00fdv\u00e1 Nejvy\u0161\u0161\u00ed soud \u010cR (NS) a Nejvy\u0161\u0161\u00ed spr\u00e1vn\u00ed soud (NSS) \u2014 nikoliv ni\u017e\u0161\u00ed soudy.** Vyhled\u00e1v\u00e1n\u00ed za b\u0159ezen 2026 vr\u00e1tilo rozhodnut\u00ed prim\u00e1rn\u011b z oblasti **da\u0148ov\u00e9ho a spr\u00e1vn\u00edho pr\u00e1va** (ozna\u010den\u00ed \u201eAfs\" = da\u0148ov\u00e9 v\u011bci, \u201eAs\" = spr\u00e1vn\u00ed v\u011bci), kter\u00e1",
+          "rejected": true,
+          "elapsed_s": 29.1
+        }
+      ]
+    },
+    "in_corpus_first_turn": {
+      "accuracy": 1.0,
+      "n": 2,
+      "results": [
+        {
+          "question": "What is the notice period for terminating an employment contract under Czech Labour Code?",
+          "expected_rejection": false,
+          "answer": "\u00a7 51 z\u00e1kon\u00edku pr\u00e1ce stanov\u00ed, \u017ee v\u00fdpov\u011bdn\u00ed doba p\u0159i skon\u010den\u00ed pracovn\u00edho pom\u011bru v\u00fdpov\u011bd\u00ed \u010din\u00ed **nejm\u00e9n\u011b 2 m\u011bs\u00edce** jako obecn\u00e9 pravidlo [DOC-1].\n\n## V\u00fdpov\u011bdn\u00ed doba \u2014 p\u0159ehled pravidel\n\n### Obecn\u00e9 pravidlo\nV\u00fdpov\u011bdn\u00ed doba je **nejm\u00e9n\u011b 2 m\u011bs\u00edce** a plat\u00ed symetricky pro zam\u011bstnavatele i zam\u011bstnance [DOC-1].\n\n### V\u00fdjimky \u2014 krat\u0161\u00ed v\u00fdpov\u011bdn\u00ed doba (1 m\u011bs\u00edc)\nV\u00fdpov\u011bdn\u00ed doba se zkracuje na **nejm\u00e9n\u011b 1 m\u011bs\u00edc**, ",
+          "rejected": false,
+          "elapsed_s": 54.2
+        },
+        {
+          "question": "Under Czech law, how long can pre-trial detention last?",
+          "expected_rejection": false,
+          "answer": "",
+          "rejected": false,
+          "elapsed_s": 27.5
+        },
+        {
+          "question": "What grounds allow a Czech landlord to terminate a tenancy without tenant consent?",
+          "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/query/stream?corpus=czech (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+        },
+        {
+          "question": "What is the limitation period for breach of contract claims under Czech law?",
+          "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/query/stream?corpus=czech (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+        },
+        {
+          "question": "What are the requirements for a valid will under Czech Civil Code?",
+          "error": "HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/query/stream?corpus=czech (Caused by NewConnectionError(\"HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused\"))"
+        }
+      ]
+    },
+    "combined_accuracy": 0.9
+  }
+]

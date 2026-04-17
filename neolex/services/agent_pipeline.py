@@ -98,6 +98,8 @@ async def run_agent_question(
     # --- Hybrid search: builtin corpus + custom corpus collection ---
     custom_corpus: str | None = None,
     custom_doc_ids: list[str] | None = None,
+    # --- Routing experiment override (NEO-2322, benchmark / debug only) ---
+    routing_mode_override: str | None = None,
 ) -> dict:
     """Run a question through the LangGraph agent.
 
@@ -206,6 +208,7 @@ async def run_agent_question(
             draft_document_fn=draft_document_fn,
             custom_corpus=custom_corpus,
             custom_doc_ids=custom_doc_ids,
+            routing_mode_override=routing_mode_override,
         )
     except Exception:
         if trace is not None:

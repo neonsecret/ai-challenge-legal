@@ -134,3 +134,7 @@ class AgentState(TypedDict):
     # --- Hybrid search: builtin corpus + custom corpus collection ---
     custom_corpus: NotRequired[str | None]
     custom_doc_ids: NotRequired[list[str] | None]
+    # --- Routing experiment (NEO-2322) ---
+    # When set, overrides AGENT_HAIKU_ROUTING_MODE for this single request.
+    # Accepted values: "search_count" | "disabled" | "classifier"
+    _routing_mode_override: NotRequired[str | None]
