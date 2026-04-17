@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import re
 import uuid
 from datetime import UTC, datetime
@@ -436,6 +437,14 @@ async def query_stream(
     conversation_id = body.conversation_id
     corpus = body.corpus
 
+    # Routing mode override for benchmarking (NEO-2322). Only honoured when
+    # AGENT_ALLOW_ROUTING_OVERRIDE=true is set server-side — never exposed in production.
+    _routing_override: str | None = None
+    if os.environ.get("AGENT_ALLOW_ROUTING_OVERRIDE") == "true":
+        _raw_mode = request.headers.get("X-Routing-Mode", "").strip().lower()
+        if _raw_mode in {"disabled", "search_count", "classifier"}:
+            _routing_override = _raw_mode
+
     logger.info(
         "[query_stream] corpus=%s corpora_id=%s doc_ids=%s",
         corpus,
@@ -653,6 +662,7 @@ async def query_stream(
                             subscription_plan=user.subscription_status,
                             custom_corpus=custom_corpus,
                             custom_doc_ids=custom_doc_ids,
+                            routing_mode_override=_routing_override,
                         ),
                         timeout=AGENT_TIMEOUT_SECONDS,
                     )

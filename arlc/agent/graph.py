@@ -469,13 +469,18 @@ def build_agent_graph():
         return False
 
     def reason_node(state: AgentState) -> dict:
-        # Routing modes (HAIKU_ROUTING_MODE):
+        # Routing mode priority: per-request state override → env var → compiled constant.
+        # Per-request override is set by the benchmark (via X-Routing-Mode header, debug only).
+        # Reading env at call time allows live reconfiguration without server restart.
         #   "disabled"     — Sonnet for all calls (option A)
         #   "search_count" — Haiku on first call before any search (option B, default)
         #   "classifier"   — Haiku only for greetings/meta, Sonnet for research (option C)
-        if HAIKU_ROUTING_MODE == "disabled":
+        routing_mode = (
+            state.get("_routing_mode_override") or os.environ.get("AGENT_HAIKU_ROUTING_MODE") or HAIKU_ROUTING_MODE
+        )
+        if routing_mode == "disabled":
             use_fast = False
-        elif HAIKU_ROUTING_MODE == "classifier":
+        elif routing_mode == "classifier":
             last_human = next(
                 (m for m in reversed(state["messages"]) if isinstance(m, HumanMessage)),
                 None,
@@ -1226,6 +1231,8 @@ async def run_agent_turn(
     # --- Hybrid search: builtin corpus + custom corpus collection ---
     custom_corpus: str | None = None,
     custom_doc_ids: list[str] | None = None,
+    # --- Routing experiment override (NEO-2322, benchmark / debug only) ---
+    routing_mode_override: str | None = None,
 ) -> dict:
     """Run one agent turn.  Streams tokens in real-time via ``on_token``.
 
@@ -1278,6 +1285,8 @@ async def run_agent_turn(
         # Hybrid search: builtin corpus + custom corpus collection
         "custom_corpus": custom_corpus,
         "custom_doc_ids": custom_doc_ids,
+        # Routing experiment override (None = use env var / compiled default)
+        "_routing_mode_override": routing_mode_override or None,
     }
 
     graph = await _get_agent_graph()
