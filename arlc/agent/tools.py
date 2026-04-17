@@ -37,8 +37,9 @@ def execute_search(
     """Search the legal corpus, always returning fresh results.
 
     Delegates to the full competition pipeline (``retrieve_pages``) which
-    handles tsvector + pgvector + HyDE fusion, cross-encoder reranking,
-    article mapping, and cross-reference boosting.  Already-seen documents are
+    handles tsvector + pgvector + RRF fusion, cross-encoder reranking,
+    article mapping, and cross-reference boosting.  HyDE is disabled on the
+    agent path (``use_hyde=False``) for lower latency.  Already-seen documents are
     excluded at the retrieval level so every call is guaranteed to return
     new sources (unless the corpus is exhausted).
 
