@@ -3,11 +3,13 @@
 Covers:
 - cap_reached_node: produces one ToolMessage per tool call, increments search_count
 - should_continue: routing logic for end / search / cap_reached branches
+- execute_search: verifies use_hyde=False on agent path
 """
 
 from __future__ import annotations
 
 import os
+from unittest.mock import MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
@@ -210,3 +212,65 @@ class TestShouldContinueStructuralTools:
         assert "list_cases" in _STRUCTURAL_TOOLS
         assert "search_legal_corpus" not in _STRUCTURAL_TOOLS
         assert "search_court_decisions" not in _STRUCTURAL_TOOLS
+
+
+# ---------------------------------------------------------------------------
+# execute_search — HyDE flag verification
+# ---------------------------------------------------------------------------
+
+
+class TestExecuteSearchHydeFlag:
+    """Regression test: execute_search must pass use_hyde=False to retrieve_pages.
+
+    This was a flagged gap during NEO-2321 review. The agent path should
+    never use HyDE because the LLM already iterates queries via ReAct —
+    duplicating that cognition slows the loop and degrades latency.
+    """
+
+    def test_execute_search_passes_use_hyde_false(self):
+        from arlc.agent import tools as agent_tools
+
+        mock_page_result = MagicMock()
+        mock_page_result.doc_id = "DOC-001"
+        mock_page_result.page_number = 1
+        mock_page_result.text = "Test content"
+        mock_page_result.score = 0.9
+        mock_page_result.chunk_id = "chunk-1"
+
+        with patch("arlc.retriever.retrieve_pages", return_value=[mock_page_result]) as mock_retrieve:
+            agent_tools.execute_search(
+                query="test query",
+                corpus="difc",
+                law_filters=None,
+                exclude_doc_pages=set(),
+                target_new=5,
+            )
+
+            mock_retrieve.assert_called_once()
+            call_kwargs = mock_retrieve.call_args.kwargs
+            assert "use_hyde" in call_kwargs, "retrieve_pages must be called with use_hyde kwarg"
+            assert call_kwargs["use_hyde"] is False, "Agent path MUST pass use_hyde=False"
+
+    def test_execute_search_passes_use_hyde_false_for_czech_corpus(self):
+        """Verify HyDE is disabled regardless of corpus param."""
+        from arlc.agent import tools as agent_tools
+
+        mock_page_result = MagicMock()
+        mock_page_result.doc_id = "NK-001"
+        mock_page_result.page_number = 1
+        mock_page_result.text = "Czech decision text"
+        mock_page_result.score = 0.85
+        mock_page_result.chunk_id = "chunk-cz"
+
+        with patch("arlc.retriever.retrieve_pages", return_value=[mock_page_result]) as mock_retrieve:
+            agent_tools.execute_search(
+                query="soudní rozhodnutí",
+                corpus="czech",
+                law_filters=None,
+                exclude_doc_pages=set(),
+                target_new=3,
+            )
+
+            mock_retrieve.assert_called_once()
+            call_kwargs = mock_retrieve.call_args.kwargs
+            assert call_kwargs["use_hyde"] is False
