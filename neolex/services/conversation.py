@@ -12,8 +12,9 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import case, func, select
+from sqlalchemy import func, select
 from sqlalchemy import update as sql_update
+from sqlalchemy.orm import aliased
 
 from neolex.db.models import ConversationMessage, Feedback, PipelineJob
 from neolex.db.postgres import AsyncSessionLocal
@@ -21,6 +22,7 @@ from neolex.db.postgres import AsyncSessionLocal
 logger = logging.getLogger(__name__)
 
 MAX_HISTORY_TURNS = 10  # 5 Q&A pairs — worst-case context for agent cost control
+CONVERSATION_TITLE_MAX_LEN = 80  # characters before truncation with ellipsis
 
 
 def _to_conv_uuid(conversation_id: str) -> uuid.UUID:
@@ -49,23 +51,15 @@ async def load_history(user_id: str, conversation_id: str) -> list[dict]:
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
-            # Subquery grabs the newest N rows (DESC + LIMIT), outer query
-            # re-orders them oldest-first so the agent sees chronological flow.
-            newest = (
-                select(
-                    ConversationMessage.role,
-                    ConversationMessage.content,
-                    ConversationMessage.created_at,
-                )
+            result = await session.execute(
+                select(ConversationMessage.role, ConversationMessage.content)
                 .where(
                     ConversationMessage.user_id == uid,
                     ConversationMessage.conversation_id == cid,
                 )
-                .order_by(ConversationMessage.created_at.desc())
-                .limit(MAX_HISTORY_TURNS)
-                .subquery()
+                .order_by(ConversationMessage.created_at.asc())
+                .limit(MAX_HISTORY_TURNS),
             )
-            result = await session.execute(select(newest.c.role, newest.c.content).order_by(newest.c.created_at.asc()))
             rows = result.all()
             return [{"role": row.role, "content": row.content} for row in rows]
     except Exception:
@@ -153,19 +147,28 @@ async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
     try:
         uid = uuid.UUID(str(user_id))
         async with AsyncSessionLocal() as session:
-            # Subquery: per-conversation aggregates
+            # Correlated scalar subquery: chronologically first user message per
+            # conversation. MIN(text) would give the alphabetically smallest message.
+            inner = aliased(ConversationMessage, name="first_msg")
+            first_user_content = (
+                select(inner.content)
+                .where(
+                    inner.conversation_id == ConversationMessage.conversation_id,
+                    inner.user_id == uid,
+                    inner.role == "user",
+                )
+                .order_by(inner.created_at.asc())
+                .limit(1)
+                .correlate(ConversationMessage)
+                .scalar_subquery()
+            )
+
             stmt = (
                 select(
                     ConversationMessage.conversation_id,
                     func.count().label("message_count"),
                     func.max(ConversationMessage.created_at).label("last_message_at"),
-                    # First user message as title (MIN created_at among user messages)
-                    func.min(
-                        case(
-                            (ConversationMessage.role == "user", ConversationMessage.content),
-                            else_=None,
-                        ),
-                    ).label("first_user_content"),
+                    first_user_content.label("first_user_content"),
                 )
                 .where(ConversationMessage.user_id == uid)
                 .group_by(ConversationMessage.conversation_id)
@@ -178,8 +181,8 @@ async def list_user_conversations(user_id: str, limit: int = 50) -> list[dict]:
             conversations = []
             for row in rows:
                 title = row.first_user_content or "New chat"
-                if len(title) > 80:
-                    title = title[:80] + "..."
+                if len(title) > CONVERSATION_TITLE_MAX_LEN:
+                    title = title[:CONVERSATION_TITLE_MAX_LEN] + "..."
                 conversations.append(
                     {
                         "id": str(row.conversation_id),

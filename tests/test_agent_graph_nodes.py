@@ -16,7 +16,7 @@ os.environ.setdefault("VERTEX_PROJECT_ID", "test-project")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
 
 from arlc.agent.config import MAX_SEARCHES_PER_TURN
-from arlc.agent.graph import _CASELAW_TOOLS, cap_reached_node, should_continue
+from arlc.agent.graph import _CASELAW_TOOLS, _STRUCTURAL_TOOLS, cap_reached_node, should_continue
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -147,3 +147,66 @@ class TestShouldContinue:
         assert "search_court_decisions" in _CASELAW_TOOLS
         assert "fetch_court_decision" in _CASELAW_TOOLS
         assert "search_legal_corpus" not in _CASELAW_TOOLS
+
+
+# ---------------------------------------------------------------------------
+# should_continue — _STRUCTURAL_TOOLS routing
+# ---------------------------------------------------------------------------
+
+
+class TestShouldContinueStructuralTools:
+    """Structural tools (get_article, list_laws, list_cases) bypass both the
+    corpus cap and the case-law cap unconditionally."""
+
+    def test_structural_tool_below_cap_returns_search(self):
+        ai_msg = _make_ai_tool_calls("get_article")
+        state = _base_state(search_count=0, extra_messages=[ai_msg])
+        assert should_continue(state) == "search"
+
+    def test_structural_tool_at_corpus_cap_still_returns_search(self):
+        # The key invariant: structural tools bypass the corpus search cap.
+        ai_msg = _make_ai_tool_calls("get_article")
+        state = _base_state(search_count=MAX_SEARCHES_PER_TURN, extra_messages=[ai_msg])
+        assert should_continue(state) == "search"
+
+    def test_structural_tool_above_corpus_cap_still_returns_search(self):
+        ai_msg = _make_ai_tool_calls("list_laws")
+        state = _base_state(search_count=MAX_SEARCHES_PER_TURN + 5, extra_messages=[ai_msg])
+        assert should_continue(state) == "search"
+
+    def test_all_structural_tools_together_return_search_at_cap(self):
+        ai_msg = _make_ai_tool_calls("get_article", "list_laws", "list_cases")
+        state = _base_state(search_count=MAX_SEARCHES_PER_TURN, extra_messages=[ai_msg])
+        assert should_continue(state) == "search"
+
+    def test_structural_tool_bypasses_caselaw_cap(self):
+        # 10 prior caselaw calls would trip the caselaw cap for a caselaw tool,
+        # but a purely structural call should still route to search.
+        prior_calls = [_make_ai_tool_calls("search_court_decisions") for _ in range(10)]
+        ai_msg = _make_ai_tool_calls("list_cases")
+        state = _base_state(search_count=0, extra_messages=prior_calls + [ai_msg])
+        assert should_continue(state) == "search"
+
+    def test_mixed_structural_and_corpus_at_cap_returns_cap_reached(self):
+        # Not "only structural" → falls through to corpus cap check.
+        ai_msg = _make_ai_tool_calls("get_article", "search_legal_corpus")
+        state = _base_state(search_count=MAX_SEARCHES_PER_TURN, extra_messages=[ai_msg])
+        assert should_continue(state) == "cap_reached"
+
+    def test_mixed_structural_and_corpus_below_cap_returns_search(self):
+        ai_msg = _make_ai_tool_calls("get_article", "search_legal_corpus")
+        state = _base_state(search_count=0, extra_messages=[ai_msg])
+        assert should_continue(state) == "search"
+
+    def test_mixed_structural_and_caselaw_at_corpus_cap_returns_cap_reached(self):
+        # Not "only structural", not "only caselaw" → corpus cap check applies.
+        ai_msg = _make_ai_tool_calls("list_laws", "search_court_decisions")
+        state = _base_state(search_count=MAX_SEARCHES_PER_TURN, extra_messages=[ai_msg])
+        assert should_continue(state) == "cap_reached"
+
+    def test_structural_tools_constant_contains_expected_names(self):
+        assert "get_article" in _STRUCTURAL_TOOLS
+        assert "list_laws" in _STRUCTURAL_TOOLS
+        assert "list_cases" in _STRUCTURAL_TOOLS
+        assert "search_legal_corpus" not in _STRUCTURAL_TOOLS
+        assert "search_court_decisions" not in _STRUCTURAL_TOOLS
