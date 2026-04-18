@@ -4,7 +4,7 @@ After answer generation, re-ranks candidate pages by how well each one supports
 the answer text:
   Pass 1: Exact keyword match ratio (lexical signal — fast, always runs)
   Pass 2: Fuzzy sliding-window match (SequenceMatcher — catches paraphrases)
-  Pass 3: Semantic cosine similarity via embed_query (free_text/boolean only)
+  Pass 3: Semantic cosine similarity via embed_query/embed_document (free_text/boolean only)
 
 Technique source: RAGnarok (#1 team, 0.779) — post-answer quote matching.
 Target metric: G-score. Our finals G=0.797 had ~20% wrong page citations.
