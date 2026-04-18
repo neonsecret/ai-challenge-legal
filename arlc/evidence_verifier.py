@@ -4,7 +4,7 @@ After answer generation, re-ranks candidate pages by how well each one supports
 the answer text:
   Pass 1: Exact keyword match ratio (lexical signal — fast, always runs)
   Pass 2: Fuzzy sliding-window match (SequenceMatcher — catches paraphrases)
-  Pass 3: Semantic cosine similarity via embed_query (free_text/boolean only)
+  Pass 3: Semantic cosine similarity via embed_query/embed_document (free_text/boolean only)
 
 Technique source: RAGnarok (#1 team, 0.779) — post-answer quote matching.
 Target metric: G-score. Our finals G=0.797 had ~20% wrong page citations.
@@ -84,12 +84,15 @@ def _semantic_score(answer: str, page_text: str) -> float:
 
     Only called for free_text/boolean — adds ~100ms per pair (Qwen3-8B via
     llama-server). Returns 0.0 on any failure so it never blocks the pipeline.
+
+    Uses embed_query() for the answer (asymmetric with instruction prefix)
+    and embed_document() for the page text (no prefix — document embedding).
     """
     try:
-        from arlc.retriever import embed_query  # lazy import to avoid circular deps
+        from arlc.retriever import embed_document, embed_query  # lazy import to avoid circular deps
 
         a_emb = embed_query(answer[:500])
-        p_emb = embed_query(page_text[:500])
+        p_emb = embed_document(page_text[:500])
         if a_emb is None or p_emb is None:
             return 0.0
         a = np.array(a_emb, dtype=np.float32)
@@ -102,7 +105,7 @@ def _semantic_score(answer: str, page_text: str) -> float:
         return 0.0
 
 
-def score_source(answer: str, doc_id: str, page_num: int) -> float:
+def score_source(answer: str, doc_id: str, page_num: int, corpus: str = "difc") -> float:
     """Score a single (doc_id, page) pair against the answer using passes 1 + 2.
 
     Pass 3 (semantic) is skipped here — it doubles latency and is too expensive
@@ -115,7 +118,7 @@ def score_source(answer: str, doc_id: str, page_num: int) -> float:
     try:
         from arlc.retriever import _extract_page_text  # lazy import
 
-        page_text = _extract_page_text(doc_id, page_num) or ""
+        page_text = _extract_page_text(doc_id, page_num, corpus=corpus) or ""
         if not page_text:
             return 0.0
         answer_str = str(answer)
@@ -128,7 +131,7 @@ def score_source(answer: str, doc_id: str, page_num: int) -> float:
         return 0.0
 
 
-def rerank_agent_sources(answer: str, sources: list[dict]) -> list[dict]:
+def rerank_agent_sources(answer: str, sources: list[dict], corpus: str = "difc") -> list[dict]:
     """Re-rank a list of agent source dicts by evidence quality.
 
     Each source is expected to be ``{"doc_id": str, "page_numbers": [int], ...}``.
@@ -150,7 +153,7 @@ def rerank_agent_sources(answer: str, sources: list[dict]) -> list[dict]:
             doc_id = src.get("doc_id", "")
             pns = src.get("page_numbers", [])
             # Score the first (usually only) page for this source entry
-            s = score_source(answer, doc_id, pns[0]) if doc_id and pns else 0.0
+            s = score_source(answer, doc_id, pns[0], corpus=corpus) if doc_id and pns else 0.0
             scored.append((s, src))
 
         scored.sort(key=lambda x: x[0], reverse=True)
