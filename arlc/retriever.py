@@ -1567,9 +1567,9 @@ def _prescore_keyword_chunks(question: str, chunks: list[dict], top_n: int = 25)
     return [c for _, c in scored[:top_n]]
 
 
-def get_all_pages_for_docs(pdf_ids: list[str]) -> list[dict]:
+def get_all_pages_for_docs(pdf_ids: list[str], corpus: str = "difc") -> list[dict]:
     """Get all indexed chunks for specific documents from PostgreSQL."""
-    chunks_by_doc = get_chunks_by_doc()
+    chunks_by_doc = get_chunks_by_doc(corpus=corpus)
     chunks = []
     for pdf_id in pdf_ids:
         chunks.extend(chunks_by_doc.get(pdf_id, []))
@@ -2009,7 +2009,7 @@ def retrieve(
 
     if keyword_pdf_ids:
         # Keyword match: prioritize chunks from these documents
-        keyword_chunks = get_all_pages_for_docs(keyword_pdf_ids)
+        keyword_chunks = get_all_pages_for_docs(keyword_pdf_ids, corpus=corpus)
 
         # Metadata-aware filtering: if question mentions a specific article, promote chunks with matching article_number
         if article_filter:
@@ -2230,7 +2230,7 @@ def _open_pdf_cached(pdf_path: str):
     return pymupdf.open(pdf_path)
 
 
-def _extract_page_text(doc_id: str, page_number: int) -> str:
+def _extract_page_text(doc_id: str, page_number: int, corpus: str = "difc") -> str:
     """Extract full text from a specific page of a document.
 
     page_number is 1-based (matches our grounding convention).
@@ -2250,7 +2250,7 @@ def _extract_page_text(doc_id: str, page_number: int) -> str:
     # Fallback: concatenate chunk texts for this page from the in-memory index.
     # This handles TXT-based judgments and any docs without PDFs.
     try:
-        chunks_by_doc = get_chunks_by_doc()
+        chunks_by_doc = get_chunks_by_doc(corpus=corpus)
         doc_chunks = chunks_by_doc.get(doc_id, [])
         page_texts = [
             c["text"] for c in doc_chunks if c.get("metadata", {}).get("page", c.get("page", 0)) == page_number
@@ -2810,6 +2810,7 @@ def retrieve_pages(
             answer_type,
             boost_pages=boost_pages,
             case_doc_groups=case_doc_groups,
+            corpus=corpus,
             on_status=on_status,
             cached_query_emb=_question_emb,
         )
@@ -2858,6 +2859,7 @@ def retrieve_pages(
                 max_per_doc,
                 max_total,
                 answer_type,
+                corpus=corpus,
                 on_status=on_status,
                 cached_query_emb=_question_emb,
             )
@@ -2979,7 +2981,7 @@ def retrieve_pages(
         results = llm_rerank_pages(question, results)
 
     if include_context_pages:
-        results = _expand_with_adjacent_pages(results)
+        results = _expand_with_adjacent_pages(results, corpus=corpus)
 
     return results
 
@@ -3095,6 +3097,7 @@ def _retrieve_pages_targeted(
     answer_type: str,
     boost_pages: dict[str, int] | None = None,
     case_doc_groups: dict[str, list[str]] | None = None,
+    corpus: str = "difc",
     on_status=None,
     cached_query_emb=None,
 ) -> list[PageResult]:
@@ -3103,7 +3106,7 @@ def _retrieve_pages_targeted(
     # return all pages. Avoids cross-encoder mistakes on short documents where a
     # wrong page choice is particularly costly. (Inspired by Vitaliy Pokrovskiy, 3rd place)
     SMALL_DOC_THRESHOLD = int(os.environ.get("SMALL_DOC_PAGES", "8"))
-    chunks_by_doc_map = get_chunks_by_doc()
+    chunks_by_doc_map = get_chunks_by_doc(corpus=corpus)
     ranker = get_reranker()
 
     # Per-type reranker instruction: use answer-type-specific prefix for Qwen3-Reranker.
@@ -3248,7 +3251,7 @@ def _retrieve_pages_targeted(
                     _text_hits = _search_chunks_text_for_doc(
                         question,
                         pdf_id=doc_id,
-                        corpus="difc",
+                        corpus=corpus,
                         top_k=BM25_INJECTION_K * 4,
                     )
                     _injected = 0
@@ -3366,7 +3369,7 @@ def _retrieve_pages_targeted(
                 _cluster_hits = _search_chunks_text_for_doc_or(
                     question,
                     pdf_id=doc_id,
-                    corpus="difc",
+                    corpus=corpus,
                     top_k=6,
                 )
                 _cluster_seen: set[int] = set()
@@ -3572,7 +3575,7 @@ def _retrieve_pages_targeted(
             if i > 0 and sorted_pages[0][1] > 0:
                 if score / sorted_pages[0][1] < _gap_threshold:
                     break
-            text = _extract_page_text(doc_id, page_num)
+            text = _extract_page_text(doc_id, page_num, corpus=corpus)
             all_page_scores.append(
                 PageResult(
                     doc_id=doc_id,
@@ -3700,7 +3703,7 @@ def _retrieve_pages_fallback(
         count = doc_page_count.get(doc_id, 0)
         if count >= max_per_doc:
             continue
-        text = _extract_page_text(doc_id, page_num)
+        text = _extract_page_text(doc_id, page_num, corpus=corpus)
         results.append(
             PageResult(
                 doc_id=doc_id,
@@ -3724,7 +3727,7 @@ def _retrieve_pages_fallback(
     return results
 
 
-def _expand_with_adjacent_pages(results: list[PageResult]) -> list[PageResult]:
+def _expand_with_adjacent_pages(results: list[PageResult], corpus: str = "difc") -> list[PageResult]:
     """Expand each page result with text from adjacent pages (N-1 and N+1).
 
     Implements the CRAG winner's parent-child chunk concept: retrieved page is the
@@ -3734,8 +3737,8 @@ def _expand_with_adjacent_pages(results: list[PageResult]) -> list[PageResult]:
     """
     expanded = []
     for r in results:
-        prev_text = _extract_page_text(r.doc_id, r.page_number - 1) if r.page_number > 1 else ""
-        next_text = _extract_page_text(r.doc_id, r.page_number + 1)
+        prev_text = _extract_page_text(r.doc_id, r.page_number - 1, corpus=corpus) if r.page_number > 1 else ""
+        next_text = _extract_page_text(r.doc_id, r.page_number + 1, corpus=corpus)
 
         context_parts = [r.text]
         if prev_text:
