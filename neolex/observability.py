@@ -1,22 +1,16 @@
 """Langfuse observability for Vitreon Legal.
 
 Provides per-query tracing with nested spans for retrieval, reranking,
-and LLM generation. All traces are sent to a self-hosted Langfuse v3
+and LLM generation. All traces are sent to a self-hosted Langfuse v4
 instance (localhost:3040).
+
+Uses Langfuse SDK v4 native capabilities:
+- @observe decorator for automatic span management
+- Native observation types: span, generation, tool, retriever, chain
+- OpenTelemetry context propagation for nested calls
 
 Enable by setting LANGFUSE_ENABLED=true in .env (disabled by default).
 When disabled, all public functions are zero-cost no-ops.
-
-Required env vars when enabled:
-    LANGFUSE_PUBLIC_KEY  - from langfuse project settings
-    LANGFUSE_SECRET_KEY  - from langfuse project settings
-    LANGFUSE_HOST        - langfuse URL (default: http://localhost:3040)
-
-Uses Langfuse SDK v4 (OTEL-based) + opentelemetry-instrumentation-langchain
-for automatic per-step agent tracing.  Trace-level input/output and user
-metadata are set via ``set_trace_io`` and ``propagate_attributes`` so the
-Langfuse UI renders them correctly (no more "didn't receive an input or
-output" warnings).
 """
 
 from __future__ import annotations
@@ -30,11 +24,70 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Langfuse SDK v4 imports — @observe decorator and native observation types
+# ---------------------------------------------------------------------------
+
+_observe_decorator = None
+_observation_types: set[str] = set()
+
+
+def _init_langfuse_sdk() -> None:
+    """Lazy initialization of Langfuse SDK v4 components."""
+    global _observe_decorator
+    if _observe_decorator is not None:
+        return
+
+    try:
+        from langfuse import observe
+
+        _observe_decorator = observe
+        try:
+            from langfuse._client.constants import get_observation_types_list
+
+            _observation_types = set(get_observation_types_list())
+        except Exception:
+            _observation_types = {"span", "generation", "tool", "retriever", "chain"}
+        logger.debug("Langfuse SDK v4 @observe decorator loaded")
+    except ImportError:
+        logger.debug("langfuse package not installed")
+    except Exception as exc:
+        logger.debug("Failed to load Langfuse SDK: %s", exc)
+
+
+def get_observe_decorator():
+    """Return the @observe decorator, or a no-op if disabled/unavailable."""
+    if _observe_decorator is None:
+        _init_langfuse_sdk()
+    return _observe_decorator
+
+
+def observe(
+    func=None,
+    *,
+    name: str | None = None,
+    as_type: str = "span",
+):
+    """Decorator that creates a Langfuse span/generation around function execution.
+
+    Usage:
+        @observe()
+        def my_function():
+            ...
+
+        @observe(name="custom-name", as_type="generation")
+        async def my_llm_call():
+            ...
+
+    Supported as_type values: span, generation, tool, retriever, chain, agent, evaluator, guardrail
+    """
+    decorator = get_observe_decorator()
+    if decorator is None:
+        return lambda f: f
+    return decorator(func, name=name, as_type=as_type)
+
+
+# ---------------------------------------------------------------------------
 # ContextVar — propagates the active trace across async + thread boundaries.
-# asyncio.to_thread() copies the current context, so the trace set in the
-# main coroutine is visible inside executor-submitted callables automatically.
-# Use set_current_trace() / get_current_trace() instead of passing trace
-# explicitly through every function signature.
 # ---------------------------------------------------------------------------
 
 _current_trace: contextvars.ContextVar[Any] = contextvars.ContextVar("langfuse_trace", default=None)
@@ -147,6 +200,7 @@ def calculate_cost(
 _langfuse_client = None
 _enabled = False
 _langchain_instrumented = False
+_sdk_initialized = False
 
 
 def init_observability() -> bool:
@@ -158,13 +212,14 @@ def init_observability() -> bool:
 
     Returns True if successfully initialized, False otherwise.
     """
-    global _langfuse_client, _enabled, _langchain_instrumented
+    global _langfuse_client, _enabled, _langchain_instrumented, _sdk_initialized
 
     if _enabled and _langfuse_client is not None:
         return True
 
     if os.environ.get("LANGFUSE_ENABLED", "").lower() not in ("1", "true", "yes"):
         logger.debug("Langfuse observability disabled (set LANGFUSE_ENABLED=true)")
+        _sdk_initialized = True
         return False
 
     public_key = os.environ.get("LANGFUSE_PUBLIC_KEY")
@@ -173,6 +228,7 @@ def init_observability() -> bool:
 
     if not public_key or not secret_key:
         logger.warning("Langfuse enabled but keys not set — skipping")
+        _sdk_initialized = True
         return False
 
     try:
@@ -269,6 +325,8 @@ def create_query_trace(
     answer_type: str = "",
     use_agent: bool = True,
     metadata: dict[str, Any] | None = None,
+    enriched_query: str | None = None,
+    num_prior_turns: int = 0,
 ) -> Any | None:
     """Create a top-level Langfuse trace for a user query.
 
@@ -276,6 +334,10 @@ def create_query_trace(
     ``session_id`` are set (enabling grouping/filtering in the Langfuse
     UI), then creates a root span whose input is also propagated to the
     trace via ``set_trace_io``.
+
+    Args:
+        enriched_query: if multi-turn, the query with prior answers appended
+        num_prior_turns: number of previous conversation turns used for enrichment
 
     Returns a LangfuseSpan object (or None when disabled) that can be
     passed to span helpers below.
@@ -293,6 +355,16 @@ def create_query_trace(
             "use_agent": use_agent,
             **(metadata or {}),
         }
+
+        # Log query enrichment for multi-turn conversations
+        if enriched_query and enriched_query != query:
+            trace_metadata["query_enriched"] = True
+            trace_metadata["num_prior_turns"] = num_prior_turns
+            trace_metadata["original_query"] = query[:500] if len(query) > 500 else query
+        elif num_prior_turns > 0:
+            trace_metadata["query_enriched"] = True
+            trace_metadata["num_prior_turns"] = num_prior_turns
+
         if user_email:
             trace_metadata["user_email"] = user_email
         if user_name:
@@ -339,13 +411,13 @@ def add_retrieval_span(
     duration_ms: float = 0,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Record a retrieval span on an existing trace."""
+    """Record a retrieval span on an existing trace using native 'retriever' type."""
     if trace is None:
         return
     try:
         span = trace.start_observation(
             name="retrieval",
-            as_type="span",
+            as_type="retriever",
             input={"query": query},
         )
         span.update(
@@ -365,7 +437,7 @@ def add_reranking_span(
     duration_ms: float = 0,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Record a reranking span on an existing trace."""
+    """Record a reranking span on an existing trace using 'span' type."""
     if trace is None:
         return
     try:
@@ -475,11 +547,15 @@ def start_tool_span(
     input_data: Any = None,
     metadata: "dict[str, Any] | None" = None,
 ) -> "Any | None":
-    """Open a named tool span on the trace; caller must call end_tool_span()."""
+    """Open a named tool span on the trace; caller must call end_tool_span().
+
+    Uses native Langfuse 'tool' observation type so tool calls render correctly
+    in the Langfuse UI.
+    """
     if trace is None or not _enabled:
         return None
     try:
-        kwargs: "dict[str, Any]" = {"name": name, "as_type": "span"}
+        kwargs: "dict[str, Any]" = {"name": name, "as_type": "tool"}
         if input_data is not None:
             kwargs["input"] = input_data
         if metadata:

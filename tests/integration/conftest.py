@@ -110,14 +110,22 @@ async def db():
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_test_users():
-    """Delete all integration-test users after each test (cascade deletes sessions/tokens)."""
-    yield
+async def cleanup_test_users(request):
+    """Delete all integration-test users before and after each test.
+
+    Runs cleanup BEFORE the test to handle orphaned data from previous failed runs,
+    and uses request.addfinalizer to guarantee teardown runs EVEN ON TEST FAILURE,
+    avoiding cross-test pollution in the shared database.
+    """
     import neolex.db.postgres as pg
 
-    async with pg.AsyncSessionLocal() as session:
-        await session.execute(delete(User).where(User.email.like("inttest_%@example.com")))
-        await session.commit()
+    async def _cleanup():
+        async with pg.AsyncSessionLocal() as session:
+            await session.execute(delete(User).where(User.email.like("inttest_%@example.com")))
+            await session.commit()
+
+    await _cleanup()
+    request.addfinalizer(_cleanup)
 
 
 # ---------------------------------------------------------------------------

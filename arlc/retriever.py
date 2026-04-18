@@ -281,9 +281,11 @@ def rerank_chunks(
         """Annotate chunks with ``rerank_score`` and return sorted top-k."""
         indexed = sorted(enumerate(score_list), key=lambda x: x[1], reverse=True)
         result = []
-        for i, score in indexed[:top_k]:
+        for rank, (i, score) in enumerate(indexed[:top_k]):
             c = dict(chunk_list[i])  # shallow copy to avoid mutating the original
             c["rerank_score"] = float(score)
+            c["rerank_final_rank"] = rank + 1
+            c["rerank_original_idx"] = i
             result.append(c)
         return result
 
@@ -2341,7 +2343,7 @@ def _retrieve_pages_simple(
                 _s = (
                     _lf_parent.start_observation(
                         name="vector-retrieval",
-                        as_type="span",
+                        as_type="retriever",
                         input={"corpus": corpus, "top_k": top_k},
                     )
                     if _lf_parent
@@ -2363,7 +2365,7 @@ def _retrieve_pages_simple(
                 _s = (
                     _lf_parent.start_observation(
                         name="bm25-retrieval",
-                        as_type="span",
+                        as_type="retriever",
                         input={"query": question[:_LANGFUSE_INPUT_TRUNCATE], "corpus": corpus, "top_k": top_k},
                     )
                     if _lf_parent
@@ -2478,7 +2480,7 @@ def _retrieve_pages_simple(
         _vec_span = (
             _lf_parent_vec.start_observation(
                 name="vector-retrieval",
-                as_type="span",
+                as_type="retriever",
                 input={"corpus": corpus, "top_k": top_k, "mode": "vector-only"},
             )
             if _lf_parent_vec
@@ -2590,7 +2592,22 @@ def _retrieve_pages_simple(
     ranked = rerank_chunks(question, rerank_pool, top_k=20, answer_type=answer_type, on_status=on_status)
     if _rerank_span:
         try:
-            _rerank_span.update(output={"num_results": len(ranked)})
+            page_scores_metadata = []
+            for chunk in ranked:
+                doc_id = chunk["metadata"].get("doc_id", chunk["metadata"].get("pdf_id", "unknown"))
+                page = int(chunk["metadata"].get("page", 0))
+                page_scores_metadata.append(
+                    {
+                        "doc_id": doc_id,
+                        "page_number": page,
+                        "score": chunk.get("rerank_score", 0.5),
+                        "final_rank": chunk.get("rerank_final_rank", 0),
+                    }
+                )
+            _rerank_span.update(
+                output={"num_results": len(ranked)},
+                metadata={"reranked_pages": page_scores_metadata},
+            )
             _rerank_span.end()
         except Exception:
             pass
@@ -2711,7 +2728,6 @@ def retrieve_pages(
     doc_ids: list[str] | None = None,
     custom_corpus: str | None = None,
     custom_doc_ids: list[str] | None = None,
-    use_hyde: bool = True,
 ) -> list[PageResult]:
     """Retrieve the best pages for answering a question.
 
