@@ -1,9 +1,17 @@
 # https://www.robotstxt.org/robot.html
-#
-# Allow all crawlers full access
 
 User-agent: *
 Allow: /
+Allow: /benchmarks
+Allow: /about
+Allow: /faq
+Allow: /blog/
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /verify-email
+Disallow: /reset-password
+Disallow: /chat
+Disallow: /dashboard
 
-# Sitemaps
 Sitemap: https://vitreon.app/sitemap.xml

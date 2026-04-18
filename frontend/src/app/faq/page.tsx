@@ -13,7 +13,16 @@ export const metadata: Metadata = {
             "Frequently asked questions about Vitreon Legal: AI legal research, pricing, accuracy, jurisdictions, and data security.",
         url: "https://vitreon.app/faq",
         siteName: "Vitreon Legal",
+        locale: "en",
         type: "website",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "Vitreon Legal — FAQ",
+            },
+        ],
     },
 };
 

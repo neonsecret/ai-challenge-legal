@@ -14,13 +14,45 @@ export const metadata: Metadata = {
             "Built by Viacheslav Ivannikov in Prague. 4th place at ARLC 2026, +36% above SOTA. Democratizing legal research through AI.",
         url: "https://vitreon.app/about",
         siteName: "Vitreon Legal",
+        locale: "en",
         type: "website",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "Vitreon Legal — AI-Powered Legal Research",
+            },
+        ],
     },
 };
+
+function personJsonLd() {
+    return {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        name: "Viacheslav Ivannikov",
+        jobTitle: "Founder & CEO",
+        worksFor: {
+            "@type": "Organization",
+            name: "Vitreon Legal",
+            url: "https://vitreon.app",
+        },
+        address: {
+            "@type": "PostalAddress",
+            addressLocality: "Prague",
+            addressCountry: "CZ",
+        },
+    };
+}
 
 export default function AboutPage() {
     return (
         <div className="min-h-screen" style={{background: "var(--strict-bg-html)"}}>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{__html: JSON.stringify(personJsonLd())}}
+            />
             <StrictNav />
 
             <main className="max-w-[880px] mx-auto px-4 sm:px-8 pt-16 pb-20">
