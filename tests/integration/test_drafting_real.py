@@ -46,9 +46,11 @@ pytestmark = pytest.mark.asyncio(loop_scope="module")
 
 
 @pytest.fixture
-async def drafting_template(test_user, db) -> str:
-    """Create a real document template in DB. Returns template slug."""
+async def drafting_template(db) -> str:
+    """Create a real document template in DB. Yields template slug, deletes on teardown."""
     from datetime import UTC, datetime
+
+    from sqlalchemy import delete as sa_delete
 
     slug = f"integ_template_{uuid.uuid4().hex[:8]}"
 
@@ -68,7 +70,15 @@ async def drafting_template(test_user, db) -> str:
     db.add(template)
     await db.commit()
 
-    return slug
+    yield slug
+
+    # Delete chat_documents referencing this slug before deleting the template
+    # to satisfy the FK constraint (chat_documents_template_slug_fkey).
+    from sqlalchemy import text as sa_text
+
+    await db.execute(sa_text("DELETE FROM chat_documents WHERE template_slug = :slug"), {"slug": slug})
+    await db.execute(sa_delete(DocumentTemplate).where(DocumentTemplate.slug == slug))
+    await db.commit()
 
 
 @pytest.fixture

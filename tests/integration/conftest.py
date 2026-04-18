@@ -1,13 +1,17 @@
 """Integration test fixtures for session-based auth endpoints.
 
-Uses a real PostgreSQL database — no DB mocking.
+Uses a real PostgreSQL test database (vitreon_legal_test) — no DB mocking.
 External services (Resend email, per-IP rate limiter) are mocked.
 
 NullPool isolation is handled by the root conftest `_install_nullpool_engine`
-session-scoped fixture. This conftest only adds integration-specific fixtures.
+session-scoped fixture. This conftest redirects to the test DB and adds
+integration-specific fixtures.
+
+Setup: run `createdb vitreon_legal_test` once before the first test run.
 """
 
 import asyncio
+import re
 import uuid
 from unittest.mock import AsyncMock, patch
 
@@ -15,26 +19,62 @@ import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 from starlette.middleware.sessions import SessionMiddleware
 
 from neolex.auth import email_auth, oauth
 from neolex.config import settings
+from neolex.db.drafting_models import DocumentTemplate
 from neolex.db.models import User
 from neolex.db.postgres import init_db
 
 # ---------------------------------------------------------------------------
-# One-time schema setup (depends on root _install_nullpool_engine)
+# Test DB redirect — swap vitreon_legal → vitreon_legal_test
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session", autouse=True)
-def ensure_schema(_install_nullpool_engine):  # noqa: ARG001 — NullPool must be installed first
-    """Create all PostgreSQL tables once for the integration test session.
+def _redirect_to_test_db(_install_nullpool_engine):  # noqa: ARG001
+    """Point all integration tests at vitreon_legal_test instead of production.
 
-    Uses asyncio.run() which is safe with NullPool: connections are created
-    and immediately closed inside the temporary loop, leaving no stale state.
+    Depends on _install_nullpool_engine so NullPool is already installed.
+    Rebuilds pg.engine and pg.AsyncSessionLocal targeting the test DB, then
+    calls init_db() to ensure the schema exists.
+
+    Prerequisites: `createdb vitreon_legal_test` must have been run once.
     """
+    import neolex.db.postgres as pg
+
+    test_db_url = re.sub(r"(/vitreon_legal)(\?|$)", r"/vitreon_legal_test\2", pg._db_url)
+
+    test_engine = create_async_engine(test_db_url, poolclass=NullPool)
+    test_sessions = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+
+    old_engine = pg.engine
+    old_sessions = pg.AsyncSessionLocal
+
+    pg.engine = test_engine
+    pg.AsyncSessionLocal = test_sessions
+
     asyncio.run(init_db())
+
+    yield
+
+    pg.engine = old_engine
+    pg.AsyncSessionLocal = old_sessions
+
+
+# ---------------------------------------------------------------------------
+# One-time schema setup (depends on _redirect_to_test_db which already calls init_db)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="session", autouse=True)
+def ensure_schema(_redirect_to_test_db):  # noqa: ARG001 — redirect + init_db already done
+    """Schema is guaranteed by _redirect_to_test_db. This fixture exists for
+    explicit dependency ordering so other session-scoped fixtures can depend on it.
+    """
 
 
 # ---------------------------------------------------------------------------
@@ -110,12 +150,11 @@ async def db():
 
 
 @pytest.fixture(autouse=True)
-async def cleanup_test_users(request):
+async def cleanup_test_users():
     """Delete all integration-test users before and after each test.
 
-    Runs cleanup BEFORE the test to handle orphaned data from previous failed runs,
-    and uses request.addfinalizer to guarantee teardown runs EVEN ON TEST FAILURE,
-    avoiding cross-test pollution in the shared database.
+    Runs cleanup BEFORE the test to handle orphaned data from previous failed runs.
+    The yield-based teardown is guaranteed to run by pytest-asyncio even on failure.
     """
     import neolex.db.postgres as pg
 
@@ -125,7 +164,28 @@ async def cleanup_test_users(request):
             await session.commit()
 
     await _cleanup()
-    request.addfinalizer(_cleanup)
+    yield
+    await _cleanup()
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_test_templates():
+    """Delete all integration-test DocumentTemplate rows before and after each test.
+
+    Templates use the slug prefix 'integ_template_' so they're easy to identify.
+    Belt-and-suspenders: the drafting_template fixture has its own teardown,
+    but this catches any leak from fixtures that forget to clean up.
+    """
+    import neolex.db.postgres as pg
+
+    async def _cleanup():
+        async with pg.AsyncSessionLocal() as session:
+            await session.execute(delete(DocumentTemplate).where(DocumentTemplate.slug.like("integ_template_%")))
+            await session.commit()
+
+    await _cleanup()
+    yield
+    await _cleanup()
 
 
 # ---------------------------------------------------------------------------
