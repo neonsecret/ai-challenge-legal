@@ -2085,7 +2085,7 @@ def retrieve(
         # entirely — this breaks "compare two cases" questions where both docs are needed.
         if len(keyword_pdf_ids) > 1:
             ranked_doc_ids = {c["metadata"]["pdf_id"] for c in ranked}
-            chunks_by_doc_kw = get_chunks_by_doc()
+            chunks_by_doc_kw = get_chunks_by_doc(corpus=corpus)
             for pdf_id in keyword_pdf_ids:
                 if pdf_id not in ranked_doc_ids:
                     # Add the page-1 chunk (most informative) from the missing doc
