@@ -1,0 +1,211 @@
+{
+  "elapsed_seconds": 101.43551802635193,
+  "open": {
+    "aggregate": {
+      "num_questions": 20,
+      "avg_score": 0.735
+    },
+    "per_query": [
+      {
+        "id": "4a35f516-4fc7-464c-a254-6bc599642840",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# Carlill v Carbolic Smoke Ball Co: Arguments for the Claimant\n\n## Preliminary Overview\n\nAs Mrs Carlill's barrister, I would systematically dismantle each of the defendant's contentions while construc",
+        "question_preview": "Carlill v Carbolic Smoke Ball Co [1893] 1 QB 256: The defendant, the Carbolic Sm"
+      },
+      {
+        "id": "5312f4f3-153e-4b41-ac85-d103659f228b",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.6,
+        "answer_preview": "# Precedent in American Law: Definition and Application\n\n## I. Conventional Definition: *Stare Decisis*\n\nThe doctrine of **precedent** (*stare decisis et non quieta movere* — \"to stand by decisions an",
+        "question_preview": "In our journey through American law, both private (contract/tort/property) and g"
+      },
+      {
+        "id": "3cb6c63f-73f3-458d-93f6-c1d131baf23b",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.7,
+        "answer_preview": "# The German Civil Code (BGB) – Main Features and Historical Background\n\n## I. Introduction\n\nThe **Bürgerliches Gesetzbuch (BGB)**, enacted in **1896** and entering into force on **1 January 1900**, i",
+        "question_preview": "What are the main features of the German civil Code (BGB)? Please explain the (h"
+      },
+      {
+        "id": "314d39bf-5c18-45d1-9a8f-374db5143e6a",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# Fundamental Rights in German Private Law: The Lüth Case\n\n## I. The Problem: Fundamental Rights in Private Law Relationships\n\nGerman constitutional law raises the question of whether fundamental righ",
+        "question_preview": "In what respect can fundamental rights be relevant for the solving of private la"
+      },
+      {
+        "id": "6b2b9134-fe22-453f-9307-7c0a571f9c30",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.7,
+        "answer_preview": "# Case Law and Parliamentary Supremacy in France\n\n## Part I: The Formal/Theoretical Position — Case Law is Subject to Parliament\n\nUnder the traditional French legal theory rooted in the **Révolution f",
+        "question_preview": "Is case law subject to Parliament in France? (Be sure to organize your answer in"
+      },
+      {
+        "id": "22fdf2bf-ec5b-4947-b8f6-3800405649ca",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# Mabo v Queensland (No 2) (1992) and the Native Title Act 1993\n\n## I. Historical Context\n\nPrior to 1992, Australian common law operated under the doctrine of **terra nullius** (\"land belonging to no ",
+        "question_preview": "Australia law and Aboriginal people: illustrate the importance of the Mabo v Que"
+      },
+      {
+        "id": "395b9634-2637-4f38-bc6a-ff66cb5c2d71",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.7,
+        "answer_preview": "# The Functional Method in Comparative Law\n\n## I. Origin and Name\n\nThe functional method emerged as the dominant methodology of comparative law in the **20th century**, crystallized most influentially",
+        "question_preview": "The so-called functional method of comparative law: briefly explain its origin a"
+      },
+      {
+        "id": "8b6d4474-e1c4-4bbf-9e57-78e572b6f3f1",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# H Parsons (Livestock) Ltd v Uttley Ingham & Co Ltd [1978] QB 791\n\n## Issue\n\nWhether the loss of 254 pigs (and consequential loss of profit) was **recoverable** as damages for U's breach of contract,",
+        "question_preview": "H Parsons (Livestock) Ltd v Uttley Ingham & Co Ltd [1978] QB 791: Parsons (P) ow"
+      },
+      {
+        "id": "3adf0c75-b183-4d2a-b057-e2601c963dbd",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.6,
+        "answer_preview": "# H Parsons (Livestock) Ltd v Uttley Ingham & Co Ltd [1978] QB 791\n\n## Analysis of Whether the Remoteness Criterion Constitutes a Common Core of Private Law\n\n---\n\n## I. The Legal Issue: Remoteness of ",
+        "question_preview": "H Parsons (Livestock) Ltd v Uttley Ingham & Co Ltd [1978] QB 791: Parsons (P) ow"
+      },
+      {
+        "id": "b1927aee-8659-42e9-a83a-6eb41173a7e0",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.6,
+        "answer_preview": "# Carbonnier's Aphorism and the Court of Cassation's Relationship with Parliament\n\n## Introduction\n\nJean Carbonnier's provocative statement that \"interpretation is the intellectual form of disobedienc",
+        "question_preview": "Carbonnier stated that \"interpretation is the intellectual form of disobedience\""
+      },
+      {
+        "id": "544915a1-720d-4ed5-b1f9-e57c0d1eef58",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# German Federal Constitutional Court in Private Law Disputes\n\n## Introduction\n\nThe German Federal Constitutional Court (*Bundesverfassungsgericht*, BVerfG) is primarily a public law institution, yet ",
+        "question_preview": "How is it possible that the German Federal Constitutional Court rules in procedu"
+      },
+      {
+        "id": "79684708-b543-46f5-bb80-1fa23942d85f",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.5,
+        "answer_preview": "# German Federal Constitutional Court vs. Civil Law Courts in Private Law\n\n## The \"Bürgschaft\" (Surety/Guarantee) Case – BVerfGE 89, 214 (1993)\n\n---\n\n## Facts\n\nA young woman with little income and no ",
+        "question_preview": "Give one example for a case, where the German Federal Constitutional Court decid"
+      },
+      {
+        "id": "46506481-836b-4f2b-ba11-d1a1d1b0401f",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.6,
+        "answer_preview": "# African Customary Law and the Colonial Encounter\n\n## I. Main Features of African Customary Law\n\n### 1. Orality and Non-Written Nature\nAfrican customary law is traditionally **unwritten**, transmitte",
+        "question_preview": "Illustrate the main features of African customary law and discuss the “colonial "
+      },
+      {
+        "id": "a0400cfd-c5eb-4579-a647-22cfe6a2e38c",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# Comparative Private Law Analysis: Lorange v. Sweetpies & Co.\n\n## I. Core Issue\n\nThe **central legal problem** is whether **property/ownership in unascertained goods forming part of a bulk can pass t",
+        "question_preview": "Mr. Linus Lorange sells 2 metric tons of oranges to Sweetpies & Co. They (validl"
+      },
+      {
+        "id": "a235d6a8-bb8c-4125-902b-046205c9d49c",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.7,
+        "answer_preview": "# Ownership of Unascertained Goods Under English Law: Analysis of Sweetpies' Strategy\n\n## Preliminary Issue: Applicable Law\n\nThe parties have validly chosen **English law** (Sale of Goods Act 1979, \"S",
+        "question_preview": "Mr. Linus Lorange sells 2 metric tons of oranges to Sweetpies & Co. They (validl"
+      },
+      {
+        "id": "06588213-dedd-46a8-ba13-733d439924cb",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.9,
+        "answer_preview": "# Main Problem of the Case\n\n## Core Legal Issue\n\nThe central problem is whether **Company B can obtain a price adjustment (or contract revision) due to a supervening change in circumstances** — specif",
+        "question_preview": "Company A and company B have signed a contract for transportation of goods. Acco"
+      },
+      {
+        "id": "baeafa19-426b-478f-a102-75294998f006",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 1.0,
+        "answer_preview": "# Legal Principles in Cases of Changed Circumstances in Contract Performance\n\n## I. Framing the Issue\n\nThis case presents a classic **hardship/changed circumstances** problem: Company B entered a long",
+        "question_preview": "Company A and company B have signed a contract for transportation of goods. Acco"
+      },
+      {
+        "id": "1a6646cf-5b80-46bd-b135-33bd2847566e",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# Hardship (Imprévision) in French Contract Law: Before and After the 2016 Reform\n\n## I. Legal Issue\n\nThe central question is whether Company B can obtain **price adjustment** due to a supervening cha",
+        "question_preview": "Company A and company B have signed a contract for transportation of goods. Acco"
+      },
+      {
+        "id": "8d67194c-7e70-4add-b04f-d4c86732673a",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.7,
+        "answer_preview": "# Comparative Analysis: Hardship/Changed Circumstances in German and English Law\n\n## Issue\nWhether Company B can obtain price adjustment due to the doubling of fuel costs under the doctrine of changed",
+        "question_preview": "Company A and company B have signed a contract for transportation of goods. Acco"
+      },
+      {
+        "id": "1d80ebfd-8806-4274-b14b-189427ee1218",
+        "language": "en",
+        "jurisdiction": "International",
+        "area": "Private",
+        "course": "Comparative Private Law",
+        "score": 0.8,
+        "answer_preview": "# Genuine Concurrence of Claims and the BGH's Position\n\n## I. Meaning of 'Genuine Concurrence of Claims' (*Echte Anspruchskonkurrenz*)\n\n**Genuine concurrence of claims** (*echte Anspruchskonkurrenz*) ",
+        "question_preview": "In September 1969, the transport company of Erich W. purchased an antifreeze pro"
+      }
+    ]
+  }
+}

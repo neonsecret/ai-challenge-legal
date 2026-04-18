@@ -47,5 +47,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "monthly",
             priority: 0.5,
         },
+        {
+            url: "https://vitreon.app/cs",
+            changeFrequency: "weekly",
+            priority: 0.9,
+        },
+        {
+            url: "https://vitreon.app/blog/zakonik-prace-2026-ai",
+            changeFrequency: "monthly",
+            priority: 0.8,
+        },
+        {
+            url: "https://vitreon.app/blog/ai-pro-advokaty-2026",
+            changeFrequency: "monthly",
+            priority: 0.8,
+        },
     ];
 }

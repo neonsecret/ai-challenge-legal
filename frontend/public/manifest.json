@@ -1,0 +1,21 @@
+{
+  "name": "Vitreon Legal",
+  "short_name": "Vitreon",
+  "description": "AI-powered legal research platform providing source-grounded answers from statutes and court decisions.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "/favicon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

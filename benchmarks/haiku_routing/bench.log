@@ -1,0 +1,54 @@
+Logging in as admin@vitreon.app ...
+Authenticated.
+
+=== Mode: search_count (5 oc + 5 ic questions) ===
+    ✗ Q01 [ANS/rej] 40.4s — What is the penalty for jaywalking in Prague under Czech law
+    ✓ Q02 [REJ/rej] 44.2s — How many days of paid vacation are Czech employees entitled 
+    ✗ Q03 [ANS/rej] 42.5s — What is the current Czech minimum wage as of January 2026?
+    ✓ Q04 [REJ/rej] 5.4s — What are the GDPR fines levied against Czech companies in 20
+    ✗ Q05 [ANS/rej] 4.2s — List all Czech court decisions from March 2026 involving cry
+  [out-of-corpus rejection] accuracy=40.0% (2/5)
+    ✓ Q01 [ANS/ans] 43.3s — What is the notice period for terminating an employment cont
+    ✓ Q02 [ANS/ans] 121.5s — Under Czech law, how long can pre-trial detention last?
+    ✓ Q03 [ANS/ans] 133.1s — What grounds allow a Czech landlord to terminate a tenancy w
+    ✓ Q04 [ANS/ans] 126.9s — What is the limitation period for breach of contract claims 
+    ✓ Q05 [ANS/ans] 381.3s — What are the requirements for a valid will under Czech Civil
+  [in-corpus first-turn] accuracy=100.0% (5/5)
+  combined_accuracy=70.0%
+
+=== Mode: disabled (5 oc + 5 ic questions) ===
+    ✓ Q01 [REJ/rej] 176.4s — What is the penalty for jaywalking in Prague under Czech law
+    ✓ Q02 [REJ/rej] 53.6s — How many days of paid vacation are Czech employees entitled 
+    ✗ Q03 [ANS/rej] 43.2s — What is the current Czech minimum wage as of January 2026?
+    ✓ Q04 [REJ/rej] 41.7s — What are the GDPR fines levied against Czech companies in 20
+    ✗ Q05 [ANS/rej] 24.4s — List all Czech court decisions from March 2026 involving cry
+  [out-of-corpus rejection] accuracy=60.0% (3/5)
+    ✓ Q01 [ANS/ans] 40.2s — What is the notice period for terminating an employment cont
+    ✓ Q02 [ANS/ans] 135.0s — Under Czech law, how long can pre-trial detention last?
+    ✓ Q03 [ANS/ans] 116.0s — What grounds allow a Czech landlord to terminate a tenancy w
+    ✓ Q04 [ANS/ans] 86.2s — What is the limitation period for breach of contract claims 
+    ✓ Q05 [ANS/ans] 133.6s — What are the requirements for a valid will under Czech Civil
+  [in-corpus first-turn] accuracy=100.0% (5/5)
+  combined_accuracy=80.0%
+
+=== Mode: classifier (5 oc + 5 ic questions) ===
+    ✗ Q01 [ANS/rej] 35.3s — What is the penalty for jaywalking in Prague under Czech law
+    ✓ Q02 [REJ/rej] 49.3s — How many days of paid vacation are Czech employees entitled 
+    ✓ Q03 [REJ/rej] 38.6s — What is the current Czech minimum wage as of January 2026?
+    ✓ Q04 [REJ/rej] 35.9s — What are the GDPR fines levied against Czech companies in 20
+    ✓ Q05 [REJ/rej] 29.1s — List all Czech court decisions from March 2026 involving cry
+  [out-of-corpus rejection] accuracy=80.0% (4/5)
+    ✓ Q01 [ANS/ans] 54.2s — What is the notice period for terminating an employment cont
+    ✓ Q02 [ANS/ans] 27.5s — Under Czech law, how long can pre-trial detention last?
+    ✗ Q03 [ERROR] HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/query/stream?corpus=czech (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+    ✗ Q04 [ERROR] HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/query/stream?corpus=czech (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+    ✗ Q05 [ERROR] HTTPConnectionPool(host='localhost', port=8000): Max retries exceeded with url: /api/v1/query/stream?corpus=czech (Caused by NewConnectionError("HTTPConnection(host='localhost', port=8000): Failed to establish a new connection: [Errno 61] Connection refused"))
+  [in-corpus first-turn] accuracy=100.0% (2/2)
+  combined_accuracy=90.0%
+
+Results saved to benchmarks/haiku_routing/results.json
+
+=== Mode comparison ===
+  classifier       combined=90.0%  oc=80.0%  ic=100.0%
+  disabled         combined=80.0%  oc=60.0%  ic=100.0%
+  search_count     combined=70.0%  oc=40.0%  ic=100.0%

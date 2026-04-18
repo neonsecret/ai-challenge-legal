@@ -8,6 +8,23 @@ export const metadata: Metadata = {
     title: "Legal AI Benchmarks: +36% Above SOTA — Vitreon Legal",
     description:
         "Beat published SOTA by 36% on GaRAGe benchmark (ACL 2025). LEXam 0.691 (+21% above baseline), ARLC 2026 4th/80 teams, 100% citation coverage. Independent, reproducible legal AI benchmarks.",
+    keywords: [
+        "legal AI benchmark",
+        "GaRAGe benchmark",
+        "Czech legal AI",
+        "legal RAG benchmark",
+        "AI legal research benchmark",
+        "LEXam benchmark",
+        "ARLC 2026",
+        "právní AI benchmark",
+    ],
+    alternates: {
+        canonical: "https://vitreon.app/benchmarks",
+        languages: {
+            en: "https://vitreon.app/benchmarks",
+            cs: "https://vitreon.app/cs",
+        },
+    },
     openGraph: {
         title: "Legal AI Benchmarks: +36% Above SOTA — Vitreon Legal",
         description:
@@ -71,7 +88,7 @@ export default function BenchmarksPage() {
                         Pipeline that achieved these scores now powers the production platform.
                     </p>
                     <Link
-                        href="/login"
+                        href="/login?mode=register"
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
                         style={{background: "var(--strict-gold-base)", color: "#fff"}}
                     >
@@ -401,7 +418,7 @@ export default function BenchmarksPage() {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link
-                            href="/login"
+                            href="/login?mode=register"
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                             style={{
                                 background: "var(--strict-gold-base)",
