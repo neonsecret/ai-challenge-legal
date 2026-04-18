@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type {Metadata} from "next";
+import {ArrowRight} from "lucide-react";
 import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
@@ -225,6 +226,52 @@ export default function AboutPage() {
                         </p>
                     </div>
                 </Section>
+
+                {/* CTA Section */}
+                <section
+                    className="mt-8 rounded-2xl p-8 text-center"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <h2
+                        className="font-heading font-bold mb-3"
+                        style={{
+                            fontSize: "1.25rem",
+                            color: "var(--strict-text-primary)",
+                        }}
+                    >
+                        Ready to streamline your legal research?
+                    </h2>
+                    <p className="text-sm mb-6" style={{color: "var(--strict-text-body)"}}>
+                        Get source-grounded answers with 100% citation coverage. Start free, no credit card.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link
+                            href="/login"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            style={{
+                                background: "var(--strict-gold-base)",
+                                color: "#fff",
+                            }}
+                        >
+                            Get Started Free
+                            <ArrowRight size={14} />
+                        </Link>
+                        <Link
+                            href="/chat"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{
+                                background: "var(--strict-glass-bg)",
+                                border: "1px solid var(--strict-glass-border)",
+                                color: "var(--strict-text-primary)",
+                            }}
+                        >
+                            Try the Demo
+                        </Link>
+                    </div>
+                </section>
             </main>
 
             <StrictFooter />

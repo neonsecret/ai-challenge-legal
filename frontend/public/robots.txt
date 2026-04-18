@@ -1,0 +1,9 @@
+# https://www.robotstxt.org/robot.html
+#
+# Allow all crawlers full access
+
+User-agent: *
+Allow: /
+
+# Sitemaps
+Sitemap: https://vitreon.app/sitemap.xml

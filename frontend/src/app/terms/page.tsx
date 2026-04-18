@@ -415,9 +415,54 @@ export default function TermsPage() {
                     </div>
                 </Section>
 
+                {/* CTA Section */}
+                <section
+                    className="mt-16 rounded-2xl p-8 text-center"
+                    style={{
+                        background: "rgba(201,168,76,0.05)",
+                        border: "1px solid rgba(201,168,76,0.15)",
+                    }}
+                >
+                    <h2
+                        className="font-heading font-bold mb-3"
+                        style={{
+                            fontSize: "1.25rem",
+                            color: "rgba(255,255,255,0.92)",
+                        }}
+                    >
+                        Ready to streamline your legal research?
+                    </h2>
+                    <p className="text-sm mb-6" style={{color: "rgba(255,255,255,0.55)"}}>
+                        Get source-grounded answers with 100% citation coverage. Start free, no credit card.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link
+                            href="/login"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            style={{
+                                background: "#C9A84C",
+                                color: "#0F1623",
+                            }}
+                        >
+                            Get Started Free
+                        </Link>
+                        <Link
+                            href="/"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{
+                                background: "rgba(255,255,255,0.06)",
+                                border: "1px solid rgba(255,255,255,0.1)",
+                                color: "rgba(255,255,255,0.78)",
+                            }}
+                        >
+                            Learn More
+                        </Link>
+                    </div>
+                </section>
+
                 {/* Footer nav */}
                 <div
-                    className="mt-16 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs"
+                    className="mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs"
                     style={{
                         borderTop: "1px solid rgba(255,255,255,0.06)",
                         color: "rgba(255,255,255,0.28)",
