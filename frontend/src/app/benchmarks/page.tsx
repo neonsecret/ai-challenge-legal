@@ -90,7 +90,7 @@ export default function BenchmarksPage() {
 <Link
                         href="/login?mode=register"
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
-                        style={{background: "var(--strict-gold-base)", color: "#fff"}}
+                        style={{background: "var(--strict-gold-base)", color: "var(--strict-bg-html)"}}
                     >
                         Try Vitreon Free <ArrowRight size={14} />
                     </Link>
