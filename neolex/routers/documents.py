@@ -23,7 +23,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.middleware import get_api_key
@@ -93,6 +93,7 @@ async def _enforce_upload_limits(
     content_size: int,
     db_audit,
     collection: str,
+    db: AsyncSession,
 ) -> None:
     """Check subscription plan limits for document uploads.
 
@@ -141,6 +142,12 @@ async def _enforce_upload_limits(
 
     # Enforce corpora (collections) count limit
     max_corpora = _PLAN_MAX_CORPORA.get(status, 0)
+
+    # Serialize concurrent uploads per user: both cannot simultaneously pass the
+    # collection-count check. Lock holds for the duration of the DB transaction (= request).
+    _lock_key = int.from_bytes(bytes.fromhex(client_slug.replace("-", "")), "big") & 0x7FFFFFFFFFFFFFFF
+    await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _lock_key})
+
     existing_collections = await asyncio.to_thread(get_collection_names, client_slug)
 
     if len(existing_collections) > max_corpora:
@@ -229,7 +236,7 @@ async def upload_document(
 
     # Check plan limits (needs content size for corpus size enforcement)
     async with get_audit_db() as audit_db:
-        await _enforce_upload_limits(user, len(content), audit_db, collection)
+        await _enforce_upload_limits(user, len(content), audit_db, collection, db)
 
     # Reject empty files
     if len(content) == 0:
@@ -475,6 +482,11 @@ async def upload_zip(
 
     # Enforce corpora (collections) count limit
     max_corpora = _PLAN_MAX_CORPORA.get(status, 0)
+
+    # Serialize concurrent uploads per user to prevent collection-count race condition.
+    _lock_key = int.from_bytes(bytes.fromhex(client_slug.replace("-", "")), "big") & 0x7FFFFFFFFFFFFFFF
+    await db.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": _lock_key})
+
     existing_collections = await asyncio.to_thread(get_collection_names, client_slug)
 
     if len(existing_collections) > max_corpora:
@@ -627,8 +639,8 @@ async def list_documents(
         try:
             meta = json.loads(meta_path.read_text())
             meta_collections[meta.get("doc_id", "")] = meta.get("collection", "My Documents")
-        except Exception:  # nosec B110
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to read meta file %s: %s", meta_path.name, e)
 
     docs = []
     for row in rows:
@@ -839,8 +851,8 @@ async def rename_collection(
             if current == old_name:
                 meta["collection"] = new_name
                 updates.append((meta_path, meta))
-        except Exception:  # nosec B110
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to read meta file %s: %s", meta_path.name, e)
 
     if not updates:
         raise HTTPException(status_code=404, detail=f"No documents found in collection '{old_name}'")
