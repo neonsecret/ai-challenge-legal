@@ -422,7 +422,7 @@ export default function BenchmarksPage() {
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                             style={{
                                 background: "var(--strict-gold-base)",
-                                color: "#fff",
+                                color: "var(--strict-bg-html)",
                             }}
                         >
                             Get Started Free
