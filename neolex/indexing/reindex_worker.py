@@ -252,8 +252,8 @@ async def run_reindex_job(
             try:
                 meta = json.loads(meta_path.read_text())
                 mark_indexed(client_slug, meta["doc_id"])
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to mark meta file indexed %s: %s", meta_path.name, e)
 
         # Update indexed flag in audit database
         try:
@@ -262,8 +262,8 @@ async def run_reindex_job(
                     try:
                         meta = json.loads(meta_path.read_text())
                         await audit_db.mark_document_indexed(meta["doc_id"], client_slug)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("Failed to update indexed flag for %s: %s", meta_path.name, e)
         except Exception as e:
             logger.warning("Failed to update indexed flags in audit DB: %s", e)
 

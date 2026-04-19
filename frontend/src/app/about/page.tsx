@@ -288,9 +288,16 @@ export default function AboutPage() {
                                 enterprise@vitreon.app
                             </a>
                         </p>
-                        <p className="text-sm" style={{color: "var(--strict-text-body)"}}>
+                        <p className="text-sm mb-4" style={{color: "var(--strict-text-body)"}}>
                             Based in Prague, Czech Republic
                         </p>
+                        <Link
+                            href="mailto:enterprise@vitreon.app"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
+                            style={{background: "var(--strict-gold-base)", color: "var(--strict-bg-html)"}}
+                        >
+                            Request Enterprise Demo <ArrowRight size={14} />
+                        </Link>
                     </div>
                 </Section>
 
@@ -316,7 +323,7 @@ export default function AboutPage() {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link
-                            href="/login"
+                            href="/login?mode=register"
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                             style={{
                                 background: "var(--strict-gold-base)",

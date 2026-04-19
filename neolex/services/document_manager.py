@@ -10,14 +10,31 @@ route handlers via asyncio.to_thread() where I/O matters.
 from __future__ import annotations
 
 import datetime
+import json
+import logging
 import os
 import re
 import stat
 import uuid
 import zipfile
 from pathlib import Path
+from threading import Lock
 
 from neolex.config import settings
+
+logger = logging.getLogger(__name__)
+
+_collection_locks: dict[str, Lock] = {}
+_collection_locks_guard = Lock()
+
+
+def get_collection_lock(client_slug: str) -> Lock:
+    """Get or create a lock for serializing collection access per client."""
+    with _collection_locks_guard:
+        if client_slug not in _collection_locks:
+            _collection_locks[client_slug] = Lock()
+        return _collection_locks[client_slug]
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -153,13 +170,11 @@ def list_documents(client_slug: str) -> list[dict]:
     results = []
 
     for meta_file in sorted(docs_dir.glob("*.meta")):
-        import json
-
         try:
             data = json.loads(meta_file.read_text())
             results.append(data)
-        except Exception:
-            pass  # Skip corrupt meta files
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to read meta file %s: %s", meta_file.name, e)
 
     return results
 
@@ -179,8 +194,8 @@ def get_collection_names(client_slug: str) -> set[str]:
         try:
             meta = json.loads(meta_path.read_text())
             collections.add(meta.get("collection", "My Documents"))
-        except Exception:
-            pass
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning("Failed to read meta file %s: %s", meta_path.name, e)
     return collections
 
 
