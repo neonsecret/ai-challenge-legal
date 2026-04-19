@@ -95,6 +95,26 @@ export default function AboutPage() {
                     </p>
                 </div>
 
+                {/* Above-fold CTA */}
+                <div
+                    className="mb-12 rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
+                        3 queries per day, all jurisdictions, full source citations.
+                    </p>
+                    <Link
+                        href="/login?mode=register"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
+                        style={{background: "var(--strict-gold-base)", color: "var(--strict-bg-html)"}}
+                    >
+                        Get Started Free <ArrowRight size={14} />
+                    </Link>
+                </div>
+
                 {/* Mission */}
                 <Section>
                     <SectionTitle index="1">Our Mission</SectionTitle>
