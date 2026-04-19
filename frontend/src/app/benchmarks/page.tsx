@@ -87,7 +87,7 @@ export default function BenchmarksPage() {
                     <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
                         Pipeline that achieved these scores now powers the production platform.
                     </p>
-                    <Link
+<Link
                         href="/login?mode=register"
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
                         style={{background: "var(--strict-gold-base)", color: "#fff"}}
@@ -417,7 +417,7 @@ export default function BenchmarksPage() {
                         See the retrieval pipeline in action. 100% citation coverage, start free.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <Link
+<Link
                             href="/login?mode=register"
                             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                             style={{
