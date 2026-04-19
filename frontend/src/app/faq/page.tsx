@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type {Metadata} from "next";
+import {ArrowRight} from "lucide-react";
 import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
@@ -177,6 +178,26 @@ export default function FAQPage() {
                     </p>
                 </div>
 
+                {/* Above-fold CTA */}
+                <div
+                    className="mb-12 rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
+                        Try it free &mdash; 3 queries per day, all jurisdictions, full source citations.
+                    </p>
+                    <Link
+                        href="/login?mode=register"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
+                        style={{background: "var(--strict-gold-base)", color: "var(--strict-bg-html)"}}
+                    >
+                        Get Started Free <ArrowRight size={14} />
+                    </Link>
+                </div>
+
                 {/* FAQ Items */}
                 <div className="space-y-0">
                     {FAQ_ITEMS.map((item, i) => (
@@ -234,16 +255,29 @@ export default function FAQPage() {
                         </a>{" "}
                         and we&apos;ll respond within 24 hours.
                     </p>
-                    <Link
-                        href="/"
-                        className="inline-block px-6 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
-                        style={{
-                            background: "var(--strict-gold-base)",
-                            color: "var(--strict-bg-html)",
-                        }}
-                    >
-                        Get Started Free
-                    </Link>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link
+                            href="/login?mode=register"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90"
+                            style={{
+                                background: "var(--strict-gold-base)",
+                                color: "var(--strict-bg-html)",
+                            }}
+                        >
+                            Get Started Free <ArrowRight size={14} />
+                        </Link>
+                        <Link
+                            href="/chat"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{
+                                background: "var(--strict-glass-bg)",
+                                border: "1px solid var(--strict-glass-border)",
+                                color: "var(--strict-text-primary)",
+                            }}
+                        >
+                            Try the Demo
+                        </Link>
+                    </div>
                 </div>
             </main>
 
