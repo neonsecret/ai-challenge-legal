@@ -1,19 +1,46 @@
 import Link from "next/link";
 import type {Metadata} from "next";
+import {ArrowRight} from "lucide-react";
 import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Benchmarks — Vitreon Legal AI Performance",
+    title: "Legal AI Benchmarks: +36% Above SOTA — Vitreon Legal",
     description:
-        "Vitreon Legal benchmark results: GaRAGe 0.824 (+36% above SOTA), LEXam 0.691 (+21% above baseline), ARLC 2026 4th/80 teams, 100% citation coverage. Independent, reproducible legal AI benchmarks.",
+        "Beat published SOTA by 36% on GaRAGe benchmark (ACL 2025). LEXam 0.691 (+21% above baseline), ARLC 2026 4th/80 teams, 100% citation coverage. Independent, reproducible legal AI benchmarks.",
+    keywords: [
+        "legal AI benchmark",
+        "GaRAGe benchmark",
+        "Czech legal AI",
+        "legal RAG benchmark",
+        "AI legal research benchmark",
+        "LEXam benchmark",
+        "ARLC 2026",
+        "právní AI benchmark",
+    ],
+    alternates: {
+        canonical: "https://vitreon.app/benchmarks",
+        languages: {
+            en: "https://vitreon.app/benchmarks",
+            cs: "https://vitreon.app/cs",
+        },
+    },
     openGraph: {
-        title: "Benchmarks — Vitreon Legal AI Performance",
+        title: "Legal AI Benchmarks: +36% Above SOTA — Vitreon Legal",
         description:
-            "GaRAGe 0.824 (+36% SOTA), LEXam 0.691 (+21%), ARLC 2026 4th/80 teams. Independent legal AI benchmark results.",
+            "Beat published SOTA by 36% on GaRAGe (ACL 2025). LEXam 0.691 (+21%), ARLC 2026 4th/80 teams. Independent legal AI benchmark results.",
         url: "https://vitreon.app/benchmarks",
         siteName: "Vitreon Legal",
+        locale: "en",
         type: "website",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "Vitreon Legal — Legal AI Benchmarks",
+            },
+        ],
     },
 };
 
@@ -47,6 +74,26 @@ export default function BenchmarksPage() {
                         All results are reproducible. We report scores on the same test sets and evaluation
                         protocols as the original benchmark papers.
                     </p>
+                </div>
+
+                {/* Above-fold CTA */}
+                <div
+                    className="mb-12 rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
+                        Pipeline that achieved these scores now powers the production platform.
+                    </p>
+<Link
+                        href="/login?mode=register"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
+                        style={{background: "var(--strict-gold-base)", color: "#fff"}}
+                    >
+                        Try Vitreon Free <ArrowRight size={14} />
+                    </Link>
                 </div>
 
                 {/* Summary Table */}
@@ -348,6 +395,52 @@ export default function BenchmarksPage() {
                         ]}
                     />
                 </Section>
+
+                {/* CTA Section */}
+                <section
+                    className="mt-8 rounded-2xl p-8 text-center"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <h2
+                        className="font-heading font-bold mb-3"
+                        style={{
+                            fontSize: "1.25rem",
+                            color: "var(--strict-text-primary)",
+                        }}
+                    >
+                        Ready to try Vitreon Legal?
+                    </h2>
+                    <p className="text-sm mb-6" style={{color: "var(--strict-text-body)"}}>
+                        See the retrieval pipeline in action. 100% citation coverage, start free.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+<Link
+                            href="/login?mode=register"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            style={{
+                                background: "var(--strict-gold-base)",
+                                color: "var(--strict-bg-html)",
+                            }}
+                        >
+                            Get Started Free
+                            <ArrowRight size={14} />
+                        </Link>
+                        <Link
+                            href="/chat"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{
+                                background: "var(--strict-glass-bg)",
+                                border: "1px solid var(--strict-glass-border)",
+                                color: "var(--strict-text-primary)",
+                            }}
+                        >
+                            Try the Demo
+                        </Link>
+                    </div>
+                </section>
             </main>
 
             <StrictFooter />

@@ -1,25 +1,73 @@
 import Link from "next/link";
 import type {Metadata} from "next";
+import {ArrowRight} from "lucide-react";
 import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "About Vitreon Legal — AI-Powered Legal Research",
+    title: "About Vitreon Legal — AI-Powered Legal Research from Prague",
     description:
-        "Vitreon Legal is an AI-powered legal research platform built by Viacheslav Ivannikov in Prague. 4th place at ARLC 2026, +36% above SOTA on GaRAGe benchmark. Democratizing access to legal research through AI.",
+        "Vitreon Legal is an AI-powered legal research platform built by Viacheslav Ivannikov in Prague. 4th place at ARLC 2026, +36% above SOTA on GaRAGe benchmark. Czech legal AI startup democratizing legal research.",
+    keywords: [
+        "Vitreon Legal about",
+        "Czech legal AI startup",
+        "Prague legal tech",
+        "AI legal research platform",
+        "ARLC 2026",
+        "Viacheslav Ivannikov",
+    ],
+    alternates: {
+        canonical: "https://vitreon.app/about",
+        languages: {
+            en: "https://vitreon.app/about",
+            cs: "https://vitreon.app/cs",
+        },
+    },
     openGraph: {
         title: "About Vitreon Legal — AI-Powered Legal Research",
         description:
             "Built by Viacheslav Ivannikov in Prague. 4th place at ARLC 2026, +36% above SOTA. Democratizing legal research through AI.",
         url: "https://vitreon.app/about",
         siteName: "Vitreon Legal",
+        locale: "en",
         type: "website",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "Vitreon Legal — AI-Powered Legal Research",
+            },
+        ],
     },
 };
+
+function personJsonLd() {
+    return {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        name: "Viacheslav Ivannikov",
+        jobTitle: "Founder & CEO",
+        worksFor: {
+            "@type": "Organization",
+            name: "Vitreon Legal",
+            url: "https://vitreon.app",
+        },
+        address: {
+            "@type": "PostalAddress",
+            addressLocality: "Prague",
+            addressCountry: "CZ",
+        },
+    };
+}
 
 export default function AboutPage() {
     return (
         <div className="min-h-screen" style={{background: "var(--strict-bg-html)"}}>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{__html: JSON.stringify(personJsonLd())}}
+            />
             <StrictNav />
 
             <main className="max-w-[880px] mx-auto px-4 sm:px-8 pt-16 pb-20">
@@ -45,6 +93,26 @@ export default function AboutPage() {
                     <p className="text-sm" style={{color: "var(--strict-text-secondary)"}}>
                         AI-powered legal research, built in Prague
                     </p>
+                </div>
+
+                {/* Above-fold CTA */}
+                <div
+                    className="mb-12 rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
+                        3 queries per day, all jurisdictions, full source citations.
+                    </p>
+                    <Link
+                        href="/login?mode=register"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
+                        style={{background: "var(--strict-gold-base)", color: "var(--strict-bg-html)"}}
+                    >
+                        Get Started Free <ArrowRight size={14} />
+                    </Link>
                 </div>
 
                 {/* Mission */}
@@ -225,6 +293,52 @@ export default function AboutPage() {
                         </p>
                     </div>
                 </Section>
+
+                {/* CTA Section */}
+                <section
+                    className="mt-8 rounded-2xl p-8 text-center"
+                    style={{
+                        background: "var(--strict-gold-badge-bg)",
+                        border: "1px solid var(--strict-gold-badge-border)",
+                    }}
+                >
+                    <h2
+                        className="font-heading font-bold mb-3"
+                        style={{
+                            fontSize: "1.25rem",
+                            color: "var(--strict-text-primary)",
+                        }}
+                    >
+                        Ready to streamline your legal research?
+                    </h2>
+                    <p className="text-sm mb-6" style={{color: "var(--strict-text-body)"}}>
+                        Get source-grounded answers with 100% citation coverage. Start free, no credit card.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link
+                            href="/login"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            style={{
+                                background: "var(--strict-gold-base)",
+                                color: "var(--strict-bg-html)",
+                            }}
+                        >
+                            Get Started Free
+                            <ArrowRight size={14} />
+                        </Link>
+                        <Link
+                            href="/chat"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            style={{
+                                background: "var(--strict-glass-bg)",
+                                border: "1px solid var(--strict-glass-border)",
+                                color: "var(--strict-text-primary)",
+                            }}
+                        >
+                            Try the Demo
+                        </Link>
+                    </div>
+                </section>
             </main>
 
             <StrictFooter />

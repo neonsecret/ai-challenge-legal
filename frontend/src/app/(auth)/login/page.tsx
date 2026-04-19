@@ -42,7 +42,11 @@ function LoginPageContent() {
     const {user, login, loginWithGoogle, register, error, clearError} =
         useAuth();
 
-    const [mode, setMode] = useState<Mode>("login");
+    const getInitialMode = (): Mode => {
+        const modeParam = searchParams.get("mode");
+        return modeParam === "register" ? "register" : "login";
+    };
+    const [mode, setMode] = useState<Mode>(getInitialMode);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [name, setName] = useState("");

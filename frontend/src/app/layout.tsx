@@ -39,6 +39,32 @@ export const metadata: Metadata = {
     authors: [{name: "Viacheslav Ivannikov"}],
     creator: "Vitreon Legal",
     publisher: "Vitreon Legal",
+    icons: {
+        icon: [
+            {url: "/favicon-192.png", sizes: "192x192", type: "image/png"},
+            {url: "/favicon-512.png", sizes: "512x512", type: "image/png"},
+        ],
+        apple: [{url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png"}],
+    },
+    manifest: "/manifest.json",
+    robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+            index: true,
+            follow: true,
+            "max-video-preview": -1,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+        },
+    },
+    alternates: {
+        canonical: "https://vitreon.app",
+        languages: {
+            en: "https://vitreon.app",
+            cs: "https://vitreon.app/cs",
+        },
+    },
     openGraph: {
         title: "Vitreon Legal — Your AI Legal Counsel",
         description:
@@ -46,10 +72,11 @@ export const metadata: Metadata = {
         url: "https://vitreon.app",
         siteName: "Vitreon Legal",
         locale: "en",
+        alternateLocale: "cs",
         type: "website",
         images: [
             {
-                url: "/opengraph-image.png",
+                url: "/opengraph-image",
                 width: 1200,
                 height: 630,
                 alt: "Vitreon Legal — AI-Powered Legal Research Platform",
@@ -61,7 +88,10 @@ export const metadata: Metadata = {
         title: "Vitreon Legal — Your AI Legal Counsel",
         description:
             "AI-powered legal research with source-grounded answers. 100% citation coverage across Czech, DIFC, UK, and Australian jurisdictions.",
-        images: ["/opengraph-image.png"],
+        images: ["/opengraph-image"],
+    },
+    verification: {
+        google: "google-site-verification-code",
     },
 };
 

@@ -21,9 +21,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from neolex.auth.session import get_current_user
 from neolex.db.audit import get_audit_db
-from neolex.db.models import Feedback, PipelineJob, User
+from neolex.db.models import ConversationMessage, Feedback, PipelineJob, User
 from neolex.db.postgres import get_db
 from neolex.observability import get_langfuse
+from neolex.services.conversation import _to_conv_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +43,19 @@ def _push_score_sync(trace_id: str, rating: str, comment: str | None) -> None:
     """Synchronous Langfuse score push — runs in a thread pool to stay non-blocking."""
     client = get_langfuse()
     if client is None:
+        logger.debug("Langfuse client not available, skipping score push")
         return
     try:
         client.create_score(
             trace_id=trace_id,
             name="user-feedback",
             value=1.0 if rating == "positive" else 0.0,
+            data_type="NUMERIC",
             comment=comment,
         )
+        logger.info("Langfuse score pushed (trace=%.8s…, rating=%s)", trace_id, rating)
     except Exception:
-        logger.debug("Langfuse score push failed", exc_info=True)
+        logger.warning("Langfuse score push failed (trace=%.8s…)", trace_id, exc_info=True)
 
 
 async def _push_score_bg(trace_id: str, rating: str, comment: str | None) -> None:
@@ -63,7 +67,7 @@ async def _push_score_bg(trace_id: str, rating: str, comment: str | None) -> Non
     try:
         await asyncio.to_thread(_push_score_sync, trace_id, rating, comment)
     except Exception:
-        logger.debug("Langfuse background push failed", exc_info=True)
+        logger.warning("Langfuse background push failed (trace=%.8s…)", trace_id, exc_info=True)
 
 
 @router.post("/feedback", status_code=200)
@@ -97,6 +101,10 @@ async def submit_feedback(
         # Fail open — do NOT block the user if the audit DB is down
 
     # --- Ownership check: conversation_id must belong to requesting user ---
+    # PipelineJob stores the raw frontend conversation_id (e.g. "chat-12345...")
+    # but ConversationMessage stores the UUID5 version. When users reload and
+    # load sessions from the backend, the frontend uses the UUID form, so we
+    # must check both tables to avoid false 403s.
     conversation_owned = await db.scalar(
         select(
             exists().where(
@@ -105,6 +113,16 @@ async def submit_feedback(
             )
         )
     )
+    if not conversation_owned:
+        conv_uuid = _to_conv_uuid(body.conversation_id)
+        conversation_owned = await db.scalar(
+            select(
+                exists().where(
+                    ConversationMessage.conversation_id == conv_uuid,
+                    ConversationMessage.user_id == user.id,
+                )
+            )
+        )
     if not conversation_owned:
         raise HTTPException(status_code=403, detail="Forbidden")
 

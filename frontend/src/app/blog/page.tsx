@@ -19,6 +19,22 @@ export const metadata: Metadata = {
 
 const POSTS = [
     {
+        slug: "ai-pro-advokaty-2026",
+        title: "AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
+        description:
+            "Jak AI šetří 3–5 hodin týdně při právním výzkumu. Podrobné srovnání Beck-online, ASPI a Vitreon Legal — ceník v CZK, judikatura NSS a ÚS, citace ke každé odpovědi.",
+        date: "18. dubna 2026",
+        lang: "CS",
+    },
+    {
+        slug: "zakonik-prace-2026-ai",
+        title: "Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek",
+        description:
+            "Výpověď, mzda, dovolená, home office — AI právní asistent odpovídá na nejčastější otázky zákoníku práce s přesnou citací z judikatury. Zdarma pro zaměstnance i zaměstnavatele.",
+        date: "18. dubna 2026",
+        lang: "CS",
+    },
+    {
         slug: "arlc-2026-results",
         title: "How Vitreon Placed 4th in ARLC 2026",
         description:

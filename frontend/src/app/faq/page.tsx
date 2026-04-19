@@ -4,16 +4,41 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "FAQ — Vitreon Legal AI Legal Research Platform",
+    title: "FAQ — Vitreon Legal: AI Legal Research for Czech, DIFC, UK & AU Law",
     description:
-        "Frequently asked questions about Vitreon Legal: AI-powered legal research, pricing, accuracy, jurisdictions, source grounding, data security, and Czech legal AI capabilities.",
+        "Frequently asked questions about Vitreon Legal: AI-powered legal research, pricing, accuracy, Czech law coverage, DIFC, UK, Australian jurisdictions, source grounding, and data security.",
+    keywords: [
+        "Vitreon Legal FAQ",
+        "AI legal research questions",
+        "Czech legal AI FAQ",
+        "legal AI pricing",
+        "AI law assistant accuracy",
+        "Beck-online alternativa FAQ",
+        "česká judikatura AI dotazy",
+    ],
+    alternates: {
+        canonical: "https://vitreon.app/faq",
+        languages: {
+            en: "https://vitreon.app/faq",
+            cs: "https://vitreon.app/cs",
+        },
+    },
     openGraph: {
-        title: "FAQ — Vitreon Legal",
+        title: "FAQ — Vitreon Legal: AI Legal Research for Czech, DIFC, UK & AU Law",
         description:
-            "Frequently asked questions about Vitreon Legal: AI legal research, pricing, accuracy, jurisdictions, and data security.",
+            "Frequently asked questions about Vitreon Legal: AI legal research, pricing, accuracy, Czech law coverage, jurisdictions, and data security.",
         url: "https://vitreon.app/faq",
         siteName: "Vitreon Legal",
+        locale: "en",
         type: "website",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "Vitreon Legal — FAQ",
+            },
+        ],
     },
 };
 
