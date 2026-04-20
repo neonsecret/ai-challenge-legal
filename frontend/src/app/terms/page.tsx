@@ -5,6 +5,9 @@ export const metadata: Metadata = {
     title: "Terms of Service — Vitreon Legal",
     description:
         "Terms and conditions governing your use of the Vitreon Legal AI legal research platform.",
+    alternates: {
+        canonical: "https://vitreon.app/terms",
+    },
 };
 
 const LAST_UPDATED = "April 5, 2026";

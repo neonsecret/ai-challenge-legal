@@ -7,6 +7,9 @@ export const metadata: Metadata = {
     title: "Blog — Vitreon Legal",
     description:
         "Technical blog from Vitreon Legal: benchmark results, competition reports, Czech legal AI research, and retrieval pipeline methodology.",
+    alternates: {
+        canonical: "https://vitreon.app/blog",
+    },
     openGraph: {
         title: "Blog — Vitreon Legal",
         description:

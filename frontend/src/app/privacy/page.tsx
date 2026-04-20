@@ -5,6 +5,9 @@ export const metadata: Metadata = {
     title: "Privacy Policy — Vitreon Legal",
     description:
         "How Vitreon Legal collects, uses, and protects your data when you use our AI-powered legal research platform.",
+    alternates: {
+        canonical: "https://vitreon.app/privacy",
+    },
 };
 
 const LAST_UPDATED = "April 5, 2026";
