@@ -39,9 +39,35 @@ export const metadata: Metadata = {
     },
 };
 
+const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
+    description:
+        "Technický rozbor benchmarku GaRAGe (ACL 2025): Vitreon Legal dosahuje 0.824 RAF, +36% nad publikovaný SOTA 0.607. Jak funguje retrieval pipeline pro judikaturu a právní výzkum v ČR.",
+    url: "https://vitreon.app/blog/czech-legal-ai-sota",
+    datePublished: "2026-04-12",
+    author: {
+        "@type": "Person",
+        name: "Viacheslav Ivannikov",
+        url: "https://vitreon.app",
+    },
+    publisher: {
+        "@type": "Organization",
+        name: "Vitreon Legal",
+        url: "https://vitreon.app",
+    },
+    image: "https://vitreon.app/opengraph-image",
+    inLanguage: "cs",
+};
+
 export default function CzechLegalAIPost() {
     return (
         <div className="min-h-screen" style={{background: "var(--strict-bg-html)"}}>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{__html: JSON.stringify(jsonLd)}}
+            />
             <StrictNav />
 
             <main className="max-w-[880px] mx-auto px-4 sm:px-8 pt-16 pb-20">
