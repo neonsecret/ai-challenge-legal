@@ -18,23 +18,10 @@ import stat
 import uuid
 import zipfile
 from pathlib import Path
-from threading import Lock
 
 from neolex.config import settings
 
 logger = logging.getLogger(__name__)
-
-_collection_locks: dict[str, Lock] = {}
-_collection_locks_guard = Lock()
-
-
-def get_collection_lock(client_slug: str) -> Lock:
-    """Get or create a lock for serializing collection access per client."""
-    with _collection_locks_guard:
-        if client_slug not in _collection_locks:
-            _collection_locks[client_slug] = Lock()
-        return _collection_locks[client_slug]
-
 
 # ---------------------------------------------------------------------------
 # Constants
