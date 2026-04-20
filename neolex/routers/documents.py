@@ -896,15 +896,46 @@ async def move_document_collection(
     if not meta_path.exists():
         raise HTTPException(status_code=404, detail=f"Document '{doc_id}' not found")
 
+    async with get_audit_db() as audit_db:
+        row = await audit_db.get_document(doc_id, client_slug)
+
+    if row is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Document '{doc_id}' not found for client '{client_slug}'",
+        )
+
+    old_collection = await asyncio.to_thread(_get_collection, meta_path)
+    await asyncio.to_thread(_atomic_move, meta_path, collection)
+
+    async with get_audit_db() as audit_db:
+        await audit_db.log_event(
+            key_hash=key_row["key_hash"],
+            event_type="move_collection",
+            detail={
+                "doc_id": doc_id,
+                "old_collection": old_collection,
+                "new_collection": collection,
+            },
+            ip=getattr(request.client, "host", None),
+            user_agent=request.headers.get("user-agent"),
+        )
+
+    logger.info("Moved doc %s from '%s' → '%s' for client %s", doc_id[:16], old_collection, collection, client_slug)
+    return {"doc_id": doc_id, "old_collection": old_collection, "new_collection": collection}
+
+
+def _atomic_move(meta_path: Path, new_collection: str) -> None:
     meta = json.loads(meta_path.read_text())
-    old_collection = meta.get("collection", "My Documents")
-    meta["collection"] = collection
+    meta["collection"] = new_collection
     tmp = meta_path.with_suffix(".meta.tmp")
     tmp.write_text(json.dumps(meta, indent=2))
     os.replace(str(tmp), str(meta_path))
 
-    logger.info("Moved doc %s from '%s' → '%s' for client %s", doc_id[:16], old_collection, collection, client_slug)
-    return {"doc_id": doc_id, "old_collection": old_collection, "new_collection": collection}
+
+def _get_collection(meta_path: Path) -> str:
+    meta = json.loads(meta_path.read_text())
+    return meta.get("collection", "My Documents")
 
 
 # ---------------------------------------------------------------------------

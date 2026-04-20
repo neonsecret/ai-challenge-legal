@@ -533,3 +533,26 @@ class TestDocumentDeleteEndpoint:
         # Mock audit db returns None for get_document (already set in _make_mock_audit)
         resp = await authed_docs_client.delete("/api/v1/documents/nonexistent_doc")
         assert resp.status_code == 404
+
+
+class TestMoveDocumentCollection:
+    """PATCH /api/v1/documents/{doc_id}/collection."""
+
+    async def test_nonexistent_doc_in_db_returns_404(
+        self, authed_docs_client: AsyncClient, client_slug: str, tmp_path_factory
+    ):
+        """Moving a doc that exists on disk but not in audit DB must return 404."""
+        doc_id = f"doctest_{uuid.uuid4().hex}"
+        test_dir = tmp_path_factory.mktemp("docs")
+        mock_docs_dir = test_dir / client_slug
+        mock_docs_dir.mkdir(parents=True)
+
+        meta_path = mock_docs_dir / f"{doc_id}.meta"
+        meta_path.write_text("collection: old_coll")
+
+        with patch("neolex.routers.documents.client_docs_dir", return_value=mock_docs_dir):
+            resp = await authed_docs_client.patch(
+                f"/api/v1/documents/{doc_id}/collection",
+                json={"collection": "new_coll"},
+            )
+        assert resp.status_code == 404
