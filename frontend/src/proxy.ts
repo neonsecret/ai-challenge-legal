@@ -1,28 +1,17 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-/**
- * Proxy (formerly middleware in Next.js <16).
- *
- * 1. HTTP → HTTPS 301 redirect in production (fixes duplicate indexing
- *    where Google sees http://vitreon.app and https://vitreon.app as
- *    separate pages). Uses the x-forwarded-proto header set by Cloudflare.
- *
- * 2. Reads the Cloudflare CF-IPCountry header and stores the 2-letter
- *    country code in a cookie so client components can access it without
- *    a server round-trip.
- *
- * Fallback: when headers are absent (local dev), neither redirect nor
- * cookie is applied — the frontend defaults to "en" content.
- */
+/** HTTP→HTTPS redirect (vitreon.app only) + geo-country cookie from Cloudflare. */
 export function proxy(request: NextRequest) {
-    // --- HTTP → HTTPS redirect (production only) ---
+    // --- HTTP → HTTPS redirect (production domain only) ---
     if (process.env.NODE_ENV === "production") {
         const proto = request.headers.get("x-forwarded-proto")
-        if (proto === "http") {
-            const httpsUrl = new URL(request.url)
-            httpsUrl.protocol = "https:"
-            return NextResponse.redirect(httpsUrl, 301)
+        const host = request.headers.get("host") || ""
+        if (proto === "http" && host.includes("vitreon.app")) {
+            return NextResponse.redirect(
+                `https://${host}${request.nextUrl.pathname}${request.nextUrl.search}`,
+                301,
+            )
         }
     }
 
