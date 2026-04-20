@@ -13,10 +13,22 @@ export const metadata: Metadata = {
             "Team Neon Team placed 4th/80 at ARLC 2026. 0.958 warmup (1st), 0.719 finals. Full methodology breakdown.",
         url: "https://vitreon.app/blog/arlc-2026-results",
         siteName: "Vitreon Legal",
+        locale: "en",
         type: "article",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "How Vitreon Placed 4th in ARLC 2026 — Vitreon Legal",
+            },
+        ],
     },
     alternates: {
         canonical: "https://vitreon.app/blog/arlc-2026-results",
+        languages: {
+            en: "https://vitreon.app/blog/arlc-2026-results",
+        },
     },
     keywords: ["ARLC 2026", "Czech legal AI", "legal AI benchmark", "Vitreon Legal", "Czech law", "legal research AI"],
     twitter: {

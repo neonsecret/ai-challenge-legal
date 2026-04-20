@@ -15,6 +15,14 @@ export const metadata: Metadata = {
         siteName: "Vitreon Legal",
         type: "article",
         locale: "cs_CZ",
+        images: [
+            {
+                url: "/opengraph-image",
+                width: 1200,
+                height: 630,
+                alt: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI — Vitreon Legal",
+            },
+        ],
     },
     alternates: {
         canonical: "https://vitreon.app/blog/czech-legal-ai-sota",
