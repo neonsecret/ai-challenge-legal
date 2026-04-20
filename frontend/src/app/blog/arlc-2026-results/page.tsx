@@ -15,6 +15,16 @@ export const metadata: Metadata = {
         siteName: "Vitreon Legal",
         type: "article",
     },
+    alternates: {
+        canonical: "https://vitreon.app/blog/arlc-2026-results",
+    },
+    keywords: ["ARLC 2026", "Czech legal AI", "legal AI benchmark", "Vitreon Legal", "Czech law", "legal research AI"],
+    twitter: {
+        card: "summary_large_image",
+        title: "How Vitreon Placed 4th in ARLC 2026",
+        description:
+            "Team Neon Team placed 4th/80 at ARLC 2026. 0.958 warmup (1st), 0.719 finals. Full methodology breakdown.",
+    },
 };
 
 export default function ARLCResultsPost() {

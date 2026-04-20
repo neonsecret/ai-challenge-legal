@@ -16,6 +16,19 @@ export const metadata: Metadata = {
         type: "article",
         locale: "cs_CZ",
     },
+    alternates: {
+        canonical: "https://vitreon.app/blog/czech-legal-ai-sota",
+        languages: {
+            cs: "https://vitreon.app/blog/czech-legal-ai-sota",
+        },
+    },
+    keywords: ["český právní AI", "GaRAGe benchmark", "legal AI SOTA", "Vitreon Legal", "judikatura", "právní výzkum"],
+    twitter: {
+        card: "summary_large_image",
+        title: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
+        description:
+            "GaRAGe benchmark 0.824 RAF, +36% nad SOTA. Technický rozbor retrieval pipeline pro českou judikaturu.",
+    },
 };
 
 export default function CzechLegalAIPost() {
