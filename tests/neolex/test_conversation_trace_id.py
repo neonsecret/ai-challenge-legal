@@ -39,6 +39,7 @@ def _make_mock_session() -> tuple[MagicMock, list]:
     session = MagicMock()
     session.add.side_effect = added_objects.append
     session.commit = AsyncMock()
+    session.scalar = AsyncMock(return_value=None)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
     return session, added_objects
