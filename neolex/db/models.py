@@ -7,7 +7,7 @@ Operational tables (api_keys, queries, etc.) are in operational_models.py.
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
@@ -166,6 +166,16 @@ class ConversationMessage(Base):
     __table_args__ = (
         # Fast lookup: load history for a user+conversation ordered by time
         Index("ix_convmsg_user_conv_time", "user_id", "conversation_id", "created_at"),
+        # Idempotency guard: prevent duplicate rows when save_turn() fires twice
+        # (retry / SSE reconnect). Partial so NULL trace_id rows are not affected.
+        Index(
+            "ix_convmsg_user_conv_trace_uq",
+            "user_id",
+            "conversation_id",
+            "trace_id",
+            unique=True,
+            postgresql_where=text("trace_id IS NOT NULL"),
+        ),
     )
 
 

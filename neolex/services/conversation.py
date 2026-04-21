@@ -341,10 +341,24 @@ async def save_turn(
     """
     if not conversation_id:
         return
+    if trace_id is None:
+        logger.warning("save_turn called without trace_id for conv=%s — idempotency not guaranteed", conversation_id)
     try:
         uid = uuid.UUID(str(user_id))
         cid = _to_conv_uuid(conversation_id)
         async with AsyncSessionLocal() as session:
+            if trace_id is not None:
+                existing = await session.scalar(
+                    select(ConversationMessage.id)
+                    .where(
+                        ConversationMessage.user_id == uid,
+                        ConversationMessage.conversation_id == cid,
+                        ConversationMessage.trace_id == trace_id,
+                    )
+                    .limit(1)
+                )
+                if existing is not None:
+                    return
             session.add(
                 ConversationMessage(
                     conversation_id=cid,
@@ -378,11 +392,31 @@ async def create_pipeline_job(
     conversation_id: str,
     question: str,
 ) -> uuid.UUID | None:
-    """Create a pipeline_jobs row with status='processing'. Returns job ID or None on error."""
+    """Create a pipeline_jobs row with status='processing'. Returns job ID or None on error.
+
+    Idempotent: if a 'processing' job already exists for (user_id, conversation_id),
+    returns the existing job ID without inserting a duplicate row.
+    """
     try:
         uid = uuid.UUID(str(user_id))
-        job_id = uuid.uuid4()
         async with AsyncSessionLocal() as session:
+            existing_id = await session.scalar(
+                select(PipelineJob.id)
+                .where(
+                    PipelineJob.user_id == uid,
+                    PipelineJob.conversation_id == conversation_id,
+                    PipelineJob.status == "processing",
+                )
+                .limit(1)
+            )
+            if existing_id is not None:
+                logger.warning(
+                    "Duplicate create_pipeline_job for conv=%s — returning existing job %s",
+                    conversation_id,
+                    existing_id,
+                )
+                return existing_id
+            job_id = uuid.uuid4()
             session.add(
                 PipelineJob(
                     id=job_id,

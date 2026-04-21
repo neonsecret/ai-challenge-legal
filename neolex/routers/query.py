@@ -575,9 +575,10 @@ async def query_stream(
         # Run pipeline as a concurrent task so we can yield status events while it runs
         pipeline_result: dict = {}
         pipeline_error: BaseException | None = None
+        pipeline_response: QueryResponse | None = None
 
         async def _run_pipeline():
-            nonlocal pipeline_result, pipeline_error
+            nonlocal pipeline_result, pipeline_error, pipeline_response
             try:
                 if body.use_agent:
                     # ---- LangGraph agent path ----
@@ -684,6 +685,37 @@ async def query_stream(
                         user_email=user.email,
                         subscription_plan=user.subscription_status,
                     )
+                # Persist answer + complete job here so both calls run even when
+                # the SSE client disconnects before the post-processing block runs.
+                try:
+                    from neolex.services.conversation import save_turn
+
+                    pipeline_response = pipeline_dict_to_response(pipeline_result)
+                    _sources_json = json.dumps([s.model_dump() for s in pipeline_response.sources])
+                    if user_id and conversation_id and pipeline_response.answer is not None:
+                        _t = asyncio.create_task(
+                            save_turn(
+                                user_id=user_id,
+                                conversation_id=conversation_id,
+                                question=body.question,
+                                answer=str(pipeline_response.answer),
+                                sources_json=_sources_json,
+                                trace_id=pipeline_result.get("trace_id"),
+                            )
+                        )
+                        _t.add_done_callback(_log_task_exception)
+                    if pipeline_job_id:
+                        _t = asyncio.create_task(
+                            complete_pipeline_job(
+                                pipeline_job_id,
+                                answer=str(pipeline_response.answer) if pipeline_response.answer is not None else "",
+                                sources_json=_sources_json,
+                                confidence=pipeline_response.confidence,
+                            )
+                        )
+                        _t.add_done_callback(_log_task_exception)
+                except Exception:
+                    logger.exception("Failed to persist pipeline result after completion")
             except asyncio.TimeoutError:
                 logger.error("Agent pipeline timed out for question: %.80s", body.question)
                 pipeline_error = asyncio.TimeoutError("Agent pipeline exceeded time limit")
@@ -693,7 +725,7 @@ async def query_stream(
                 # Signal completion to the SSE loop
                 queue.put_nowait(("done", None))
 
-        task = asyncio.create_task(_run_pipeline())
+        asyncio.create_task(_run_pipeline())
 
         try:
             while True:
@@ -779,9 +811,15 @@ async def query_stream(
             }
             return
 
-        # Emit answer + audit log + save conversation turn
+        # Emit answer + audit log
+        # Note: save_turn + complete_pipeline_job already fired inside _run_pipeline()
+        # so answers are persisted even when the SSE client disconnects early.
         try:
-            response = pipeline_dict_to_response(pipeline_result)
+            # Reuse the response object computed inside _run_pipeline to avoid
+            # calling pipeline_dict_to_response a second time.
+            response = (
+                pipeline_response if pipeline_response is not None else pipeline_dict_to_response(pipeline_result)
+            )
             sources_json = json.dumps([s.model_dump() for s in response.sources])
 
             # Start follow-up generation concurrently with audit logging so the
@@ -808,34 +846,6 @@ async def query_stream(
                     ip=getattr(request.client, "host", None),
                     user_agent=request.headers.get("user-agent"),
                 )
-
-            # Persist Q&A to conversation history (non-blocking, errors are swallowed)
-            if user_id and conversation_id and response.answer is not None:
-                from neolex.services.conversation import save_turn
-
-                task = asyncio.create_task(
-                    save_turn(
-                        user_id=user_id,
-                        conversation_id=conversation_id,
-                        question=body.question,
-                        answer=str(response.answer),
-                        sources_json=sources_json,
-                        trace_id=pipeline_result.get("trace_id"),
-                    ),
-                )
-                task.add_done_callback(_log_task_exception)
-
-            # Persist completion to pipeline_jobs for frontend polling recovery
-            if pipeline_job_id:
-                t = asyncio.create_task(
-                    complete_pipeline_job(
-                        pipeline_job_id,
-                        answer=str(response.answer) if response.answer is not None else "",
-                        sources_json=sources_json,
-                        confidence=response.confidence,
-                    ),
-                )
-                t.add_done_callback(_log_task_exception)
 
             yield {"event": "answer", "data": response.model_dump_json()}
 
