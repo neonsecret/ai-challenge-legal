@@ -716,6 +716,11 @@ async def query_stream(
                         _t.add_done_callback(_log_task_exception)
                 except Exception:
                     logger.exception("Failed to persist pipeline result after completion")
+                    if pipeline_job_id:
+                        _ft = asyncio.create_task(
+                            fail_pipeline_job(pipeline_job_id, detail="pipeline_dict_to_response failed")
+                        )
+                        _ft.add_done_callback(_log_task_exception)
             except asyncio.TimeoutError:
                 logger.error("Agent pipeline timed out for question: %.80s", body.question)
                 pipeline_error = asyncio.TimeoutError("Agent pipeline exceeded time limit")
@@ -725,7 +730,7 @@ async def query_stream(
                 # Signal completion to the SSE loop
                 queue.put_nowait(("done", None))
 
-        asyncio.create_task(_run_pipeline())
+        _pipeline_task = asyncio.create_task(_run_pipeline())
 
         try:
             while True:
