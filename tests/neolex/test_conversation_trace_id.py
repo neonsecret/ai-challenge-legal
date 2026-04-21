@@ -39,6 +39,7 @@ def _make_mock_session() -> tuple[MagicMock, list]:
     session = MagicMock()
     session.add.side_effect = added_objects.append
     session.commit = AsyncMock()
+    session.scalar = AsyncMock(return_value=None)
     session.__aenter__ = AsyncMock(return_value=session)
     session.__aexit__ = AsyncMock(return_value=False)
     return session, added_objects
@@ -143,3 +144,39 @@ async def test_load_full_conversation_omits_trace_id_when_none():
 
     assert len(messages) == 1
     assert "trace_id" not in messages[0]
+
+
+# ---------------------------------------------------------------------------
+# save_turn — idempotency guard (NEO-2608)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_save_turn_idempotent_on_duplicate_trace_id():
+    """Second save_turn with the same trace_id is a no-op (app-level guard)."""
+    user_id = str(uuid.uuid4())
+    conversation_id = str(uuid.uuid4())
+
+    mock_session, added_objects = _make_mock_session()
+    # First call: scalar returns None → insert proceeds
+    # Second call: scalar returns an existing row ID → skip
+    mock_session.scalar = AsyncMock(side_effect=[None, uuid.uuid4()])
+
+    with patch("neolex.services.conversation.AsyncSessionLocal", MagicMock(return_value=mock_session)):
+        await save_turn(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            question="Q1",
+            answer="A1",
+            trace_id="trace-dup",
+        )
+        await save_turn(
+            user_id=user_id,
+            conversation_id=conversation_id,
+            question="Q1",
+            answer="A1",
+            trace_id="trace-dup",
+        )
+
+    assert len(added_objects) == 2  # only one pair inserted, second call skipped
+    assert mock_session.commit.await_count == 1

@@ -443,7 +443,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         if (!hydrated) return
         if (messages.length === 0) return
 
-        const id = currentSessionId ?? `chat-${Date.now()}`
+        const id = currentSessionId ?? crypto.randomUUID()
         if (!currentSessionId) startTransition(() => setCurrentSessionId(id))
 
         // Check if this messages update is from loading an existing session
@@ -687,7 +687,7 @@ export function ChatStateProvider({children}: { children: ReactNode }) {
         // Corpus limit is enforced at the jurisdiction pill level (line ~718).
         // No redundant check here — it caused false positives when the session's
         // corpora array was out of sync with sessionsRef.
-        const convId = currentSessionId ?? `chat-${Date.now()}`
+        const convId = currentSessionId ?? crypto.randomUUID()
         const currentSessions = sessionsRef.current
         const session = currentSessions.find(s => s.id === convId)
         const existingCorpora = session?.corpora ?? []
