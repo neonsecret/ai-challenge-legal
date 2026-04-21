@@ -1195,9 +1195,9 @@ def _score_doc_by_law_name(law_name: str, doc_index: dict) -> list[str]:
     return [pdf_id for pdf_id, _, _ in scored[:top_k]]
 
 
-def find_docs_by_keyword(question: str) -> list[str]:
+def find_docs_by_keyword(question: str, corpus: str = "difc") -> list[str]:
     """Find document IDs that contain keywords from the question."""
-    doc_index = build_doc_index()
+    doc_index = build_doc_index(corpus)
     identifiers = extract_identifiers(question)
 
     matching_pdf_ids = set()
@@ -1641,6 +1641,7 @@ def generate_hyde_passage(question: str, corpus: str = "difc") -> str | None:
             pass
         return text.strip() if text else None
     except Exception:
+        logger.warning("HyDE generation failed", exc_info=True)
         return None
 
 
@@ -2005,7 +2006,7 @@ def retrieve(
     article_filter = _extract_article_filter(question)
 
     # Step 1: Check for keyword matches
-    keyword_pdf_ids = find_docs_by_keyword(question)
+    keyword_pdf_ids = find_docs_by_keyword(question, corpus=corpus)
 
     if keyword_pdf_ids:
         # Keyword match: prioritize chunks from these documents
