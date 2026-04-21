@@ -1,4 +1,4 @@
-import type {Metadata} from "next";
+import type {Metadata, Viewport} from "next";
 import {Playfair_Display, Inter} from "next/font/google";
 import "./globals.css";
 import {ColorModeProvider} from "@/lib/color-mode";
@@ -93,6 +93,12 @@ export const metadata: Metadata = {
     verification: {
         google: "google-site-verification-code",
     },
+};
+
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
 };
 
 const jsonLd = {

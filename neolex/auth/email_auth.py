@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from sqlalchemy import delete as sql_delete
 from sqlalchemy import select
+from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.requests import Request
 
@@ -125,26 +126,34 @@ async def register(body: RegisterRequest, request: Request, db: AsyncSession = D
 @router.get("/verify-email")
 async def verify_email(token: str, request: Request, db: AsyncSession = Depends(get_db)):
     now = datetime.now(UTC)
+    # Atomic claim: UPDATE ... WHERE used_at IS NULL prevents concurrent reuse.
     result = await db.execute(
-        select(AuthToken).where(
+        sql_update(AuthToken)
+        .where(
             AuthToken.token_hash == _hash(token),
             AuthToken.token_type == "email_verify",
             AuthToken.expires_at > now,
-            AuthToken.used_at == None,  # noqa: E711
-        ),
+            AuthToken.used_at.is_(None),
+        )
+        .values(used_at=now)
+        .returning(AuthToken.user_id),
     )
-    auth_token = result.scalar_one_or_none()
-    if not auth_token:
+    row = result.one_or_none()
+    if row is None:
         raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    user_id = row[0]
 
-    auth_token.used_at = now
-    result2 = await db.execute(select(User).where(User.id == auth_token.user_id))
+    result2 = await db.execute(select(User).where(User.id == user_id))
     user = result2.scalar_one()
     user.email_verified = True
     user.last_login = now
 
     # Invalidate existing sessions to prevent session fixation
     await db.execute(sql_delete(Session).where(Session.user_id == user.id))
+
+    # Commit before create_session so get_current_user can find both session and user.
+    # See oauth.py for the same pattern.
+    await db.commit()
 
     ip = getattr(request.client, "host", None)
     raw_session = await create_session(user, db, ip=ip, user_agent=request.headers.get("user-agent"))
@@ -167,6 +176,11 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         raise HTTPException(status_code=403, detail="Please verify your email first")
 
     user.last_login = datetime.now(UTC)
+
+    # Commit last_login before create_session so get_current_user can find both
+    # the session and the updated user row. See oauth.py for the same pattern.
+    await db.commit()
+
     ip = getattr(request.client, "host", None)
     raw_session = await create_session(user, db, ip=ip, user_agent=request.headers.get("user-agent"))
 
@@ -203,32 +217,34 @@ async def forgot_password(body: ForgotPasswordRequest, request: Request, db: Asy
 async def reset_password(body: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
     await _auth_rate_check(request, "reset")
     now = datetime.now(UTC)
+    # Atomic claim: UPDATE ... WHERE used_at IS NULL prevents concurrent reuse.
     result = await db.execute(
-        select(AuthToken).where(
+        sql_update(AuthToken)
+        .where(
             AuthToken.token_hash == _hash(body.token),
             AuthToken.token_type == "password_reset",
             AuthToken.expires_at > now,
-            AuthToken.used_at == None,  # noqa: E711
-        ),
+            AuthToken.used_at.is_(None),
+        )
+        .values(used_at=now)
+        .returning(AuthToken.user_id),
     )
-    auth_token = result.scalar_one_or_none()
-    if not auth_token:
+    row = result.one_or_none()
+    if row is None:
         raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    user_id = row[0]
 
-    auth_token.used_at = now
-    result2 = await db.execute(select(User).where(User.id == auth_token.user_id))
+    result2 = await db.execute(select(User).where(User.id == user_id))
     user = result2.scalar_one()
     user.password_hash = _hash_password(body.new_password)
 
     # Invalidate all other unused reset tokens for this user
-    from sqlalchemy import update as sql_update
-
     await db.execute(
         sql_update(AuthToken)
         .where(
             AuthToken.user_id == user.id,
             AuthToken.token_type == "password_reset",
-            AuthToken.used_at == None,  # noqa: E711
+            AuthToken.used_at.is_(None),
         )
         .values(used_at=now),
     )
@@ -395,42 +411,33 @@ async def delete_account(
 async def _delete_user_audit_logs(client_slug: str) -> None:
     """Delete audit log entries (queries, events, api_keys) for a user.
 
-    The operational tables (queries, events, api_keys) use key_hash to link
-    records. We collect all key_hashes belonging to this client_slug, then
-    delete queries and events referencing those hashes, and finally the keys
-    themselves. This ensures full GDPR erasure of audit data.
+    GDPR Article 17 requires full erasure — failures must propagate so the
+    caller can rollback and surface an error instead of claiming success.
     """
-    try:
-        from sqlalchemy import delete as sa_delete
-        from sqlalchemy import select as sa_select
+    from sqlalchemy import delete as sa_delete
+    from sqlalchemy import select as sa_select
 
-        from neolex.db.audit import get_audit_db
-        from neolex.db.operational_models import ApiKey, Event, Query
+    from neolex.db.audit import get_audit_db
+    from neolex.db.operational_models import ApiKey, Event, Query
 
-        async with get_audit_db() as audit_db:
-            session = audit_db.get_session()
+    async with get_audit_db() as audit_db:
+        session = audit_db.get_session()
 
-            # 1. Collect all key_hashes for this client
-            result = await session.execute(sa_select(ApiKey.key_hash).where(ApiKey.client_slug == client_slug))
-            key_hashes = [row[0] for row in result.all()]
+        result = await session.execute(sa_select(ApiKey.key_hash).where(ApiKey.client_slug == client_slug))
+        key_hashes = [row[0] for row in result.all()]
 
-            if key_hashes:
-                # 2. Delete queries referencing these key_hashes
-                del_queries = await session.execute(sa_delete(Query).where(Query.key_hash.in_(key_hashes)))
-                # 3. Delete events referencing these key_hashes
-                del_events = await session.execute(sa_delete(Event).where(Event.key_hash.in_(key_hashes)))
-                logger.info(
-                    "Deleted %d queries and %d events for client %s",
-                    del_queries.rowcount,
-                    del_events.rowcount,
-                    client_slug,
-                )
+        if key_hashes:
+            del_queries = await session.execute(sa_delete(Query).where(Query.key_hash.in_(key_hashes)))
+            del_events = await session.execute(sa_delete(Event).where(Event.key_hash.in_(key_hashes)))
+            logger.info(
+                "Deleted %d queries and %d events for client %s",
+                del_queries.rowcount,
+                del_events.rowcount,
+                client_slug,
+            )
 
-            # 4. Delete the API keys themselves
-            del_keys = await session.execute(sa_delete(ApiKey).where(ApiKey.client_slug == client_slug))
-            logger.info("Deleted %d API keys for client %s", del_keys.rowcount, client_slug)
-    except Exception:
-        logger.exception("Failed to delete audit logs for client %s", client_slug)
+        del_keys = await session.execute(sa_delete(ApiKey).where(ApiKey.client_slug == client_slug))
+        logger.info("Deleted %d API keys for client %s", del_keys.rowcount, client_slug)
 
 
 async def _cancel_stripe_subscriptions(user: User, db: AsyncSession) -> None:
@@ -489,21 +496,16 @@ async def _delete_client_data(client_slug: str) -> None:
         )
         return
 
-    # Delete audit DB records for this client
-    try:
-        from neolex.db.audit import get_audit_db
+    # Delete audit DB records for this client — GDPR erasure must fail loudly
+    # if cleanup fails so the caller can rollback and surface the error.
+    from neolex.db.audit import get_audit_db
 
-        async with get_audit_db() as audit_db:
-            docs = await audit_db.list_documents(client_slug)
-            for doc in docs:
-                await audit_db.delete_document(doc["doc_id"], client_slug)
-    except Exception:
-        logger.exception("Failed to clean audit records for client %s", client_slug)
+    async with get_audit_db() as audit_db:
+        docs = await audit_db.list_documents(client_slug)
+        for doc in docs:
+            await audit_db.delete_document(doc["doc_id"], client_slug)
 
     # Delete the entire client directory (docs + index)
     if client_dir.exists():
-        try:
-            shutil.rmtree(str(client_dir))
-            logger.info("Deleted client directory: %s", client_dir)
-        except Exception:
-            logger.exception("Failed to delete client directory: %s", client_dir)
+        shutil.rmtree(str(client_dir))
+        logger.info("Deleted client directory: %s", client_dir)

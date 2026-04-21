@@ -123,12 +123,12 @@ export function ChatInput({onSend, disabled, onStop, onFocusRef, onTemplateSelec
                     style={isGlassmorphic ? {
                         color: "var(--strict-text-body)",
                         caretColor: "var(--strict-gold-base)",
-                        font: "14px/1.5 Georgia, serif",
+                        font: "16px/1.5 Georgia, serif",
                         letterSpacing: "0.01em",
                     } : {
                         color: "var(--dt-text-secondary)",
                         caretColor: "var(--dt-color-gold-base)",
-                        fontSize: "14px",
+                        fontSize: "16px",
                         fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
                         letterSpacing: "-0.006em",
                     }}

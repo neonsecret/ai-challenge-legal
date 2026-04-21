@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
         border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(140,80,0,0.15)",
         background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.35)",
         color: textPrimary,
-        fontSize: "15px",
+        fontSize: "16px",
         fontFamily: FONT,
         outline: "none",
         transition: "border-color 0.2s",
@@ -57,6 +57,7 @@ export default function ForgotPasswordPage() {
     const buttonStyle: React.CSSProperties = {
         width: "100%",
         padding: "12px 0",
+        minHeight: "44px",
         borderRadius: "12px",
         border: "none",
         background: isDark
@@ -251,6 +252,9 @@ export default function ForgotPasswordPage() {
                     <Link
                         href="/login"
                         style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            minHeight: "44px",
                             fontSize: "14px",
                             color: accentColor,
                             textDecoration: "none",

@@ -61,6 +61,15 @@ const nextConfig: NextConfig = {
             },
         ];
     },
+    async redirects() {
+        return [
+            {
+                source: "/pricing",
+                destination: "/#pricing",
+                permanent: true,
+            },
+        ];
+    },
     async rewrites() {
         // BACKEND_URL is server-side only (not NEXT_PUBLIC_) — safe for secrets
         const backend = process.env.BACKEND_URL ?? "http://localhost:8000";

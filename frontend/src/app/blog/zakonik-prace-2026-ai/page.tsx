@@ -274,7 +274,7 @@ function Outro() {
             </p>
             <Link
                 href="/cs"
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg"
+                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] text-sm font-semibold rounded-lg"
                 style={{
                     background: "linear-gradient(135deg, var(--strict-gold-gradient-start), var(--strict-gold-gradient-end))",
                     color: "var(--strict-bg-html)",

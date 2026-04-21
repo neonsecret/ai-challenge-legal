@@ -187,7 +187,7 @@ export default function CzechLandingPage() {
                     <div className="flex flex-wrap gap-3">
                         <Link
                             href="/login"
-                            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200"
+                            className="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold rounded-lg transition-all duration-200"
                             style={{
                                 background: "linear-gradient(135deg, var(--strict-gold-gradient-start), var(--strict-gold-gradient-end))",
                                 color: "var(--strict-bg-html)",
@@ -197,7 +197,7 @@ export default function CzechLandingPage() {
                         </Link>
                         <Link
                             href="/benchmarks"
-                            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200"
+                            className="inline-flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg transition-all duration-200"
                             style={{
                                 border: "1px solid var(--strict-border)",
                                 color: "var(--strict-text-secondary)",
@@ -367,7 +367,7 @@ export default function CzechLandingPage() {
                     <div className="flex flex-wrap gap-3">
                         <Link
                             href="/login"
-                            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold rounded-lg"
+                            className="inline-flex items-center gap-2 px-5 py-3 text-sm font-semibold rounded-lg"
                             style={{
                                 background: "linear-gradient(135deg, var(--strict-gold-gradient-start), var(--strict-gold-gradient-end))",
                                 color: "var(--strict-bg-html)",
@@ -377,7 +377,7 @@ export default function CzechLandingPage() {
                         </Link>
                         <Link
                             href="/faq"
-                            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg"
+                            className="inline-flex items-center gap-2 px-5 py-3 text-sm font-medium rounded-lg"
                             style={{
                                 border: "1px solid var(--strict-border)",
                                 color: "var(--strict-text-secondary)",

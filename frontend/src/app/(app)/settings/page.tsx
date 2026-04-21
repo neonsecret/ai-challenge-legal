@@ -137,6 +137,7 @@ export default function SettingsPage() {
         gap: "6px",
         borderRadius: "10px",
         padding: "8px 16px",
+        minHeight: "44px",
         fontSize: "13px",
         fontWeight: 500,
         fontFamily: fontStack,
@@ -188,6 +189,7 @@ export default function SettingsPage() {
     // Small gold pill theme button
     const darkThemePill = (active: boolean): React.CSSProperties => ({
         padding: "4px 10px",
+        minHeight: "44px",
         borderRadius: "5px",
         fontFamily: fontStack,
         fontSize: "10px",
@@ -250,7 +252,7 @@ export default function SettingsPage() {
         background: "rgba(201,168,76,0.05)",
         border: "1px solid rgba(201,168,76,0.10)",
         fontFamily: "Georgia, serif",
-        fontSize: "11px",
+        fontSize: "16px",
         color: "rgba(201,168,76,0.7)",
         cursor: "pointer",
         outline: "none",
