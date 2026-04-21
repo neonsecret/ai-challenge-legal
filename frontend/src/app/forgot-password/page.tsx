@@ -57,6 +57,7 @@ export default function ForgotPasswordPage() {
     const buttonStyle: React.CSSProperties = {
         width: "100%",
         padding: "12px 0",
+        minHeight: "44px",
         borderRadius: "12px",
         border: "none",
         background: isDark

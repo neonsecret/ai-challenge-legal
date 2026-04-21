@@ -57,7 +57,7 @@ export default function TermsPage() {
 
                     <Link
                         href="/"
-                        className="text-sm transition-colors"
+                        className="inline-flex items-center min-h-[44px] px-2 text-sm transition-colors"
                         style={{color: "rgba(255,255,255,0.38)"}}
                     >
                         &larr; Back to home
@@ -441,7 +441,7 @@ export default function TermsPage() {
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link
                             href="/login"
-                            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-semibold transition-colors"
                             style={{
                                 background: "#C9A84C",
                                 color: "#0F1623",
@@ -451,7 +451,7 @@ export default function TermsPage() {
                         </Link>
                         <Link
                             href="/"
-                            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-colors"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-3 min-h-[44px] rounded-lg text-sm font-medium transition-colors"
                             style={{
                                 background: "rgba(255,255,255,0.06)",
                                 border: "1px solid rgba(255,255,255,0.1)",

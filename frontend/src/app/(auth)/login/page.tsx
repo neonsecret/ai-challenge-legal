@@ -481,6 +481,7 @@ function LoginPageContent() {
                             style={{
                                 flex: 1,
                                 padding: "8px 0",
+                                minHeight: "44px",
                                 fontSize: "13px",
                                 fontWeight: 600,
                                 fontFamily: fontStack,
@@ -861,7 +862,10 @@ function LoginPageContent() {
                                         color: accentColor,
                                         fontFamily: fontStack,
                                         fontSize: "13px",
-                                        padding: 0,
+                                        padding: "0 4px",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        minHeight: "44px",
                                     }}
                                 >
                                     Sign up
@@ -881,7 +885,10 @@ function LoginPageContent() {
                                         color: accentColor,
                                         fontFamily: fontStack,
                                         fontSize: "13px",
-                                        padding: 0,
+                                        padding: "0 4px",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        minHeight: "44px",
                                     }}
                                 >
                                     Sign in

@@ -189,6 +189,7 @@ export default function SettingsPage() {
     // Small gold pill theme button
     const darkThemePill = (active: boolean): React.CSSProperties => ({
         padding: "4px 10px",
+        minHeight: "44px",
         borderRadius: "5px",
         fontFamily: fontStack,
         fontSize: "10px",

@@ -19,7 +19,7 @@ export default function NotFound() {
                 404
             </h1>
             <p style={{opacity: 0.6}}>Page not found</p>
-            <Link href="/" style={{marginTop: "16px", opacity: 0.8, textDecoration: "underline"}}>
+            <Link href="/" style={{marginTop: "16px", opacity: 0.8, textDecoration: "underline", display: "inline-flex", alignItems: "center", minHeight: "44px", padding: "0 8px"}}>
                 Go home
             </Link>
         </div>
