@@ -1952,6 +1952,7 @@ def _generate_query_variants(question: str, corpus: str = "difc") -> list[str]:
             pass
         return variants[:2]
     except Exception:
+        logger.warning("Query variant generation failed", exc_info=True)
         return []
 
 
