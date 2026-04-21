@@ -643,8 +643,8 @@ textarea::placeholder { color: #b29254; }
     /* Typography — Apple-inspired (SF Pro priority, tighter tracking) */
     --font-sans: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 
-    /* Geometry — tighter radius */
-    --radius: 0.5rem;
+    /* Geometry — match :root radius */
+    --radius: 0.625rem;
 }
 
 /* Dark mode V2 overrides */
@@ -749,7 +749,7 @@ textarea::placeholder { color: #b29254; }
    ============================================================ */
 
 /* ── Strict Light mode tokens ─────────────────────────────── */
-.dark {
+.light {
   --strict-bg-html: #D8DAE2;
   --background: #E0E2E8;
   --strict-glass-bg: rgba(20,22,30, 0.04);
@@ -841,6 +841,57 @@ textarea::placeholder { color: #b29254; }
   --dt-text-primary: var(--strict-text-primary);
   --dt-text-secondary: var(--strict-text-secondary);
   --dt-accent-color: var(--strict-gold-base);
+
+  /* Document drafting panel chrome — light mode */
+  --doc-panel-bg: rgba(248,246,241, 0.95);
+  --doc-panel-border: rgba(180,150,60, 0.10);
+  --doc-panel-shadow: 0 20px 80px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.80);
+  --doc-panel-header-bg: rgba(20,22,30, 0.03);
+  --doc-panel-header-border: rgba(180,150,60, 0.08);
+  --doc-overlay-bg: rgba(0,0,0, 0.35);
+  --doc-gold-card-bg: rgba(180,150,60, 0.05);
+  --doc-gold-card-border: rgba(180,150,60, 0.12);
+  --doc-gold-card-bg-hover: rgba(180,150,60, 0.10);
+  --doc-gold-icon-bg: rgba(180,150,60, 0.08);
+  --doc-gold-icon-border: rgba(180,150,60, 0.15);
+  --doc-btn-glass-bg: rgba(20,22,30, 0.04);
+  --doc-btn-glass-border: rgba(20,22,30, 0.08);
+  --doc-close-btn-bg: rgba(20,22,30, 0.05);
+  --doc-close-btn-border: rgba(20,22,30, 0.08);
+  --doc-close-btn-color: rgba(20,22,30, 0.45);
+  --doc-gold-action-bg: rgba(180,150,60, 0.06);
+  --doc-gold-action-border: rgba(180,150,60, 0.14);
+  --doc-gold-action-color: var(--strict-gold-text);
+  --doc-gold-action-hover-bg: rgba(180,150,60, 0.12);
+  --doc-gold-action-hover-border: rgba(180,150,60, 0.22);
+  --doc-retry-btn-bg: rgba(180,150,60, 0.08);
+  --doc-retry-btn-border: rgba(180,150,60, 0.15);
+  --doc-text-primary: var(--strict-text-primary);
+  --doc-text-secondary: var(--strict-text-secondary);
+  --doc-text-label: var(--strict-gold-text);
+  --doc-pill-active-bg: var(--strict-pill-active-bg);
+  --doc-pill-active-border: var(--strict-pill-active-border);
+  --doc-pill-active-color: var(--strict-text-primary);
+  --doc-pill-inactive-bg: rgba(20,22,30, 0.04);
+  --doc-pill-inactive-border: rgba(20,22,30, 0.06);
+  --doc-pill-inactive-color: var(--strict-text-secondary);
+  --doc-custom-btn-bg: rgba(180,150,60, 0.06);
+  --doc-custom-btn-border: rgba(180,150,60, 0.14);
+  --doc-custom-btn-hover-bg: rgba(180,150,60, 0.12);
+  --doc-card-bg: rgba(20,22,30, 0.03);
+  --doc-card-border: rgba(180,150,60, 0.08);
+  --doc-card-hover-bg: rgba(180,150,60, 0.06);
+  --doc-card-hover-border: rgba(180,150,60, 0.15);
+  --doc-skeleton-bg: rgba(20,22,30, 0.05);
+  --doc-skeleton-border: rgba(20,22,30, 0.08);
+  --doc-skeleton-shimmer: rgba(20,22,30, 0.10);
+  --doc-page-nav-border: 0.5px solid rgba(20,22,30, 0.08);
+  --doc-count-badge-bg: rgba(20,22,30, 0.05);
+  --doc-count-badge-border: 0.5px solid rgba(180,150,60, 0.15);
+  --doc-count-badge-color: var(--strict-gold-text);
+  --doc-count-badge-maxed-bg: rgba(180,150,60, 0.10);
+  --doc-count-badge-maxed-border: 0.5px solid rgba(180,150,60, 0.30);
+  --doc-count-badge-maxed-color: var(--strict-gold-text);
 }
 
 /* ── Strict Dark mode tokens ──────────────────────────────── */
@@ -1001,7 +1052,15 @@ textarea::placeholder { color: #b29254; }
 .dark::-webkit-scrollbar-thumb { background: var(--strict-scrollbar); border-radius: 3px; }
 .dark::-webkit-scrollbar-thumb:hover { background: var(--strict-scrollbar-hover); }
 html.dark { background: var(--strict-bg-html); overscroll-behavior: none; color-scheme: dark; }
-html.light { color-scheme: light; }
+.light {
+  scrollbar-width: thin;
+  scrollbar-color: var(--strict-scrollbar) transparent;
+}
+.light::-webkit-scrollbar { width: 6px; }
+.light::-webkit-scrollbar-track { background: transparent; }
+.light::-webkit-scrollbar-thumb { background: var(--strict-scrollbar); border-radius: 3px; }
+.light::-webkit-scrollbar-thumb:hover { background: var(--strict-scrollbar-hover); }
+html.light { background: var(--strict-bg-html); overscroll-behavior: none; color-scheme: light; }
 
 /* Block dark-mode browser extensions (Dark Reader, etc.) from inverting our managed colors */
 html[data-darkreader-mode] { filter: none !important; }
