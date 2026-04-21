@@ -108,7 +108,7 @@ export default function AboutPage() {
                     </p>
                     <Link
                         href="/login?mode=register"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
+                        className="inline-flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-opacity hover:opacity-90"
                         style={{background: "var(--strict-gold-base)", color: "var(--strict-bg-html)"}}
                     >
                         Get Started Free <ArrowRight size={14} />
@@ -324,7 +324,7 @@ export default function AboutPage() {
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link
                             href="/login?mode=register"
-                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-semibold transition-colors"
                             style={{
                                 background: "var(--strict-gold-base)",
                                 color: "var(--strict-bg-html)",
@@ -335,7 +335,7 @@ export default function AboutPage() {
                         </Link>
                         <Link
                             href="/chat"
-                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors"
+                            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg text-sm font-medium transition-colors"
                             style={{
                                 background: "var(--strict-glass-bg)",
                                 border: "1px solid var(--strict-glass-border)",
