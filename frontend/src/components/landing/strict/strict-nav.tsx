@@ -31,8 +31,8 @@ export function StrictNav() {
       >
         <Link
           href="/"
-          className="text-[13px] tracking-[2px] font-normal no-underline"
-          style={{ color: "var(--strict-nav-signin)" }}
+          className="text-[13px] tracking-[2px] font-normal no-underline inline-flex items-center"
+          style={{ color: "var(--strict-nav-signin)", minHeight: "44px" }}
         >
           VITREON
         </Link>

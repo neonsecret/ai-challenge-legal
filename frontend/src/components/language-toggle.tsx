@@ -54,6 +54,8 @@ export function LanguageToggle() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    minHeight: "44px",
+                    minWidth: "44px",
                     padding: isMobile ? "6px 10px" : "7px 12px",
                     borderRadius: "10px",
                     background: open

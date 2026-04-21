@@ -109,7 +109,7 @@ function LoginPageContent() {
                 : "0.5px solid rgba(255,255,255,0.50)",
         borderRadius: "10px",
         padding: "11px 14px",
-        fontSize: "14px",
+        fontSize: "16px",
         color: isDark ? "rgba(255,255,255,0.88)" : "#2e1f08",
         caretColor: isV3 && isDark ? "rgba(139,111,212,0.80)" : isDark ? "#C9A84C" : undefined,
         fontFamily: fontStack,
@@ -733,6 +733,9 @@ function LoginPageContent() {
                                 <a
                                     href="/forgot-password"
                                     style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        minHeight: "44px",
                                         fontSize: "12px",
                                         fontWeight: 500,
                                         color: accentColor,
@@ -754,6 +757,7 @@ function LoginPageContent() {
                                 width: "100%",
                                 marginTop: 20,
                                 padding: "12px 0",
+                                minHeight: "44px",
                                 borderRadius: "10px",
                                 fontSize: isDark ? "13px" : "14px",
                                 fontWeight: 600,
