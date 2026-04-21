@@ -1,13 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect, startTransition } from "react"
-import {useTheme} from "@/lib/theme"
+import {useColorMode} from "@/lib/color-mode"
 import { useI18n, LOCALES, type Locale } from "@/lib/i18n"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 export function LanguageToggle() {
     const { locale, setLocale } = useI18n()
-    const { resolvedTheme } = useTheme()
+    const { isDark } = useColorMode()
     const [open, setOpen] = useState(false)
     const [mounted, setMounted] = useState(false)
     const [openUp, setOpenUp] = useState(false)
@@ -29,11 +29,11 @@ export function LanguageToggle() {
         return () => document.removeEventListener("mousedown", handler)
     }, [open])
 
-    const isDark = mounted && resolvedTheme === "dark"
+    const effectiveDark = mounted && isDark
     const current = LOCALES.find((l) => l.code === locale) ?? LOCALES[0]
 
-    const inactiveColor = isDark ? "rgba(255,255,255,0.42)" : "rgba(46,31,8,0.48)"
-    const activeColor = isDark ? "#C9A84C" : "#5c2e08"
+    const inactiveColor = effectiveDark ? "rgba(255,255,255,0.42)" : "rgba(46,31,8,0.48)"
+    const activeColor = effectiveDark ? "#C9A84C" : "#5c2e08"
 
     return (
         <div ref={ref} style={{ position: "relative" }}>
@@ -59,7 +59,7 @@ export function LanguageToggle() {
                     padding: isMobile ? "6px 10px" : "7px 12px",
                     borderRadius: "10px",
                     background: open
-                        ? isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)"
+                        ? effectiveDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)"
                         : "transparent",
                     border: "0.5px solid transparent",
                     cursor: "pointer",
@@ -67,7 +67,7 @@ export function LanguageToggle() {
                     color: open ? activeColor : inactiveColor,
                 }}
                 onMouseEnter={(e) => {
-                    if (!open) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)"
+                    if (!open) e.currentTarget.style.background = effectiveDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.14)"
                 }}
                 onMouseLeave={(e) => {
                     if (!open) e.currentTarget.style.background = "transparent"
@@ -134,9 +134,9 @@ export function LanguageToggle() {
                                     cursor: "pointer",
                                     transition: "all 0.12s ease",
                                     background: isActive
-                                        ? isDark ? "rgba(201,168,76,0.16)" : "rgba(255,255,255,0.35)"
+                                        ? effectiveDark ? "rgba(201,168,76,0.16)" : "rgba(255,255,255,0.35)"
                                         : "transparent",
-                                    color: isActive ? activeColor : (isDark ? "rgba(255,255,255,0.70)" : "rgba(46,31,8,0.70)"),
+                                    color: isActive ? activeColor : (effectiveDark ? "rgba(255,255,255,0.70)" : "rgba(46,31,8,0.70)"),
                                     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif",
                                     fontSize: "12px",
                                     fontWeight: isActive ? 700 : 500,
@@ -144,7 +144,7 @@ export function LanguageToggle() {
                                     textAlign: "center",
                                 }}
                                 onMouseEnter={(e) => {
-                                    if (!isActive) e.currentTarget.style.background = isDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.20)"
+                                    if (!isActive) e.currentTarget.style.background = effectiveDark ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.20)"
                                 }}
                                 onMouseLeave={(e) => {
                                     if (!isActive) e.currentTarget.style.background = "transparent"

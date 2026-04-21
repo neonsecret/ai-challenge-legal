@@ -2,7 +2,7 @@
 
 import {useState, useEffect, Suspense} from "react";
 import {useRouter, useSearchParams} from "next/navigation";
-import {useTheme} from "@/lib/theme";
+import {useColorMode} from "@/lib/color-mode";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
@@ -13,7 +13,7 @@ function ResetPasswordForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get("token") ?? "";
-    const {resolvedTheme} = useTheme();
+    const {isDark} = useColorMode();
     const [mounted, setMounted] = useState(false);
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
@@ -33,24 +33,24 @@ function ResetPasswordForm() {
         return () => clearTimeout(timer);
     }, [success, router]);
 
-    const isDark = !mounted || resolvedTheme === "dark";
+    const effectiveDark = !mounted || isDark;
 
     const glassCard: React.CSSProperties = {
-        background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,250,235,0.22)",
+        background: effectiveDark ? "rgba(255,255,255,0.06)" : "rgba(255,250,235,0.22)",
         backdropFilter: "blur(32px) saturate(180%) brightness(106%)",
         WebkitBackdropFilter: "blur(32px) saturate(180%) brightness(106%)",
-        border: isDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.38)",
+        border: effectiveDark ? "0.5px solid rgba(255,255,255,0.12)" : "0.5px solid rgba(255,255,255,0.38)",
         borderRadius: "20px",
-        boxShadow: isDark
+        boxShadow: effectiveDark
             ? "inset 0 1px 0 rgba(255,255,255,0.08), 0 8px 32px rgba(0,0,0,0.30)"
             : "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 8px 32px rgba(100,50,0,0.12)",
         overflow: "clip",
     };
 
-    const accentColor = isDark ? "#C9A84C" : "#5c2e08";
-    const textPrimary = isDark ? "rgba(255,255,255,0.92)" : "rgba(60,30,0,0.9)";
-    const textSecondary = isDark ? "rgba(255,255,255,0.48)" : "rgba(80,40,0,0.55)";
-    const bgPage = isDark
+    const accentColor = effectiveDark ? "#C9A84C" : "#5c2e08";
+    const textPrimary = effectiveDark ? "rgba(255,255,255,0.92)" : "rgba(60,30,0,0.9)";
+    const textSecondary = effectiveDark ? "rgba(255,255,255,0.48)" : "rgba(80,40,0,0.55)";
+    const bgPage = effectiveDark
         ? "#0F1623"
         : "linear-gradient(145deg, #dfc090 0%, #e8d4b8 45%, #dbb870 100%)";
 
@@ -58,8 +58,8 @@ function ResetPasswordForm() {
         width: "100%",
         padding: "12px 16px",
         borderRadius: "12px",
-        border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(140,80,0,0.15)",
-        background: isDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.35)",
+        border: effectiveDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(140,80,0,0.15)",
+        background: effectiveDark ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.35)",
         color: textPrimary,
         fontSize: "16px",
         fontFamily: FONT,
@@ -72,7 +72,7 @@ function ResetPasswordForm() {
         padding: "12px 0",
         borderRadius: "12px",
         border: "none",
-        background: isDark
+        background: effectiveDark
             ? "linear-gradient(135deg, rgba(201,168,76,0.25), rgba(201,168,76,0.15))"
             : "linear-gradient(135deg, rgba(92,46,8,0.18), rgba(92,46,8,0.10))",
         color: accentColor,
@@ -148,8 +148,8 @@ function ResetPasswordForm() {
                         width: "32px",
                         height: "32px",
                         borderRadius: "10px",
-                        background: isDark ? "rgba(201,168,76,0.12)" : "rgba(92,46,8,0.08)",
-                        border: isDark ? "1px solid rgba(201,168,76,0.25)" : "1px solid rgba(92,46,8,0.12)",
+                        background: effectiveDark ? "rgba(201,168,76,0.12)" : "rgba(92,46,8,0.08)",
+                        border: effectiveDark ? "1px solid rgba(201,168,76,0.25)" : "1px solid rgba(92,46,8,0.12)",
                     }}
                 >
                     <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
@@ -158,7 +158,7 @@ function ResetPasswordForm() {
                             stroke={accentColor}
                             strokeWidth="1.2"
                             strokeLinejoin="round"
-                            fill={isDark ? "rgba(201,168,76,0.15)" : "rgba(92,46,8,0.08)"}
+                            fill={effectiveDark ? "rgba(201,168,76,0.15)" : "rgba(92,46,8,0.08)"}
                         />
                     </svg>
                 </div>
@@ -194,9 +194,9 @@ function ResetPasswordForm() {
                         style={{
                             padding: "12px 16px",
                             borderRadius: "12px",
-                            background: isDark ? "rgba(34,197,94,0.12)" : "rgba(34,160,74,0.10)",
-                            border: isDark ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(34,160,74,0.2)",
-                            color: isDark ? "#4ade80" : "#15803d",
+                            background: effectiveDark ? "rgba(34,197,94,0.12)" : "rgba(34,160,74,0.10)",
+                            border: effectiveDark ? "1px solid rgba(34,197,94,0.25)" : "1px solid rgba(34,160,74,0.2)",
+                            color: effectiveDark ? "#4ade80" : "#15803d",
                             fontSize: "14px",
                             textAlign: "center",
                             marginBottom: "20px",
@@ -213,9 +213,9 @@ function ResetPasswordForm() {
                         style={{
                             padding: "12px 16px",
                             borderRadius: "12px",
-                            background: isDark ? "rgba(239,68,68,0.10)" : "rgba(220,38,38,0.08)",
-                            border: isDark ? "1px solid rgba(239,68,68,0.2)" : "1px solid rgba(220,38,38,0.15)",
-                            color: isDark ? "#f87171" : "#b91c1c",
+                            background: effectiveDark ? "rgba(239,68,68,0.10)" : "rgba(220,38,38,0.08)",
+                            border: effectiveDark ? "1px solid rgba(239,68,68,0.2)" : "1px solid rgba(220,38,38,0.15)",
+                            color: effectiveDark ? "#f87171" : "#b91c1c",
                             fontSize: "14px",
                             textAlign: "center",
                             marginBottom: "20px",
@@ -232,9 +232,9 @@ function ResetPasswordForm() {
                         style={{
                             padding: "12px 16px",
                             borderRadius: "12px",
-                            background: isDark ? "rgba(251,191,36,0.10)" : "rgba(217,119,6,0.08)",
-                            border: isDark ? "1px solid rgba(251,191,36,0.2)" : "1px solid rgba(217,119,6,0.15)",
-                            color: isDark ? "#fbbf24" : "#92400e",
+                            background: effectiveDark ? "rgba(251,191,36,0.10)" : "rgba(217,119,6,0.08)",
+                            border: effectiveDark ? "1px solid rgba(251,191,36,0.2)" : "1px solid rgba(217,119,6,0.15)",
+                            color: effectiveDark ? "#fbbf24" : "#92400e",
                             fontSize: "14px",
                             textAlign: "center",
                             marginBottom: "20px",
@@ -271,7 +271,7 @@ function ResetPasswordForm() {
                                     e.currentTarget.style.borderColor = accentColor;
                                 }}
                                 onBlur={(e) => {
-                                    e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(140,80,0,0.15)";
+                                    e.currentTarget.style.borderColor = effectiveDark ? "rgba(255,255,255,0.1)" : "rgba(140,80,0,0.15)";
                                 }}
                             />
                         </div>
@@ -300,7 +300,7 @@ function ResetPasswordForm() {
                                     e.currentTarget.style.borderColor = accentColor;
                                 }}
                                 onBlur={(e) => {
-                                    e.currentTarget.style.borderColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(140,80,0,0.15)";
+                                    e.currentTarget.style.borderColor = effectiveDark ? "rgba(255,255,255,0.1)" : "rgba(140,80,0,0.15)";
                                 }}
                             />
                         </div>

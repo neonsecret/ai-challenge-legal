@@ -6,7 +6,7 @@ import "react-pdf/dist/Page/AnnotationLayer.css"
 import "react-pdf/dist/Page/TextLayer.css"
 import {cn} from "@/lib/utils"
 import {FileX, Loader2, Maximize2, Minimize2, ZoomIn, ZoomOut} from "lucide-react"
-import {useTheme} from "@/lib/theme"
+import {useColorMode} from "@/lib/color-mode"
 
 // Polyfill URL.parse() for browsers that predate the static method (Chrome <126,
 // Safari <18, Firefox <126).  pdfjs-dist 5.x calls URL.parse() in the main
@@ -103,8 +103,7 @@ export default function PdfViewerImpl({docId, page = 1, highlightText, className
     // and the next mount tries to reuse the same dead worker object.
     const workerRef = useRef<InstanceType<typeof pdfjs.PDFWorker> | null>(null)
     const [workerReady, setWorkerReady] = useState(false)
-    const {resolvedTheme} = useTheme()
-    const isDark = resolvedTheme === "dark"
+    const {isDark} = useColorMode()
 
     // react-pdf v10 caches PDFDocumentProxy by URL at module level.
     // When the same URL is requested again after a destroy(), it returns the

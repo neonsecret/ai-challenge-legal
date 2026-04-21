@@ -1,7 +1,7 @@
 "use client";
 
-import {useState, useEffect} from "react";
-import {useTheme} from "@/lib/theme";
+import {useState} from "react";
+import {useColorMode} from "@/lib/color-mode";
 import Link from "next/link";
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
@@ -9,18 +9,11 @@ const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
 const FONT = "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
 
 export default function ForgotPasswordPage() {
-    const {resolvedTheme} = useTheme();
-    const [mounted, setMounted] = useState(false);
+    const {isDark} = useColorMode();
     const [email, setEmail] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
-
-    const isDark = !mounted || resolvedTheme === "dark";
 
     const glassCard: React.CSSProperties = {
         background: isDark ? "rgba(255,255,255,0.06)" : "rgba(255,250,235,0.22)",
