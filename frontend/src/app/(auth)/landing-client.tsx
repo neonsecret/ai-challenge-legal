@@ -1,6 +1,6 @@
 "use client";
 
-import {useEffect, useState} from "react";
+import {useEffect, useState, type ReactNode} from "react";
 import {useColorMode} from "@/lib/color-mode";
 import {motion, AnimatePresence} from "motion/react";
 import {ArrowRight, FileSearch, Globe, ShieldCheck, Lock, Moon} from "lucide-react";
@@ -57,7 +57,7 @@ const BENCHMARKS: BenchmarkData[] = [
     },
 ];
 
-export function LandingClient() {
+export function LandingClient({ heroTitle }: { heroTitle?: ReactNode }) {
     const {isDark, setMode} = useColorMode();
     const [activeStep, setActiveStep] = useState(0);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -276,26 +276,10 @@ export function LandingClient() {
                         marginBottom: 20
                     }}>{t("landing.tag")}
                     </motion.p>
-                    <motion.h1 initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
-                               transition={{duration: 0.6, delay: 0.18}} style={{
-                        fontFamily: "Georgia, 'Times New Roman', serif",
-                        fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
-                        fontWeight: 700,
-                        letterSpacing: "-0.03em",
-                        lineHeight: 1.1,
-                        color: "#1a0e04",
-                        marginBottom: 20,
-                        maxWidth: 780
-                    }}>
-                        {t("landing.hero_title_prefix")}{" "}<span style={{
-                            background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
-                            backgroundSize: "200% auto",
-                            WebkitBackgroundClip: "text",
-                            backgroundClip: "text",
-                            WebkitTextFillColor: "transparent",
-                            animation: "shimmer 3s linear infinite"
-                        }}>{t("landing.hero_title_highlight")}</span>
-                    </motion.h1>
+                    <motion.div initial={{opacity: 0, y: 12}} animate={{opacity: 1, y: 0}}
+                               transition={{duration: 0.6, delay: 0.18}}>
+                        {heroTitle}
+                    </motion.div>
                     <motion.p initial={{opacity: 0, y: 10}} animate={{opacity: 1, y: 0}}
                               transition={{duration: 0.5, delay: 0.28}} style={{
                         fontSize: 16,

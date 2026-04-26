@@ -1,4 +1,5 @@
 import type {Metadata} from "next";
+import type {CSSProperties} from "react";
 import {LandingClient} from "./landing-client";
 
 export const metadata: Metadata = {
@@ -48,6 +49,32 @@ export const metadata: Metadata = {
     },
 };
 
+const HERO_H1_STYLE: CSSProperties = {
+    fontFamily: "Georgia, 'Times New Roman', serif",
+    fontSize: "clamp(2.2rem, 5vw, 4.5rem)",
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+    lineHeight: 1.1,
+    color: "#1a0e04",
+    marginBottom: 20,
+    maxWidth: 780,
+};
+
+const HERO_HIGHLIGHT_STYLE: CSSProperties = {
+    background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
+    backgroundSize: "200% auto",
+    WebkitBackgroundClip: "text",
+    backgroundClip: "text",
+    WebkitTextFillColor: "transparent",
+    animation: "shimmer 3s linear infinite",
+};
+
 export default function LandingPage() {
-    return <LandingClient />;
+    const heroTitle = (
+        <h1 style={HERO_H1_STYLE}>
+            Legal Research at the{" "}
+            <span style={HERO_HIGHLIGHT_STYLE}>Speed of Thought</span>
+        </h1>
+    );
+    return <LandingClient heroTitle={heroTitle} />;
 }
