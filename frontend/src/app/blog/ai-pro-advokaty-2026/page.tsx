@@ -93,19 +93,31 @@ export default function AIProAdvokatyPost() {
         "@context": "https://schema.org",
         "@type": "Article",
         headline: "AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
-        description: "Srovnání právních databází pro českou advokátní praxi: Beck-online, ASPI a Vitreon Legal.",
+        description:
+            "Podrobné srovnání Beck-online, ASPI a Vitreon Legal pro českou advokátní praxi. Jak AI šetří 3–5 hodin týdně při právním výzkumu, ceník v CZK, citace z judikatury NSS a ÚS.",
         datePublished: "2026-04-18",
         inLanguage: "cs",
+        keywords: [
+            "Beck-online alternativa",
+            "ASPI alternativa",
+            "AI pro advokáty",
+            "právní výzkum software",
+            "právní databáze srovnání",
+            "judikatura vyhledávání AI",
+        ],
+        articleSection: "Legal AI",
         author: {
             "@type": "Person",
             name: "Viacheslav Ivannikov",
         },
         publisher: {
             "@type": "Organization",
+            "@id": "https://vitreon.app/#organization",
             name: "Vitreon Legal",
             url: "https://vitreon.app",
         },
         url: "https://vitreon.app/blog/ai-pro-advokaty-2026",
+        mainEntityOfPage: "https://vitreon.app/blog/ai-pro-advokaty-2026",
     };
 
     return (

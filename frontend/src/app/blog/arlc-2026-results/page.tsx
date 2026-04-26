@@ -40,8 +40,36 @@ export const metadata: Metadata = {
 };
 
 export default function ARLCResultsPost() {
+    const articleJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: "How Vitreon Placed 4th in ARLC 2026",
+        description:
+            "Team Neon Team (Vitreon Legal) placed 4th out of 80 teams at the ARLC 2026 competition during Dubai AI Week. 0.958 on warmup (1st place), 0.719 on finals. Full methodology and score breakdown.",
+        datePublished: "2026-04-10",
+        inLanguage: "en",
+        keywords: ["ARLC 2026", "Czech legal AI", "legal AI benchmark", "Vitreon Legal", "Czech law", "legal research AI"],
+        articleSection: "Legal AI",
+        author: {
+            "@type": "Person",
+            name: "Viacheslav Ivannikov",
+        },
+        publisher: {
+            "@type": "Organization",
+            "@id": "https://vitreon.app/#organization",
+            name: "Vitreon Legal",
+            url: "https://vitreon.app",
+        },
+        url: "https://vitreon.app/blog/arlc-2026-results",
+        mainEntityOfPage: "https://vitreon.app/blog/arlc-2026-results",
+    };
+
     return (
         <div className="min-h-screen" style={{background: "var(--strict-bg-html)"}}>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{__html: JSON.stringify(articleJsonLd)}}
+            />
             <StrictNav />
 
             <main className="max-w-[880px] mx-auto px-4 sm:px-8 pt-16 pb-20">
