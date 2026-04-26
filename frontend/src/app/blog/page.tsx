@@ -22,6 +22,46 @@ export const metadata: Metadata = {
 
 const POSTS = [
     {
+        slug: "commitment-work-life-balance",
+        title: "Our Commitment to Sustainable Work",
+        description:
+            "Vitreon Legal is async-first and fully remote. Here's what work-life balance actually means when there's no office, no fixed hours, and no performance theater.",
+        date: "April 26, 2026",
+        lang: "EN",
+    },
+    {
+        slug: "commitment-social-impact",
+        title: "Our Commitment to Access to Justice",
+        description:
+            "Legal research costs are a barrier to access to justice. Vitreon Legal is building to lower that barrier with a free tier and multi-jurisdiction coverage.",
+        date: "April 26, 2026",
+        lang: "EN",
+    },
+    {
+        slug: "commitment-environmental-sustainability",
+        title: "Our Commitment to Lean AI Infrastructure",
+        description:
+            "Vitreon Legal runs on a Mac and one GPU — no massive compute cluster. Here's why lean AI infrastructure is both an environmental and engineering commitment.",
+        date: "April 26, 2026",
+        lang: "EN",
+    },
+    {
+        slug: "commitment-dei",
+        title: "Our Commitment to Equity in Legal AI",
+        description:
+            "Legal AI equity means removing barriers by jurisdiction, firm size, and income. Here's how Vitreon Legal is building more accessible legal research.",
+        date: "April 26, 2026",
+        lang: "EN",
+    },
+    {
+        slug: "commitment-career-growth",
+        title: "Our Commitment to Learning and Growth",
+        description:
+            "At Vitreon Legal, continuous learning is how we build. We publish our methodology, benchmark openly, and stay at the frontier of legal AI.",
+        date: "April 26, 2026",
+        lang: "EN",
+    },
+    {
         slug: "ai-pro-advokaty-2026",
         title: "AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
         description:

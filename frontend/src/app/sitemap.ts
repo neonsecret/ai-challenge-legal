@@ -62,5 +62,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "monthly",
             priority: 0.8,
         },
+        {
+            url: "https://vitreon.app/blog/commitment-career-growth",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: "https://vitreon.app/blog/commitment-dei",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: "https://vitreon.app/blog/commitment-environmental-sustainability",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: "https://vitreon.app/blog/commitment-social-impact",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
+        {
+            url: "https://vitreon.app/blog/commitment-work-life-balance",
+            changeFrequency: "monthly",
+            priority: 0.7,
+        },
     ];
 }
