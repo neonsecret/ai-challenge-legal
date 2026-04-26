@@ -898,37 +898,37 @@ textarea::placeholder { color: #b29254; }
 .dark {
   --strict-bg-html: #0D0A12;
   --background: #0B0E16;
-  --strict-glass-bg: rgba(255,255,255, 0.02);
-  --strict-glass-border: rgba(201,168,76, 0.06);
+  --strict-glass-bg: rgba(255,255,255, 0.04);
+  --strict-glass-border: rgba(201,168,76, 0.10);
   --strict-glass-blur: blur(24px);
-  --strict-glass-shadow: 0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.025);
+  --strict-glass-shadow: 0 16px 48px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05);
   --strict-glass-recessed: rgba(0,0,0, 0.1);
-  --strict-glass-hover-shadow: 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
-  --strict-text-primary: rgba(230,235,245, 0.88);
-  --strict-text-body: rgba(255,255,255, 0.56);
-  --strict-text-question: rgba(255,255,255, 0.7);
-  --strict-text-secondary: rgba(200,210,230, 0.42);
-  --strict-text-dim: rgba(200,210,230, 0.22);
-  --strict-text-ghost: rgba(255,255,255, 0.16);
+  --strict-glass-hover-shadow: 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05);
+  --strict-text-primary: rgba(235,240,252, 0.92);
+  --strict-text-body: rgba(255,255,255, 0.65);
+  --strict-text-question: rgba(255,255,255, 0.78);
+  --strict-text-secondary: rgba(200,210,230, 0.60);
+  --strict-text-dim: rgba(200,210,230, 0.38);
+  --strict-text-ghost: rgba(255,255,255, 0.24);
   --strict-gold-base: #C9A84C;
-  --strict-gold-text: rgba(201,168,76, 0.7);
-  --strict-gold-border: rgba(201,168,76, 0.06);
-  --strict-gold-border-active: rgba(201,168,76, 0.15);
+  --strict-gold-text: rgba(201,168,76, 0.80);
+  --strict-gold-border: rgba(201,168,76, 0.10);
+  --strict-gold-border-active: rgba(201,168,76, 0.20);
   --strict-gold-badge-bg: rgba(201,168,76, 0.06);
-  --strict-gold-badge-border: rgba(201,168,76, 0.1);
-  --strict-gold-badge-text: rgba(201,168,76, 0.45);
-  --strict-citation: rgba(201,168,76, 0.55);
+  --strict-gold-badge-border: rgba(201,168,76, 0.15);
+  --strict-gold-badge-text: rgba(201,168,76, 0.58);
+  --strict-citation: rgba(201,168,76, 0.68);
   --strict-gold-sep: linear-gradient(90deg, rgba(201,168,76,0.2), rgba(201,168,76,0.04));
   --strict-gold-underbar: rgba(201,168,76, 0.3);
   --strict-gold-underbar-hover: rgba(201,168,76, 0.5);
-  --strict-nav-link: rgba(200,210,230, 0.38);
-  --strict-nav-link-hover: rgba(200,210,230, 0.6);
+  --strict-nav-link: rgba(200,210,230, 0.50);
+  --strict-nav-link-hover: rgba(200,210,230, 0.72);
   --strict-nav-signin: rgba(201,168,76, 0.7);
   --strict-nav-signin-hover: rgba(201,168,76, 0.9);
-  --strict-nav-sep: rgba(201,168,76, 0.06);
-  --strict-source-text: rgba(255,255,255, 0.3);
-  --strict-source-num: rgba(201,168,76, 0.4);
-  --strict-source-label: rgba(201,168,76, 0.3);
+  --strict-nav-sep: rgba(201,168,76, 0.10);
+  --strict-source-text: rgba(255,255,255, 0.42);
+  --strict-source-num: rgba(201,168,76, 0.52);
+  --strict-source-label: rgba(201,168,76, 0.42);
   --strict-scrollbar: rgba(201,168,76, 0.15);
   --strict-scrollbar-hover: rgba(201,168,76, 0.25);
   /* How It Works section */
@@ -940,15 +940,15 @@ textarea::placeholder { color: #b29254; }
   --strict-hiw-scan-fill: linear-gradient(90deg, rgba(201,168,76,0.25), rgba(201,168,76,0.05));
   --strict-step-num-active: rgba(201,168,76,0.5);
   --strict-step-num-inactive: rgba(201,168,76,0.25);
-  --strict-step-title-active: rgba(230,235,245,0.8);
-  --strict-step-title-inactive: rgba(230,235,245,0.45);
-  --strict-step-sub-active: rgba(200,210,230,0.35);
-  --strict-step-sub-inactive: rgba(200,210,230,0.22);
+  --strict-step-title-active: rgba(230,235,245,0.92);
+  --strict-step-title-inactive: rgba(230,235,245,0.60);
+  --strict-step-sub-active: rgba(200,210,230,0.45);
+  --strict-step-sub-inactive: rgba(200,210,230,0.30);
   /* Hero */
   --strict-gold-gradient-start: #C9A84C;
   --strict-gold-gradient-end: #E0C878;
   --strict-glow-radial: radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 70%);
-  --strict-badge-text: rgba(201,168,76,0.45);
+  --strict-badge-text: rgba(201,168,76,0.58);
   /* Chat input glassmorphic */
   --strict-input-bg: rgba(19,19,19,0.64);
   --strict-input-bg-focused: rgba(19,19,19,0.72);
@@ -970,16 +970,16 @@ textarea::placeholder { color: #b29254; }
   --strict-label-size: 9px;
   --strict-label-tracking: 1.5px;
   /* Chat chrome — header border, button styles, follow-up pills, input footer */
-  --strict-header-border: rgba(201,168,76, 0.08);
-  --strict-btn-bg: rgba(255,255,255, 0.03);
-  --strict-btn-border: rgba(201,168,76, 0.08);
-  --strict-btn-text: rgba(200,210,230, 0.42);
-  --strict-btn-border-hover: rgba(201,168,76, 0.18);
+  --strict-header-border: rgba(201,168,76, 0.12);
+  --strict-btn-bg: rgba(255,255,255, 0.05);
+  --strict-btn-border: rgba(201,168,76, 0.12);
+  --strict-btn-text: rgba(200,210,230, 0.52);
+  --strict-btn-border-hover: rgba(201,168,76, 0.24);
   --strict-pill-active-bg: rgba(201,168,76, 0.08);
   --strict-pill-active-border: rgba(201,168,76, 0.18);
   --strict-internet-active-bg: rgba(201,168,76, 0.06);
-  --strict-internet-active-border: rgba(201,168,76, 0.15);
-  --strict-footer-border: rgba(201,168,76, 0.08);
+  --strict-internet-active-border: rgba(201,168,76, 0.20);
+  --strict-footer-border: rgba(201,168,76, 0.12);
   --strict-footer-bg: transparent;
   --strict-page-bg: linear-gradient(170deg, #0E1118, #0B0E16, #0D0A12);
   --dt-glass-bg: var(--strict-glass-bg);
@@ -1073,10 +1073,10 @@ html[data-darkreader-scheme] { filter: none !important; }
 
 /* Tier 1: Structural panels (sidebar, chat container) */
 .dark .gm-glass-structural {
-    background: rgba(9, 9, 9, 0.73);
+    background: rgba(9, 9, 9, 0.77);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(222, 222, 222, 0.22);
+    border: 1px solid rgba(222, 222, 222, 0.26);
     border-radius: 16px;
     box-shadow:
         0 10px 14px 4px rgba(0, 0, 0, 0.23),
@@ -1087,10 +1087,10 @@ html[data-darkreader-scheme] { filter: none !important; }
 
 /* Tier 2: Interactive surfaces (inputs, cards, source chips) */
 .dark .gm-glass-interactive {
-    background: rgba(19, 19, 19, 0.64);
+    background: rgba(19, 19, 19, 0.68);
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
-    border: 1px solid rgba(222, 222, 222, 0.14);
+    border: 1px solid rgba(222, 222, 222, 0.22);
     border-radius: 12px;
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.06),
@@ -1099,10 +1099,10 @@ html[data-darkreader-scheme] { filter: none !important; }
 
 /* Tier 3: Minimal surfaces (list items, hover states) */
 .dark .gm-glass-minimal {
-    background: rgba(50, 50, 50, 0.21);
+    background: rgba(50, 50, 50, 0.32);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 8px;
     box-shadow: none;
 }
