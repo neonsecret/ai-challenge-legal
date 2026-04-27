@@ -8,6 +8,7 @@ import {I18nProvider} from "@/lib/i18n";
 
 const playfair = Playfair_Display({
     subsets: ["latin"],
+    weight: ["400"],  // Only load 400 weight (used for hero text)
     variable: "--font-heading",
     display: "swap",
 });
@@ -240,6 +241,11 @@ export default function RootLayout({
             className={`${playfair.variable} ${inter.variable} h-full antialiased`}
         >
         <head>
+            {/* Preconnect to external domains */}
+            <link rel="preconnect" href="https://fonts.googleapis.com" />
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+            
             {/* JSON-LD structured data for search engines and AI crawlers */}
             <script
                 type="application/ld+json"
