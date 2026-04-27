@@ -2392,3 +2392,9 @@ button:active:not(:disabled):not(.no-press-scale) {
 .dark:not(.dark) .auth-page-wrapper {
     background: var(--v3-light-bg);
 }
+
+/* LCP fix: hide light-theme landing hero for dark-mode users before hydration.
+   layout.tsx inline script sets html.dark before paint, so this fires before any content is visible. */
+html.dark .landing-light-hero {
+    display: none;
+}
