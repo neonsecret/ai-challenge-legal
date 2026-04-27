@@ -84,12 +84,14 @@ function getInitialResolved(): "light" | "dark" {
     if (typeof document !== "undefined") {
         return document.documentElement.classList.contains("dark") ? "dark" : "light";
     }
-    return "light";
+    // SSR default: match the inline script's default for new visitors (dark).
+    // Prevents React hydration mismatch that forces a full client rerender on first load.
+    return "dark";
 }
 
 export function ColorModeProvider({ children }: { children: ReactNode }) {
     const [mode, setModeState] = useState<ColorMode>(() =>
-        typeof window !== "undefined" ? readStoredMode() : "system"
+        typeof window !== "undefined" ? readStoredMode() : "dark"
     );
     const [resolvedMode, setResolvedMode] = useState<"light" | "dark">(getInitialResolved);
 
