@@ -5,7 +5,6 @@ import {ColorModeProvider} from "@/lib/color-mode";
 import {TooltipProvider} from "@/components/ui/tooltip";
 import {ToastProvider} from "@/components/ui/toast";
 import {I18nProvider} from "@/lib/i18n";
-import {PlausibleAnalytics} from "@/components/plausible-analytics";
 
 const playfair = Playfair_Display({
     subsets: ["latin"],
@@ -255,7 +254,6 @@ export default function RootLayout({
             <script dangerouslySetInnerHTML={{__html: `try{var cm=localStorage.getItem('vitreon-color-mode'),isDark=false;if(cm==='dark'){isDark=true}else if(cm==='light'){isDark=false}else if(cm==='system'||!cm){var dv=localStorage.getItem('vitreon-design-version');if(dv==='strict'){isDark=true;localStorage.setItem('vitreon-color-mode','dark')}else if(dv==='neon'){isDark=false;localStorage.setItem('vitreon-color-mode','light')}else{var th=localStorage.getItem('theme');if(th==='dark'){isDark=true}else if(th==='light'){isDark=false}else{isDark=true}}};if(isDark){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');document.documentElement.style.colorScheme='dark'}else{document.documentElement.classList.add('light');document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light'}}catch(e){document.documentElement.classList.add('light');document.documentElement.style.colorScheme='light'}`}} />
         </head>
         <body className="h-full bg-background text-foreground">
-        <PlausibleAnalytics />
         <ColorModeProvider>
             <I18nProvider>
                 <TooltipProvider>
