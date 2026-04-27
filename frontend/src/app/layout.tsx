@@ -91,7 +91,7 @@ export const metadata: Metadata = {
         images: ["/opengraph-image"],
     },
     verification: {
-        google: "google-site-verification-code",
+        other: { "msvalidate.01": "79D6925D8DEC12408DE1AE18E93DE54B" },
     },
 };
 

@@ -23,6 +23,10 @@ export default function robots(): MetadataRoute.Robots {
                 allow: "/",
             },
             {
+                userAgent: ["Bingbot", "msnbot", "adsbot-bing", "BingPreview"],
+                allow: "/",
+            },
+            {
                 userAgent: ["Bytespider", "SemrushBot"],
                 disallow: "/",
             },
