@@ -47,6 +47,9 @@ export const metadata: Metadata = {
             "Source-grounded legal research with 100% citation coverage. Covers Czech, DIFC, UK, and Australian jurisdictions.",
         images: ["/opengraph-image.png"],
     },
+    alternates: {
+        canonical: "https://vitreon.app",
+    },
 };
 
 const HERO_H1_STYLE: CSSProperties = {
