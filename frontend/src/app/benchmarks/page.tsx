@@ -7,7 +7,7 @@ import {StrictFooter} from "@/components/landing/strict/strict-footer";
 export const metadata: Metadata = {
     title: "How Accurate Is Vitreon? Independent Benchmarks",
     description:
-        "Vitreon was tested on the same legal-research benchmarks used by ACL 2025 reviewers. 100% citation accuracy, top-4 of 80 teams in ARLC 2026. See methodology and reproduce.",
+        "Tested on ACL 2025 legal-research benchmarks. 100% citation accuracy, top-4 of 80 teams at ARLC 2026. Independent results you can reproduce.",
     keywords: [
         "legal AI accuracy",
         "AI legal research benchmark",
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "How Accurate Is Vitreon? Independent Benchmarks",
         description:
-            "Vitreon was tested on the same legal-research benchmarks used by ACL 2025 reviewers. 100% citation accuracy, top-4 of 80 teams in ARLC 2026. See methodology and reproduce.",
+            "Tested on ACL 2025 legal-research benchmarks. 100% citation accuracy, top-4 of 80 teams at ARLC 2026. Independent results you can reproduce.",
         url: "https://vitreon.app/benchmarks",
         siteName: "Vitreon Legal",
         locale: "en",
