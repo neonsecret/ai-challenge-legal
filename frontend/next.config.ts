@@ -1,9 +1,4 @@
 import type {NextConfig} from "next";
-import * as bundleAnalyzer from "@next/bundle-analyzer";
-
-const withBundleAnalyzer = bundleAnalyzer.default({
-    enabled: process.env.ANALYZE === "true",
-});
 
 const isDev = process.env.NODE_ENV === "development";
 const apiOrigin = "https://api.vitreon.app";
