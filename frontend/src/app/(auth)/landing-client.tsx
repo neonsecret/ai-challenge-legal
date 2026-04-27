@@ -1,14 +1,18 @@
 "use client";
 
 import {useEffect, useState, type ReactNode} from "react";
+import dynamic from "next/dynamic";
 import {useColorMode} from "@/lib/color-mode";
 import {motion, AnimatePresence} from "motion/react";
 import {ArrowRight, FileSearch, Globe, ShieldCheck, Lock, Moon} from "lucide-react";
-import {DemoPanel, SCENARIOS} from "@/components/landing/demo-panel";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
-import {StrictLanding} from "@/components/landing/strict/strict-landing";
-import {DocumentDraftingShowcase} from "@/components/landing/document-drafting-showcase";
+
+// StrictLanding: SSR'd (dark theme is above-fold for new visitors), code-split so light-mode users skip the chunk.
+const StrictLanding = dynamic(() => import("@/components/landing/strict/strict-landing").then(m => ({ default: m.StrictLanding })), { ssr: true });
+// Below-fold light-theme sections: not SSR'd, loaded client-side after LCP fires.
+const DemoPanel = dynamic(() => import("@/components/landing/demo-panel").then(m => ({ default: m.DemoPanel })), { ssr: false });
+const DocumentDraftingShowcase = dynamic(() => import("@/components/landing/document-drafting-showcase").then(m => ({ default: m.DocumentDraftingShowcase })), { ssr: false });
 
 const LIGHT_PILLAR_ICONS = [ShieldCheck, FileSearch, ShieldCheck] as const;
 
@@ -63,7 +67,6 @@ export function LandingClient({ heroTitle }: { heroTitle?: ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const { locale, t } = useI18n();
     const isCzech = locale === "cs";
-    const czScenarioIdx = SCENARIOS.findIndex(s => s.jurisdiction === "CZ");
 
     useEffect(() => {
         const sseBase = process.env.NEXT_PUBLIC_SSE_URL ?? "";
@@ -299,7 +302,7 @@ export function LandingClient({ heroTitle }: { heroTitle?: ReactNode }) {
                             padding: 16,
                             boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.88), 0 24px 64px rgba(100,50,0,0.20)"
                         }}>
-                            <div className="dark" style={{background: "#0d1520", borderRadius: 16, overflow: "hidden"}}><DemoPanel defaultScenarioIndex={isCzech && czScenarioIdx >= 0 ? czScenarioIdx : 0}/>
+                            <div className="dark" style={{background: "#0d1520", borderRadius: 16, overflow: "hidden"}}><DemoPanel isCzech={isCzech}/>
                             </div>
                         </div>
                     </motion.div>

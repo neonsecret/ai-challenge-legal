@@ -1,14 +1,18 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { MotionConfig } from "motion/react";
 import { StrictMeshBlobs } from "./strict-mesh-blobs";
 import { StrictNav } from "./strict-nav";
 import { StrictHero } from "./strict-hero";
-import { StrictPreview } from "./strict-preview";
-import { StrictDocumentDraftingShowcase } from "./strict-document-drafting-showcase";
-import { StrictHowItWorks } from "./strict-how-it-works";
-import { StrictPricing } from "./strict-pricing";
-import { StrictFooter } from "./strict-footer";
+
+// Below-fold sections — not SSR'd, loaded client-side after LCP fires.
+// StrictMeshBlobs, StrictNav, StrictHero are above-fold and stay eager.
+const StrictPreview = dynamic(() => import("./strict-preview").then(m => ({ default: m.StrictPreview })), { ssr: false });
+const StrictDocumentDraftingShowcase = dynamic(() => import("./strict-document-drafting-showcase").then(m => ({ default: m.StrictDocumentDraftingShowcase })), { ssr: false });
+const StrictHowItWorks = dynamic(() => import("./strict-how-it-works").then(m => ({ default: m.StrictHowItWorks })), { ssr: false });
+const StrictPricing = dynamic(() => import("./strict-pricing").then(m => ({ default: m.StrictPricing })), { ssr: false });
+const StrictFooter = dynamic(() => import("./strict-footer").then(m => ({ default: m.StrictFooter })), { ssr: false });
 
 export function StrictLanding() {
   return (
@@ -17,7 +21,6 @@ export function StrictLanding() {
         className="min-h-screen overflow-x-hidden"
         style={{
           background: "var(--strict-bg-html)",
-          /* Prevent horizontal overflow on all viewports */
           maxWidth: "100vw",
         }}
       >

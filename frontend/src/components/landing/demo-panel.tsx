@@ -271,13 +271,16 @@ type Phase = "idle" | "typing-question" | "thinking" | "streaming-answer" | "don
 /* ------------------------------------------------------------------ */
 
 interface DemoPanelProps {
-    /** Index into SCENARIOS to start on (default 0). Use to pre-select CZ for Czech visitors. */
-    defaultScenarioIndex?: number;
+    /** Pre-select the Czech jurisdiction scenario. Computes the index internally. */
+    isCzech?: boolean;
 }
 
 export { SCENARIOS };
 
-export function DemoPanel({ defaultScenarioIndex = 0 }: DemoPanelProps = {}) {
+export function DemoPanel({ isCzech = false }: DemoPanelProps = {}) {
+    const defaultScenarioIndex = isCzech
+        ? Math.max(0, SCENARIOS.findIndex(s => s.jurisdiction === "CZ"))
+        : 0;
     const [activeIdx, setActiveIdx] = useState(defaultScenarioIndex);
     const [phase, setPhase] = useState<Phase>("idle");
     const [streamedAnswer, setStreamedAnswer] = useState("");
