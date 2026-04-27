@@ -9,15 +9,15 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: isDev ? ["192.168.0.150"] : [],
     async headers() {
         const connectSrc = isDev
-            ? `connect-src 'self' ${apiOrigin} ${devOrigin}`
-            : `connect-src 'self' ${apiOrigin}`;
+            ? `connect-src 'self' ${apiOrigin} ${devOrigin} https://plausible.io`
+            : `connect-src 'self' ${apiOrigin} https://plausible.io`;
         const frameSrc = isDev
             ? `frame-src 'self' blob: ${apiOrigin} ${devOrigin}`
             : `frame-src 'self' blob: ${apiOrigin}`;
         // https://static.cloudflareinsights.com is injected by Cloudflare Tunnel automatically
         const scriptSrc = isDev
-            ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com"
-            : "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com";
+            ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://plausible.io"
+            : "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://plausible.io";
         const workerSrc = "worker-src 'self' blob:";
 
         return [
