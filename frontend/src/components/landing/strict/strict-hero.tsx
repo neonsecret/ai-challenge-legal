@@ -20,7 +20,7 @@ const STATS = [
   { value: "0.691", label: "LEXam Open EN", badge: "+21% above SOTA", detail: "Published SOTA: 0.572 (Claude 3.7-S)" },
 ] as const;
 
-const JURISDICTIONS = ["DIFC", "Czech", "UK", "Australia"] as const;
+const JURISDICTIONS = ["Czech", "DIFC", "UK", "Australia"] as const;
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -328,14 +328,14 @@ export function StrictHero() {
           flexDirection: isMobile ? "column" : "row",
           gap: isMobile ? "0" : "28px",
           alignItems: "flex-start",
+          // Server-rendered initial state to match Framer Motion's initial prop (prevents CLS)
+          transform: "translateY(20px) scale(0.985)",
+          transformOrigin: "center",
         }}
       >
         {/* Hero text */}
         <div className="flex flex-col" style={{ flex: 1 }}>
-          <motion.h1
-            initial={{ y: 16 }}
-            animate={{ y: 0 }}
-            transition={{ ...V3_SPRING.gentle, delay: 0.1 }}
+          <h1
             className="font-serif font-normal leading-[1.2] mb-2.5"
             style={{
               fontSize: isMobile ? "24px" : "32px",
@@ -345,7 +345,7 @@ export function StrictHero() {
             {t("landing.hero_title_prefix")}
             <br />
             <span style={goldGradientText}>{t("landing.hero_title_highlight")}</span>
-          </motion.h1>
+          </h1>
 
           <motion.p
             initial={{ y: 16 }}
