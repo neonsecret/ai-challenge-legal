@@ -148,8 +148,8 @@ function StatRow({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ y: 12 }}
+      animate={{ y: 0 }}
       transition={{
         ...V3_SPRING.gentle,
         delay: 0.3 + index * (STRICT_HERO_STAGGER / 1000),
@@ -215,8 +215,8 @@ function CitationStat() {
   return (
     <motion.div
       className="relative"
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ y: 12 }}
+      animate={{ y: 0 }}
       transition={{
         ...V3_SPRING.gentle,
         delay: 0.3 + 3 * (STRICT_HERO_STAGGER / 1000),
@@ -270,8 +270,8 @@ function StatsBlock() {
   return (
     <div className="flex flex-col gap-4">
       <motion.p
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ y: 8 }}
+        animate={{ y: 0 }}
         transition={{ ...V3_SPRING.gentle, delay: 0.2 }}
         className="uppercase tracking-[1px]"
         style={{
@@ -314,8 +314,8 @@ export function StrictHero() {
     >
       {/* Living Glass Slab */}
       <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.985 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        initial={{ y: 20, scale: 0.985 }}
+        animate={{ y: 0, scale: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         style={{
           background: "var(--strict-glass-bg)",
@@ -333,8 +333,8 @@ export function StrictHero() {
         {/* Hero text */}
         <div className="flex flex-col" style={{ flex: 1 }}>
           <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 16 }}
+            animate={{ y: 0 }}
             transition={{ ...V3_SPRING.gentle, delay: 0.1 }}
             className="font-serif font-normal leading-[1.2] mb-2.5"
             style={{
@@ -348,8 +348,8 @@ export function StrictHero() {
           </motion.h1>
 
           <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 16 }}
+            animate={{ y: 0 }}
             transition={{ ...V3_SPRING.gentle, delay: 0.25 }}
             className="text-[13px] leading-[1.6] mb-[18px]"
             style={{ color: "var(--strict-text-secondary)", whiteSpace: "pre-line" }}
@@ -358,16 +358,16 @@ export function StrictHero() {
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 16 }}
+            animate={{ y: 0 }}
             transition={{ ...V3_SPRING.gentle, delay: 0.4 }}
           >
             <JurisdictionPills />
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ y: 16 }}
+            animate={{ y: 0 }}
             transition={{ ...V3_SPRING.gentle, delay: 0.55 }}
           >
             <CtaButton />
