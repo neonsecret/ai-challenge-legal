@@ -21,8 +21,8 @@ const inter = Inter({
 export const metadata: Metadata = {
     metadataBase: new URL("https://vitreon.app"),
     title: {
-        default: "Vitreon Legal — Your AI Legal Counsel",
-        template: "%s | Vitreon Legal",
+        default: "Vitreon Legal — AI Legal Counsel",
+        template: "%s",
     },
     description:
         "AI-powered legal research platform providing source-grounded answers from statutes and court decisions. Every answer cites the exact page and clause. Supports Czech, DIFC, UK, and Australian jurisdictions.",
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "Vitreon Legal — Your AI Legal Counsel",
+        title: "Vitreon Legal — AI Legal Counsel",
         description:
             "AI-powered legal research platform with source-grounded answers from statutes and court decisions. 100% citation coverage across Czech, DIFC, UK, and Australian jurisdictions.",
         url: "https://vitreon.app",
@@ -85,7 +85,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Vitreon Legal — Your AI Legal Counsel",
+        title: "Vitreon Legal — AI Legal Counsel",
         description:
             "AI-powered legal research with source-grounded answers. 100% citation coverage across Czech, DIFC, UK, and Australian jurisdictions.",
         images: ["/opengraph-image"],
