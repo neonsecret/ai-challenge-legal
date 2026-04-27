@@ -8,8 +8,9 @@ import {ArrowRight, Moon} from "lucide-react";
 import {LanguageToggle} from "@/components/language-toggle";
 import {useI18n} from "@/lib/i18n";
 
-// StrictLanding: code-split so light-mode users skip the dark-theme chunk.
-const StrictLanding = dynamic(() => import("@/components/landing/strict/strict-landing").then(m => ({ default: m.StrictLanding })), { ssr: false });
+// StrictLanding: SSR'd — color-mode.tsx aligns SSR+client defaults to dark, so new visitors
+// get no hydration mismatch. Code-split so light-mode users never download the dark chunk.
+const StrictLanding = dynamic(() => import("@/components/landing/strict/strict-landing").then(m => ({ default: m.StrictLanding })), { ssr: true });
 // Above-fold interactive panel: not SSR'd (client-only animation state).
 const DemoPanel = dynamic(() => import("@/components/landing/demo-panel").then(m => ({ default: m.DemoPanel })), { ssr: false });
 // Below-fold light-theme sections: lazy-loaded after LCP fires.
