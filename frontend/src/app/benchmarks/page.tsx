@@ -5,17 +5,16 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Legal AI Benchmarks: +36% Above SOTA — Vitreon Legal",
+    title: "How Accurate Is Vitreon? Independent Benchmarks",
     description:
-        "Beat published SOTA by 36% on GaRAGe benchmark (ACL 2025). LEXam 0.691 (+21% above baseline), ARLC 2026 4th/80 teams, 100% citation coverage. Independent, reproducible legal AI benchmarks.",
+        "Tested on ACL 2025 legal-research benchmarks. 100% citation accuracy, top-4 of 80 teams at ARLC 2026. Independent results you can reproduce.",
     keywords: [
-        "legal AI benchmark",
-        "GaRAGe benchmark",
-        "Czech legal AI",
-        "legal RAG benchmark",
+        "legal AI accuracy",
         "AI legal research benchmark",
-        "LEXam benchmark",
+        "legal AI benchmark",
+        "Czech legal AI",
         "ARLC 2026",
+        "legal RAG benchmark",
         "právní AI benchmark",
     ],
     alternates: {
@@ -26,9 +25,9 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "Legal AI Benchmarks: +36% Above SOTA — Vitreon Legal",
+        title: "How Accurate Is Vitreon? Independent Benchmarks",
         description:
-            "Beat published SOTA by 36% on GaRAGe (ACL 2025). LEXam 0.691 (+21%), ARLC 2026 4th/80 teams. Independent legal AI benchmark results.",
+            "Tested on ACL 2025 legal-research benchmarks. 100% citation accuracy, top-4 of 80 teams at ARLC 2026. Independent results you can reproduce.",
         url: "https://vitreon.app/benchmarks",
         siteName: "Vitreon Legal",
         locale: "en",
@@ -38,7 +37,7 @@ export const metadata: Metadata = {
                 url: "/opengraph-image",
                 width: 1200,
                 height: 630,
-                alt: "Vitreon Legal — Legal AI Benchmarks",
+                alt: "Vitreon Legal — Independent Legal AI Benchmarks",
             },
         ],
     },

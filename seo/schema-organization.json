@@ -1,0 +1,123 @@
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://vitreon.app/#organization",
+      "name": "Vitreon Legal",
+      "url": "https://vitreon.app",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://vitreon.app/vitreon-logo.svg"
+      },
+      "description": "AI-powered legal research platform providing source-grounded answers from statutes and court decisions for Czech, DIFC, UK, and Australian law.",
+      "foundingDate": "2025",
+      "founder": {
+        "@type": "Person",
+        "@id": "https://vitreon.app/#founder",
+        "name": "Viacheslav Ivannikov",
+        "jobTitle": "Founder & CEO",
+        "knowsAbout": [
+          "Legal AI",
+          "Retrieval Augmented Generation",
+          "Legal Research",
+          "Czech Law",
+          "Embedding Models",
+          "Natural Language Processing"
+        ]
+      },
+      "address": {
+        "@type": "PostalAddress",
+        "addressLocality": "Prague",
+        "addressCountry": "CZ"
+      },
+      "contactPoint": [
+        {
+          "@type": "ContactPoint",
+          "email": "legal@vitreon.app",
+          "contactType": "customer service"
+        },
+        {
+          "@type": "ContactPoint",
+          "email": "enterprise@vitreon.app",
+          "contactType": "sales"
+        }
+      ],
+      "sameAs": [],
+      "knowsAbout": [
+        "Legal Research",
+        "Czech Law",
+        "DIFC Law",
+        "UK Law",
+        "Australian Law",
+        "Court Decisions",
+        "Legal AI",
+        "Retrieval Augmented Generation",
+        "Legal Document Drafting",
+        "Case Law Analysis"
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://vitreon.app/#software",
+      "name": "Vitreon Legal",
+      "url": "https://vitreon.app",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "AI legal research platform with source-grounded answers from statutes and court decisions. Supports Czech, DIFC, UK, and Australian jurisdictions.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Free",
+          "price": "0",
+          "priceCurrency": "USD",
+          "description": "3 queries per day"
+        },
+        {
+          "@type": "Offer",
+          "name": "Starter",
+          "price": "29",
+          "priceCurrency": "USD",
+          "description": "30 queries per day"
+        },
+        {
+          "@type": "Offer",
+          "name": "Pro",
+          "price": "179",
+          "priceCurrency": "USD",
+          "description": "200 queries per day"
+        },
+        {
+          "@type": "Offer",
+          "name": "Enterprise",
+          "price": "499",
+          "priceCurrency": "USD",
+          "description": "Unlimited queries"
+        }
+      ],
+      "featureList": [
+        "Source-grounded legal answers with page and clause citations",
+        "Czech law coverage including statutes and court decisions",
+        "DIFC, UK, and Australian jurisdiction support",
+        "9 Czech legal document templates",
+        "Legal document drafting with statutory grounding",
+        "Multi-jurisdiction legal research",
+        "100% citation accuracy"
+      ],
+      "provider": {
+        "@id": "https://vitreon.app/#organization"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://vitreon.app/#website",
+      "name": "Vitreon Legal",
+      "url": "https://vitreon.app",
+      "description": "AI-powered legal research and document analysis",
+      "inLanguage": ["cs", "en"],
+      "publisher": {
+        "@id": "https://vitreon.app/#organization"
+      }
+    }
+  ]
+}

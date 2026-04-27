@@ -1,11 +1,12 @@
 import type {Metadata} from "next";
 import type {CSSProperties} from "react";
 import {LandingClient} from "./landing-client";
+import {buildFaqJsonLd} from "@/lib/faq-data";
 
 export const metadata: Metadata = {
-    title: "Vitreon Legal — AI-Powered Legal Research Platform",
+    title: "AI Legal Research with Cited Sources — Vitreon",
     description:
-        "AI-powered legal research platform providing source-grounded answers from statutes and court decisions. Every answer cites the exact page and clause. Supports Czech, DIFC, UK, and Australian jurisdictions. GaRAGe benchmark: 0.824 RAF (+36% above SOTA).",
+        "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 3 free queries/day, no card.",
     keywords: [
         "legal research",
         "AI legal assistant",
@@ -17,16 +18,15 @@ export const metadata: Metadata = {
         "UK law",
         "Australian law",
         "legal document drafting",
-        "RAG",
         "právní výzkum",
         "judikatura",
         "AI právní asistent",
     ],
     authors: [{name: "Viacheslav Ivannikov"}],
     openGraph: {
-        title: "Vitreon Legal — AI-Powered Legal Research Platform",
+        title: "AI Legal Research with Cited Sources — Vitreon",
         description:
-            "Source-grounded legal research with 100% citation coverage. Covers Czech, DIFC, UK, and Australian jurisdictions. GaRAGe benchmark: +36% above SOTA.",
+            "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 3 free queries/day, no card.",
         url: "https://vitreon.app",
         siteName: "Vitreon Legal",
         locale: "en",
@@ -36,16 +36,19 @@ export const metadata: Metadata = {
                 url: "/opengraph-image.png",
                 width: 1200,
                 height: 630,
-                alt: "Vitreon Legal — AI-Powered Legal Research Platform",
+                alt: "Vitreon Legal — AI Legal Research Platform",
             },
         ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "Vitreon Legal — AI-Powered Legal Research Platform",
+        title: "AI Legal Research with Cited Sources — Vitreon",
         description:
-            "Source-grounded legal research with 100% citation coverage. Covers Czech, DIFC, UK, and Australian jurisdictions.",
+            "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 3 free queries/day, no card.",
         images: ["/opengraph-image.png"],
+    },
+    alternates: {
+        canonical: "https://vitreon.app",
     },
 };
 
@@ -76,5 +79,13 @@ export default function LandingPage() {
             <span style={HERO_HIGHLIGHT_STYLE}>Speed of Thought</span>
         </h1>
     );
-    return <LandingClient heroTitle={heroTitle} />;
+    return (
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{__html: JSON.stringify(buildFaqJsonLd())}}
+            />
+            <LandingClient heroTitle={heroTitle} />
+        </>
+    );
 }
