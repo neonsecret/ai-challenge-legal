@@ -355,9 +355,12 @@ test("Scenario 7: unauthenticated user navigating to /chat is redirected away", 
     expect(page.url()).not.toContain("/chat");
   }).toPass({ timeout: 5_000 });
 
-  // The redirected page must render meaningful content (not a blank crash)
-  const bodyText = await page.locator("body").innerText();
-  expect(bodyText.length).toBeGreaterThan(0);
+  // The redirected page must render meaningful content (not a blank crash).
+  // Use toPass to handle the render delay after navigation.
+  await expect(async () => {
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText.length).toBeGreaterThan(0);
+  }).toPass({ timeout: 8_000 });
 });
 
 // ---------------------------------------------------------------------------
