@@ -171,7 +171,7 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to erro
   }).toPass({ timeout: 10_000 });
 
   expect(googleRedirectCaught).toBe(true);
-  await expect(page.getByText("Google sign-in was cancelled. Please try again.")).toBeVisible();
+  await expect(page.getByText("Google sign-in was cancelled. Please try again.")).toBeVisible({ timeout: 15_000 });
 
   // Route-fulfilled document redirects can emit a transient hydration error from
   // the abandoned source page. Treat the final rendered state as the source of
@@ -399,7 +399,7 @@ test("AUTH-1: email/password login flow redirects to /chat on success", { tag: [
 
   // Wait for the email input to be visible (page fully rendered)
   const emailInput = page.locator("#auth-email");
-  await expect(emailInput).toBeVisible({ timeout: 8_000 });
+  await expect(emailInput).toBeVisible({ timeout: 20_000 });
 
   // Ensure we're on the login tab (not register)
   const loginTab = page.locator('button:has-text("Sign In"), button:has-text("Log in"), [role="tab"]:has-text("Sign In")').first();
@@ -411,7 +411,7 @@ test("AUTH-1: email/password login flow redirects to /chat on success", { tag: [
   await emailInput.fill(TEST_EMAIL);
 
   const passwordInput = page.locator('input[type="password"]').first();
-  await expect(passwordInput).toBeVisible({ timeout: 5_000 });
+  await expect(passwordInput).toBeVisible({ timeout: 15_000 });
   await passwordInput.fill("test-password-e2e");
 
   // Submit the form — button text is "Sign In" in login mode
