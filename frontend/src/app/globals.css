@@ -2396,5 +2396,5 @@ button:active:not(:disabled):not(.no-press-scale) {
 /* LCP fix: hide light-theme landing hero for dark-mode users before hydration.
    layout.tsx inline script sets html.dark before paint, so this fires before any content is visible. */
 html.dark .landing-light-hero {
-    display: none;
+    display: none; /* WARNING: nothing dark-mode-rendered may be nested inside this selector */
 }

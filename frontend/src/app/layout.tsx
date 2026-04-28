@@ -10,14 +10,14 @@ const playfair = Playfair_Display({
     subsets: ["latin"],
     weight: ["400"],  // Only load 400 weight (used for hero text)
     variable: "--font-heading",
-    display: "fallback",  // Use fallback immediately if font not loaded in ~100ms
+    display: "optional",  // Prevent font-swap layout shifts (use fallback if not ready in ~100ms)
     preload: true,  // Preload the font for LCP optimization
 });
 
 const inter = Inter({
     subsets: ["latin"],
     variable: "--font-sans",
-    display: "fallback",  // Use fallback immediately if font not loaded in ~100ms
+    display: "optional",  // Prevent font-swap layout shifts
 });
 
 export const metadata: Metadata = {

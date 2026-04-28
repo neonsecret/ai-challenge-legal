@@ -1,5 +1,5 @@
 /**
- * E2E tests for auth retry flow and OAuth redirect — NEO-266
+ * E2E tests for auth retry flow and OAuth redirect — NEO-266, NEO-2830
  *
  * These tests target the local dev server (http://localhost:3000).
  * Backend is expected at BACKEND_URL (default http://localhost:8000).
@@ -86,7 +86,7 @@ test.skip("Scenario 1: auth retry on /chat — succeeds after first 401", async 
 // ---------------------------------------------------------------------------
 // Scenario 2 — /_not-found does not throw InvariantError
 // ---------------------------------------------------------------------------
-test("Scenario 2: navigating to non-existent path renders gracefully without InvariantError", async ({ page }) => {
+test("Scenario 2: navigating to non-existent path renders gracefully without InvariantError", { tag: ["@smoke"] }, async ({ page }) => {
   const consoleErrors: string[] = [];
 
   page.on("console", (msg) => {
@@ -119,7 +119,7 @@ test("Scenario 2: navigating to non-existent path renders gracefully without Inv
 // ---------------------------------------------------------------------------
 // Scenario 3 — Google OAuth redirect flow (Google side mocked)
 // ---------------------------------------------------------------------------
-test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to error page", async ({ page }) => {
+test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to error page", { tag: ["@smoke"] }, async ({ page }) => {
   // We intercept the GET /auth/google redirect (which would go to Google OAuth)
   // and redirect straight to /login?error=oauth_denied — no real backend callback needed.
   //
@@ -189,7 +189,7 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to erro
 // ---------------------------------------------------------------------------
 // Scenario 4 — Session persistence across navigation
 // ---------------------------------------------------------------------------
-test("Scenario 4: session persists across page navigations", async ({ page }) => {
+test("Scenario 4: session persists across page navigations", { tag: ["@smoke"] }, async ({ page }) => {
   // Mock /auth/me to always return an authenticated user — no real credentials needed.
   // This lets us test navigation behaviour without CI secrets.
   await page.route(`**/auth/me`, async (route: Route) => {
@@ -222,7 +222,7 @@ test("Scenario 4: session persists across page navigations", async ({ page }) =>
 // ---------------------------------------------------------------------------
 // Scenario 5 — Logout flow
 // ---------------------------------------------------------------------------
-test("Scenario 5: logout clears session and redirects away from /chat", async ({ page }) => {
+test("Scenario 5: logout clears session and redirects away from /chat", { tag: ["@smoke"] }, async ({ page }) => {
   // Stateful mock: /auth/me returns 200 while logged in, 401 after logout.
   // Flips when /auth/logout is intercepted — no real credentials needed.
   let isLoggedIn = true;
@@ -358,4 +358,69 @@ test("Scenario 7: unauthenticated user navigating to /chat is redirected away", 
   // The redirected page must render meaningful content (not a blank crash)
   const bodyText = await page.locator("body").innerText();
   expect(bodyText.length).toBeGreaterThan(0);
+});
+
+// ---------------------------------------------------------------------------
+// AUTH-1 — Email/password login end-to-end
+//
+// Verifies that submitting valid credentials on /login:
+//  1) Calls POST /auth/login
+//  2) Fetches the user profile via GET /auth/me
+//  3) Redirects to /chat on success
+// ---------------------------------------------------------------------------
+test("AUTH-1: email/password login flow redirects to /chat on success", { tag: ["@smoke"] }, async ({ page }) => {
+  // Stateful mock: /auth/me returns 401 before login, 200 after.
+  // POST /auth/login returns {message: "Logged in"} then the next /auth/me call
+  // returns the full user object (use-auth.ts fetches /auth/me to hydrate user state).
+  let loginCompleted = false;
+
+  await page.route(`**/auth/me`, async (route: Route) => {
+    if (!loginCompleted) {
+      await route.fulfill({ status: 401, body: JSON.stringify({ detail: "Not authenticated" }) });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_USER),
+      });
+    }
+  });
+
+  await page.route(`**/auth/login`, async (route: Route) => {
+    loginCompleted = true;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "Logged in successfully" }),
+    });
+  });
+
+  // Navigate to the login page
+  await page.goto(`${FRONTEND}/login`);
+
+  // Wait for the email input to be visible (page fully rendered)
+  const emailInput = page.locator("#auth-email");
+  await expect(emailInput).toBeVisible({ timeout: 8_000 });
+
+  // Ensure we're on the login tab (not register)
+  const loginTab = page.locator('button:has-text("Sign In"), button:has-text("Log in"), [role="tab"]:has-text("Sign In")').first();
+  if ((await loginTab.count()) > 0) {
+    await loginTab.click().catch(() => {});
+  }
+
+  // Fill credentials
+  await emailInput.fill(TEST_EMAIL);
+
+  const passwordInput = page.locator('input[type="password"]').first();
+  await expect(passwordInput).toBeVisible({ timeout: 5_000 });
+  await passwordInput.fill("test-password-e2e");
+
+  // Submit the form — button text is "Sign In" in login mode
+  const submitBtn = page.locator('button[type="submit"]').first();
+  await expect(submitBtn).toBeVisible({ timeout: 5_000 });
+  await submitBtn.click();
+
+  // After login + /auth/me success, use-auth sets user and login-client redirects to /chat
+  await page.waitForURL(/\/chat/, { timeout: 10_000 });
+  expect(page.url()).toContain("/chat");
 });
