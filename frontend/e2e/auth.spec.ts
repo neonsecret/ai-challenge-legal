@@ -10,6 +10,7 @@
  * Run: npm run test:e2e
  */
 import { test, expect, type Route } from "playwright/test";
+import { gotoWithRetry } from "./helpers";
 
 const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
@@ -26,24 +27,6 @@ const MOCK_USER = {
   monthly_queries_used: 0,
   max_corpora: 1,
 };
-
-async function gotoWithRetry(page: import("playwright/test").Page, url: string) {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await page.goto(url, { waitUntil: "domcontentloaded" });
-      return;
-    } catch (error) {
-      lastError = error;
-      const message = String(error);
-      const isTransientNavError =
-        message.includes("ERR_ABORTED") || message.includes("frame was detached");
-      if (!isTransientNavError || attempt === 2) throw error;
-      await page.waitForTimeout(500);
-    }
-  }
-  throw lastError;
-}
 
 // ---------------------------------------------------------------------------
 // Scenario 1 — Auth retry on /chat OAuth redirect

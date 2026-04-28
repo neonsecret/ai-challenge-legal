@@ -9,27 +9,10 @@
  * Run: npx playwright test e2e/billing.spec.ts
  */
 import { test, expect, type Route } from "playwright/test";
+import { gotoWithRetry } from "./helpers";
 
 const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "testuser@vitreon.app";
-
-async function gotoWithRetry(page: import("playwright/test").Page, url: string) {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await page.goto(url, { waitUntil: "domcontentloaded" });
-      return;
-    } catch (error) {
-      lastError = error;
-      const message = String(error);
-      const isTransientNavError =
-        message.includes("ERR_ABORTED") || message.includes("frame was detached");
-      if (!isTransientNavError || attempt === 2) throw error;
-      await page.waitForTimeout(500);
-    }
-  }
-  throw lastError;
-}
 
 /** Minimal authenticated /auth/me response */
 const MOCK_USER = {

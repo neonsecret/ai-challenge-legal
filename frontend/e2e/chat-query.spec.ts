@@ -16,6 +16,7 @@
  * Run: npx playwright test e2e/chat-query.spec.ts
  */
 import { test, expect, type Page, type BrowserContext, type Route, type Browser } from "playwright/test";
+import { gotoWithRetry } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -185,7 +186,7 @@ test("CQ-1: streaming status messages appear sequentially during the query", asy
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_STATUS });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // While the request is pending (no SSE events yet), StreamingStatus renders
@@ -219,7 +220,7 @@ test("CQ-2: answer with sources renders citation superscript elements", async ({
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_SOURCES })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for answer text to appear
@@ -244,7 +245,7 @@ test("CQ-3: after streaming completes, the answer appears exactly once (no dupli
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_PLAIN })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for the answer to be visible
@@ -273,7 +274,7 @@ test("CQ-4: clicking a citation superscript opens the sources panel", async ({ b
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.0" })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for citation marker
@@ -313,7 +314,7 @@ test("CQ-5: clicking follow-up after first answer sends a second query request",
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_PLAIN });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // First query
     await clickFollowUp(page);
@@ -344,7 +345,7 @@ test("CQ-6: corpus from session is sent in the POST /query/stream body", async (
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_PLAIN });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     await expect(async () => {
@@ -371,7 +372,7 @@ test("CQ-7: when query/stream returns 500, an error message appears in chat", as
       route.fulfill({ status: 500, body: JSON.stringify({ detail: "Internal server error" }) })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // After a 500 the chat must surface an error — either in an element with
@@ -416,7 +417,7 @@ test("CQ-8: pipeline status bar steps appear sequentially during streaming", asy
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_SEQUENTIAL_STEPS })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // The final answer must render — confirms all 3 steps were processed in order.
@@ -466,7 +467,7 @@ test("CQ-9: Czech corpus query renders Czech-origin source references", async ({
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_CZECH_SOURCES });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // The Czech source title must appear (confirms corpus routing didn't fall back to DIFC)

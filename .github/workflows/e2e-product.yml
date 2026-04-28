@@ -131,8 +131,7 @@ jobs:
     runs-on: [self-hosted, mac-vitreon]
     timeout-minutes: 10
     # Not required for branch protection — informational only.
-    # Until NEO-2832 adds @smoke tags, this exits 0 (no tests matched).
-    continue-on-error: true
+    # Smoke failures are visible as annotations on feature branches.
 
     steps:
       - uses: actions/checkout@v4
@@ -151,20 +150,7 @@ jobs:
           CI: "true"
           CI_PORT: "3002"
           TEST_START_SERVER: "1"
-        run: |
-          # Run only @smoke-tagged tests.
-          # Playwright exits 1 both on test failure and on "no tests found".
-          # Until NEO-2832 adds @smoke tags, treat "0 tests matched" as pass.
-          set +e
-          OUTPUT=$(npm run test:e2e -- --grep "@smoke" 2>&1)
-          EXIT=$?
-          set -e
-          echo "$OUTPUT"
-          if [ $EXIT -ne 0 ] && echo "$OUTPUT" | grep -qiE "0 passed|no tests found|0 tests"; then
-            echo "No @smoke tests matched — OK (tags not yet added)"
-            exit 0
-          fi
-          exit $EXIT
+        run: npm run test:e2e -- --grep "@smoke"
 
       - name: Upload smoke report
         if: always()

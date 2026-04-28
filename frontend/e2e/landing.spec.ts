@@ -20,26 +20,9 @@
  * Run: npx playwright test e2e/landing.spec.ts
  */
 import { test, expect, type Route, type Page } from "playwright/test";
+import { gotoWithRetry } from "./helpers";
 
 const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
-
-async function gotoWithRetry(page: import("playwright/test").Page, url: string) {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await page.goto(url, { waitUntil: "domcontentloaded" });
-      return;
-    } catch (error) {
-      lastError = error;
-      const message = String(error);
-      const isTransientNavError =
-        message.includes("ERR_ABORTED") || message.includes("frame was detached");
-      if (!isTransientNavError || attempt === 2) throw error;
-      await page.waitForTimeout(500);
-    }
-  }
-  throw lastError;
-}
 
 /** Mock /auth/me as unauthenticated so the landing page exits its loading state */
 async function mockUnauthenticated(page: Page) {
