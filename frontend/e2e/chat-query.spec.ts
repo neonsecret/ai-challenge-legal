@@ -21,7 +21,7 @@ import { test, expect, type Page, type BrowserContext, type Route, type Browser 
 // Constants
 // ---------------------------------------------------------------------------
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
 const SEED_UID = "e2e-user-id";
 const SEED_SESSION_ID = "e2e-session-00000001";

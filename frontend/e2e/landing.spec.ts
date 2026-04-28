@@ -21,7 +21,7 @@
  */
 import { test, expect, type Route, type Page } from "playwright/test";
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
 /** Mock /auth/me as unauthenticated so the landing page exits its loading state */
 async function mockUnauthenticated(page: Page) {

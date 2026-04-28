@@ -27,7 +27,7 @@ import { test, expect, type Page, type BrowserContext, type Route, type Browser 
 // Constants
 // ---------------------------------------------------------------------------
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
 /** Pre-seeded session IDs written to storageState */
 const SEED_UID = "e2e-user-id"; // must match MOCK_USER.id

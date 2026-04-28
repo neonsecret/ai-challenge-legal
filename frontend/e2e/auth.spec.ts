@@ -11,7 +11,7 @@
  */
 import { test, expect, type Route } from "playwright/test";
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "testuser@vitreon.app";
 
