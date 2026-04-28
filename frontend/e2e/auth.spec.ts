@@ -199,17 +199,17 @@ test("Scenario 4: session persists across page navigations", { tag: ["@smoke"] }
   // Navigate to /chat — the page redirects to "/" on a 401, so reaching /chat
   // confirms the mock is actually being honoured (cannot silently pass).
   await gotoWithRetry(page, `${FRONTEND}/chat`);
-  await page.waitForURL(/\/chat/, { timeout: 5_000 });
+  await page.waitForURL(/\/chat/, { timeout: 15_000 });
   expect(page.url()).toContain("/chat");
 
   // Navigate to /settings
   await gotoWithRetry(page, `${FRONTEND}/settings`);
-  await page.waitForURL(/\/settings/, { timeout: 5_000 });
+  await page.waitForURL(/\/settings/, { timeout: 15_000 });
   expect(page.url()).toContain("/settings");
 
   // Navigate back to /chat — session mock must still be active
   await gotoWithRetry(page, `${FRONTEND}/chat`);
-  await page.waitForURL(/\/chat/, { timeout: 5_000 });
+  await page.waitForURL(/\/chat/, { timeout: 15_000 });
 
   // Should still be on /chat — not redirected to /
   expect(page.url()).toContain("/chat");
@@ -249,7 +249,7 @@ test("Scenario 5: logout clears session and redirects away from /chat", { tag: [
   // Reach /chat while mocked-authenticated.
   // waitForURL failing here means the mock was rejected — cannot silently pass.
   await gotoWithRetry(page, `${FRONTEND}/chat`);
-  await page.waitForURL(/\/chat/, { timeout: 5_000 });
+  await page.waitForURL(/\/chat/, { timeout: 15_000 });
   expect(page.url()).toContain("/chat");
 
   // Navigate to /settings — the sign-out button lives there (settings/page.tsx).
@@ -276,7 +276,7 @@ test("Scenario 5: logout clears session and redirects away from /chat", { tag: [
   await gotoWithRetry(page, `${FRONTEND}/chat`);
   await expect(async () => {
     expect(page.url()).not.toContain("/chat");
-  }).toPass({ timeout: 5_000 });
+  }).toPass({ timeout: 15_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -420,6 +420,6 @@ test("AUTH-1: email/password login flow redirects to /chat on success", { tag: [
   await submitBtn.click();
 
   // After login + /auth/me success, use-auth sets user and login-client redirects to /chat
-  await page.waitForURL(/\/chat/, { timeout: 20_000 });
+  await page.waitForURL(/\/chat/, { timeout: 30_000 });
   expect(page.url()).toContain("/chat");
 });

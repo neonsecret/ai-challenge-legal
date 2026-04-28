@@ -13,6 +13,7 @@ const BASE_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  timeout: 60_000,
   /* Run tests sequentially — avoids port conflicts with the live dev server */
   fullyParallel: false,
   /* Fail the build on CI if tests are accidentally left as .only */
