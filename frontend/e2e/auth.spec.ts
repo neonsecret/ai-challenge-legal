@@ -72,7 +72,7 @@ test.skip("Scenario 1: auth retry on /chat — succeeds after first 401", async 
     }
   });
 
-  await page.goto(`${FRONTEND}/chat`);
+  await gotoWithRetry(page, `${FRONTEND}/chat`);
 
   // Wait for the retry loop to complete (up to 500 + 1000 ms backoff = ~2s).
   // After a successful retry, use-auth sets user state and the chat page renders.
@@ -152,7 +152,7 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to erro
     });
   });
 
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
 
   // Click the Google OAuth button on the login page
   const googleBtn = page.getByRole("button", { name: /continue with google/i });
@@ -160,7 +160,7 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to erro
 
   if (!hasGoogleBtn) {
     // If not on the login page yet, navigate there
-    await page.goto(`${FRONTEND}/login`);
+    await gotoWithRetry(page, `${FRONTEND}/login`);
   }
 
   await page.getByRole("button", { name: /continue with google/i }).click();
@@ -202,17 +202,17 @@ test("Scenario 4: session persists across page navigations", { tag: ["@smoke"] }
 
   // Navigate to /chat — the page redirects to "/" on a 401, so reaching /chat
   // confirms the mock is actually being honoured (cannot silently pass).
-  await page.goto(`${FRONTEND}/chat`);
+  await gotoWithRetry(page, `${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
   expect(page.url()).toContain("/chat");
 
   // Navigate to /settings
-  await page.goto(`${FRONTEND}/settings`);
+  await gotoWithRetry(page, `${FRONTEND}/settings`);
   await page.waitForURL(/\/settings/, { timeout: 5_000 });
   expect(page.url()).toContain("/settings");
 
   // Navigate back to /chat — session mock must still be active
-  await page.goto(`${FRONTEND}/chat`);
+  await gotoWithRetry(page, `${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
 
   // Should still be on /chat — not redirected to /
@@ -252,14 +252,14 @@ test("Scenario 5: logout clears session and redirects away from /chat", { tag: [
 
   // Reach /chat while mocked-authenticated.
   // waitForURL failing here means the mock was rejected — cannot silently pass.
-  await page.goto(`${FRONTEND}/chat`);
+  await gotoWithRetry(page, `${FRONTEND}/chat`);
   await page.waitForURL(/\/chat/, { timeout: 5_000 });
   expect(page.url()).toContain("/chat");
 
   // Navigate to /settings — the sign-out button lives there (settings/page.tsx).
   // The button is only rendered once the /auth/me response sets user state,
   // so we wait for it to become visible before clicking.
-  await page.goto(`${FRONTEND}/settings`);
+  await gotoWithRetry(page, `${FRONTEND}/settings`);
   const signOutBtn = page.getByRole("button", { name: /sign out/i });
   await expect(signOutBtn).toBeVisible({ timeout: 5_000 });
   await signOutBtn.click();
@@ -277,7 +277,7 @@ test("Scenario 5: logout clears session and redirects away from /chat", { tag: [
   expect(sessionCookie === undefined || sessionCookie.value === "").toBe(true);
 
   // Attempting to navigate to /chat should redirect away — /auth/me now returns 401.
-  await page.goto(`${FRONTEND}/chat`);
+  await gotoWithRetry(page, `${FRONTEND}/chat`);
   await page.waitForLoadState("networkidle");
   expect(page.url()).not.toContain("/chat");
 });
@@ -299,7 +299,7 @@ test("Scenario 6: password reset flow — submitting the forgot-password form sh
   });
 
   // Navigate to the forgot-password page directly — the route exists at /forgot-password
-  await page.goto(`${FRONTEND}/forgot-password`);
+  await gotoWithRetry(page, `${FRONTEND}/forgot-password`);
   await page.waitForLoadState("networkidle");
 
   // Hard assertion: the email input must be visible. If the page doesn't render it,
@@ -346,7 +346,7 @@ test("Scenario 7: unauthenticated user navigating to /chat is redirected away", 
   });
 
   // Navigate directly to the protected /chat route
-  await page.goto(`${FRONTEND}/chat`);
+  await gotoWithRetry(page, `${FRONTEND}/chat`);
 
   // The auth guard calls /auth/me on mount and redirects to "/" on a 401.
   // Use an event-based assertion rather than a fixed sleep — resolves as soon
@@ -399,7 +399,7 @@ test("AUTH-1: email/password login flow redirects to /chat on success", { tag: [
   });
 
   // Navigate to the login page
-  await page.goto(`${FRONTEND}/login`);
+  await gotoWithRetry(page, `${FRONTEND}/login`);
 
   // Wait for the email input to be visible (page fully rendered)
   const emailInput = page.locator("#auth-email");

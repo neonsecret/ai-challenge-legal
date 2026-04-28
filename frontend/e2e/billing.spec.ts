@@ -13,6 +13,24 @@ import { test, expect, type Route } from "playwright/test";
 const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 const TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "testuser@vitreon.app";
 
+async function gotoWithRetry(page: import("playwright/test").Page, url: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = String(error);
+      const isTransientNavError =
+        message.includes("ERR_ABORTED") || message.includes("frame was detached");
+      if (!isTransientNavError || attempt === 2) throw error;
+      await page.waitForTimeout(500);
+    }
+  }
+  throw lastError;
+}
+
 /** Minimal authenticated /auth/me response */
 const MOCK_USER = {
   id: "e2e-user-id",
@@ -94,7 +112,7 @@ test("BL-1: clicking the upgrade CTA redirects to Stripe Checkout", { tag: ["@sm
   });
 
   // Navigate to the billing page
-  await page.goto(`${FRONTEND}/billing`);
+  await gotoWithRetry(page, `${FRONTEND}/billing`);
 
   // Wait for the billing page to load (billing-status mock resolves)
   // The upgrade button text is "Upgrade to Starter" (t("billing.upgrade") + " " + t("billing.to") + " Starter")

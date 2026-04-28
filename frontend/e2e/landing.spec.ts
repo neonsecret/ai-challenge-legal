@@ -23,6 +23,24 @@ import { test, expect, type Route, type Page } from "playwright/test";
 
 const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
+async function gotoWithRetry(page: import("playwright/test").Page, url: string) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      return;
+    } catch (error) {
+      lastError = error;
+      const message = String(error);
+      const isTransientNavError =
+        message.includes("ERR_ABORTED") || message.includes("frame was detached");
+      if (!isTransientNavError || attempt === 2) throw error;
+      await page.waitForTimeout(500);
+    }
+  }
+  throw lastError;
+}
+
 /** Mock /auth/me as unauthenticated so the landing page exits its loading state */
 async function mockUnauthenticated(page: Page) {
   await page.route("**/auth/me", (route: Route) =>
@@ -43,7 +61,7 @@ async function waitForLandingContent(page: Page) {
 // ---------------------------------------------------------------------------
 test("LP-1: hero section renders with Vitreon brand text", { tag: ["@smoke"] }, async ({ page }) => {
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
 
   await expect(async () => {
     const bodyText = await page.locator("body").innerText();
@@ -56,7 +74,7 @@ test("LP-1: hero section renders with Vitreon brand text", { tag: ["@smoke"] }, 
 // ---------------------------------------------------------------------------
 test("LP-2: demo question buttons are visible in the DemoPanel section", { tag: ["@smoke"] }, async ({ page }) => {
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
   await waitForLandingContent(page);
 
   // DemoPanel renders clickable scenario buttons. Verify at least one button
@@ -75,7 +93,7 @@ test("LP-2: demo question buttons are visible in the DemoPanel section", { tag: 
 // ---------------------------------------------------------------------------
 test("LP-3: CTA 'Get Started' link navigates to /login", { tag: ["@smoke"] }, async ({ page }) => {
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
   await waitForLandingContent(page);
 
   // The landing page has <a href="/login"> links for sign-in and get-started CTAs
@@ -92,7 +110,7 @@ test("LP-3: CTA 'Get Started' link navigates to /login", { tag: ["@smoke"] }, as
 // ---------------------------------------------------------------------------
 test("LP-4: 'How it works' section heading is visible on the landing page", { tag: ["@smoke"] }, async ({ page }) => {
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
   await waitForLandingContent(page);
 
   // t("landing.how_heading") = "Three steps from question to answer"
@@ -112,7 +130,7 @@ test("LP-4: 'How it works' section heading is visible on the landing page", { ta
 // ---------------------------------------------------------------------------
 test("LP-5: trust section renders with jurisdiction or compliance information", { tag: ["@smoke"] }, async ({ page }) => {
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
   await waitForLandingContent(page);
 
   // Trust section: "4 Jurisdictions", "DIFC", "SOC 2 Ready", or "Privacy"
@@ -132,7 +150,7 @@ test("LP-5: trust section renders with jurisdiction or compliance information", 
 // ---------------------------------------------------------------------------
 test("LP-6: language toggle changes the page locale to Czech", { tag: ["@smoke"] }, async ({ page }) => {
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
   await waitForLandingContent(page);
 
   // LanguageToggle renders the current locale code as a button label ("EN")
@@ -185,7 +203,7 @@ test("LP-7: landing page loads without unhandled JavaScript errors", { tag: ["@s
     if (msg.type() === "error") jsErrors.push(msg.text());
   });
 
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
   await waitForLandingContent(page);
 
   // Filter out benign/expected errors
@@ -225,7 +243,7 @@ test("LP-8: dark-mode hero heading is visible and page has rendered content", { 
   });
 
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
 
   // html element must have the .dark class (FOUC script applied it)
   await expect(page.locator("html")).toHaveClass(/dark/, { timeout: 8_000 });
@@ -258,7 +276,7 @@ test("LP-9: theme toggle switches from dark to light without blank or hidden con
   });
 
   await mockUnauthenticated(page);
-  await page.goto(`${FRONTEND}/`);
+  await gotoWithRetry(page, `${FRONTEND}/`);
 
   // Wait for dark content to be rendered
   await expect(async () => {
