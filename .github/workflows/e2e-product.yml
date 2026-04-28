@@ -1,0 +1,149 @@
+name: E2E Tests
+
+# Full suite gates pushes/PRs to product.
+# Smoke-only subset runs on all other branches once @smoke tags are added (NEO-2832).
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [product]
+
+# Cancel in-progress runs on feature branches to avoid queuing; never cancel on product.
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/product' }}
+
+jobs:
+  # ─── Full suite — required for branch protection on product ───────────────
+  e2e-full:
+    name: E2E Full Suite
+    if: github.ref == 'refs/heads/product' || github.event_name == 'pull_request'
+    runs-on: [self-hosted, mac-vitreon]
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run full E2E suite
+        id: e2e
+        working-directory: frontend
+        env:
+          CI: "true"
+          # Playwright will build + start Next.js on port 3000.
+          # reuseExistingServer:true in playwright.config.ts means the launchctl
+          # plist server is reused if already running — no double-start.
+          TEST_START_SERVER: "1"
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Telegram alert on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          python3 - <<'EOF'
+          import os, json
+          try:
+              import urllib.request
+              token    = os.environ['TELEGRAM_BOT_TOKEN']
+              chat_id  = os.environ['TELEGRAM_CHAT_ID']
+              repo     = os.environ.get('GITHUB_REPOSITORY', '')
+              run_id   = os.environ.get('GITHUB_RUN_ID', '')
+              branch   = os.environ.get('GITHUB_REF_NAME', '')
+              sha      = os.environ.get('GITHUB_SHA', '')[:8]
+              actor    = os.environ.get('GITHUB_ACTOR', '')
+              run_url  = f"https://github.com/{repo}/actions/runs/{run_id}"
+              text = (
+                  f"⚠️ <b>E2E CI Failure — product</b>\n\n"
+                  f"Branch: <code>{branch}</code>\n"
+                  f"Commit: <code>{sha}</code>\n"
+                  f"Actor: {actor}\n\n"
+                  f'<a href="{run_url}">View CI run ↗</a>'
+              )
+              payload = json.dumps({
+                  'chat_id': chat_id,
+                  'parse_mode': 'HTML',
+                  'text': text,
+              }).encode()
+              req = urllib.request.Request(
+                  f'https://api.telegram.org/bot{token}/sendMessage',
+                  data=payload,
+                  headers={'Content-Type': 'application/json'},
+              )
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  print("Telegram notified:", r.status)
+          except Exception as e:
+              print(f"Telegram notification failed: {e}")
+              # Non-fatal: don't mask the actual test failure
+          EOF
+
+  # ─── Smoke subset — informational on feature branches ────────────────────
+  e2e-smoke:
+    name: E2E Smoke Tests
+    if: github.ref != 'refs/heads/product' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, mac-vitreon]
+    timeout-minutes: 10
+    # Not required for branch protection — informational only.
+    # Until NEO-2832 adds @smoke tags, this exits 0 (no tests matched).
+    continue-on-error: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run smoke tests
+        working-directory: frontend
+        env:
+          CI: "true"
+          TEST_START_SERVER: "1"
+        run: |
+          # Run only @smoke-tagged tests.
+          # Playwright exits 1 both on test failure and on "no tests found".
+          # Until NEO-2832 adds @smoke tags, treat "0 tests matched" as pass.
+          set +e
+          OUTPUT=$(npm run test:e2e -- --grep "@smoke" 2>&1)
+          EXIT=$?
+          set -e
+          echo "$OUTPUT"
+          if [ $EXIT -ne 0 ] && echo "$OUTPUT" | grep -qiE "0 passed|no tests found|0 tests"; then
+            echo "No @smoke tests matched — OK (tags not yet added)"
+            exit 0
+          fi
+          exit $EXIT
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-${{ github.run_id }}
+          path: frontend/playwright-report/
+          retention-days: 3
