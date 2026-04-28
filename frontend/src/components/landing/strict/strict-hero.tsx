@@ -312,11 +312,9 @@ export function StrictHero() {
       className="mx-auto"
       style={{ maxWidth: "880px", padding: isMobile ? "24px 16px 32px" : "40px 32px 48px" }}
     >
-      {/* Living Glass Slab */}
-      <motion.div
-        initial={{ y: 20, scale: 0.985 }}
-        animate={{ y: 0, scale: 1 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+      {/* Living Glass Slab - no animation wrapper to ensure LCP fires immediately */}
+      <div
+        className="strict-hero-container"
         style={{
           background: "var(--strict-glass-bg)",
           backdropFilter: "var(--strict-glass-blur)",
@@ -328,12 +326,9 @@ export function StrictHero() {
           flexDirection: isMobile ? "column" : "row",
           gap: isMobile ? "0" : "28px",
           alignItems: "flex-start",
-          // Server-rendered initial state to match Framer Motion's initial prop (prevents CLS)
-          transform: "translateY(20px) scale(0.985)",
-          transformOrigin: "center",
         }}
       >
-        {/* Hero text */}
+        {/* Hero text - plain elements for immediate LCP */}
         <div className="flex flex-col" style={{ flex: 1 }}>
           <h1
             className="font-serif font-normal leading-[1.2] mb-2.5"
@@ -347,31 +342,20 @@ export function StrictHero() {
             <span style={goldGradientText}>{t("landing.hero_title_highlight")}</span>
           </h1>
 
-          <motion.p
-            initial={{ y: 16 }}
-            animate={{ y: 0 }}
-            transition={{ ...V3_SPRING.gentle, delay: 0.25 }}
+          <p
             className="text-[13px] leading-[1.6] mb-[18px]"
             style={{ color: "var(--strict-text-secondary)", whiteSpace: "pre-line" }}
           >
             {t("landing.hero_subtitle")}
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ y: 16 }}
-            animate={{ y: 0 }}
-            transition={{ ...V3_SPRING.gentle, delay: 0.4 }}
-          >
+          <div>
             <JurisdictionPills />
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ y: 16 }}
-            animate={{ y: 0 }}
-            transition={{ ...V3_SPRING.gentle, delay: 0.55 }}
-          >
+          <div>
             <CtaButton />
-          </motion.div>
+          </div>
         </div>
 
         {/* Divider — horizontal on mobile, vertical on desktop */}
@@ -402,7 +386,7 @@ export function StrictHero() {
         >
           <StatsBlock />
         </div>
-      </motion.div>
+        </div>
     </section>
   );
 }

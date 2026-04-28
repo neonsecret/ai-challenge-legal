@@ -30,9 +30,23 @@ const nextConfig: NextConfig = {
             },
             {
                 // HTML pages — never cache so deploys take effect immediately
-                source: "/((?!_next/static|favicon).*)",
+                source: "/((?!_next/static|favicon|opengraph-image|apple-touch-icon|manifest.json).*)",
                 headers: [
                     {key: "Cache-Control", value: "no-cache, no-store, must-revalidate"},
+                ],
+            },
+            {
+                // OG image — cache for 24 hours (static asset, doesn't change often)
+                source: "/opengraph-image(.*)",
+                headers: [
+                    {key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=3600"},
+                ],
+            },
+            {
+                // Other static assets — cache for 24 hours
+                source: "/(apple-touch-icon|manifest.json)",
+                headers: [
+                    {key: "Cache-Control", value: "public, max-age=86400"},
                 ],
             },
             {

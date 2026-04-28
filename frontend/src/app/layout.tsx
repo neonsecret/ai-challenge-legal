@@ -10,13 +10,14 @@ const playfair = Playfair_Display({
     subsets: ["latin"],
     weight: ["400"],  // Only load 400 weight (used for hero text)
     variable: "--font-heading",
-    display: "fallback",  // Use fallback immediately if font not loaded in ~100ms, no swap delay
+    display: "fallback",  // Use fallback immediately if font not loaded in ~100ms
+    preload: true,  // Preload the font for LCP optimization
 });
 
 const inter = Inter({
     subsets: ["latin"],
     variable: "--font-sans",
-    display: "fallback", // Use fallback immediately if font not loaded in ~100ms
+    display: "fallback",  // Use fallback immediately if font not loaded in ~100ms
 });
 
 export const metadata: Metadata = {
@@ -238,7 +239,7 @@ export default function RootLayout({
         <html
             lang="en"
             suppressHydrationWarning
-            className={`${playfair.variable} ${inter.variable} h-full antialiased`}
+            className={`${inter.variable} h-full antialiased`}
         >
         <head>
             {/* Preconnect to external domains */}

@@ -1,7 +1,13 @@
 import type {Metadata} from "next";
 import type {CSSProperties} from "react";
-import {LandingClient} from "./landing-client";
+import dynamic from "next/dynamic";
 import {buildFaqJsonLd} from "@/lib/faq-data";
+
+// Client component for interactive parts only (theme toggle, auth, demo panel)
+const LandingClient = dynamic(() => import("./landing-client").then(m => ({ default: m.LandingClient })), {
+    ssr: true,
+    loading: () => null, // Don't render anything during loading - hero is server-rendered
+});
 
 export const metadata: Metadata = {
     title: "AI Legal Research with Cited Sources — Vitreon",
@@ -64,12 +70,10 @@ const HERO_H1_STYLE: CSSProperties = {
 };
 
 const HERO_HIGHLIGHT_STYLE: CSSProperties = {
-    background: "linear-gradient(90deg, #c47c00 0%, #e8a020 50%, #c47c00 100%)",
-    backgroundSize: "200% auto",
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    WebkitTextFillColor: "transparent",
-    animation: "shimmer 3s linear infinite",
+    color: "#c47c00",
+    fontWeight: 700,
+    // Simplified for LCP - removed gradient effect that was expensive to render
+    // Original gradient effect can be added via CSS class after LCP fires
 };
 
 export default function LandingPage() {
@@ -79,13 +83,59 @@ export default function LandingPage() {
             <span style={HERO_HIGHLIGHT_STYLE}>Speed of Thought</span>
         </h1>
     );
+
     return (
         <>
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{__html: JSON.stringify(buildFaqJsonLd())}}
             />
-            <LandingClient heroTitle={heroTitle} />
+            {/* Server-rendered above-fold content - LCP fires immediately */}
+            <div className="landing-light-hero" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
+                <section style={{
+                    position: "relative",
+                    minHeight: "100vh",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                    background: "linear-gradient(145deg, #dfc090 0%, #e8d4b8 45%, #dbb870 100%)"
+                }}>
+                    {/* Hero content - server rendered, no JS needed for LCP */}
+                    <div style={{
+                        flex: 1,
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        paddingLeft: "24px",
+                        paddingRight: "24px",
+                        position: "relative",
+                        zIndex: 1,
+                        textAlign: "center"
+                    }}>
+                        <p style={{
+                            fontSize: 11,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.20em",
+                            fontWeight: 600,
+                            color: "#5c2e08",
+                            marginBottom: 20
+                        }}>AI LEGAL RESEARCH</p>
+                        {heroTitle}
+                        <p style={{
+                            fontSize: 16,
+                            color: "rgba(46,31,8,0.60)",
+                            lineHeight: 1.6,
+                            maxWidth: 520,
+                            marginBottom: 48,
+                            whiteSpace: "pre-line"
+                        }}>Find the exact statute or court decision in seconds. Every answer cites the page and clause.</p>
+                    </div>
+                    
+                    {/* Client-side interactive overlay - loads after LCP */}  
+                    <LandingClient />
+                </section>
+            </div>
         </>
     );
 }

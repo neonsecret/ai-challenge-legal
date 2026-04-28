@@ -14,12 +14,12 @@ import type { StrictSourceMarginSource } from "@/components/chat/strict-source-m
 // ─── Static content constants ─────────────────────────────────────────────────
 
 const ANSWER_HTML =
-  "The notice period under DIFC Employment Law No. 4 of 2005 varies based on the length of continuous service<sup>1</sup>. For employees with less than one year of service, the minimum notice period is seven days. For those with one to five years, the period extends to thirty days<sup>2</sup>.<br><br>In cases where the employment contract specifies a longer notice period, the contractual term prevails<sup>3</sup>.";
+  "Czech courts apply a strict test for force majeure under § 2913(2) of the Civil Code<sup>1</sup>. The debtor must prove the obstacle was objective, unforeseeable, and insurmountable by any reasonable precaution<sup>2</sup>.<br><br>The Supreme Court (NS) has consistently held that economic crises, price fluctuations, or market shifts do not ordinarily constitute force majeure absent extraordinary, state-level disruption<sup>3</sup>.";
 
 const SOURCES_DATA: StrictSourceMarginSource[] = [
-  { id: "0", label: "DIFC Law No. 4 of 2005, Art. 58 — Notice Requirements", detail: "" },
-  { id: "1", label: "DIFC Employment Regulations 2019, Schedule 2", detail: "" },
-  { id: "2", label: "DIFC Court of First Instance, Case 024/2021", detail: "" },
+  { id: "0", label: "NS 23 Cdo 1561/2022 — Force Majeure Conditions", detail: "" },
+  { id: "1", label: "Civil Code § 2913(2) — Exemption from Liability", detail: "" },
+  { id: "2", label: "NS 23 Cdo 3141/2020 — Commercial Contracts", detail: "" },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
