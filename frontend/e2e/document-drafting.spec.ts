@@ -22,12 +22,13 @@
  * Run: npx playwright test e2e/document-drafting.spec.ts
  */
 import { test, expect, type Page, type BrowserContext, type Route, type Browser } from "playwright/test";
+import { gotoWithRetry } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
 /** Pre-seeded session IDs written to storageState */
 const SEED_UID = "e2e-user-id"; // must match MOCK_USER.id
@@ -278,7 +279,7 @@ test("T9: template picker opens and closes via Escape", async ({ browser }) => {
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_TEMPLATES) })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // chatId is set from localStorage — TemplatePicker is visible immediately
     const pickerBtn = page.locator('button[aria-label="Open template picker"]');
@@ -314,7 +315,7 @@ test("T10: selecting a template adds template_slug to the POST /query/stream bod
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_V1 });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // Open picker and select the first template
     await page.locator('button[aria-label="Open template picker"]').click();
@@ -348,7 +349,7 @@ test("T11: document card appears with template name and version after SSE docume
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC_V1 })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Document card must show the template name
@@ -375,7 +376,7 @@ test("T12: clicking Preview on a document card opens the DocumentViewer dialog",
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.0" })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card
@@ -408,7 +409,7 @@ test("T13: clicking the Download link on a document card requests the PDF endpoi
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.0" });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card
@@ -445,7 +446,7 @@ test("T14: sending a follow-up message updates the document card version badge t
       route.fulfill({ status: 200, contentType: "text/event-stream", body });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // First query → doc v1
     await clickFollowUp(page);
@@ -470,7 +471,7 @@ test("T15: three document_generated events render three document cards", async (
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_THREE_DOCS })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // All three version "v1" badges must appear — one per document card
@@ -500,7 +501,7 @@ test("T16: full round-trip — template selection, SSE doc, preview, and PDF dow
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.0" });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // chatId is set from localStorage — TemplatePicker is immediately available
     await page.locator('button[aria-label="Open template picker"]').click();
@@ -553,7 +554,7 @@ test("T17: update round-trip — document version increments from v1 to v2", asy
       });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // First message — doc v1 appears
     await clickFollowUp(page);
@@ -606,7 +607,7 @@ test("T18: selecting vlastni_dokument (no required fields) produces a document c
       route.fulfill({ status: 200, contentType: "text/event-stream", body: sseWithCustomDoc })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // Select custom template
     await page.locator('button[aria-label="Open template picker"]').click();
@@ -643,7 +644,7 @@ test("T19: [DOC-1] citation in SSE answer renders as a superscript citation mark
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_CITATION })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // chat-message.tsx replaces [DOC-N] with a <sup> element
@@ -665,7 +666,7 @@ test("T20: SSE stream with Czech text renders Czech characters without corruptio
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_CZECH })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // The answer must contain Czech diacritics — if mangled these would fail

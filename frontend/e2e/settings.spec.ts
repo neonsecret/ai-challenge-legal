@@ -13,7 +13,7 @@
  */
 import { test, expect, type Route } from "playwright/test";
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
 const TEST_EMAIL = "testuser@vitreon.app";
 

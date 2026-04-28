@@ -14,12 +14,13 @@
  * Run: npx playwright test e2e/chat-documents.spec.ts
  */
 import { test, expect, type Page, type BrowserContext, type Route, type Browser } from "playwright/test";
+import { gotoWithRetry } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const FRONTEND = "http://localhost:3000";
+const FRONTEND = `http://localhost:${process.env.CI_PORT ?? "3000"}`;
 
 const SEED_UID = "e2e-user-id";
 const SEED_SESSION_ID = "e2e-session-00000001";
@@ -219,15 +220,15 @@ test("CD-1: navigating away from /chat and back preserves the document card", as
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await expect(page.locator("text=Žaloba na neplatnost výpovědi").first()).toBeVisible({ timeout: 15_000 });
 
     // Navigate away — settings requires auth (already mocked)
-    await page.goto(`${FRONTEND}/settings`);
+    await gotoWithRetry(page, `${FRONTEND}/settings`);
     await page.waitForURL(/\/settings/, { timeout: 5_000 });
 
     // Navigate back to chat
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await page.waitForURL(/\/chat/, { timeout: 5_000 });
 
     // Hard assertion: the document card must be visible after returning.
@@ -261,7 +262,7 @@ test.skip("CD-2: clicking delete on a document card removes it from the page", a
       }
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card
@@ -297,7 +298,7 @@ test("CD-3: Vlastní dokument option appears exactly once in the template picker
       route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_TEMPLATES) })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // Open template picker
     const pickerBtn = page.locator('button[aria-label="Open template picker"]');
@@ -340,7 +341,7 @@ test("CD-4: drafting indicator is visible during streaming and absent after stre
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // Trigger the query — the route will pause waiting for fulfillSSE()
     await clickFollowUp(page);
@@ -386,7 +387,7 @@ test("CD-5: PDF preview dialog loads successfully without error text", async ({ 
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.4" })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card
@@ -428,7 +429,7 @@ test("CD-6: PDF download works without error text in the DOM", async ({ browser 
       route.fulfill({ status: 200, contentType: "application/pdf", body: "%PDF-1.4" });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card
@@ -477,7 +478,7 @@ test("CD-7: clicking LaTeX download triggers the /tex endpoint", async ({ browse
       });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card to reach isReady=true (v1 badge visible = fields populated)
@@ -513,7 +514,7 @@ test("CD-8: documents generated in a session persist when the context is reopene
       route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC })
     );
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card to appear
@@ -595,7 +596,7 @@ test("CD-9: template selection is included in all consecutive query POST bodies"
       await route.fulfill({ status: 200, contentType: "text/event-stream", body: SSE_WITH_DOC });
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // Open template picker and select the first template
     const pickerBtn = page.locator('button[aria-label="Open template picker"]');
@@ -654,7 +655,7 @@ test("CD-10: LaTeX download button is hidden when the /tex HEAD request returns 
       }
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
 
     // Register the HEAD watcher after navigation, before triggering the query.
     // DocumentCard fires the HEAD check only after isReady=true — this is safe.
@@ -709,7 +710,7 @@ test("CD-12: LaTeX download button is visible inside DocumentViewer when the /te
       }
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card to reach isReady=true (v1 badge visible = fields populated)
@@ -772,7 +773,7 @@ test("CD-11: LaTeX download button is hidden inside DocumentViewer when the /tex
       }
     });
 
-    await page.goto(`${FRONTEND}/chat`);
+    await gotoWithRetry(page, `${FRONTEND}/chat`);
     await clickFollowUp(page);
 
     // Wait for document card to reach isReady=true (v1 badge visible = fields populated)

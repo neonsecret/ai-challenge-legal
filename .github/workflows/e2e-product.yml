@@ -1,0 +1,161 @@
+name: E2E Tests
+
+# Full suite gates pushes/PRs to product.
+# Smoke-only subset runs on all other branches once @smoke tags are added (NEO-2832).
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [product]
+
+# Cancel in-progress runs on feature branches to avoid queuing; never cancel on product.
+concurrency:
+  group: e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/product' }}
+
+jobs:
+  # ─── Full suite — required for branch protection on product ───────────────
+  e2e-full:
+    name: E2E Full Suite
+    if: github.ref == 'refs/heads/product' || github.event_name == 'pull_request'
+    runs-on: [self-hosted, mac-vitreon]
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run full E2E suite
+        id: e2e
+        working-directory: frontend
+        env:
+          CI: "true"
+          # Use port 3002 so CI builds and tests the checked-out code without
+          # disturbing the launchd-managed production server on port 3000.
+          CI_PORT: "3002"
+          TEST_START_SERVER: "1"
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: |
+            frontend/playwright-report/
+            frontend/playwright-results.json
+          retention-days: 14
+
+      - name: Telegram alert on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: |
+          python3 - <<'EOF'
+          import os, json
+          try:
+              import urllib.request
+
+              token    = os.environ['TELEGRAM_BOT_TOKEN']
+              chat_id  = os.environ['TELEGRAM_CHAT_ID']
+              repo     = os.environ.get('GITHUB_REPOSITORY', '')
+              run_id   = os.environ.get('GITHUB_RUN_ID', '')
+              branch   = os.environ.get('GITHUB_REF_NAME', '')
+              sha      = os.environ.get('GITHUB_SHA', '')[:8]
+              actor    = os.environ.get('GITHUB_ACTOR', '')
+              run_url  = f"https://github.com/{repo}/actions/runs/{run_id}"
+
+              # Extract failing test names from JSON reporter output
+              failed_tests = []
+              try:
+                  results = json.load(open('frontend/playwright-results.json'))
+                  for suite in results.get('suites', []):
+                      for spec in suite.get('specs', []):
+                          for test in spec.get('tests', []):
+                              if test.get('status') not in ('passed', 'skipped', 'expected'):
+                                  failed_tests.append(spec.get('title', '?'))
+              except Exception:
+                  pass
+
+              failed_line = ''
+              if failed_tests:
+                  names = ', '.join(failed_tests[:8])
+                  if len(failed_tests) > 8:
+                      names += f' (+{len(failed_tests)-8} more)'
+                  failed_line = f'\nFailed: <code>{names}</code>'
+
+              text = (
+                  f"⚠️ <b>E2E CI Failure</b>\n\n"
+                  f"Branch: <code>{branch}</code>\n"
+                  f"Commit: <code>{sha}</code>\n"
+                  f"Actor: {actor}"
+                  f"{failed_line}\n\n"
+                  f'<a href="{run_url}">View CI run ↗</a>'
+              )
+              payload = json.dumps({
+                  'chat_id': chat_id,
+                  'parse_mode': 'HTML',
+                  'text': text,
+                  'disable_web_page_preview': True,
+              }).encode()
+              req = urllib.request.Request(
+                  f'https://api.telegram.org/bot{token}/sendMessage',
+                  data=payload,
+                  headers={'Content-Type': 'application/json'},
+              )
+              with urllib.request.urlopen(req, timeout=15) as r:
+                  print("Telegram notified:", r.status)
+          except Exception as e:
+              print(f"Telegram notification failed: {e}")
+              # Non-fatal: alert failure must not mask the actual test failure
+          EOF
+
+  # ─── Smoke subset — informational on feature branches ────────────────────
+  e2e-smoke:
+    name: E2E Smoke Tests
+    if: github.ref != 'refs/heads/product' && github.event_name != 'pull_request'
+    runs-on: [self-hosted, mac-vitreon]
+    timeout-minutes: 10
+    # Not required for branch protection — informational only.
+    # Smoke failures are visible as annotations on feature branches.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install chromium
+
+      - name: Run smoke tests
+        working-directory: frontend
+        env:
+          CI: "true"
+          CI_PORT: "3002"
+          TEST_START_SERVER: "1"
+        run: npm run test:e2e -- --grep "@smoke"
+
+      - name: Upload smoke report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-smoke-${{ github.run_id }}
+          path: frontend/playwright-report/
+          retention-days: 3

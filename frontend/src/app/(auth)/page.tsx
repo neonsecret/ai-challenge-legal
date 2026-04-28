@@ -90,7 +90,8 @@ export default function LandingPage() {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{__html: JSON.stringify(buildFaqJsonLd())}}
             />
-            {/* Server-rendered above-fold content - LCP fires immediately */}
+            {/* Server-rendered above-fold content for light mode - LCP fires immediately.
+                Hidden in dark mode (html.dark .landing-light-hero { display:none }) — StrictLanding handles dark. */}
             <div className="landing-light-hero" style={{fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif"}}>
                 <section style={{
                     position: "relative",
@@ -131,11 +132,11 @@ export default function LandingPage() {
                             whiteSpace: "pre-line"
                         }}>Find the exact statute or court decision in seconds. Every answer cites the page and clause.</p>
                     </div>
-                    
-                    {/* Client-side interactive overlay - loads after LCP */}  
-                    <LandingClient />
                 </section>
             </div>
+            {/* LandingClient must be OUTSIDE landing-light-hero so dark-mode StrictLanding
+                is never caught by the display:none FOUC rule */}
+            <LandingClient />
         </>
     );
 }
