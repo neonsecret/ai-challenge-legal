@@ -38,9 +38,9 @@ jobs:
         working-directory: frontend
         env:
           CI: "true"
-          # Playwright will build + start Next.js on port 3000.
-          # reuseExistingServer:true in playwright.config.ts means the launchctl
-          # plist server is reused if already running — no double-start.
+          # Use port 3002 so CI builds and tests the checked-out code without
+          # disturbing the launchd-managed production server on port 3000.
+          CI_PORT: "3002"
           TEST_START_SERVER: "1"
         run: npm run test:e2e
 
@@ -49,8 +49,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ github.run_id }}
-          path: frontend/playwright-report/
-          retention-days: 7
+          path: |
+            frontend/playwright-report/
+            frontend/playwright-results.json
+          retention-days: 14
 
       - name: Telegram alert on failure
         if: failure()
@@ -67,6 +69,7 @@ jobs:
           import os, json
           try:
               import urllib.request
+
               token    = os.environ['TELEGRAM_BOT_TOKEN']
               chat_id  = os.environ['TELEGRAM_CHAT_ID']
               repo     = os.environ.get('GITHUB_REPOSITORY', '')
@@ -75,17 +78,39 @@ jobs:
               sha      = os.environ.get('GITHUB_SHA', '')[:8]
               actor    = os.environ.get('GITHUB_ACTOR', '')
               run_url  = f"https://github.com/{repo}/actions/runs/{run_id}"
+
+              # Extract failing test names from JSON reporter output
+              failed_tests = []
+              try:
+                  results = json.load(open('frontend/playwright-results.json'))
+                  for suite in results.get('suites', []):
+                      for spec in suite.get('specs', []):
+                          for test in spec.get('tests', []):
+                              if test.get('status') not in ('passed', 'skipped', 'expected'):
+                                  failed_tests.append(spec.get('title', '?'))
+              except Exception:
+                  pass
+
+              failed_line = ''
+              if failed_tests:
+                  names = ', '.join(failed_tests[:8])
+                  if len(failed_tests) > 8:
+                      names += f' (+{len(failed_tests)-8} more)'
+                  failed_line = f'\nFailed: <code>{names}</code>'
+
               text = (
-                  f"⚠️ <b>E2E CI Failure — product</b>\n\n"
+                  f"⚠️ <b>E2E CI Failure</b>\n\n"
                   f"Branch: <code>{branch}</code>\n"
                   f"Commit: <code>{sha}</code>\n"
-                  f"Actor: {actor}\n\n"
+                  f"Actor: {actor}"
+                  f"{failed_line}\n\n"
                   f'<a href="{run_url}">View CI run ↗</a>'
               )
               payload = json.dumps({
                   'chat_id': chat_id,
                   'parse_mode': 'HTML',
                   'text': text,
+                  'disable_web_page_preview': True,
               }).encode()
               req = urllib.request.Request(
                   f'https://api.telegram.org/bot{token}/sendMessage',
@@ -96,7 +121,7 @@ jobs:
                   print("Telegram notified:", r.status)
           except Exception as e:
               print(f"Telegram notification failed: {e}")
-              # Non-fatal: don't mask the actual test failure
+              # Non-fatal: alert failure must not mask the actual test failure
           EOF
 
   # ─── Smoke subset — informational on feature branches ────────────────────
@@ -124,6 +149,7 @@ jobs:
         working-directory: frontend
         env:
           CI: "true"
+          CI_PORT: "3002"
           TEST_START_SERVER: "1"
         run: |
           # Run only @smoke-tagged tests.
