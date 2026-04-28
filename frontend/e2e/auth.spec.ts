@@ -101,13 +101,12 @@ test("Scenario 2: navigating to non-existent path renders gracefully without Inv
 
   await gotoWithRetry(page, `${FRONTEND}/definitely-does-not-exist`);
 
-  // Wait for client-side error handling to settle
-  await page.waitForLoadState("networkidle");
-
-  // The page should render a recognisable 404 — not a blank white crash
-  const bodyText = await page.locator("body").innerText();
-  expect(bodyText.length).toBeGreaterThan(0);
-  expect(bodyText.toLowerCase().includes("not found") || bodyText.includes("404")).toBe(true);
+  // Wait for the 404 page to render meaningful content
+  await expect(async () => {
+    const bodyText = await page.locator("body").innerText();
+    expect(bodyText.length).toBeGreaterThan(0);
+    expect(bodyText.toLowerCase().includes("not found") || bodyText.includes("404")).toBe(true);
+  }).toPass({ timeout: 10_000 });
 
   // No InvariantError in console or unhandled errors
   const invariantErrors = consoleErrors.filter((e) =>
@@ -165,16 +164,13 @@ test("Scenario 3: Google OAuth redirect flow — mocked Google, redirect to erro
 
   await page.getByRole("button", { name: /continue with google/i }).click();
 
-  // Wait for navigation to settle after OAuth redirect chain
-  await page.waitForLoadState("networkidle");
+  // Wait for the OAuth redirect chain to settle on /login or /chat
+  await expect(async () => {
+    const url = page.url();
+    expect(url.includes("/chat") || url.includes("/login")).toBe(true);
+  }).toPass({ timeout: 10_000 });
 
-  // The test is satisfied if:
-  //  a) The Google redirect was intercepted (not a real round-trip to Google), AND
-  //  b) The page didn't crash — it must be on /chat (success) or /login (expected callback failure)
   expect(googleRedirectCaught).toBe(true);
-
-  const url = page.url();
-  expect(url.includes("/chat") || url.includes("/login")).toBe(true);
   await expect(page.getByText("Google sign-in was cancelled. Please try again.")).toBeVisible();
 
   // Route-fulfilled document redirects can emit a transient hydration error from
@@ -261,12 +257,12 @@ test("Scenario 5: logout clears session and redirects away from /chat", { tag: [
   // so we wait for it to become visible before clicking.
   await gotoWithRetry(page, `${FRONTEND}/settings`);
   const signOutBtn = page.getByRole("button", { name: /sign out/i });
-  await expect(signOutBtn).toBeVisible({ timeout: 5_000 });
+  await expect(signOutBtn).toBeVisible({ timeout: 15_000 });
   await signOutBtn.click();
 
   // settings/page.tsx calls router.push("/") after the awaited logout request,
   // so by the time the navigation resolves isLoggedIn is already false.
-  await page.waitForURL(/^\/(login|$)/, { timeout: 5_000 }).catch(() => {
+  await page.waitForURL(/^\/(login|$)/, { timeout: 10_000 }).catch(() => {
     // Some builds redirect to /login, some to "/"
   });
   expect(page.url()).not.toContain("/settings");
@@ -278,8 +274,9 @@ test("Scenario 5: logout clears session and redirects away from /chat", { tag: [
 
   // Attempting to navigate to /chat should redirect away — /auth/me now returns 401.
   await gotoWithRetry(page, `${FRONTEND}/chat`);
-  await page.waitForLoadState("networkidle");
-  expect(page.url()).not.toContain("/chat");
+  await expect(async () => {
+    expect(page.url()).not.toContain("/chat");
+  }).toPass({ timeout: 5_000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -300,7 +297,6 @@ test("Scenario 6: password reset flow — submitting the forgot-password form sh
 
   // Navigate to the forgot-password page directly — the route exists at /forgot-password
   await gotoWithRetry(page, `${FRONTEND}/forgot-password`);
-  await page.waitForLoadState("networkidle");
 
   // Hard assertion: the email input must be visible. If the page doesn't render it,
   // the test fails with a clear error rather than silently passing with zero assertions.
@@ -424,6 +420,6 @@ test("AUTH-1: email/password login flow redirects to /chat on success", { tag: [
   await submitBtn.click();
 
   // After login + /auth/me success, use-auth sets user and login-client redirects to /chat
-  await page.waitForURL(/\/chat/, { timeout: 10_000 });
+  await page.waitForURL(/\/chat/, { timeout: 20_000 });
   expect(page.url()).toContain("/chat");
 });

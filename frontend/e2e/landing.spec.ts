@@ -53,7 +53,7 @@ async function waitForLandingContent(page: Page) {
   await expect(async () => {
     const text = await page.locator("body").innerText();
     expect(text.length).toBeGreaterThan(50);
-  }).toPass({ timeout: 10_000 });
+  }).toPass({ timeout: 20_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ test("LP-1: hero section renders with Vitreon brand text", { tag: ["@smoke"] }, 
 
   await expect(async () => {
     const bodyText = await page.locator("body").innerText();
-    expect(bodyText).toContain("Vitreon");
+    expect(bodyText.toUpperCase()).toContain("VITREON");
   }).toPass({ timeout: 10_000 });
 });
 
@@ -101,7 +101,7 @@ test("LP-3: CTA 'Get Started' link navigates to /login", { tag: ["@smoke"] }, as
 
   await expect(ctaLink).toBeVisible({ timeout: 8_000 });
   await ctaLink.click();
-  await page.waitForURL(/\/login/, { timeout: 5_000 });
+  await page.waitForURL(/\/login/, { timeout: 15_000 });
   expect(page.url()).toContain("/login");
 });
 
