@@ -26,7 +26,7 @@
 set -euo pipefail
 
 RUNNER_DIR="${HOME}/actions-runner"
-RUNNER_VERSION="2.322.0"
+RUNNER_VERSION="2.334.0"
 REPO_URL="https://github.com/neonsecret/vitreon-legal"
 RUNNER_NAME="mac-vitreon"
 RUNNER_LABELS="mac-vitreon,self-hosted,macOS"
