@@ -20,12 +20,35 @@ while read -r local_ref local_sha remote_ref _remote_sha; do
 
     echo "🔍 pre-push: smoke suite required before pushing to product..."
 
-    # Load TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID from .env if present
+    # Load TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID from .env if present.
+    # Safe line-by-line parser — never sources/evals the file, so special
+    # characters in secrets (!, $, ", ', backslash) cannot crash the hook.
     if [[ -f "${REPO_ROOT}/.env" ]]; then
-        set -a
-        # shellcheck disable=SC1091
-        source "${REPO_ROOT}/.env"
-        set +a
+        while IFS= read -r _line || [[ -n "$_line" ]]; do
+            # Skip blank lines and comments
+            [[ "$_line" =~ ^[[:space:]]*$ ]] && continue
+            [[ "$_line" =~ ^[[:space:]]*# ]] && continue
+            # Extract key (everything before the first '=')
+            _key="${_line%%=*}"
+            # Strip optional 'export ' prefix and all whitespace from key
+            _key="${_key#export }"
+            _key="${_key#"${_key%%[! ]*}"}"  # leading spaces
+            _key="${_key%"${_key##*[! ]}"}"  # trailing spaces
+            # Only materialise the two vars this hook actually needs
+            if [[ "$_key" != "TELEGRAM_BOT_TOKEN" && "$_key" != "TELEGRAM_CHAT_ID" ]]; then
+                continue
+            fi
+            # Extract value (everything after the first '=')
+            _val="${_line#*=}"
+            # Strip matching surrounding double-quotes or single-quotes
+            if [[ "$_val" == '"'*'"' ]]; then
+                _val="${_val:1:${#_val}-2}"
+            elif [[ "$_val" == "'"*"'" ]]; then
+                _val="${_val:1:${#_val}-2}"
+            fi
+            export "$_key"="$_val"
+        done < "${REPO_ROOT}/.env"
+        unset _line _key _val
     fi
 
     # Determine whether the prod server on :3000 is already up
