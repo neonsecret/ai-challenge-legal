@@ -48,6 +48,9 @@ cd ai-challenge-legal
 cp .env.example .env        # set ANTHROPIC_API_KEY and EVAL_API_KEY
 uv sync                     # or: pip install -e .
 
+# Set up local pre-push enforcement (blocks broken pushes to product)
+bash scripts/install-git-hooks.sh
+
 # 2. Prepare corpus (downloads docs from platform API)
 make prepare                # or: python -m arlc.indexing.prepare_corpus
 

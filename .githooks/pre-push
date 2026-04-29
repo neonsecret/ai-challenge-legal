@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Pre-push hook: blocks pushes to `product` if @smoke tests fail.
+# Only runs for the product branch — all other branches pass through immediately.
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+FRONTEND_DIR="${REPO_ROOT}/frontend"
+
+# Read remote refs from stdin (standard pre-push contract)
+while read -r local_ref local_sha remote_ref _remote_sha; do
+    if [[ "$remote_ref" != "refs/heads/product" ]]; then
+        continue
+    fi
+
+    # Deleted branch push — nothing to check
+    if [[ "$local_sha" == "0000000000000000000000000000000000000000" ]]; then
+        continue
+    fi
+
+    echo "🔍 pre-push: smoke suite required before pushing to product..."
+
+    # Load TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID from .env if present
+    if [[ -f "${REPO_ROOT}/.env" ]]; then
+        set -a
+        # shellcheck disable=SC1091
+        source "${REPO_ROOT}/.env"
+        set +a
+    fi
+
+    # Determine whether the prod server on :3000 is already up
+    _start_server_args=()
+    if curl -sf --max-time 2 "http://localhost:3000" > /dev/null 2>&1; then
+        echo "   Server already running on :3000 — reusing it."
+    else
+        echo "   Server not detected on :3000 — starting it for the test run."
+        _start_server_args=(env CI_PORT=3002 TEST_START_SERVER=1)
+    fi
+
+    _t0=$(date +%s)
+    set +e
+    "${_start_server_args[@]}" npx --prefix "${FRONTEND_DIR}" playwright test \
+        --grep "@smoke" \
+        --reporter=line \
+        --project=chromium \
+        --config="${FRONTEND_DIR}/playwright.config.ts" \
+        2>&1
+    _exit_code=$?
+    set -e
+    _t1=$(date +%s)
+    _elapsed=$(( _t1 - _t0 ))
+
+    if [[ $_exit_code -ne 0 ]]; then
+        echo ""
+        echo "❌ PUSH BLOCKED — @smoke tests failed (${_elapsed}s)."
+        echo "   Fix the failures above before pushing to product."
+        echo "   To bypass in an emergency: git push --no-verify"
+        echo ""
+
+        # Telegram alert (non-fatal if env vars absent or request fails)
+        if [[ -n "${TELEGRAM_BOT_TOKEN:-}" && -n "${TELEGRAM_CHAT_ID:-}" ]]; then
+            _branch="${local_ref#refs/heads/}"
+            _sha="${local_sha:0:8}"
+            _msg="❌ *Vitreon pre-push blocked* — smoke tests failed\nBranch: ${_branch} (${_sha})\nDuration: ${_elapsed}s\nFix failing tests before pushing to product."
+            curl -sf -X POST \
+                "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+                --data-urlencode "text=${_msg}" \
+                --data-urlencode "parse_mode=Markdown" \
+                > /dev/null 2>&1 || true
+        fi
+
+        exit 1
+    fi
+
+    echo ""
+    echo "✅ @smoke passed (${_elapsed}s) — push to product allowed."
+    echo ""
+done
+
+exit 0
