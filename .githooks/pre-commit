@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Pre-commit hook: delegates to the pre-commit framework (ruff + bandit).
+# Works whether core.hooksPath is .githooks/ or .git/hooks/.
+
+ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-commit)
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ARGS+=(--hook-dir "$HERE" -- "$@")
+
+if [ -x ".venv/bin/python3" ]; then
+    exec .venv/bin/python3 -mpre_commit "${ARGS[@]}"
+elif command -v pre-commit > /dev/null; then
+    exec pre-commit "${ARGS[@]}"
+else
+    echo '`pre-commit` not found. Did you forget to activate your virtualenv?' >&2
+    exit 1
+fi
