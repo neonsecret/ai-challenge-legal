@@ -1,19 +1,133 @@
-"""Qwen3-Reranker inference via causal LM yes/no token probabilities.
+"""Reranker backends: OpenRouterReranker (primary) + legacy llama-server / PyTorch classes.
 
-Qwen3-Reranker models are generative (decoder-only) models that output "yes" or "no"
-to judge document relevance. They CANNOT be used as sequence classifiers via
-CrossEncoder — that would load a random score head and produce garbage scores.
+OpenRouterReranker uses Cohere Rerank 4 Fast via OpenRouter ($0.002/search, 32K context,
+100+ languages). Drop-in replacement for LlamaServerReranker — same predict() interface.
 
-This module provides a CrossEncoder-compatible predict() interface backed by
-the correct causal LM inference path.
-
-Usage:
-    from arlc.qwen3_reranker import Qwen3Reranker
-    reranker = Qwen3Reranker()
-    scores = reranker.predict([("query", "document"), ...])  # returns numpy array
+Legacy classes (Qwen3Reranker, LlamaServerReranker) kept for reference but no longer
+instantiated by default. retriever.py now calls OpenRouterReranker.
 """
 
-from __future__ import annotations
+# ---------------------------------------------------------------------------
+# OpenRouterReranker — active backend
+# ---------------------------------------------------------------------------
+
+from __future__ import annotations as _annotations
+
+import logging as _logging
+import os as _os
+import time as _time
+from typing import Optional as _Optional
+
+import numpy as _np
+import requests as _requests
+
+_logger = _logging.getLogger(__name__)
+
+_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+_RERANK_MODEL = "cohere/rerank-4-fast"
+
+_RERANK_API_KEYS: list[str] = [
+    k
+    for k in [
+        _os.environ.get("OPENROUTER_API_KEY", ""),
+        _os.environ.get("OPENROUTER_API_KEY_BACKUP_1", ""),
+        _os.environ.get("OPENROUTER_API_KEY_BACKUP_2", ""),
+    ]
+    if k
+]
+
+
+class OpenRouterReranker:
+    """Reranker via OpenRouter's /v1/rerank endpoint (Cohere Rerank 4 Fast).
+
+    Drop-in replacement for LlamaServerReranker — same predict() interface.
+
+    Model: cohere/rerank-4-fast
+      - $0.002 per search, 32K context, 100+ languages, multilingual Czech ✓
+      - Released 2026-04-06, 100% uptime
+
+    Parameters
+    ----------
+    model:
+        OpenRouter model ID. Defaults to cohere/rerank-4-fast.
+    """
+
+    def __init__(self, model: str = _RERANK_MODEL) -> None:
+        self._model = model
+        if not _RERANK_API_KEYS:
+            raise RuntimeError("No OpenRouter API key found. Set OPENROUTER_API_KEY in .env.")
+        _logger.info("OpenRouterReranker ready (model=%s, %d key(s))", model, len(_RERANK_API_KEYS))
+
+    def predict(
+        self,
+        sentences: list[tuple[str, str]],
+        batch_size: _Optional[int] = None,
+        on_progress=None,
+        timeout: _Optional[float] = None,
+        **kwargs,
+    ) -> "_np.ndarray":
+        """Score (query, document) pairs via OpenRouter /v1/rerank.
+
+        Returns float32 numpy array of relevance scores in original pair order.
+
+        Parameters
+        ----------
+        sentences:
+            List of (query, document) tuples. All must share the same query.
+        on_progress:
+            Optional callback ``(done: int, total: int)``.
+        timeout:
+            HTTP read timeout in seconds (default 60).
+        """
+        if not sentences:
+            return _np.array([], dtype=_np.float32)
+
+        query = sentences[0][0]
+        documents = [doc for _, doc in sentences]
+        total = len(documents)
+        read_timeout = timeout or 60
+
+        last_err: Exception | None = None
+        for key in _RERANK_API_KEYS:
+            try:
+                r = _requests.post(
+                    f"{_OPENROUTER_BASE}/rerank",
+                    headers={
+                        "Authorization": f"Bearer {key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": self._model,
+                        "query": query,
+                        "documents": documents,
+                        "top_n": total,
+                    },
+                    timeout=(5, read_timeout),
+                )
+                if r.status_code == 429 or r.status_code >= 500:
+                    _logger.warning("OpenRouter rerank: %d on key …%s, trying next", r.status_code, key[-6:])
+                    last_err = _requests.HTTPError(response=r)
+                    _time.sleep(0.5)
+                    continue
+                r.raise_for_status()  # 4xx auth errors (401/403/400) — fail immediately, don't rotate
+                results = r.json()["results"]
+                # results is sorted by relevance_score descending; restore original order
+                scores = _np.zeros(total, dtype=_np.float32)
+                for item in results:
+                    scores[item["index"]] = item["relevance_score"]
+                if on_progress:
+                    on_progress(total, total)
+                return scores
+            except _requests.HTTPError as e:
+                last_err = e
+                continue
+
+        raise RuntimeError(f"All OpenRouter keys exhausted for reranking: {last_err}")
+
+
+# ---------------------------------------------------------------------------
+# Legacy classes below — kept for reference, not used by default
+# ---------------------------------------------------------------------------
 
 import logging
 import os
@@ -22,7 +136,13 @@ import time
 from typing import Optional
 
 import numpy as np
-import torch
+
+try:
+    import torch
+
+    _TORCH_AVAILABLE = True
+except ImportError:
+    _TORCH_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 

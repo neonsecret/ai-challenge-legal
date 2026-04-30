@@ -161,6 +161,18 @@ class PageResult:
 
 
 def _is_qwen_reranker() -> bool:
+    """Return True only when the active reranker is a Qwen3 model needing instruction prefix.
+
+    OpenRouterReranker uses Cohere Rerank 4 Fast — never needs the prefix.
+    Check the actual reranker class, not just the RERANKER_MODEL env var, so
+    this stays correct even if RERANKER_MODEL is misconfigured.
+    """
+    from arlc.qwen3_reranker import OpenRouterReranker
+
+    active = _reranker  # cached singleton; None means not yet initialised
+    if active is not None and isinstance(active, OpenRouterReranker):
+        return False
+    # Fallback for pre-init calls: trust the env var
     return "qwen" in RERANKER_MODEL.lower()
 
 
@@ -181,73 +193,40 @@ def _format_reranker_pairs(
     return [(prefix + q, doc) for q, doc in pairs]
 
 
-def _init_local_reranker():
-    """Create the local llama-server reranker (cached).
-
-    Uses llama-server on port 8089 exclusively — no PyTorch fallback.
-    llama-server with Metal is ~20x faster than PyTorch MPS.
-    If llama-server is unavailable, reranking is skipped (unranked results).
-    """
-    global _local_reranker
-    if _local_reranker is not None:
-        return _local_reranker
-
-    local_reranker_url = os.environ.get("RERANKER_LOCAL_URL", "http://localhost:8089")
-    from arlc.qwen3_reranker import LlamaServerReranker
-
-    _local_reranker = LlamaServerReranker(url=local_reranker_url)
-    logger.info("Using local llama-server reranker at %s", local_reranker_url)
-    return _local_reranker
-
-
 def get_reranker():
-    """Get primary reranker (cached, thread-safe).
+    """Get reranker singleton (cached, thread-safe).
 
-    Failover chain:
-    1. Remote llama-server (RERANKER_SERVER_URL, CUDA on RTX 3070) — ~1.7s for 108 docs
-    2. Local llama-server (RERANKER_LOCAL_URL, Metal) — ~2.1s for 40 docs
+    Uses OpenRouterReranker (Cohere Rerank 4 Fast via OpenRouter API).
+    No local server required — keys from OPENROUTER_API_KEY* env vars.
     """
     global _reranker
     if _reranker is None:
         with _reranker_lock:
             if _reranker is None:
-                _init_local_reranker()
+                from arlc.qwen3_reranker import OpenRouterReranker
 
-                remote_url = os.environ.get("RERANKER_SERVER_URL", "")
-                if remote_url:
-                    try:
-                        from arlc.qwen3_reranker import LlamaServerReranker
-
-                        _reranker = LlamaServerReranker(url=remote_url)
-                        logger.info("Using remote reranker at %s (local ready as fallback)", remote_url)
-                        return _reranker
-                    except Exception as e:
-                        logger.warning("Remote reranker at %s unavailable (%s), using local", remote_url, e)
-
-                _reranker = _local_reranker
+                _reranker = OpenRouterReranker()
+                logger.info("Using OpenRouterReranker (cohere/rerank-4-fast)")
     return _reranker
 
 
-def _demote_remote_reranker():
-    """Circuit breaker: swap primary reranker to local after remote failure.
-
-    Called when the remote reranker fails mid-query. Prevents subsequent
-    calls from waiting for TCP timeouts on an unreachable host.
-    Uses _reranker_lock to avoid racing with get_reranker() initialization.
-    """
-    global _reranker
-    with _reranker_lock:
-        if _local_reranker is not None and _reranker is not _local_reranker:
-            logger.warning("Circuit breaker: demoting remote reranker to local for remaining queries")
-            _reranker = _local_reranker
-
-
 def get_local_reranker():
-    """Get the local reranker (for mid-query fallback when remote fails)."""
-    if _local_reranker is not None:
-        return _local_reranker
-    with _reranker_lock:
-        return _init_local_reranker()
+    """Legacy alias — returns the same OpenRouterReranker as get_reranker().
+
+    Previously returned a local llama-server instance; now there is no local
+    server. Callers that used this for mid-query fallback will transparently
+    get the OpenRouter backend.
+    """
+    return get_reranker()
+
+
+def _demote_remote_reranker():
+    """No-op — kept for API compatibility.
+
+    Previously triggered a circuit-breaker swap from remote to local llama-server.
+    With OpenRouter there is no local fallback to demote to; OpenRouter handles
+    availability internally.
+    """
 
 
 def rerank_chunks(
@@ -289,35 +268,24 @@ def rerank_chunks(
             result.append(c)
         return result
 
-    # Try primary reranker (remote if configured, else local)
+    # Reranker: OpenRouterReranker (cohere/rerank-4-fast). No local fallback.
     ranker = get_reranker()
     try:
         scores = ranker.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
         return _apply_scores(chunks, scores)
     except Exception as e:
-        # If primary was remote, try local as fallback + circuit-break for remaining calls
-        local = get_local_reranker()
-        if local is not ranker:
-            _demote_remote_reranker()
-            logger.warning("Primary reranker failed (%s), falling back to local", e)
-            if on_status:
-                on_status("retrieving:reranking passages")
-            try:
-                scores = local.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
-                return _apply_scores(chunks, scores)
-            except Exception as e2:
-                logger.warning("Local reranker also failed (%s), using vector-distance ordering", e2)
-
-        else:
-            logger.warning("Reranking failed (%s), using vector-distance ordering", e)
-
+        logger.warning("Reranking failed (%s), using vector-distance ordering", e)
         if on_status:
             on_status("retrieving:scoring results")
         return chunks[:top_k]
 
 
 def get_embedding_model():
-    """Get LlamaServerEmbedder instance (cached, thread-safe)."""
+    """Get OpenRouter embedder instance (cached, thread-safe).
+
+    Returns LlamaServerEmbedder (which now uses OpenRouter internally).
+    No local llama-server required.
+    """
     global _embedding_model
     if _embedding_model is None:
         with _embedding_lock:
@@ -329,10 +297,11 @@ def get_embedding_model():
 
 
 def embed_query(question: str) -> list[float]:
-    """Embed a query for asymmetric retrieval (applies instruction prefix via llama-server).
+    """Embed a query for asymmetric retrieval (applies Qwen3 instruction prefix).
 
-    LlamaServerEmbedder.encode(prompt_name='query') adds the Qwen3 instruction prefix.
-    LlamaServerEmbedder is a stateless HTTP client — safe to call concurrently.
+    Uses OpenRouter qwen/qwen3-embedding-8b. The instruction prefix is applied
+    inside embed_query() to project into the query subspace.
+    Safe to call concurrently — stateless HTTP client.
     """
     model = get_embedding_model()
     embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
@@ -3276,22 +3245,10 @@ def _retrieve_pages_targeted(
             try:
                 ce_scores = ranker.predict(pairs, timeout=180, on_progress=_rerank_progress)
             except Exception as e:
-                local = get_local_reranker()
-                if local is not ranker:
-                    _demote_remote_reranker()
-                    logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
-                    if on_status:
-                        on_status("retrieving:reranking passages")
-                    try:
-                        ce_scores = local.predict(pairs, timeout=180, on_progress=_rerank_progress)
-                    except Exception as e2:
-                        logger.warning("Local reranking also failed for %s (%s), using dense scores", doc_id, e2)
-                        ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
-                else:
-                    logger.warning("Targeted reranking failed for %s: %s, using dense scores only", doc_id, e)
-                    if on_status:
-                        on_status("retrieving:scoring results")
-                    ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
+                logger.warning("Reranking failed for %s (%s), using dense scores", doc_id, e)
+                if on_status:
+                    on_status("retrieving:scoring results")
+                ce_scores = [dense_scores.get(c["metadata"].get("page", 1), 0.0) for c in top_chunks]
             # Merge: use cross-encoder scores for the top candidates
             page_scores: dict[int, float] = {}
             page_chunk_ids: dict[int, str] = {}
@@ -3314,22 +3271,10 @@ def _retrieve_pages_targeted(
             try:
                 scores = ranker.predict(pairs, timeout=180, on_progress=_rerank_progress)
             except Exception as e:
-                local = get_local_reranker()
-                if local is not ranker:
-                    _demote_remote_reranker()
-                    logger.warning("Remote reranking failed for %s (%s), falling back to local", doc_id, e)
-                    if on_status:
-                        on_status("retrieving:reranking passages")
-                    try:
-                        scores = local.predict(pairs, timeout=180, on_progress=_rerank_progress)
-                    except Exception as e2:
-                        logger.warning("Local reranking also failed for %s (%s), using uniform scores", doc_id, e2)
-                        scores = [0.5] * len(doc_chunks)
-                else:
-                    logger.warning("Targeted reranking failed for %s: %s, using uniform scores", doc_id, e)
-                    if on_status:
-                        on_status("retrieving:scoring results")
-                    scores = [0.5] * len(doc_chunks)
+                logger.warning("Reranking failed for %s (%s), using uniform scores", doc_id, e)
+                if on_status:
+                    on_status("retrieving:scoring results")
+                scores = [0.5] * len(doc_chunks)
             page_scores: dict[int, float] = {}
             page_chunk_ids: dict[int, str] = {}
             for chunk, score in zip(doc_chunks, scores):
