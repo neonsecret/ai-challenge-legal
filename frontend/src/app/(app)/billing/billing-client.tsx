@@ -319,7 +319,7 @@ export default function BillingPage() {
       tagline: t("billing.plan_free_tagline"),
       monthlyPrice: 0,
       biweeklyPrice: 0,
-      dailyQueries: "3/day",
+      dailyQueries: "10/day",
       corpusUploads: "0",
       features: [
         t("billing.feature_free_1"),

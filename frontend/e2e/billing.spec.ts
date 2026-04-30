@@ -33,7 +33,7 @@ const MOCK_BILLING_FREE = {
   monthly_queries_used: 0,
   monthly_queries_limit: 90,
   daily_queries_used: 0,
-  daily_queries_limit: 3,
+  daily_queries_limit: 10,
   is_monthly_limit: false,
   corpora_used: 0,
   corpora_limit: 1,

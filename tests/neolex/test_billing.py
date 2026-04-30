@@ -853,7 +853,7 @@ class TestHelperFunctions:
     def test_plan_limit_defaults_match_pricing_page(self):
         """Default config values must match the advertised pricing (CLAUDE.md / billing page)."""
         assert settings.starter_daily_limit == 30, "Starter plan must default to 30/day per pricing page"
-        assert settings.free_daily_limit == 3, "Free plan must default to 3/day per pricing page"
+        assert settings.free_daily_limit == 10, "Free plan must default to 10/day per pricing page"
 
     def test_plan_daily_limits_dict_uses_settings(self):
         """_PLAN_DAILY_LIMITS must read all limits from settings, not hardcoded values."""

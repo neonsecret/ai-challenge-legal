@@ -140,7 +140,7 @@ All in `arlc/agent/config.py`, overridable via env vars:
 
 | Plan | Price | Daily Limit | Corpora |
 |------|-------|-------------|---------|
-| Free | $0 | 3/day | — |
+| Free | $0 | 10/day | — |
 | Starter | $29/mo | 30/day | 2 |
 | Pro | $179/mo | 200/day | 5 |
 | Enterprise | $499/mo | unlimited | 20 |

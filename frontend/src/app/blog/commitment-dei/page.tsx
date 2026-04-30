@@ -155,7 +155,7 @@ export default function CommitmentDEIPost() {
                     <Heading>How Vitreon addresses it</Heading>
 
                     <BodyText>
-                        Our free tier &mdash; 3 research queries per day, no credit card required &mdash;
+                        Our free tier &mdash; 10 research queries per day, no credit card required &mdash;
                         isn&apos;t a loss-leader funnel. It&apos;s a deliberate decision that someone who
                         cannot pay should still be able to run a meaningful research query and get a grounded,
                         cited answer.

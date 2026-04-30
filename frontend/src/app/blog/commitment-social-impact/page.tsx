@@ -179,8 +179,8 @@ export default function CommitmentSocialImpactPost() {
                     <Heading>The free tier is a policy decision, not a funnel</Heading>
 
                     <BodyText>
-                        Our free tier &mdash; 3 queries per day, no account required, no credit card &mdash;
-                        is a deliberate commitment. Is 3 queries/day sufficient for serious sustained legal
+                        Our free tier &mdash; 10 queries per day, no account required, no credit card &mdash;
+                        is a deliberate commitment. Is 10 queries/day sufficient for serious sustained legal
                         work? No. But it&apos;s enough for a student to verify a citation, for a paralegal to
                         check a statutory reference, for a small business owner to understand whether a
                         contract clause is standard.

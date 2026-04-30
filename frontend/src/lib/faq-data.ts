@@ -32,12 +32,12 @@ export const FAQ_ITEMS: { question: string; answer: string }[] = [
     {
         question: "What is the pricing?",
         answer:
-            "Vitreon Legal offers four plans: Free ($0/month, 3 queries per day), Starter ($29/month, 30 queries per day), Pro ($179/month, 200 queries per day), and Enterprise ($499/month, unlimited queries). All plans include all jurisdictions and source citations. Paid plans add document upload and priority support. No credit card is required for the free plan.",
+            "Vitreon Legal offers four plans: Free ($0/month, 10 queries per day), Starter ($29/month, 30 queries per day), Pro ($179/month, 200 queries per day), and Enterprise ($499/month, unlimited queries). All plans include all jurisdictions and source citations. Paid plans add document upload and priority support. No credit card is required for the free plan.",
     },
     {
         question: "Is there a free plan?",
         answer:
-            "Yes. The Free plan includes 3 queries per day at no cost. No credit card is required to sign up — create an account with Google or email and start researching immediately. The Free plan includes access to all jurisdictions and full source citations.",
+            "Yes. The Free plan includes 10 queries per day at no cost. No credit card is required to sign up — create an account with Google or email and start researching immediately. The Free plan includes access to all jurisdictions and full source citations.",
     },
     {
         question: "How does the AI find relevant case law?",
@@ -57,7 +57,7 @@ export const FAQ_ITEMS: { question: string; answer: string }[] = [
     {
         question: "Can I try Vitreon before paying?",
         answer:
-            "Yes. The Free plan gives you 3 queries per day at no cost, with no credit card required. This lets you evaluate the quality of answers, citation accuracy, and relevance to your practice area before committing to a paid plan.",
+            "Yes. The Free plan gives you 10 queries per day at no cost, with no credit card required. This lets you evaluate the quality of answers, citation accuracy, and relevance to your practice area before committing to a paid plan.",
     },
     {
         question: "Do you support multi-jurisdiction research?",

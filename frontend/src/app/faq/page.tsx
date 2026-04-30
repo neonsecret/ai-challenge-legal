@@ -91,7 +91,7 @@ export default function FAQPage() {
                     }}
                 >
                     <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
-                        Try it free &mdash; 3 queries per day, all jurisdictions, full source citations.
+                        Try it free &mdash; 10 queries per day, all jurisdictions, full source citations.
                     </p>
                     <Link
                         href="/login?mode=register"
