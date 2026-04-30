@@ -207,12 +207,11 @@ export default function BillingPage() {
         }
         return;
       }
+      const redeemData = await res.json().catch(() => null);
       setPromoSuccess(t("billing.promocode_success"));
       setPromoCode("");
-      const refreshed = await fetch(`${API}/stripe/billing-status`, { credentials: "include" });
-      if (refreshed.ok) {
-        const data = await refreshed.json();
-        setBilling(data);
+      if (redeemData) {
+        setBilling(redeemData);
       }
     } catch {
       setPromoError(t("billing.error_checkout"));
