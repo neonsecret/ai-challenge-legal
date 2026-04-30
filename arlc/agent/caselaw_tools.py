@@ -95,9 +95,9 @@ async def execute_caselaw_search(
     limit is clamped to [1, 30] to prevent excessive DB load from LLM-controlled params.
 
     Search strategy:
-    1. Try to embed the query with Qwen3-8B (via llama-server)
+    1. Try to embed the query with Qwen3-8B (via OpenRouter)
     2. If embedding succeeds: run hybrid search (BM25 + vector RRF)
-    3. If embedding fails (llama-server offline): fall back to BM25-only
+    3. If embedding fails (missing key / API down): fall back to BM25-only (WARNING logged)
 
     Parameters
     ----------
@@ -126,7 +126,7 @@ async def execute_caselaw_search(
 
     try:
         # Attempt to get query embedding for the vector leg (runs in thread pool
-        # since embed_query is synchronous HTTP to llama-server).
+        # since embed_query is synchronous HTTP to OpenRouter).
         query_emb = None
         if query and query.strip():
             try:

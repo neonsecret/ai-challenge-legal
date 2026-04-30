@@ -87,9 +87,9 @@ RERANKER_INSTRUCTIONS_BY_TYPE: dict[str, str] = {
     ),
 }
 
-# Embedding backend: llama-server (Qwen3-Embedding-8B Q4_K_M via llama.cpp).
-# Requires llama-server running on LLAMA_SERVER_URL (default http://localhost:8088).
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
+# Embedding backend: OpenRouter (qwen/qwen3-embedding-8b, $0.01/M tokens).
+# Requires OPENROUTER_API_KEY in .env.
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "openrouter")
 
 # doc_id -> page where date_of_issue appears (from case_metadata_index.json).
 # Judge/claimant/defendant are always page 1 — only dates need a targeted lookup.
