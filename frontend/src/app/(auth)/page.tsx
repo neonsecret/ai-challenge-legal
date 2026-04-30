@@ -12,7 +12,7 @@ const LandingClient = dynamic(() => import("./landing-client").then(m => ({ defa
 export const metadata: Metadata = {
     title: "AI Legal Research with Cited Sources — Vitreon",
     description:
-        "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 3 free queries/day, no card.",
+        "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 10 free queries/day, no card.",
     keywords: [
         "legal research",
         "AI legal assistant",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     openGraph: {
         title: "AI Legal Research with Cited Sources — Vitreon",
         description:
-            "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 3 free queries/day, no card.",
+            "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 10 free queries/day, no card.",
         url: "https://vitreon.app",
         siteName: "Vitreon Legal",
         locale: "en",
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
         card: "summary_large_image",
         title: "AI Legal Research with Cited Sources — Vitreon",
         description:
-            "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 3 free queries/day, no card.",
+            "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 10 free queries/day, no card.",
         images: ["/opengraph-image.png"],
     },
     alternates: {

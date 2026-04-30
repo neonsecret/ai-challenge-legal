@@ -110,12 +110,12 @@ class TestEnforceQueryLimitAtomic:
         db.execute.assert_not_awaited()
 
     async def test_free_plan_at_limit_raises_429(self):
-        """Free plan (limit=3) at limit must be blocked."""
+        """Free plan (limit=10) at limit must be blocked."""
         from fastapi import HTTPException
 
         from neolex.routers.query import _enforce_query_limit
 
-        user = self._make_user(status="free", used=3)
+        user = self._make_user(status="free", used=10)
         db = self._make_db(scalar_return=None)
 
         with pytest.raises(HTTPException) as exc:

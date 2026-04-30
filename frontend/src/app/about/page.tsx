@@ -104,7 +104,7 @@ export default function AboutPage() {
                     }}
                 >
                     <p className="text-sm font-medium" style={{color: "var(--strict-text-body)"}}>
-                        3 queries per day, all jurisdictions, full source citations.
+                        10 queries per day, all jurisdictions, full source citations.
                     </p>
                     <Link
                         href="/login?mode=register"

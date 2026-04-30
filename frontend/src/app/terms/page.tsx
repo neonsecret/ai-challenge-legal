@@ -179,7 +179,7 @@ export default function TermsPage() {
                     </BodyText>
                     <BulletList
                         items={[
-                            "Free: $0/month — up to 3 queries per day. No payment information required.",
+                            "Free: $0/month — up to 10 queries per day. No payment information required.",
                             "Starter: $29/month — up to 30 queries per day.",
                             "Pro: $179/month — up to 200 queries per day.",
                             "Enterprise: $499/month — unlimited queries.",

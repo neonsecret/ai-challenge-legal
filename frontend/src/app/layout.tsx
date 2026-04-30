@@ -178,7 +178,7 @@ const jsonLd = {
                     "name": "Free",
                     "price": "0",
                     "priceCurrency": "USD",
-                    "description": "3 queries per day",
+                    "description": "10 queries per day",
                 },
                 {
                     "@type": "Offer",
