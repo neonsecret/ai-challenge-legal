@@ -49,7 +49,7 @@
   "billing.plan_starter_tagline": "Pro jednotlivce",
   "billing.plan_pro_tagline": "Pro profesionály",
   "billing.plan_enterprise_tagline": "Pro týmy",
-  "billing.feature_free_1": "3 dotazy denně",
+  "billing.feature_free_1": "10 dotazů denně",
   "billing.feature_free_2": "Bez nahrávání korpusů",
   "billing.feature_free_3": "Základní právní vyhledávání",
   "billing.feature_starter_1": "30 dotazů denně",
@@ -234,7 +234,7 @@
   "strict.preview_question": "Jaký je postoj Nejvyššího soudu k vyšší moci v obchodních smlouvách?",
   "strict.preview_input": "Pokračujte ve výzkumu...",
   "strict.subscribe": "Předplatit",
-  "strict.plan_free_sub": "3 dotazy / den",
+  "strict.plan_free_sub": "10 dotazů / den",
   "strict.plan_starter_sub": "30 dotazů / den",
   "strict.plan_pro_sub": "200 dotazů / den",
   "strict.plan_enterprise_sub": "Neomezené dotazy",
@@ -262,5 +262,10 @@
   "documents.upload_hint_v2": "PDF, TXT nebo ZIP · max. 50 MB na soubor · max. 200 MB na ZIP",
   "documents.upload_pdf_or_zip_only": "Povoleny jsou pouze soubory PDF, TXT nebo ZIP",
   "documents.zip_skipped": "{count} souborů přeskočeno (není PDF ani TXT)",
-  "documents.zip_result": "Nahráno {count} dokumentů"
+  "documents.zip_result": "Nahráno {count} dokumentů",
+  "billing.promo_title": "Máte promokód?",
+  "billing.promo_input_placeholder": "Zadejte kód",
+  "billing.promo_button": "Uplatnit",
+  "billing.promo_success": "Promokód uplatněn! Váš plán byl povýšen.",
+  "billing.promo_badge": "přes promokód, platí do {date}"
 }

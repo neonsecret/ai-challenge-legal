@@ -16,6 +16,8 @@ import {
   Building2,
   Sparkles,
   Info,
+  Tag,
+  ChevronDown,
 } from "lucide-react";
 
 const fontStack =
@@ -39,6 +41,8 @@ interface BillingStatus {
   has_stripe_customer: boolean;
   cancel_at_period_end: boolean;
   current_period_end: string | null;
+  promo_tier: string | null;
+  promo_expires_at: string | null;
 }
 
 interface PlanConfig {
@@ -63,6 +67,11 @@ export default function BillingPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [interval, setInterval_] = useState<BillingInterval>("monthly");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showPromoForm, setShowPromoForm] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
 
   const isV3 = isDark;
 
@@ -158,6 +167,41 @@ export default function BillingPage() {
       setError(t("billing.cancel_error"));
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleRedeemPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError(null);
+    setPromoSuccess(null);
+    try {
+      const res = await fetch(`${API}/stripe/promocode/redeem`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+        body: JSON.stringify({ code: promoCode.trim() }),
+      });
+      if (res.status === 401) {
+        window.location.href = "/login";
+        return;
+      }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setPromoError(data.detail ?? t("billing.error_checkout"));
+        return;
+      }
+      setPromoSuccess(t("billing.promo_success"));
+      setPromoCode("");
+      const refreshed = await fetch(`${API}/stripe/billing-status`, { credentials: "include" });
+      if (refreshed.ok) {
+        const data = await refreshed.json();
+        setBilling(data);
+      }
+    } catch {
+      setPromoError(t("billing.error_checkout"));
+    } finally {
+      setPromoLoading(false);
     }
   };
 
@@ -391,10 +435,38 @@ export default function BillingPage() {
           textTransform: "uppercase",
           letterSpacing: "1.2px",
           color: "rgba(201,168,76,0.4)",
-          marginBottom: "14px",
+          marginBottom: billing.promo_tier ? "6px" : "14px",
         }}>
           {planNames[billing.plan] ?? billing.plan}
         </div>
+
+        {/* Promo badge */}
+        {billing.promo_tier && (
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+            marginBottom: "14px",
+            padding: "4px 8px",
+            borderRadius: "5px",
+            background: "rgba(201,168,76,0.08)",
+            border: "0.5px solid rgba(201,168,76,0.20)",
+          }}>
+            <Tag size={9} style={{ color: "rgba(201,168,76,0.7)", flexShrink: 0 }} />
+            <span style={{
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "9px",
+              color: "rgba(201,168,76,0.7)",
+            }}>
+              {t("billing.promo_badge").replace(
+                "{date}",
+                billing.promo_expires_at
+                  ? new Date(billing.promo_expires_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+                  : ""
+              )}
+            </span>
+          </div>
+        )}
 
         {/* Usage row — queries */}
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
@@ -869,6 +941,122 @@ export default function BillingPage() {
     );
   };
 
+  const renderDarkPromoForm = () => (
+    <div style={{ maxWidth: 600, margin: "24px auto 0", width: "100%" }}>
+      <button
+        onClick={() => {
+          setShowPromoForm((v) => !v);
+          setPromoError(null);
+          setPromoSuccess(null);
+        }}
+        style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "5px",
+          fontFamily: "system-ui, sans-serif",
+          fontSize: "10px",
+          color: "rgba(200,210,230,0.35)",
+          transition: "color 0.15s ease",
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.55)"; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.35)"; }}
+      >
+        <Tag size={10} style={{ flexShrink: 0 }} />
+        {t("billing.promo_title")}
+        <ChevronDown
+          size={10}
+          style={{
+            transform: showPromoForm ? "rotate(180deg)" : "rotate(0deg)",
+            transition: "transform 0.15s ease",
+          }}
+        />
+      </button>
+
+      {showPromoForm && (
+        <div style={{ marginTop: "10px" }}>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
+              placeholder={t("billing.promo_input_placeholder")}
+              disabled={promoLoading}
+              style={{
+                flex: 1,
+                padding: "7px 10px",
+                borderRadius: "6px",
+                background: "rgba(255,255,255,0.03)",
+                border: "1px solid rgba(201,168,76,0.12)",
+                fontFamily: "system-ui, sans-serif",
+                fontSize: "11px",
+                color: "var(--strict-text-primary)",
+                outline: "none",
+              }}
+            />
+            <button
+              onClick={handleRedeemPromo}
+              disabled={promoLoading || !promoCode.trim()}
+              style={{
+                padding: "7px 14px",
+                borderRadius: "6px",
+                background: "rgba(201,168,76,0.10)",
+                border: "1px solid rgba(201,168,76,0.20)",
+                fontFamily: "system-ui, sans-serif",
+                fontSize: "10px",
+                color: "rgba(201,168,76,0.8)",
+                cursor: promoLoading || !promoCode.trim() ? "not-allowed" : "pointer",
+                opacity: promoLoading || !promoCode.trim() ? 0.5 : 1,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                transition: "opacity 0.15s ease",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {promoLoading && <Loader2 size={10} className="animate-spin" />}
+              {t("billing.promo_button")}
+            </button>
+          </div>
+
+          {promoSuccess && (
+            <div style={{
+              marginTop: "8px",
+              padding: "6px 10px",
+              borderRadius: "5px",
+              background: "rgba(74,222,128,0.08)",
+              border: "0.5px solid rgba(74,222,128,0.20)",
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#4ade80",
+            }}>
+              {promoSuccess}
+            </div>
+          )}
+
+          {promoError && (
+            <div style={{
+              marginTop: "8px",
+              padding: "6px 10px",
+              borderRadius: "5px",
+              background: "rgba(248,113,113,0.08)",
+              border: "0.5px solid rgba(248,113,113,0.20)",
+              fontFamily: "system-ui, sans-serif",
+              fontSize: "10px",
+              color: "#f87171",
+            }}>
+              {promoError}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
   // -- Light mode rendering (unchanged structure) --
 
   const renderLightContent = () => {
@@ -895,7 +1083,7 @@ export default function BillingPage() {
             </h2>
           </div>
           <div style={cardBodyLight}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: billing.promo_tier ? "8px" : "20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Crown size={20} style={{ color: "#5c2e08" }} />
                 <span style={{ fontSize: "16px", fontWeight: 700, color: "#1e1208", fontFamily: fontStack }}>
@@ -903,6 +1091,29 @@ export default function BillingPage() {
                 </span>
               </div>
             </div>
+
+            {billing.promo_tier && (
+              <div style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                marginBottom: "16px",
+                padding: "5px 10px",
+                borderRadius: "9999px",
+                background: "rgba(92,46,8,0.06)",
+                border: "0.5px solid rgba(92,46,8,0.15)",
+              }}>
+                <Tag size={11} style={{ color: "#5c2e08", flexShrink: 0 }} />
+                <span style={{ fontSize: "11px", color: "#5c2e08", fontFamily: fontStack }}>
+                  {t("billing.promo_badge").replace(
+                    "{date}",
+                    billing.promo_expires_at
+                      ? new Date(billing.promo_expires_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+                      : ""
+                  )}
+                </span>
+              </div>
+            )}
 
             <div style={{ marginBottom: "16px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
@@ -1043,6 +1254,109 @@ export default function BillingPage() {
             </span>
           </div>
         </div>
+
+        {/* Promocode form */}
+        <div style={{ marginTop: "24px" }}>
+          <button
+            onClick={() => {
+              setShowPromoForm((v) => !v);
+              setPromoError(null);
+              setPromoSuccess(null);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              fontSize: "13px",
+              fontFamily: fontStack,
+              color: "rgba(46,31,8,0.50)",
+              transition: "color 0.15s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(46,31,8,0.75)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(46,31,8,0.50)"; }}
+          >
+            <Tag size={13} style={{ flexShrink: 0 }} />
+            {t("billing.promo_title")}
+            <ChevronDown
+              size={13}
+              style={{
+                transform: showPromoForm ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.15s ease",
+              }}
+            />
+          </button>
+
+          {showPromoForm && (
+            <div style={{ marginTop: "12px", maxWidth: "420px" }}>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
+                  placeholder={t("billing.promo_input_placeholder")}
+                  disabled={promoLoading}
+                  style={{
+                    flex: 1,
+                    padding: "10px 14px",
+                    borderRadius: "10px",
+                    background: "rgba(255,250,235,0.22)",
+                    backdropFilter: "blur(12px)",
+                    border: "0.5px solid rgba(255,255,255,0.38)",
+                    fontFamily: fontStack,
+                    fontSize: "13px",
+                    color: "#1e1208",
+                    outline: "none",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.70)",
+                  }}
+                />
+                <button
+                  onClick={handleRedeemPromo}
+                  disabled={promoLoading || !promoCode.trim()}
+                  style={primaryButtonLight(promoLoading || !promoCode.trim())}
+                >
+                  {promoLoading && <Loader2 size={14} className="animate-spin" />}
+                  {t("billing.promo_button")}
+                </button>
+              </div>
+
+              {promoSuccess && (
+                <div style={{
+                  marginTop: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 14px",
+                  borderRadius: "10px",
+                  background: "rgba(22,163,74,0.06)",
+                  border: "0.5px solid rgba(22,163,74,0.20)",
+                }}>
+                  <span style={{ fontSize: "13px", color: "#15803d", fontFamily: fontStack }}>{promoSuccess}</span>
+                </div>
+              )}
+
+              {promoError && (
+                <div style={{
+                  marginTop: "10px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 14px",
+                  borderRadius: "10px",
+                  background: "rgba(220,38,38,0.06)",
+                  border: "0.5px solid rgba(220,38,38,0.15)",
+                }}>
+                  <AlertTriangle size={14} style={{ color: "#dc2626", flexShrink: 0 }} />
+                  <span style={{ fontSize: "13px", color: "#dc2626", fontFamily: fontStack }}>{promoError}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -1158,6 +1472,11 @@ export default function BillingPage() {
             {/* Subscription actions (manage / cancel) */}
             <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
               {renderDarkSubscriptionActions()}
+            </motion.div>
+
+            {/* Promocode form */}
+            <motion.div variants={isV3 ? V3_ITEM_VARIANT : undefined}>
+              {renderDarkPromoForm()}
             </motion.div>
 
             {/* Notes */}

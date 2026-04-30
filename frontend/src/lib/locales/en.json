@@ -49,7 +49,7 @@
   "billing.plan_starter_tagline": "For individuals",
   "billing.plan_pro_tagline": "For professionals",
   "billing.plan_enterprise_tagline": "For teams",
-  "billing.feature_free_1": "3 queries per day",
+  "billing.feature_free_1": "10 queries per day",
   "billing.feature_free_2": "No corpus uploads",
   "billing.feature_free_3": "Basic legal search",
   "billing.feature_starter_1": "30 queries per day",
@@ -240,7 +240,7 @@
   "strict.preview_question": "What is the Supreme Court's position on force majeure in commercial contracts?",
   "strict.preview_input": "Continue your research...",
   "strict.subscribe": "Subscribe",
-  "strict.plan_free_sub": "3 queries / day",
+  "strict.plan_free_sub": "10 queries / day",
   "strict.plan_starter_sub": "30 queries / day",
   "strict.plan_pro_sub": "200 queries / day",
   "strict.plan_enterprise_sub": "Unlimited queries",
@@ -263,5 +263,10 @@
   "template.custom_subtitle": "Start from scratch",
   "template.error_load": "Failed to load templates",
   "template.no_match": "No templates match these filters",
-  "template.drafting": "Drafting document..."
+  "template.drafting": "Drafting document...",
+  "billing.promo_title": "Have a promocode?",
+  "billing.promo_input_placeholder": "Enter code",
+  "billing.promo_button": "Redeem",
+  "billing.promo_success": "Promocode applied! Your plan has been upgraded.",
+  "billing.promo_badge": "via promocode, expires {date}"
 }

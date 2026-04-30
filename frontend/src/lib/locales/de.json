@@ -49,7 +49,7 @@
   "billing.plan_starter_tagline": "Für Einzelpersonen",
   "billing.plan_pro_tagline": "Für Profis",
   "billing.plan_enterprise_tagline": "Für Teams",
-  "billing.feature_free_1": "3 Anfragen pro Tag",
+  "billing.feature_free_1": "10 Anfragen pro Tag",
   "billing.feature_free_2": "Keine Korpus-Uploads",
   "billing.feature_free_3": "Grundlegende Rechtssuche",
   "billing.feature_starter_1": "30 Anfragen pro Tag",
@@ -228,5 +228,10 @@
   "documents.upload_hint_v2": "PDF, TXT oder ZIP · max. 50 MB pro Datei · max. 200 MB pro ZIP",
   "documents.upload_pdf_or_zip_only": "Nur PDF-, TXT- oder ZIP-Dateien sind erlaubt",
   "documents.zip_skipped": "{count} Dateien übersprungen (kein PDF oder TXT)",
-  "documents.zip_result": "{count} Dokumente hochgeladen"
+  "documents.zip_result": "{count} Dokumente hochgeladen",
+  "billing.promo_title": "Haben Sie einen Promocode?",
+  "billing.promo_input_placeholder": "Code eingeben",
+  "billing.promo_button": "Einlösen",
+  "billing.promo_success": "Promocode angewendet! Ihr Plan wurde aufgewertet.",
+  "billing.promo_badge": "per Promocode, läuft ab am {date}"
 }

@@ -49,7 +49,7 @@
   "billing.plan_starter_tagline": "Для частных лиц",
   "billing.plan_pro_tagline": "Для профессионалов",
   "billing.plan_enterprise_tagline": "Для команд",
-  "billing.feature_free_1": "3 запроса в день",
+  "billing.feature_free_1": "10 запросов в день",
   "billing.feature_free_2": "Без загрузки корпусов",
   "billing.feature_free_3": "Базовый поиск",
   "billing.feature_starter_1": "30 запросов в день",
@@ -228,5 +228,10 @@
   "documents.upload_hint_v2": "PDF, TXT или ZIP · макс. 50 МБ за файл · макс. 200 МБ за ZIP",
   "documents.upload_pdf_or_zip_only": "Допускаются только PDF-, TXT- или ZIP-файлы",
   "documents.zip_skipped": "{count} файлов пропущено (не PDF и не TXT)",
-  "documents.zip_result": "Загружено {count} документов"
+  "documents.zip_result": "Загружено {count} документов",
+  "billing.promo_title": "Есть промокод?",
+  "billing.promo_input_placeholder": "Введите код",
+  "billing.promo_button": "Применить",
+  "billing.promo_success": "Промокод применён! Ваш план повышен.",
+  "billing.promo_badge": "по промокоду, истекает {date}"
 }
