@@ -263,9 +263,14 @@
   "documents.upload_pdf_or_zip_only": "Povoleny jsou pouze soubory PDF, TXT nebo ZIP",
   "documents.zip_skipped": "{count} souborů přeskočeno (není PDF ani TXT)",
   "documents.zip_result": "Nahráno {count} dokumentů",
-  "billing.promo_title": "Máte promokód?",
-  "billing.promo_input_placeholder": "Zadejte kód",
-  "billing.promo_button": "Uplatnit",
-  "billing.promo_success": "Promokód uplatněn! Váš plán byl povýšen.",
-  "billing.promo_badge": "přes promokód, platí do {date}"
+  "billing.have_a_promocode": "Máte promokód?",
+  "billing.promocode_placeholder": "Zadejte kód",
+  "billing.promocode_apply": "Uplatnit",
+  "billing.promocode_success": "Promokód uplatněn! Váš plán byl povýšen.",
+  "billing.promo_badge": "přes promokód, platí do {date}",
+  "billing.promocode_error_invalid": "Neplatný promokód",
+  "billing.promocode_error_used": "Tento promokód jste již použili",
+  "billing.promocode_error_unavailable": "Tento promokód již není dostupný",
+  "billing.promocode_error_no_upgrade": "Tento promokód nevylepší váš stávající plán",
+  "billing.promocode_error_rate_limit": "Příliš mnoho pokusů. Zkuste to prosím později."
 }

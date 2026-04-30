@@ -49,7 +49,8 @@
   "billing.plan_starter_tagline": "للأفراد",
   "billing.plan_pro_tagline": "للمحترفين",
   "billing.plan_enterprise_tagline": "للفرق",
-  "billing.feature_free_1": "3 استعلامات يومياً",
+  "billing.feature_free_1": "10 استعلامات يومياً",
+  "strict.plan_free_sub": "10 استعلامات / يوم",
   "billing.feature_free_2": "لا تحميل مستندات",
   "billing.feature_free_3": "بحث قانوني أساسي",
   "billing.feature_starter_1": "30 استعلاماً يومياً",
@@ -228,5 +229,15 @@
   "documents.upload_hint_v2": "PDF أو TXT أو ZIP · حد أقصى 50 ميغابايت للملف · 200 ميغابايت لـ ZIP",
   "documents.upload_pdf_or_zip_only": "يُسمح بملفات PDF أو TXT أو ZIP فقط",
   "documents.zip_skipped": "{count} ملفات تم تخطيها (ليست PDF أو TXT)",
-  "documents.zip_result": "تم رفع {count} وثائق"
+  "documents.zip_result": "تم رفع {count} وثائق",
+  "billing.have_a_promocode": "هل لديك رمز ترويجي؟",
+  "billing.promocode_placeholder": "أدخل الرمز الترويجي",
+  "billing.promocode_apply": "تطبيق",
+  "billing.promocode_success": "تم تطبيق الرمز الترويجي! تمت ترقية خطتك.",
+  "billing.promo_badge": "عبر الرمز الترويجي، ينتهي في {date}",
+  "billing.promocode_error_invalid": "رمز ترويجي غير صالح",
+  "billing.promocode_error_used": "لقد استخدمت هذا الرمز الترويجي بالفعل",
+  "billing.promocode_error_unavailable": "هذا الرمز الترويجي لم يعد متاحاً",
+  "billing.promocode_error_no_upgrade": "هذا الرمز الترويجي لا يرقي خطتك الحالية",
+  "billing.promocode_error_rate_limit": "محاولات كثيرة جداً. يرجى المحاولة مرة أخرى لاحقاً."
 }

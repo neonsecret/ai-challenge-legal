@@ -264,9 +264,14 @@
   "template.error_load": "Failed to load templates",
   "template.no_match": "No templates match these filters",
   "template.drafting": "Drafting document...",
-  "billing.promo_title": "Have a promocode?",
-  "billing.promo_input_placeholder": "Enter code",
-  "billing.promo_button": "Redeem",
-  "billing.promo_success": "Promocode applied! Your plan has been upgraded.",
-  "billing.promo_badge": "via promocode, expires {date}"
+  "billing.have_a_promocode": "Have a promocode?",
+  "billing.promocode_placeholder": "Enter code",
+  "billing.promocode_apply": "Redeem",
+  "billing.promocode_success": "Promocode applied! Your plan has been upgraded.",
+  "billing.promo_badge": "via promocode, expires {date}",
+  "billing.promocode_error_invalid": "Invalid promocode",
+  "billing.promocode_error_used": "You have already used this promocode",
+  "billing.promocode_error_unavailable": "This promocode is no longer available",
+  "billing.promocode_error_no_upgrade": "This promocode does not upgrade your current plan",
+  "billing.promocode_error_rate_limit": "Too many attempts. Please try again later."
 }

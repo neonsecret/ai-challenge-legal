@@ -50,6 +50,7 @@
   "billing.plan_pro_tagline": "Für Profis",
   "billing.plan_enterprise_tagline": "Für Teams",
   "billing.feature_free_1": "10 Anfragen pro Tag",
+  "strict.plan_free_sub": "10 Anfragen / Tag",
   "billing.feature_free_2": "Keine Korpus-Uploads",
   "billing.feature_free_3": "Grundlegende Rechtssuche",
   "billing.feature_starter_1": "30 Anfragen pro Tag",
@@ -229,9 +230,14 @@
   "documents.upload_pdf_or_zip_only": "Nur PDF-, TXT- oder ZIP-Dateien sind erlaubt",
   "documents.zip_skipped": "{count} Dateien übersprungen (kein PDF oder TXT)",
   "documents.zip_result": "{count} Dokumente hochgeladen",
-  "billing.promo_title": "Haben Sie einen Promocode?",
-  "billing.promo_input_placeholder": "Code eingeben",
-  "billing.promo_button": "Einlösen",
-  "billing.promo_success": "Promocode angewendet! Ihr Plan wurde aufgewertet.",
-  "billing.promo_badge": "per Promocode, läuft ab am {date}"
+  "billing.have_a_promocode": "Haben Sie einen Promocode?",
+  "billing.promocode_placeholder": "Code eingeben",
+  "billing.promocode_apply": "Einlösen",
+  "billing.promocode_success": "Promocode angewendet! Ihr Plan wurde aufgewertet.",
+  "billing.promo_badge": "per Promocode, läuft ab am {date}",
+  "billing.promocode_error_invalid": "Ungültiger Promocode",
+  "billing.promocode_error_used": "Sie haben diesen Promocode bereits verwendet",
+  "billing.promocode_error_unavailable": "Dieser Promocode ist nicht mehr verfügbar",
+  "billing.promocode_error_no_upgrade": "Dieser Promocode verbessert Ihren aktuellen Plan nicht",
+  "billing.promocode_error_rate_limit": "Zu viele Versuche. Bitte versuchen Sie es später erneut."
 }

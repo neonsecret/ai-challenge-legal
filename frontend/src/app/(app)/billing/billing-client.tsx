@@ -187,11 +187,27 @@ export default function BillingPage() {
         return;
       }
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setPromoError(data.detail ?? t("billing.error_checkout"));
+        const errData = await res.json().catch(() => ({}));
+        const detail: string = errData.detail ?? "";
+        if (res.status === 404) {
+          setPromoError(t("billing.promocode_error_invalid"));
+        } else if (res.status === 409) {
+          if (detail.toLowerCase().includes("already")) {
+            setPromoError(t("billing.promocode_error_used"));
+          } else if (detail.toLowerCase().includes("longer") || detail.toLowerCase().includes("available")) {
+            setPromoError(t("billing.promocode_error_unavailable"));
+          } else {
+            // TODO: if paid Starter + HIVITREON should extend by 1 month, backend must signal that distinctly (see NEO-2874 open question)
+            setPromoError(t("billing.promocode_error_no_upgrade"));
+          }
+        } else if (res.status === 429) {
+          setPromoError(t("billing.promocode_error_rate_limit"));
+        } else {
+          setPromoError(detail || t("billing.error_checkout"));
+        }
         return;
       }
-      setPromoSuccess(t("billing.promo_success"));
+      setPromoSuccess(t("billing.promocode_success"));
       setPromoCode("");
       const refreshed = await fetch(`${API}/stripe/billing-status`, { credentials: "include" });
       if (refreshed.ok) {
@@ -966,7 +982,7 @@ export default function BillingPage() {
         onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.35)"; }}
       >
         <Tag size={10} style={{ flexShrink: 0 }} />
-        {t("billing.promo_title")}
+        {t("billing.have_a_promocode")}
         <ChevronDown
           size={10}
           style={{
@@ -984,7 +1000,7 @@ export default function BillingPage() {
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
-              placeholder={t("billing.promo_input_placeholder")}
+              placeholder={t("billing.promocode_placeholder")}
               disabled={promoLoading}
               style={{
                 flex: 1,
@@ -1019,7 +1035,7 @@ export default function BillingPage() {
               }}
             >
               {promoLoading && <Loader2 size={10} className="animate-spin" />}
-              {t("billing.promo_button")}
+              {t("billing.promocode_apply")}
             </button>
           </div>
 
@@ -1280,7 +1296,7 @@ export default function BillingPage() {
             onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(46,31,8,0.50)"; }}
           >
             <Tag size={13} style={{ flexShrink: 0 }} />
-            {t("billing.promo_title")}
+            {t("billing.have_a_promocode")}
             <ChevronDown
               size={13}
               style={{
@@ -1298,7 +1314,7 @@ export default function BillingPage() {
                   value={promoCode}
                   onChange={(e) => setPromoCode(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
-                  placeholder={t("billing.promo_input_placeholder")}
+                  placeholder={t("billing.promocode_placeholder")}
                   disabled={promoLoading}
                   style={{
                     flex: 1,
@@ -1320,7 +1336,7 @@ export default function BillingPage() {
                   style={primaryButtonLight(promoLoading || !promoCode.trim())}
                 >
                   {promoLoading && <Loader2 size={14} className="animate-spin" />}
-                  {t("billing.promo_button")}
+                  {t("billing.promocode_apply")}
                 </button>
               </div>
 
