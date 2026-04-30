@@ -17,11 +17,10 @@ import {
   Sparkles,
   Info,
   Tag,
-  ChevronDown,
 } from "lucide-react";
+import { FONT, TYPE_SCALE, RADIUS, SPACE } from "@/lib/tokens";
 
-const fontStack =
-  "-apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif";
+const fontStack = FONT.sans;
 
 const API = process.env.NEXT_PUBLIC_SSE_URL ?? "";
 
@@ -67,7 +66,6 @@ export default function BillingPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [interval, setInterval_] = useState<BillingInterval>("monthly");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showPromoForm, setShowPromoForm] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [promoLoading, setPromoLoading] = useState(false);
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
@@ -957,118 +955,94 @@ export default function BillingPage() {
   };
 
   const renderDarkPromoForm = () => (
-    <div style={{ maxWidth: 600, margin: "24px auto 0", width: "100%" }}>
-      <button
-        onClick={() => {
-          setShowPromoForm((v) => !v);
-          setPromoError(null);
-          setPromoSuccess(null);
-        }}
-        style={{
-          background: "none",
-          border: "none",
-          padding: 0,
-          cursor: "pointer",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "5px",
-          fontFamily: "system-ui, sans-serif",
-          fontSize: "10px",
-          color: "rgba(200,210,230,0.35)",
-          transition: "color 0.15s ease",
-        }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.55)"; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(200,210,230,0.35)"; }}
-      >
-        <Tag size={10} style={{ flexShrink: 0 }} />
-        {t("billing.have_a_promocode")}
-        <ChevronDown
-          size={10}
-          style={{
-            transform: showPromoForm ? "rotate(180deg)" : "rotate(0deg)",
-            transition: "transform 0.15s ease",
-          }}
-        />
-      </button>
-
-      {showPromoForm && (
-        <div style={{ marginTop: "10px" }}>
-          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-            <input
-              type="text"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
-              placeholder={t("billing.promocode_placeholder")}
-              disabled={promoLoading}
-              style={{
-                flex: 1,
-                padding: "7px 10px",
-                borderRadius: "6px",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(201,168,76,0.12)",
-                fontFamily: "system-ui, sans-serif",
-                fontSize: "11px",
-                color: "var(--strict-text-primary)",
-                outline: "none",
-              }}
-            />
-            <button
-              onClick={handleRedeemPromo}
-              disabled={promoLoading || !promoCode.trim()}
-              style={{
-                padding: "7px 14px",
-                borderRadius: "6px",
-                background: "rgba(201,168,76,0.10)",
-                border: "1px solid rgba(201,168,76,0.20)",
-                fontFamily: "system-ui, sans-serif",
-                fontSize: "10px",
-                color: "rgba(201,168,76,0.8)",
-                cursor: promoLoading || !promoCode.trim() ? "not-allowed" : "pointer",
-                opacity: promoLoading || !promoCode.trim() ? 0.5 : 1,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                transition: "opacity 0.15s ease",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {promoLoading && <Loader2 size={10} className="animate-spin" />}
-              {t("billing.promocode_apply")}
-            </button>
-          </div>
-
-          {promoSuccess && (
-            <div style={{
-              marginTop: "8px",
-              padding: "6px 10px",
-              borderRadius: "5px",
-              background: "rgba(74,222,128,0.08)",
-              border: "0.5px solid rgba(74,222,128,0.20)",
-              fontFamily: "system-ui, sans-serif",
-              fontSize: "10px",
-              color: "#4ade80",
-            }}>
-              {promoSuccess}
-            </div>
-          )}
-
-          {promoError && (
-            <div style={{
-              marginTop: "8px",
-              padding: "6px 10px",
-              borderRadius: "5px",
-              background: "rgba(248,113,113,0.08)",
-              border: "0.5px solid rgba(248,113,113,0.20)",
-              fontFamily: "system-ui, sans-serif",
-              fontSize: "10px",
-              color: "#f87171",
-            }}>
-              {promoError}
-            </div>
-          )}
+    <div style={{ maxWidth: 600, margin: `${SPACE[6]}px auto 0`, width: "100%" }}>
+      <div style={{
+        padding: `${SPACE[4]}px ${SPACE[5]}px`,
+        borderRadius: RADIUS.lg,
+        background: "var(--dt-color-gold-tint)",
+        border: "1px solid var(--dt-accent-border-subtle)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: SPACE[2], marginBottom: SPACE[3] }}>
+          <Tag size={13} style={{ color: "var(--dt-color-gold-solid)", flexShrink: 0 }} />
+          <span style={{
+            fontFamily: fontStack,
+            fontSize: TYPE_SCALE.xs,
+            fontWeight: 600,
+            color: "var(--dt-color-gold-solid)",
+            letterSpacing: "0.03em",
+          }}>
+            {t("billing.have_a_promocode")}
+          </span>
         </div>
-      )}
+
+        <div style={{ display: "flex", gap: SPACE[2], alignItems: "center" }}>
+          <input
+            type="text"
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
+            placeholder={t("billing.promocode_placeholder")}
+            disabled={promoLoading}
+            style={{
+              flex: 1,
+              padding: `${SPACE[2]}px ${SPACE[3]}px`,
+              borderRadius: RADIUS.md,
+              background: "var(--dt-glass-bg-subtle)",
+              border: "1px solid var(--dt-accent-border-subtle)",
+              fontFamily: fontStack,
+              fontSize: TYPE_SCALE.xs,
+              color: "var(--strict-text-primary)",
+              outline: "none",
+            }}
+          />
+          <button
+            onClick={handleRedeemPromo}
+            disabled={promoLoading || !promoCode.trim()}
+            style={{
+              padding: `${SPACE[2]}px ${SPACE[4]}px`,
+              borderRadius: RADIUS.md,
+              background: "var(--dt-accent-tint)",
+              border: "1px solid var(--dt-accent-border-color)",
+              fontFamily: fontStack,
+              fontSize: TYPE_SCALE.xs,
+              fontWeight: 600,
+              color: "var(--dt-color-gold-solid)",
+              cursor: promoLoading || !promoCode.trim() ? "not-allowed" : "pointer",
+              opacity: promoLoading || !promoCode.trim() ? 0.5 : 1,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: SPACE[1],
+              transition: "opacity 0.15s ease",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {promoLoading && <Loader2 size={11} className="animate-spin" />}
+            {t("billing.promocode_apply")}
+          </button>
+        </div>
+
+        {promoSuccess && (
+          <div style={{
+            marginTop: SPACE[2], padding: `${SPACE[2]}px ${SPACE[3]}px`,
+            borderRadius: RADIUS.md,
+            background: "rgba(74,222,128,0.08)", border: "0.5px solid rgba(74,222,128,0.22)",
+            fontFamily: fontStack, fontSize: TYPE_SCALE.xs, color: "#4ade80",
+          }}>
+            {promoSuccess}
+          </div>
+        )}
+
+        {promoError && (
+          <div style={{
+            marginTop: SPACE[2], padding: `${SPACE[2]}px ${SPACE[3]}px`,
+            borderRadius: RADIUS.md,
+            background: "rgba(248,113,113,0.08)", border: "0.5px solid rgba(248,113,113,0.22)",
+            fontFamily: fontStack, fontSize: TYPE_SCALE.xs, color: "#f87171",
+          }}>
+            {promoError}
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -1270,105 +1244,69 @@ export default function BillingPage() {
           </div>
         </div>
 
-        {/* Promocode form */}
-        <div style={{ marginTop: "24px" }}>
-          <button
-            onClick={() => {
-              setShowPromoForm((v) => !v);
-              setPromoError(null);
-              setPromoSuccess(null);
-            }}
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              fontSize: "13px",
-              fontFamily: fontStack,
-              color: "rgba(46,31,8,0.50)",
-              transition: "color 0.15s ease",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "rgba(46,31,8,0.75)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(46,31,8,0.50)"; }}
-          >
-            <Tag size={13} style={{ flexShrink: 0 }} />
-            {t("billing.have_a_promocode")}
-            <ChevronDown
-              size={13}
+        {/* Promocode form — always visible */}
+        <div style={{
+          ...glassCardLight,
+          marginTop: SPACE[6],
+          padding: `${SPACE[4]}px ${SPACE[5]}px`,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: SPACE[2], marginBottom: SPACE[3] }}>
+            <Tag size={14} style={{ color: "var(--dt-accent-color)", flexShrink: 0 }} />
+            <span style={{ fontFamily: fontStack, fontSize: TYPE_SCALE.sm, fontWeight: 600, color: "var(--dt-text-primary)" }}>
+              {t("billing.have_a_promocode")}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", gap: SPACE[2], alignItems: "center", maxWidth: 480 }}>
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
+              placeholder={t("billing.promocode_placeholder")}
+              disabled={promoLoading}
               style={{
-                transform: showPromoForm ? "rotate(180deg)" : "rotate(0deg)",
-                transition: "transform 0.15s ease",
+                flex: 1,
+                padding: `${SPACE[2]}px 14px`,
+                borderRadius: RADIUS.lg,
+                background: "var(--dt-glass-bg-subtle)",
+                backdropFilter: "var(--dt-glass-blur-light)",
+                border: "0.5px solid var(--dt-glass-border)",
+                fontFamily: fontStack,
+                fontSize: TYPE_SCALE.sm,
+                color: "var(--dt-text-primary)",
+                outline: "none",
+                boxShadow: "var(--dt-glass-inner-glow)",
               }}
             />
-          </button>
+            <button
+              onClick={handleRedeemPromo}
+              disabled={promoLoading || !promoCode.trim()}
+              style={primaryButtonLight(promoLoading || !promoCode.trim())}
+            >
+              {promoLoading && <Loader2 size={14} className="animate-spin" />}
+              {t("billing.promocode_apply")}
+            </button>
+          </div>
 
-          {showPromoForm && (
-            <div style={{ marginTop: "12px", maxWidth: "420px" }}>
-              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={(e) => setPromoCode(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") handleRedeemPromo(); }}
-                  placeholder={t("billing.promocode_placeholder")}
-                  disabled={promoLoading}
-                  style={{
-                    flex: 1,
-                    padding: "10px 14px",
-                    borderRadius: "10px",
-                    background: "rgba(255,250,235,0.22)",
-                    backdropFilter: "blur(12px)",
-                    border: "0.5px solid rgba(255,255,255,0.38)",
-                    fontFamily: fontStack,
-                    fontSize: "13px",
-                    color: "#1e1208",
-                    outline: "none",
-                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.70)",
-                  }}
-                />
-                <button
-                  onClick={handleRedeemPromo}
-                  disabled={promoLoading || !promoCode.trim()}
-                  style={primaryButtonLight(promoLoading || !promoCode.trim())}
-                >
-                  {promoLoading && <Loader2 size={14} className="animate-spin" />}
-                  {t("billing.promocode_apply")}
-                </button>
-              </div>
+          {promoSuccess && (
+            <div style={{
+              marginTop: SPACE[2], display: "flex", alignItems: "center", gap: SPACE[2],
+              padding: `${SPACE[2]}px 14px`, borderRadius: RADIUS.lg,
+              background: "rgba(22,163,74,0.06)", border: "0.5px solid rgba(22,163,74,0.20)",
+            }}>
+              <span style={{ fontSize: TYPE_SCALE.sm, color: "#15803d", fontFamily: fontStack }}>{promoSuccess}</span>
+            </div>
+          )}
 
-              {promoSuccess && (
-                <div style={{
-                  marginTop: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "10px 14px",
-                  borderRadius: "10px",
-                  background: "rgba(22,163,74,0.06)",
-                  border: "0.5px solid rgba(22,163,74,0.20)",
-                }}>
-                  <span style={{ fontSize: "13px", color: "#15803d", fontFamily: fontStack }}>{promoSuccess}</span>
-                </div>
-              )}
-
-              {promoError && (
-                <div style={{
-                  marginTop: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  padding: "10px 14px",
-                  borderRadius: "10px",
-                  background: "rgba(220,38,38,0.06)",
-                  border: "0.5px solid rgba(220,38,38,0.15)",
-                }}>
-                  <AlertTriangle size={14} style={{ color: "#dc2626", flexShrink: 0 }} />
-                  <span style={{ fontSize: "13px", color: "#dc2626", fontFamily: fontStack }}>{promoError}</span>
-                </div>
-              )}
+          {promoError && (
+            <div style={{
+              marginTop: SPACE[2], display: "flex", alignItems: "center", gap: SPACE[2],
+              padding: `${SPACE[2]}px 14px`, borderRadius: RADIUS.lg,
+              background: "rgba(220,38,38,0.06)", border: "0.5px solid rgba(220,38,38,0.15)",
+            }}>
+              <AlertTriangle size={14} style={{ color: "#dc2626", flexShrink: 0 }} />
+              <span style={{ fontSize: TYPE_SCALE.sm, color: "#dc2626", fontFamily: fontStack }}>{promoError}</span>
             </div>
           )}
         </div>
