@@ -285,13 +285,21 @@ def get_embedding_model():
 
     Returns LlamaServerEmbedder (which now uses OpenRouter internally).
     No local llama-server required.
+
+    Raises RuntimeError immediately if OPENROUTER_API_KEY is not configured —
+    fail fast so the caller sees a clear error, not a silent empty result set.
     """
     global _embedding_model
     if _embedding_model is None:
         with _embedding_lock:
             if _embedding_model is None:
-                from neolex.embeddings.llama_embedder import LlamaServerEmbedder
+                from neolex.embeddings.llama_embedder import _API_KEYS, LlamaServerEmbedder
 
+                if not _API_KEYS:
+                    raise RuntimeError(
+                        "Embedding unavailable: OPENROUTER_API_KEY not set in environment. "
+                        "Add it to .env and restart the server."
+                    )
                 _embedding_model = LlamaServerEmbedder()
     return _embedding_model
 

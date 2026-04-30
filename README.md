@@ -103,30 +103,27 @@ make prepare    # or: python -m arlc.indexing.prepare_corpus
 To use Qwen3-Embedding-8B as the dense embedder (recommended):
 
 ```bash
-# 1. Download the GGUF model (~4.3 GB, fits RTX 3070 and Apple Silicon)
-huggingface-cli download Qwen/Qwen3-Embedding-8B-GGUF \
-    Qwen3-Embedding-8B-Q4_K_M.gguf --local-dir models/
+# Embeddings and reranking now use OpenRouter API — no local server required.
+# Set in .env:
+#   OPENROUTER_API_KEY=sk-or-v1-...
+#   OPENROUTER_API_KEY_BACKUP_1=sk-or-v1-...   # optional backup
+#   OPENROUTER_API_KEY_BACKUP_2=sk-or-v1-...   # optional backup
+#   RERANKER_MODEL=cohere/rerank-4-fast
 
-# 2. Start llama-server (keep running in background)
-#    Mac (Metal):    llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \
-#                       --embedding --pooling last -ngl 99 -c 4096 --port 8088
-#    Linux (CUDA):  ~/llama.cpp/build/bin/llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \
-#                       --embedding --pooling last -ngl 99 -c 4096 --port 8088
-
-# 3. Build the FAISS index (~15 min on RTX 3070)
-PYTHONPATH=. EMBEDDING_MODEL=llama-server python3 \
+# Build the FAISS index (uses OpenRouter embeddings, ~$0.01/M tokens)
+PYTHONPATH=. python3 \
     benchmarks/legal-rag-bench/build_qwen3_index.py  # for benchmark corpus
 # or for main pipeline:
-EMBEDDING_MODEL=llama-server python3 -m neolex.embeddings.build_index \
-    --corpus data/chunks/ --output data/faiss_llama-server.bin
+python3 -m neolex.embeddings.build_index \
+    --corpus data/chunks/ --output data/faiss_index.bin
 
-# 4. Run pipeline
-EMBEDDING_MODEL=llama-server FAISS_INDEX_PATH=data/faiss_llama-server.bin make run
+# Run pipeline
+make run
 ```
 
-The llama-server backend uses **Qwen3-Embedding-8B Q4_K_M** (4.3 GB, #1 MTEB multilingual).
-It replaces the earlier PyTorch-based Qwen3Embedder which required 14 GB float16 and had
-CUDA 13.0 compatibility issues.
+Embeddings: **qwen/qwen3-embedding-8b** via OpenRouter ($0.01/M tokens, same model as before,
+#1 MTEB multilingual, 4096-dim, 32K context). Reranker: **cohere/rerank-4-fast** via OpenRouter
+($0.002/search, 32K context, 100+ languages). No GPU required.
 
 ## Configuration
 
