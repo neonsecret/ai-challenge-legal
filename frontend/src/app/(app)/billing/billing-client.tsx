@@ -409,9 +409,11 @@ export default function BillingPage() {
     return `${billing.daily_queries_used}/${billing.daily_queries_limit}`;
   };
 
-  const isExhausted = billing?.is_monthly_limit
-    ? billing.monthly_queries_used >= billing.monthly_queries_limit
-    : billing.daily_queries_used >= billing.daily_queries_limit && billing.daily_queries_limit > 0;
+  const isExhausted = billing
+    ? billing.is_monthly_limit
+      ? billing.monthly_queries_used >= billing.monthly_queries_limit
+      : billing.daily_queries_used >= billing.daily_queries_limit && billing.daily_queries_limit > 0
+    : false;
 
   // -- Dark mode rendering --
 
