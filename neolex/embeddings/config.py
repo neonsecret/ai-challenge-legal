@@ -2,28 +2,24 @@
 
 Supported backends
 ------------------
-llama-server (default, recommended):
-    Qwen3-Embedding-8B via llama.cpp Q4_K_M GGUF. Requires a running
-    llama-server instance (see LLAMA_SERVER_URL).
-
-    Start the server:
-        llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf \\
-            --embedding --pooling last -ngl 99 -c 4096 --port 8088
+openrouter (default):
+    Qwen3-Embedding-8B via OpenRouter API ($0.01/M tokens).
+    Requires OPENROUTER_API_KEY in .env. No local server needed.
 
 Environment variables
 ---------------------
-EMBEDDING_MODEL     "llama-server" (default, only supported value)
-EMBEDDING_DIM       Output dimension (default 1024).
-                    Use "full" for native dim; ignored by llama-server.
-LLAMA_SERVER_URL    URL of the llama-server instance (default: http://localhost:8088).
-LLAMA_MODEL_PATH    Path to .gguf file — used only by start_server() helper.
+OPENROUTER_API_KEY      Primary key (required)
+OPENROUTER_API_KEY_BACKUP_1  First backup
+OPENROUTER_API_KEY_BACKUP_2  Second backup
+EMBEDDING_DIM           Output dimension (default 4096 for Qwen3-8B full dim).
+                        Use "full" for native dim.
 """
 
 import os
 
-_raw = os.environ.get("EMBEDDING_MODEL", "llama-server").lower()
+_raw = os.environ.get("EMBEDDING_MODEL", "openrouter").lower()
 
-VALID_BACKENDS = {"llama-server"}
+VALID_BACKENDS = {"openrouter", "llama-server"}  # llama-server kept for compat
 
 if _raw not in VALID_BACKENDS:
     raise ValueError(f"EMBEDDING_MODEL must be one of {VALID_BACKENDS}, got {os.environ.get('EMBEDDING_MODEL')!r}")
@@ -31,5 +27,5 @@ if _raw not in VALID_BACKENDS:
 EMBEDDING_BACKEND: str = _raw
 
 # Output dimension for Matryoshka truncation.
-_dim_env = os.environ.get("EMBEDDING_DIM", "1024").lower()
+_dim_env = os.environ.get("EMBEDDING_DIM", "4096").lower()
 EMBEDDING_DIM: int = 8192 if _dim_env == "full" else int(_dim_env)

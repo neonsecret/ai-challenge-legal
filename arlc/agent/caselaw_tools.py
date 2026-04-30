@@ -6,9 +6,10 @@ Provides two tools for the LangGraph agent:
 
 Search strategy:
 - Primary: hybrid RRF(BM25=0.4, vector=0.6) when embeddings are available
-- Graceful fallback: BM25-only when llama-server is unavailable or embeddings absent
-- The vector leg is skipped if ``embed_query`` raises (offline llama-server),
-  so the agent always gets results even without the embedding service.
+- Graceful fallback: BM25-only when OpenRouter is unavailable or OPENROUTER_API_KEY missing
+- The vector leg is skipped if ``embed_query`` raises — a WARNING is logged so
+  misconfigured keys are visible. BM25-only degrades quality; check logs if retrieval
+  seems weak.
 
 These are the *execution* functions; the @tool schema-only wrappers live in
 graph.py alongside the existing ``search_legal_corpus`` schema.
@@ -94,9 +95,9 @@ async def execute_caselaw_search(
     limit is clamped to [1, 30] to prevent excessive DB load from LLM-controlled params.
 
     Search strategy:
-    1. Try to embed the query with Qwen3-8B (via llama-server)
+    1. Try to embed the query with Qwen3-8B (via OpenRouter)
     2. If embedding succeeds: run hybrid search (BM25 + vector RRF)
-    3. If embedding fails (llama-server offline): fall back to BM25-only
+    3. If embedding fails (missing key / API down): fall back to BM25-only (WARNING logged)
 
     Parameters
     ----------
@@ -125,7 +126,7 @@ async def execute_caselaw_search(
 
     try:
         # Attempt to get query embedding for the vector leg (runs in thread pool
-        # since embed_query is synchronous HTTP to llama-server).
+        # since embed_query is synchronous HTTP to OpenRouter).
         query_emb = None
         if query and query.strip():
             try:
@@ -133,7 +134,12 @@ async def execute_caselaw_search(
 
                 query_emb = await asyncio.to_thread(embed_query, query)
             except Exception as emb_exc:
-                logger.info("[caselaw] embed_query unavailable, falling back to BM25: %s", emb_exc)
+                # Log at WARNING (not INFO) so misconfigured keys are visible in production logs.
+                # Silent fallback to BM25-only degrades result quality; operators need to know.
+                logger.warning(
+                    "[caselaw] embed_query FAILED — falling back to BM25-only (vector leg disabled): %s",
+                    emb_exc,
+                )
 
         try:
             from neolex.observability import add_retrieval_substep_span

@@ -11,14 +11,13 @@ full inventory.
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Embedding Pipeline
-# Model: Qwen3-Embedding-8B (Q4_K_M GGUF via llama-server)
-# Architecture context window: 40,960 tokens (GGUF); practical limit ~32K.
+# Model: Qwen3-Embedding-8B via OpenRouter (qwen/qwen3-embedding-8b, $0.01/M tokens)
+# Architecture context window: 32,000 tokens (OpenRouter limit).
 # Czech legal text tokenizes at ~1.8-2.0 chars/token (measured empirically).
 # ═══════════════════════════════════════════════════════════════════════════
 
-EMBEDDING_MAX_TOKENS: int = 32_768
-"""Practical token budget per llama-server embedding slot.
-The GGUF model supports 40,960 but we leave headroom for special tokens."""
+EMBEDDING_MAX_TOKENS: int = 32_000
+"""Token budget for OpenRouter qwen/qwen3-embedding-8b (32K context limit)."""
 
 EMBEDDING_CHARS_PER_TOKEN_CZECH: float = 1.8
 """Conservative chars-per-token ratio for Czech legal text.
@@ -27,8 +26,8 @@ is closer to 2.0-3.0; Czech diacritics push it lower."""
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Cross-Encoder Reranker
-# Model: Qwen3-Reranker-0.6B (via llama-server on port 8089)
-# Architecture max_length: 1024 tokens (qwen3_reranker.py tokenizer).
+# Model: Cohere Rerank 4 Fast via OpenRouter (cohere/rerank-4-fast, $0.002/search)
+# Context: 32K tokens, 100+ languages.
 # ═══════════════════════════════════════════════════════════════════════════
 
 RERANKER_MAX_TOKENS: int = 1024

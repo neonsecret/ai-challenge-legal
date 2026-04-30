@@ -84,21 +84,12 @@ def validate_startup(data_dir: str) -> None:
         except Exception as exc:
             errors.append(f"Cannot connect to PostgreSQL to verify chunks: {exc}")
 
-    # --- Check llama-server if embedding backend requires it ---
-    if os.environ.get("EMBEDDING_MODEL", "llama-server") == "llama-server":
-        llama_url = os.environ.get("LLAMA_SERVER_URL", "http://localhost:8088")
-        try:
-            import urllib.request
-
-            with urllib.request.urlopen(f"{llama_url}/health", timeout=3) as resp:
-                if resp.status != 200:
-                    errors.append(f"llama-server at {llama_url} returned status {resp.status}.")
-        except Exception as exc:
-            errors.append(
-                f"llama-server not reachable at {llama_url}: {exc}. "
-                f"Start it with: llama-server -m models/Qwen3-Embedding-8B-Q4_K_M.gguf "
-                f"--embedding --pooling last -ngl 99 -c 4096 --port 8088",
-            )
+    # --- Check OpenRouter API key is configured for embeddings + reranking ---
+    if not os.environ.get("OPENROUTER_API_KEY", "").strip():
+        errors.append(
+            "OPENROUTER_API_KEY is not set. Embeddings and reranking will be unavailable. "
+            "Add OPENROUTER_API_KEY to .env (see OpenRouter dashboard for keys)."
+        )
 
     # --- VERTEX_PROJECT_ID is required for agent queries ---
     if not os.environ.get("VERTEX_PROJECT_ID"):

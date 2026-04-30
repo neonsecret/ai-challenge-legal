@@ -1791,7 +1791,7 @@ async def run_pipeline(
 
         _ret_mod.get_chunks_by_doc()  # load all chunks from PostgreSQL into memory
         _ret_mod.get_reranker()  # load cross-encoder model onto MPS/CPU
-        _ret_mod.get_embedding_model()  # connect to llama-server (Qwen3-Embedding)
+        _ret_mod.get_embedding_model()  # validate OpenRouter API key + init embedder
         print("  Retriever warmed up (chunks, reranker, embeddings all loaded).")
     except Exception as e:
         print(f"  Warmup warning (non-fatal): {e}")

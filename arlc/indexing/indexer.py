@@ -70,7 +70,7 @@ def extract_entities_from_chunk(text: str) -> list[str]:
 DOCUMENTS_DIR = "data/documents"
 # Embedding model: must match the retriever's model for consistent dimensions.
 # Default: llama-server (Qwen3-8B via HTTP, 4096-dim).
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "llama-server")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "openrouter")
 
 _ocr_model = os.environ.get("MODEL_NAME", "")
 
