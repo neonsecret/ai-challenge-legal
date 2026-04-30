@@ -269,15 +269,54 @@ def rerank_chunks(
         return result
 
     # Reranker: OpenRouterReranker (cohere/rerank-4-fast). No local fallback.
+    import time as _time
+
     ranker = get_reranker()
+    t0 = _time.monotonic()
     try:
         scores = ranker.predict(pairs, on_progress=_progress, timeout=RERANK_TIMEOUT)
-        return _apply_scores(chunks, scores)
+        ranked = _apply_scores(chunks, scores)
+        _emit_reranking_span(question, chunks, ranked, duration_ms=(_time.monotonic() - t0) * 1000)
+        return ranked
     except Exception as e:
         logger.warning("Reranking failed (%s), using vector-distance ordering", e)
         if on_status:
             on_status("retrieving:scoring results")
         return chunks[:top_k]
+
+
+def _emit_reranking_span(
+    question: str,
+    candidates: list[dict],
+    ranked: list[dict],
+    duration_ms: float,
+) -> None:
+    """Emit a Langfuse reranking span with cost + top-results preview. No-op if disabled."""
+    try:
+        from neolex.observability import add_reranking_span, is_enabled
+
+        if not is_enabled():
+            return
+        top_results = [
+            {
+                "rank": c.get("rerank_final_rank", i + 1),
+                "score": round(c.get("rerank_score", 0.0), 4),
+                "doc_id": c.get("doc_id", ""),
+                "case_number": c.get("case_number") or c.get("ecli") or c.get("doc_id", "")[:20],
+                "court": c.get("court") or "",
+                "date": c.get("decision_date") or "",
+                "text_preview": c.get("text", "")[:300],
+            }
+            for i, c in enumerate(ranked[:5])
+        ]
+        add_reranking_span(
+            query=question,
+            num_candidates=len(candidates),
+            top_results=top_results,
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass  # observability is always non-fatal
 
 
 def get_embedding_model():
@@ -314,6 +353,17 @@ def embed_query(question: str) -> list[float]:
     model = get_embedding_model()
     embedding = model.encode(question, prompt_name="query", normalize_embeddings=True)
     return embedding.tolist()
+
+
+def embed_query_with_usage(question: str) -> tuple[list[float], int]:
+    """Like embed_query but also returns prompt_tokens for Langfuse cost tracking.
+
+    Returns (embedding_vector as list[float], prompt_tokens: int).
+    cost_usd = prompt_tokens * 0.01 / 1_000_000
+    """
+    model = get_embedding_model()
+    vec, prompt_tokens = model.embed_query_with_usage(question)
+    return vec.tolist(), prompt_tokens
 
 
 def embed_document(text: str) -> list[float]:

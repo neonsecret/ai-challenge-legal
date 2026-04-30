@@ -128,11 +128,12 @@ async def execute_caselaw_search(
         # Attempt to get query embedding for the vector leg (runs in thread pool
         # since embed_query is synchronous HTTP to OpenRouter).
         query_emb = None
+        _embed_prompt_tokens = 0
         if query and query.strip():
             try:
-                from arlc.retriever import embed_query
+                from arlc.retriever import embed_query_with_usage
 
-                query_emb = await asyncio.to_thread(embed_query, query)
+                query_emb, _embed_prompt_tokens = await asyncio.to_thread(embed_query_with_usage, query)
             except Exception as emb_exc:
                 # Log at WARNING (not INFO) so misconfigured keys are visible in production logs.
                 # Silent fallback to BM25-only degrades result quality; operators need to know.
@@ -146,11 +147,16 @@ async def execute_caselaw_search(
             from neolex.observability import is_enabled as _lf_enabled
 
             if _lf_enabled():
+                _embed_cost = round(_embed_prompt_tokens * 0.01 / 1_000_000, 8) if _embed_prompt_tokens else None
                 add_retrieval_substep_span(
                     name="embedding-query",
                     input_data={"query": query[:_LANGFUSE_INPUT_TRUNCATE]},
                     output_data={"embedded": query_emb is not None},
-                    metadata={"model": "qwen3-embedding-8b"},
+                    metadata={
+                        "model": "qwen/qwen3-embedding-8b",
+                        "prompt_tokens": _embed_prompt_tokens,
+                        **({} if _embed_cost is None else {"cost_usd": _embed_cost}),
+                    },
                 )
         except Exception:
             pass  # observability is always non-fatal

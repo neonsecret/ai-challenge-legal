@@ -159,6 +159,20 @@ MODEL_PRICING: dict[str, dict[str, float]] = {
         "cache_read": 0.10,
         "output": 5.00,
     },
+    # OpenRouter embeddings (per-token, no output tokens)
+    "qwen/qwen3-embedding-8b": {
+        "input": 0.01,
+        "cache_write": 0.0,
+        "cache_read": 0.0,
+        "output": 0.0,
+    },
+}
+
+# Flat-rate costs for non-token-based APIs
+_FLAT_COSTS: dict[str, float] = {
+    "cohere/rerank-4-fast": 0.002,  # $0.002 per search call
+    "cohere/rerank-4-pro": 0.004,
+    "cohere/rerank-v3.5": 0.002,
 }
 
 # Max chars for tool-call inputs (queries, ECLI refs, etc.) recorded in agent step spans.
@@ -430,26 +444,52 @@ def add_retrieval_span(
 
 
 def add_reranking_span(
-    trace,
     *,
+    query: str = "",
     num_candidates: int = 0,
-    num_results: int = 0,
+    top_results: list[dict[str, Any]] | None = None,
     duration_ms: float = 0,
+    model: str = "cohere/rerank-4-fast",
+    cost_usd: float | None = None,
     metadata: dict[str, Any] | None = None,
 ) -> None:
-    """Record a reranking span on an existing trace using 'span' type."""
-    if trace is None:
+    """Record a reranking span as a child of the current tool/trace span.
+
+    Uses context vars (same pattern as add_retrieval_substep_span) — no
+    trace argument needed; call from anywhere inside a traced request.
+
+    top_results: list of dicts with keys rank, score, doc_id, case_number,
+                 text_preview — shown as structured output in Langfuse UI.
+    cost_usd:    flat-rate call cost (default: looked up from _FLAT_COSTS).
+    """
+    if not _enabled:
+        return
+    parent = get_current_span() or get_current_trace()
+    if parent is None:
         return
     try:
-        span = trace.start_observation(
+        effective_cost = cost_usd if cost_usd is not None else _FLAT_COSTS.get(model)
+        span_meta: dict[str, Any] = {
+            "duration_ms": round(duration_ms, 1),
+            "model": model,
+            **(metadata or {}),
+        }
+        if effective_cost is not None:
+            span_meta["cost_usd"] = effective_cost
+
+        span = parent.start_observation(
             name="reranking",
             as_type="span",
-            input={"num_candidates": num_candidates},
+            input={
+                "query": query[:300] if query else "",
+                "num_candidates": num_candidates,
+                "model": model,
+            },
         )
-        span.update(
-            output={"num_results": num_results},
-            metadata={"duration_ms": round(duration_ms, 1), **(metadata or {})},
-        )
+        output: dict[str, Any] = {"num_results": len(top_results) if top_results else 0}
+        if top_results:
+            output["top_results"] = top_results
+        span.update(output=output, metadata=span_meta)
         span.end()
     except Exception:
         logger.debug("Failed to add reranking span", exc_info=True)

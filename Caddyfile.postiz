@@ -1,0 +1,10 @@
+{
+    auto_https off
+}
+
+:443 {
+    tls internal {
+        on_demand
+    }
+    reverse_proxy postiz:5000
+}

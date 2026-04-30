@@ -86,8 +86,11 @@ class LlamaServerEmbedder:
             len(_API_KEYS),
         )
 
-    def _embed_batch(self, texts: list[str]) -> np.ndarray:
-        """POST a single batch; returns (N, dim) float32, L2-normalised.
+    def _embed_batch(self, texts: list[str]) -> tuple[np.ndarray, int]:
+        """POST a single batch; returns (matrix, prompt_tokens).
+
+        matrix: (N, dim) float32, L2-normalised.
+        prompt_tokens: total input tokens as reported by OpenRouter (for cost tracking).
 
         Tries keys in carousel order on 429 / 5xx.
         """
@@ -113,12 +116,14 @@ class LlamaServerEmbedder:
                     time.sleep(0.5)
                     continue
                 r.raise_for_status()  # 4xx auth errors (401/403/400) — fail immediately, don't rotate
-                data = r.json()["data"]
+                body = r.json()
+                data = body["data"]
                 data.sort(key=lambda x: x["index"])
                 matrix = np.array([d["embedding"] for d in data], dtype=np.float32)
                 norms = np.linalg.norm(matrix, axis=1, keepdims=True)
                 norms = np.where(norms == 0.0, 1.0, norms)
-                return matrix / norms
+                prompt_tokens = int((body.get("usage") or {}).get("prompt_tokens", 0))
+                return matrix / norms, prompt_tokens
             except requests.HTTPError as e:
                 last_err = e
                 continue
@@ -137,7 +142,8 @@ class LlamaServerEmbedder:
         bs = batch_size or self.batch_size
         chunks = []
         for start in range(0, len(texts), bs):
-            chunks.append(self._embed_batch(texts[start : start + bs]))
+            matrix, _ = self._embed_batch(texts[start : start + bs])
+            chunks.append(matrix)
         return np.concatenate(chunks, axis=0)
 
     def embed_query(
@@ -148,12 +154,24 @@ class LlamaServerEmbedder:
         """Embed a search query with the Qwen3 instruction prefix.
 
         Use this for QUERIES (search time). Returns (dim,) float32, L2-normalised.
-
-        The prefix projects the query into the correct subspace so inner-product
-        similarity works against document embeddings produced by embed_texts().
         """
         prefixed = f"Instruct: {task}\nQuery: {query}"
-        return self._embed_batch([prefixed])[0]
+        matrix, _ = self._embed_batch([prefixed])
+        return matrix[0]
+
+    def embed_query_with_usage(
+        self,
+        query: str,
+        task: str = QWEN_QUERY_TASK,
+    ) -> tuple[np.ndarray, int]:
+        """Like embed_query but also returns prompt_tokens from OpenRouter for cost tracking.
+
+        Returns (embedding_vector, prompt_tokens).
+        cost_usd = prompt_tokens * 0.01 / 1_000_000
+        """
+        prefixed = f"Instruct: {task}\nQuery: {query}"
+        matrix, prompt_tokens = self._embed_batch([prefixed])
+        return matrix[0], prompt_tokens
 
     def encode(
         self,

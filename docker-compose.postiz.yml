@@ -10,18 +10,33 @@
 # Start: docker compose -f docker-compose.postiz.yml up -d
 # Stop:  docker compose -f docker-compose.postiz.yml down
 # Logs:  docker compose -f docker-compose.postiz.yml logs -f postiz
-# UI:    http://localhost:4007
+# UI:    https://100.89.59.71:4007
 
 services:
+  postiz-caddy:
+    image: caddy:2-alpine
+    container_name: postiz-caddy
+    restart: always
+    ports:
+      - "0.0.0.0:4007:443"
+    volumes:
+      - ./Caddyfile.postiz:/etc/caddy/Caddyfile:ro
+      - postiz-caddy-data:/data
+      - postiz-caddy-config:/config
+    networks:
+      - postiz-network
+    depends_on:
+      - postiz
+
   postiz:
     image: ghcr.io/gitroomhq/postiz-app:latest
     container_name: postiz
     restart: always
     environment:
-      # === Core URLs (use actual host IP for external access)
-      MAIN_URL: ${POSTIZ_URL:-http://100.89.59.71:4007}
-      FRONTEND_URL: ${POSTIZ_URL:-http://100.89.59.71:4007}
-      NEXT_PUBLIC_BACKEND_URL: ${POSTIZ_URL:-http://100.89.59.71:4007}/api
+      # === Core URLs (use actual host IP for external access via HTTPS)
+      MAIN_URL: ${POSTIZ_URL:-https://100.89.59.71:4007}
+      FRONTEND_URL: ${POSTIZ_URL:-https://100.89.59.71:4007}
+      NEXT_PUBLIC_BACKEND_URL: ${POSTIZ_URL:-https://100.89.59.71:4007}/api
       BACKEND_INTERNAL_URL: 'http://localhost:3000'
 
       # === Security
@@ -55,11 +70,12 @@ services:
 
       # === Misc
       NX_ADD_PLUGINS: false
+      NODE_ENV: development
     volumes:
       - postiz-config:/config/
       - postiz-uploads:/uploads/
-    ports:
-      - "0.0.0.0:4007:5000"
+    expose:
+      - "5000"
     networks:
       - postiz-network
       - postiz-temporal-network
@@ -181,6 +197,8 @@ volumes:
   postiz-uploads:
   postiz-temporal-elasticsearch-data:
   postiz-temporal-postgres-data:
+  postiz-caddy-data:
+  postiz-caddy-config:
 
 networks:
   postiz-network:
