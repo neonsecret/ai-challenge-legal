@@ -68,6 +68,9 @@ class User(Base):
     auth_tokens: Mapped[list["AuthToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     subscriptions: Mapped[list["Subscription"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    promo_redemptions: Mapped[list["PromocodeRedemption"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Session(Base):
@@ -320,3 +323,4 @@ class PromocodeRedemption(Base):
     expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
 
     promocode: Mapped["Promocode"] = relationship(back_populates="redemptions")
+    user: Mapped["User"] = relationship(back_populates="promo_redemptions")

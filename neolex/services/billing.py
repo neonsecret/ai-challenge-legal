@@ -88,59 +88,58 @@ async def redeem_promocode(code: str, user: "User", db: "AsyncSession") -> dict:
 
     _check_promo_rate_limit(str(user.id))
 
-    # All in one transaction with SELECT ... FOR UPDATE on the promocode row.
-    async with db.begin():
-        result = await db.execute(
-            select(Promocode).where(Promocode.code == code, Promocode.active.is_(True)).with_for_update()
-        )
-        promo = result.scalar_one_or_none()
+    # Use the existing autobegin transaction — no nested db.begin()
+    result = await db.execute(
+        select(Promocode).where(Promocode.code == code, Promocode.active.is_(True)).with_for_update()
+    )
+    promo = result.scalar_one_or_none()
 
-        now = datetime.now(UTC)
+    now = datetime.now(UTC)
 
-        # 404 for missing/inactive/expired code — generic message, no distinction
-        if promo is None:
+    # 404 for missing/inactive/expired code — generic message, no distinction
+    if promo is None:
+        raise HTTPException(status_code=404, detail="Invalid promocode")
+    if promo.valid_until is not None:
+        vu = promo.valid_until if promo.valid_until.tzinfo else promo.valid_until.replace(tzinfo=UTC)
+        if vu < now:
             raise HTTPException(status_code=404, detail="Invalid promocode")
-        if promo.valid_until is not None:
-            vu = promo.valid_until if promo.valid_until.tzinfo else promo.valid_until.replace(tzinfo=UTC)
-            if vu < now:
-                raise HTTPException(status_code=404, detail="Invalid promocode")
 
-        # 409 exhausted
-        if promo.max_redemptions is not None and promo.redemption_count >= promo.max_redemptions:
-            raise HTTPException(status_code=409, detail="Promocode no longer available")
+    # 409 exhausted
+    if promo.max_redemptions is not None and promo.redemption_count >= promo.max_redemptions:
+        raise HTTPException(status_code=409, detail="Promocode no longer available")
 
-        # 409 already redeemed by this user
-        existing = await db.execute(
-            select(PromocodeRedemption).where(
-                PromocodeRedemption.promocode_id == promo.id,
-                PromocodeRedemption.user_id == user.id,
-            )
+    # 409 already redeemed by this user
+    existing = await db.execute(
+        select(PromocodeRedemption).where(
+            PromocodeRedemption.promocode_id == promo.id,
+            PromocodeRedemption.user_id == user.id,
         )
-        if existing.scalar_one_or_none() is not None:
-            raise HTTPException(status_code=409, detail="You have already used this promocode")
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=409, detail="You have already used this promocode")
 
-        # 409 downgrade / same tier
-        current_tier = effective_subscription_tier(user)
-        promo_rank = _TIER_RANK.get(promo.tier, 0)
-        current_rank = _TIER_RANK.get(current_tier, 0)
-        if promo_rank <= current_rank:
-            raise HTTPException(status_code=409, detail="This promocode would not upgrade your plan")
+    # 409 downgrade / same tier
+    current_tier = effective_subscription_tier(user)
+    promo_rank = _TIER_RANK.get(promo.tier, 0)
+    current_rank = _TIER_RANK.get(current_tier, 0)
+    if promo_rank <= current_rank:
+        raise HTTPException(status_code=409, detail="This promocode would not upgrade your plan")
 
-        # Apply
-        expires_at = now + timedelta(days=promo.duration_days)
-        db.add(
-            PromocodeRedemption(
-                promocode_id=promo.id,
-                user_id=user.id,
-                granted_tier=promo.tier,
-                redeemed_at=now,
-                expires_at=expires_at,
-            )
+    # Apply
+    expires_at = now + timedelta(days=promo.duration_days)
+    db.add(
+        PromocodeRedemption(
+            promocode_id=promo.id,
+            user_id=user.id,
+            granted_tier=promo.tier,
+            redeemed_at=now,
+            expires_at=expires_at,
         )
-        promo.redemption_count += 1
-        user.promo_tier = promo.tier
-        user.promo_expires_at = expires_at
-        await db.flush()
+    )
+    promo.redemption_count += 1
+    user.promo_tier = promo.tier
+    user.promo_expires_at = expires_at
+    await db.flush()
 
     return {
         "promo_tier": promo.tier,

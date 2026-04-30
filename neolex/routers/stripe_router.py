@@ -553,8 +553,7 @@ async def redeem_promocode_endpoint(
 ):
     """Redeem a promocode. Returns the full updated billing-status on success."""
     await redeem_promocode(payload.code, user, db)
-    # Return the full billing-status structure (with promo fields) so the
-    # frontend can update all plan state in one round-trip.
+    await db.commit()
     return await billing_status(user=user, db=db)
 
 
