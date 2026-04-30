@@ -56,6 +56,11 @@ class User(Base):
     # NULL means no deletion is pending. Cleared after the nightly job executes the deletion.
     corpus_deletion_scheduled_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
+    # Promo tier override — active only while promo_expires_at > now().
+    # Cleared lazily by effective_subscription_tier() on first read after expiry.
+    promo_tier: Mapped[str | None] = mapped_column(String, nullable=True)  # starter | pro | enterprise
+    promo_expires_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
     last_login: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
@@ -265,3 +270,53 @@ class Feedback(Base):
     rating: Mapped[str] = mapped_column(String, nullable=False)  # 'positive' | 'negative'
     comment: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
+
+
+class Promocode(Base):
+    """Redeemable codes that grant temporary plan upgrades."""
+
+    __tablename__ = "promocodes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    code: Mapped[str] = mapped_column(String, unique=True, nullable=False)  # case-sensitive, exact match
+    tier: Mapped[str] = mapped_column(String, nullable=False)  # starter | pro | enterprise
+    duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    max_redemptions: Mapped[int | None] = mapped_column(Integer, nullable=True)  # NULL = unlimited
+    redemption_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    valid_until: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )  # NULL = code never expires
+    active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    notes: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
+
+    redemptions: Mapped[list["PromocodeRedemption"]] = relationship(
+        back_populates="promocode", cascade="all, delete-orphan"
+    )
+
+
+class PromocodeRedemption(Base):
+    """One row per (code, user) — enforced by UNIQUE constraint."""
+
+    __tablename__ = "promocode_redemptions"
+    __table_args__ = (
+        Index("ix_promo_redemptions_user", "user_id"),
+        Index("uq_promo_redemption", "promocode_id", "user_id", unique=True),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    promocode_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("promocodes.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    granted_tier: Mapped[str] = mapped_column(String, nullable=False)
+    redeemed_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), default=_utcnow, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+
+    promocode: Mapped["Promocode"] = relationship(back_populates="redemptions")

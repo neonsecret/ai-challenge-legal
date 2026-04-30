@@ -101,6 +101,13 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE chunks ALTER COLUMN id SET DEFAULT gen_random_uuid();"),
         )
+        # Promo tier columns on users (NEO-2874).
+        await conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_tier TEXT;"),
+        )
+        await conn.execute(
+            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_expires_at TIMESTAMPTZ;"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.

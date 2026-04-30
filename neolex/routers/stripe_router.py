@@ -20,6 +20,7 @@ from neolex.auth.session import get_current_user
 from neolex.config import settings
 from neolex.db.models import Invoice, Subscription, User
 from neolex.db.postgres import get_db
+from neolex.services.billing import effective_subscription_tier, redeem_promocode
 
 logger = logging.getLogger(__name__)
 
@@ -418,11 +419,10 @@ async def billing_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Return full plan info including usage counters and limits."""
-    status = user.subscription_status
-
-    # Normalize: 'trial', 'canceled', None, or any unrecognized value → 'free'
+    # Resolve effective plan (promo may outrank paid tier); clears expired promo lazily.
+    effective_plan_raw = effective_subscription_tier(user)
     _known_plans = ("free", "trial", "starter", "pro", "enterprise")
-    effective_plan = status if status in _known_plans else "free"
+    effective_plan = effective_plan_raw if effective_plan_raw in _known_plans else "free"
     if effective_plan == "trial":
         effective_plan = "free"
     limits = _PLAN_LIMITS.get(effective_plan, _PLAN_LIMITS["free"])
@@ -434,7 +434,7 @@ async def billing_status(
     # Build usage info
     usage: dict = {}
     if effective_plan in ("free", "trial"):
-        daily_limit = limits.get("daily_limit") or 3
+        daily_limit = limits.get("daily_limit") or 10
         usage = {
             "daily_queries_used": _daily_used,
             "daily_limit": daily_limit,
@@ -497,6 +497,9 @@ async def billing_status(
             cancel_at_period_end = active_sub.cancel_at_period_end
             current_period_end = active_sub.current_period_end.isoformat() if active_sub.current_period_end else None
 
+    # Persist lazy promo expiry if effective_subscription_tier cleared it.
+    await db.commit()
+
     return JSONResponse(
         {
             "subscription_status": effective_plan,
@@ -516,6 +519,9 @@ async def billing_status(
             # Cancellation state
             "cancel_at_period_end": cancel_at_period_end,
             "current_period_end": current_period_end,
+            # Promo overlay
+            "promo_tier": user.promo_tier,
+            "promo_expires_at": user.promo_expires_at.isoformat() if user.promo_expires_at else None,
             # Nested for any future consumers
             "usage": usage,
             "limits": {
@@ -528,6 +534,28 @@ async def billing_status(
             "prices": available_prices,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Promocode redemption
+# ---------------------------------------------------------------------------
+
+
+class _PromoRedeemRequest(BaseModel):
+    code: str
+
+
+@router.post("/promocode/redeem")
+async def redeem_promocode_endpoint(
+    payload: _PromoRedeemRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Redeem a promocode. Returns the full updated billing-status on success."""
+    await redeem_promocode(payload.code, user, db)
+    # Return the full billing-status structure (with promo fields) so the
+    # frontend can update all plan state in one round-trip.
+    return await billing_status(user=user, db=db)
 
 
 # ---------------------------------------------------------------------------

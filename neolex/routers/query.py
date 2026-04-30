@@ -19,6 +19,7 @@ from neolex.db.audit import get_audit_db
 from neolex.db.models import User
 from neolex.db.postgres import AsyncSessionLocal, conversation_doc_lock_key, get_db
 from neolex.schemas.query import QueryRequest, QueryResponse, pipeline_dict_to_response
+from neolex.services.billing import effective_subscription_tier
 from neolex.services.pipeline import run_single_question
 
 logger = logging.getLogger(__name__)
@@ -236,7 +237,7 @@ async def _enforce_query_limit(user: User, db: AsyncSession) -> None:
     the race where two concurrent workers both see a stale pre-reset counter and each
     write back count+1 instead of 1 and 2 respectively.
     """
-    status = user.subscription_status
+    status = effective_subscription_tier(user)
     now = datetime.now(UTC)
 
     if status not in _ACTIVE_STATUSES:
