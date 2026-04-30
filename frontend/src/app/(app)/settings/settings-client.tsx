@@ -251,8 +251,8 @@ export default function SettingsPage() {
         borderRadius: "5px",
         background: "rgba(201,168,76,0.05)",
         border: "1px solid rgba(201,168,76,0.10)",
-        fontFamily: "Georgia, serif",
-        fontSize: "16px",
+        fontFamily: fontStack,
+        fontSize: "12px",
         color: "rgba(201,168,76,0.7)",
         cursor: "pointer",
         outline: "none",
@@ -298,7 +298,7 @@ export default function SettingsPage() {
                         </div>
                     )}
                     <div>
-                        <div style={{fontFamily: "Georgia, serif", fontSize: "13px", lineHeight: 1.2, color: "rgba(230,235,245,0.88)"}}>
+                        <div style={{fontFamily: fontStack, fontSize: "13px", lineHeight: 1.2, color: "rgba(230,235,245,0.88)"}}>
                             {user.name || user.email}
                         </div>
                         <div style={{fontFamily: fontStack, fontSize: "10px", lineHeight: 1.2, color: "rgba(200,210,230,0.30)"}}>
@@ -313,7 +313,7 @@ export default function SettingsPage() {
                 {/* Plan row */}
                 <div style={darkSettingRow}>
                     <span style={darkSettingLabel}>{t("settings.plan")}</span>
-                    <span style={{...darkSettingValue, fontFamily: "Georgia, serif", color: "rgba(201,168,76,0.7)"}}>{user.subscription_status}</span>
+                    <span style={{...darkSettingValue, fontFamily: fontStack, color: "rgba(201,168,76,0.7)"}}>{user.subscription_status}</span>
                 </div>
 
                 {/* Sign out */}
@@ -479,7 +479,7 @@ export default function SettingsPage() {
                     background: "linear-gradient(180deg, rgba(255,255,255,0.015) 0%, transparent 100%)",
                 }}>
                     <h1 style={{
-                        fontFamily: "Georgia, serif",
+                        fontFamily: fontStack,
                         fontSize: 14,
                         fontWeight: "normal",
                         color: "var(--strict-text-primary)",
