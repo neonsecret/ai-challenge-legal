@@ -108,6 +108,41 @@ async def init_db() -> None:
         await conn.execute(
             text("ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_expires_at TIMESTAMPTZ;"),
         )
+        # Promocodes table (NEO-2874)
+        await conn.execute(
+            text("""
+                CREATE TABLE IF NOT EXISTS promocodes (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    code TEXT UNIQUE NOT NULL,
+                    tier TEXT NOT NULL,
+                    duration_days INTEGER NOT NULL,
+                    max_redemptions INTEGER,
+                    redemption_count INTEGER NOT NULL DEFAULT 0,
+                    valid_until TIMESTAMPTZ,
+                    active BOOLEAN NOT NULL DEFAULT TRUE,
+                    notes TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                );
+            """),
+        )
+        # Promocode redemptions table (NEO-2874)
+        await conn.execute(
+            text("""
+                CREATE TABLE IF NOT EXISTS promocode_redemptions (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    promocode_id UUID NOT NULL REFERENCES promocodes(id) ON DELETE CASCADE,
+                    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    granted_tier TEXT NOT NULL,
+                    redeemed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    expires_at TIMESTAMPTZ NOT NULL,
+                    UNIQUE (promocode_id, user_id)
+                );
+            """),
+        )
+        # Index for promocode redemptions lookups
+        await conn.execute(
+            text("CREATE INDEX IF NOT EXISTS ix_promocode_redemptions_user ON promocode_redemptions(user_id);"),
+        )
         # Trigger to auto-populate text_search tsvector on INSERT/UPDATE
         # Uses 'simple' tokenizer: language-agnostic (Czech corpus),
         # preserves legal terms that stemmers would mangle.
