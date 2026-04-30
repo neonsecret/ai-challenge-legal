@@ -490,7 +490,7 @@ export default function SettingsPage() {
                 </div>
             ) : (
                 <div style={{marginBottom: "24px"}}>
-                    <h1 style={{fontFamily: "var(--font-heading), Georgia, serif", fontSize: "1.5rem", fontWeight: 700, color: "var(--dt-text-primary)", margin: 0}}>
+                    <h1 style={{fontFamily: fontStack, fontSize: "1.5rem", fontWeight: 700, color: "var(--dt-text-primary)", margin: 0}}>
                         {t("settings.title")}
                     </h1>
                     <p style={{color: "var(--dt-text-tertiary)", fontSize: "13px", fontFamily: fontStack, marginTop: "4px"}}>
