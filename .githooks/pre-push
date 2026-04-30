@@ -62,7 +62,9 @@ while read -r local_ref local_sha remote_ref _remote_sha; do
 
     _t0=$(date +%s)
     set +e
-    "${_start_server_args[@]}" npx --prefix "${FRONTEND_DIR}" playwright test \
+    # bash 3.2 (macOS default) treats `"${arr[@]}"` on an empty array as unbound
+    # under `set -u`. The `${arr[@]+...}` guard expands to nothing when empty.
+    "${_start_server_args[@]+"${_start_server_args[@]}"}" npx --prefix "${FRONTEND_DIR}" playwright test \
         --grep "@smoke" \
         --reporter=line \
         --project=chromium \
