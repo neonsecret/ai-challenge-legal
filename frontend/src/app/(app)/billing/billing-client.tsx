@@ -413,7 +413,7 @@ export default function BillingPage() {
 
   const isExhausted = billing?.is_monthly_limit
     ? billing.monthly_queries_used >= billing.monthly_queries_limit
-    : false;
+    : billing.daily_queries_used >= billing.daily_queries_limit && billing.daily_queries_limit > 0;
 
   // -- Dark mode rendering --
 
