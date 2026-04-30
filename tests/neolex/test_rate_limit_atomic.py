@@ -27,6 +27,8 @@ class TestEnforceQueryLimitAtomic:
         u.subscription_status = status
         u.daily_queries_used = used
         u.daily_queries_reset_at = reset_at
+        u.promo_tier = None
+        u.promo_expires_at = None
         return u
 
     def _make_db(self, scalar_return):

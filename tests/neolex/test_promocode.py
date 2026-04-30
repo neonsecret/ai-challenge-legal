@@ -143,9 +143,11 @@ class TestEffectiveSubscriptionTier:
         assert u.promo_tier is None
         assert u.promo_expires_at is None
 
-    def test_unknown_paid_tier_normalizes_to_free(self):
+    def test_unknown_paid_tier_preserved_for_caller_to_enforce_402(self):
+        """Unknown statuses (e.g. 'legacy_trial', 'canceled') are preserved so
+        callers can check _ACTIVE_STATUSES and raise 402 appropriately."""
         u = self._user("legacy_trial")
-        assert effective_subscription_tier(u) == "free"
+        assert effective_subscription_tier(u) == "legacy_trial"
 
 
 # ---------------------------------------------------------------------------

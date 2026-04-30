@@ -30,9 +30,10 @@ def effective_subscription_tier(user: "User") -> str:
     """Return the highest-ranked plan between paid tier and active promo.
 
     Clears expired promo fields on the user object (caller must commit).
+    Returns the original subscription_status if unknown (e.g. "canceled") so
+    callers can enforce 402 for inactive accounts.
     """
     paid = user.subscription_status or "free"
-    paid_normalized = paid if paid in _TIER_RANK else "free"
 
     promo = user.promo_tier
     promo_exp = user.promo_expires_at
@@ -44,7 +45,7 @@ def effective_subscription_tier(user: "User") -> str:
             promo_exp = promo_exp.replace(tzinfo=UTC)
         if promo_exp > now:
             promo_rank = _TIER_RANK.get(promo, 0)
-            paid_rank = _TIER_RANK.get(paid_normalized, 0)
+            paid_rank = _TIER_RANK.get(paid, 0)  # unknown statuses get rank 0
             if promo_rank > paid_rank:
                 return promo
         else:
@@ -52,7 +53,7 @@ def effective_subscription_tier(user: "User") -> str:
             user.promo_tier = None
             user.promo_expires_at = None
 
-    return paid_normalized
+    return paid
 
 
 # ---------------------------------------------------------------------------
