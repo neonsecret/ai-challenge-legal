@@ -4,7 +4,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek — Vitreon Legal",
+    title: "Vitreon Legal — Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek",
     description:
         "Výpověď, mzda, dovolená, práce z domova — AI právní asistent Vitreon odpovídá na nejčastější otázky zákoníku práce s přesnou citací z judikatury. Zdarma pro zaměstnance i zaměstnavatele.",
     keywords: [
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek",
+        title: "Vitreon Legal — Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek",
         description:
             "AI asistent Vitreon Legal odpovídá na pracovněprávní otázky s citacemi z judikatury. Výpověď, mzda, dovolená, home office — vše podloženo zákoníkem práce.",
         url: "https://vitreon.app/blog/zakonik-prace-2026-ai",

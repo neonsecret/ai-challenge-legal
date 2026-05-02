@@ -150,6 +150,7 @@ const jsonLd = {
                 },
             ],
             "sameAs": [],
+            "alternateName": ["Vitreon Legal", "Vitreon"],
             "knowsAbout": [
                 "Legal Research",
                 "Czech Law",

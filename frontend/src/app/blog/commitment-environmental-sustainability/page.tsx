@@ -3,7 +3,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Our Commitment to Lean AI Infrastructure — Vitreon Legal Blog",
+    title: "Vitreon Legal — Our Commitment to Lean AI Infrastructure",
     description:
         "Vitreon Legal runs on a Mac and one GPU — no massive compute cluster. Here's why lean AI infrastructure is both an environmental and engineering commitment.",
     keywords: [
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "Our Commitment to Lean AI Infrastructure",
+        title: "Vitreon Legal — Our Commitment to Lean AI Infrastructure",
         description:
             "Vitreon Legal runs on a Mac and one GPU — no massive compute cluster. Here's why lean AI infrastructure is both an environmental and engineering commitment.",
         url: "https://vitreon.app/blog/commitment-environmental-sustainability",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Our Commitment to Lean AI Infrastructure",
+        title: "Vitreon Legal — Our Commitment to Lean AI Infrastructure",
         description:
             "Vitreon Legal runs on a Mac and one GPU — no massive compute cluster. Here's why lean AI infrastructure is both an environmental and engineering commitment.",
     },

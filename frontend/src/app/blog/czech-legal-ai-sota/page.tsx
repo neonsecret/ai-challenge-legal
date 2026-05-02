@@ -4,11 +4,11 @@ import { StrictNav } from "@/components/landing/strict/strict-nav";
 import { StrictFooter } from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI — Vitreon Legal Blog",
+    title: "Vitreon Legal — Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
     description:
         "Technický rozbor benchmarku GaRAGe (ACL 2025): Vitreon Legal dosahuje 0.824 RAF, +36% nad publikovaný SOTA 0.607. Jak funguje retrieval pipeline pro judikaturu a právní výzkum v ČR.",
     openGraph: {
-        title: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
+        title: "Vitreon Legal — Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
         description:
             "GaRAGe benchmark 0.824 RAF, +36% nad SOTA. Technický rozbor retrieval pipeline pro českou judikaturu.",
         url: "https://vitreon.app/blog/czech-legal-ai-sota",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     keywords: ["český právní AI", "GaRAGe benchmark", "legal AI SOTA", "Vitreon Legal", "judikatura", "právní výzkum"],
     twitter: {
         card: "summary_large_image",
-        title: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
+        title: "Vitreon Legal — Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
         description:
             "GaRAGe benchmark 0.824 RAF, +36% nad SOTA. Technický rozbor retrieval pipeline pro českou judikaturu.",
     },

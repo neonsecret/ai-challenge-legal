@@ -2,7 +2,7 @@ import Link from "next/link";
 import type {Metadata} from "next";
 
 export const metadata: Metadata = {
-    title: "Privacy Policy — Vitreon Legal",
+    title: "Vitreon Legal — Privacy Policy",
     description:
         "How Vitreon Legal collects, uses, and protects your data when you use our AI-powered legal research platform.",
     alternates: {

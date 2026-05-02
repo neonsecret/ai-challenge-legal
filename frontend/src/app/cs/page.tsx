@@ -5,7 +5,7 @@ import {StrictFooter} from "@/components/landing/strict/strict-footer";
 import {ArrowRight, Scale, Search, FileText, Shield, BookOpen, Gavel} from "lucide-react";
 
 export const metadata: Metadata = {
-    title: "AI právní asistent pro české právo — Vitreon",
+    title: "Vitreon Legal — AI právní asistent pro české právo",
     description:
         "Najděte přesný paragraf nebo judikát během sekund. Každá odpověď cituje stranu a ustanovení. Zákoník práce, NSS, ÚS. 3 dotazy denně zdarma, bez karty.",
     keywords: [
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "AI právní asistent pro české právo — Vitreon",
+        title: "Vitreon Legal — AI právní asistent pro české právo",
         description:
             "Najděte přesný paragraf nebo judikát během sekund. Každá odpověď cituje stranu a ustanovení. Zákoník práce, NSS, ÚS. 3 dotazy denně zdarma, bez karty.",
         url: "https://vitreon.app/cs",

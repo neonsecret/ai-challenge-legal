@@ -4,7 +4,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi — Vitreon Legal",
+    title: "Vitreon Legal — AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
     description:
         "Podrobné srovnání Beck-online, ASPI a Vitreon Legal pro českou advokátní praxi. Jak AI šetří 3–5 hodin týdně při právním výzkumu, ceník v CZK, citace z judikatury NSS a ÚS.",
     keywords: [
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
+        title: "Vitreon Legal — AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
         description:
             "Jak AI šetří 3–5 hodin týdně při právním výzkumu. Srovnání Beck-online, ASPI a Vitreon Legal — ceník, funkce, judikatura NSS a ÚS.",
         url: "https://vitreon.app/blog/ai-pro-advokaty-2026",
@@ -92,7 +92,7 @@ export default function AIProAdvokatyPost() {
     const articleJsonLd = {
         "@context": "https://schema.org",
         "@type": "Article",
-        headline: "AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
+        headline: "Vitreon Legal — AI pro advokáty 2026: Beck-online vs. Vitreon Legal — srovnání pro českou praxi",
         description:
             "Podrobné srovnání Beck-online, ASPI a Vitreon Legal pro českou advokátní praxi. Jak AI šetří 3–5 hodin týdně při právním výzkumu, ceník v CZK, citace z judikatury NSS a ÚS.",
         datePublished: "2026-04-18",

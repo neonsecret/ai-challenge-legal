@@ -4,14 +4,14 @@ import { StrictNav } from "@/components/landing/strict/strict-nav";
 import { StrictFooter } from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Blog — Vitreon Legal",
+    title: "Vitreon Legal — Blog",
     description:
         "Technical blog from Vitreon Legal: benchmark results, competition reports, Czech legal AI research, and retrieval pipeline methodology.",
     alternates: {
         canonical: "https://vitreon.app/blog",
     },
     openGraph: {
-        title: "Blog — Vitreon Legal",
+        title: "Vitreon Legal — Blog",
         description:
             "Technical blog: benchmark results, competition reports, Czech legal AI research.",
         url: "https://vitreon.app/blog",
@@ -71,7 +71,7 @@ const POSTS = [
     },
     {
         slug: "zakonik-prace-2026-ai",
-        title: "Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek",
+        title: "Vitreon Legal — Zákoník práce 2026: AI odpovídá na 10 nejčastějších pracovněprávních otázek",
         description:
             "Výpověď, mzda, dovolená, home office — AI právní asistent odpovídá na nejčastější otázky zákoníku práce s přesnou citací z judikatury. Zdarma pro zaměstnance i zaměstnavatele.",
         date: "18. dubna 2026",
@@ -79,7 +79,7 @@ const POSTS = [
     },
     {
         slug: "arlc-2026-results",
-        title: "How Vitreon Placed 4th in ARLC 2026",
+        title: "Vitreon Legal — How Vitreon Placed 4th in ARLC 2026",
         description:
             "The story of team Neon Team at the Agentic RAG Legal Challenge 2026: methodology, scores, and what it means for legal AI.",
         date: "April 10, 2026",
@@ -87,7 +87,7 @@ const POSTS = [
     },
     {
         slug: "czech-legal-ai-sota",
-        title: "Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
+        title: "Vitreon Legal — Jak Vitreon dosahuje +36% nad SOTA v českém právním AI",
         description:
             "Technický rozbor benchmarku GaRAGe, co znamená SOTA, jak funguje Vitreon retrieval pipeline a proč je to důležité pro judikaturu a právní výzkum.",
         date: "April 12, 2026",
@@ -120,7 +120,7 @@ export default function BlogIndexPage() {
                     >
                         Vitreon Legal Blog
                     </h1>
-                    <p className="text-sm max-w-2xl" style={{color: "var(--strict-text-secondary)", lineHeight: 1.7}}>
+                    <p className="text-sm max-w-2xl" style={{color: "var(--strict-text-body)", lineHeight: 1.7}}>
                         Technical posts about legal AI, benchmark results, competition reports, and retrieval
                         pipeline research.
                     </p>

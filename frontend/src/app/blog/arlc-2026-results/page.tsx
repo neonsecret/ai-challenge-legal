@@ -4,11 +4,11 @@ import { StrictNav } from "@/components/landing/strict/strict-nav";
 import { StrictFooter } from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "How Vitreon Placed 4th in ARLC 2026 — Vitreon Legal Blog",
+    title: "Vitreon Legal — How Vitreon Placed 4th in ARLC 2026",
     description:
         "Team Neon Team (Vitreon Legal) placed 4th out of 80 teams at the ARLC 2026 competition during Dubai AI Week. 0.958 on warmup (1st place), 0.719 on finals. Full methodology and score breakdown.",
     openGraph: {
-        title: "How Vitreon Placed 4th in ARLC 2026",
+        title: "Vitreon Legal — How Vitreon Placed 4th in ARLC 2026",
         description:
             "Team Neon Team placed 4th/80 at ARLC 2026. 0.958 warmup (1st), 0.719 finals. Full methodology breakdown.",
         url: "https://vitreon.app/blog/arlc-2026-results",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     keywords: ["ARLC 2026", "Czech legal AI", "legal AI benchmark", "Vitreon Legal", "Czech law", "legal research AI"],
     twitter: {
         card: "summary_large_image",
-        title: "How Vitreon Placed 4th in ARLC 2026",
+        title: "Vitreon Legal — How Vitreon Placed 4th in ARLC 2026",
         description:
             "Team Neon Team placed 4th/80 at ARLC 2026. 0.958 warmup (1st), 0.719 finals. Full methodology breakdown.",
     },
