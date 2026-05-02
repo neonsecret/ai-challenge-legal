@@ -3,7 +3,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Our Commitment to Sustainable Work — Vitreon Legal Blog",
+    title: "Vitreon Legal — Our Commitment to Sustainable Work",
     description:
         "Vitreon Legal is async-first and fully remote. Here's what work-life balance actually means when there's no office, no fixed hours, and no performance theater.",
     keywords: [
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "Our Commitment to Sustainable Work",
+        title: "Vitreon Legal — Our Commitment to Sustainable Work",
         description:
             "Vitreon Legal is async-first and fully remote. Here's what work-life balance actually means when there's no office, no fixed hours, and no performance theater.",
         url: "https://vitreon.app/blog/commitment-work-life-balance",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Our Commitment to Sustainable Work",
+        title: "Vitreon Legal — Our Commitment to Sustainable Work",
         description:
             "Vitreon Legal is async-first and fully remote. Here's what work-life balance actually means when there's no office, no fixed hours, and no performance theater.",
     },

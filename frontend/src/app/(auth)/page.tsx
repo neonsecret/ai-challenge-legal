@@ -10,7 +10,7 @@ const LandingClient = dynamic(() => import("./landing-client").then(m => ({ defa
 });
 
 export const metadata: Metadata = {
-    title: "AI Legal Research with Cited Sources — Vitreon",
+    title: "Vitreon Legal — AI Legal Research with Cited Sources",
     description:
         "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 10 free queries/day, no card.",
     keywords: [
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     ],
     authors: [{name: "Viacheslav Ivannikov"}],
     openGraph: {
-        title: "AI Legal Research with Cited Sources — Vitreon",
+        title: "Vitreon Legal — AI Legal Research with Cited Sources",
         description:
             "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 10 free queries/day, no card.",
         url: "https://vitreon.app",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "AI Legal Research with Cited Sources — Vitreon",
+        title: "Vitreon Legal — AI Legal Research with Cited Sources",
         description:
             "Find the exact statute or court decision in seconds. Every answer cites the page and clause. Czech, DIFC, UK, AU jurisdictions. 10 free queries/day, no card.",
         images: ["/opengraph-image.png"],

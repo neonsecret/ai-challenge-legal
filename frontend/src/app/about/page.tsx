@@ -5,7 +5,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "About Vitreon Legal — AI-Powered Legal Research from Prague",
+    title: "Vitreon Legal — AI-Powered Legal Research from Prague",
     description:
         "Vitreon Legal is an AI-powered legal research platform built by Viacheslav Ivannikov in Prague. 4th place at ARLC 2026, +36% above SOTA on GaRAGe benchmark. Czech legal AI startup democratizing legal research.",
     keywords: [
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "About Vitreon Legal — AI-Powered Legal Research",
+        title: "Vitreon Legal — AI-Powered Legal Research",
         description:
             "Built by Viacheslav Ivannikov in Prague. 4th place at ARLC 2026, +36% above SOTA. Democratizing legal research through AI.",
         url: "https://vitreon.app/about",

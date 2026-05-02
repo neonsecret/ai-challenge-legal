@@ -4,14 +4,14 @@ import { StrictNav } from "@/components/landing/strict/strict-nav";
 import { StrictFooter } from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Blog — Vitreon Legal",
+    title: "Vitreon Legal — Blog",
     description:
         "Technical blog from Vitreon Legal: benchmark results, competition reports, Czech legal AI research, and retrieval pipeline methodology.",
     alternates: {
         canonical: "https://vitreon.app/blog",
     },
     openGraph: {
-        title: "Blog — Vitreon Legal",
+        title: "Vitreon Legal — Blog",
         description:
             "Technical blog: benchmark results, competition reports, Czech legal AI research.",
         url: "https://vitreon.app/blog",

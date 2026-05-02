@@ -3,7 +3,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "Our Commitment to Access to Justice — Vitreon Legal Blog",
+    title: "Vitreon Legal — Our Commitment to Access to Justice",
     description:
         "Legal research costs are a barrier to access to justice. Vitreon Legal is building to lower that barrier with a free tier and multi-jurisdiction coverage.",
     keywords: [
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "Our Commitment to Access to Justice",
+        title: "Vitreon Legal — Our Commitment to Access to Justice",
         description:
             "Legal research costs are a barrier to access to justice. Vitreon Legal is building to lower that barrier with a free tier and multi-jurisdiction coverage.",
         url: "https://vitreon.app/blog/commitment-social-impact",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Our Commitment to Access to Justice",
+        title: "Vitreon Legal — Our Commitment to Access to Justice",
         description:
             "Legal research costs are a barrier to access to justice. Vitreon Legal is building to lower that barrier with a free tier and multi-jurisdiction coverage.",
     },

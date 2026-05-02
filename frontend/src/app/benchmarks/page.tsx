@@ -5,7 +5,7 @@ import {StrictNav} from "@/components/landing/strict/strict-nav";
 import {StrictFooter} from "@/components/landing/strict/strict-footer";
 
 export const metadata: Metadata = {
-    title: "How Accurate Is Vitreon? Independent Benchmarks",
+    title: "Vitreon Legal — How Accurate Is Vitreon? Independent Benchmarks",
     description:
         "Tested on ACL 2025 legal-research benchmarks. 100% citation accuracy, top-4 of 80 teams at ARLC 2026. Independent results you can reproduce.",
     keywords: [
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "How Accurate Is Vitreon? Independent Benchmarks",
+        title: "Vitreon Legal — How Accurate Is Vitreon? Independent Benchmarks",
         description:
             "Tested on ACL 2025 legal-research benchmarks. 100% citation accuracy, top-4 of 80 teams at ARLC 2026. Independent results you can reproduce.",
         url: "https://vitreon.app/benchmarks",

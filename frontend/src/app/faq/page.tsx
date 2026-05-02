@@ -6,7 +6,7 @@ import {StrictFooter} from "@/components/landing/strict/strict-footer";
 import {FAQ_ITEMS, buildFaqJsonLd} from "@/lib/faq-data";
 
 export const metadata: Metadata = {
-    title: "FAQ — Vitreon Legal: AI Legal Research for Czech, DIFC, UK & AU Law",
+    title: "Vitreon Legal — FAQ: AI Legal Research for Czech, DIFC, UK & AU Law",
     description:
         "Frequently asked questions about Vitreon Legal: AI-powered legal research, pricing, accuracy, Czech law coverage, DIFC, UK, Australian jurisdictions, source grounding, and data security.",
     keywords: [
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
         },
     },
     openGraph: {
-        title: "FAQ — Vitreon Legal: AI Legal Research for Czech, DIFC, UK & AU Law",
+        title: "Vitreon Legal — FAQ: AI Legal Research for Czech, DIFC, UK & AU Law",
         description:
             "Frequently asked questions about Vitreon Legal: AI legal research, pricing, accuracy, Czech law coverage, jurisdictions, and data security.",
         url: "https://vitreon.app/faq",
