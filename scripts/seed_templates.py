@@ -126,6 +126,853 @@ ZALOBA_NEPLATNOST_VYPOVEDI = (
 
 # ---------------------------------------------------------------------------
 # Template 2 — Žaloba na zaplacení
+
+# ---------------------------------------------------------------------------
+# Template 3 — Smlouva o mlčenlivosti (NDA)
+# ---------------------------------------------------------------------------
+
+NDA_TEMPLATE = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\noindent\textbf{{{soud}}}
+
+\vspace{2em}
+
+\noindent\textbf{Smluvní strany:}
+\begin{itemize}
+  \item {{strana_a_jmeno}}, {{strana_a_adresa}}, IČO {{strana_a_ico}}
+  \item {{strana_b_jmeno}}, {{strana_b_adresa}}, IČO {{strana_b_ico}}
+\end{itemize}
+
+\vspace{1em}
+
+\begin{center}
+{\large\textbf{Dohoda o mlčenlivosti (NDA)}}
+\end{center}
+
+\vspace{1em}
+
+\textbf{I. Předmět dohody}
+
+{{predmet_jednani}}
+
+\textbf{II. Definice důvěrných informací}
+
+{{definice_duvernych_informaci}}
+
+\textbf{III. Závazek mlčenlivosti}
+
+{{zavazek_mlcenlivosti}}
+
+\textbf{IV. Doba trvání}
+
+{{doba_mlcenlivosti}}
+
+\textbf{V. Sankce za porušení}
+
+{{smluvni_pokuta}}
+
+\vspace{2em}
+
+\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{strana_a_jmeno}}
+
+\vspace{2em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{strana_b_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
+# Template 4 — Nájemní smlouva — prostory sloužící k podnikání (commercial lease)
+# ---------------------------------------------------------------------------
+
+COMMERCIAL_LEASE_TEMPLATE = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\noindent\textbf{{{soud}}}
+
+\vspace{2em}
+
+\noindent\textbf{Smluvní strany:}
+\begin{itemize}
+  \item {{pronajimatel_jmeno}}, {{pronajimatel_adresa}}, IČO {{pronajimatel_ico}}
+  \item {{najemce_jmeno}}, {{najemce_adresa}}, IČO {{najemce_ico}}
+\end{itemize}
+
+\vspace{1em}
+
+\begin{center}
+{\large\textbf{Nájemní smlouva – prostory sloužící k podnikání}}
+\end{center}
+
+\vspace{1em}
+
+\textbf{I. Předmět nájmu}
+
+{{predmet_najmu_adresa}}
+
+{{predmet_najmu_popis}}
+
+\textbf{II. Doba nájmu}
+
+{{doba_najmu}}
+
+\textbf{III. Nájemné a platební podmínky}
+
+Měsíční nájemné: {{najemne_mesicne}} Kč.
+
+Kauce: {{kauce}} Kč.
+
+\textbf{IV. Práva a povinnosti stran}
+
+{{prava_povinnosti}}
+
+\textbf{V. Skončení nájmu}
+
+{{vypovedni_doba}}
+
+\vspace{2em}
+
+\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{pronajimatel_jmeno}}
+
+\vspace{2em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{najemce_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
+# Template 5 — Souhlas se zpracováním osobních údajů (GDPR consent)
+# ---------------------------------------------------------------------------
+
+GDPR_CONSENT_TEMPLATE = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\noindent\textbf{{{soud}}}
+
+\vspace{2em}
+
+\noindent\textbf{Správce:}
+{{spravce_jmeno}}, {{spravce_adresa}}, IČO {{spravce_ico}}, kontakt {{spravce_kontakt}}
+
+\noindent\textbf{Subjekt údajů:}
+{{subjekt_jmeno}}, {{subjekt_adresa}}
+
+\vspace{1em}
+
+\begin{center}
+{\large\textbf{Souhlas se zpracováním osobních údajů}}
+\end{center}
+
+\vspace{1em}
+
+\textbf{I. Účel a kategorie zpracování}
+
+{{ucel_zpracovani}}
+
+\textbf{II. Právní základ}
+
+{{pravni_zaklad}}
+
+\textbf{III. Doba uchování}
+
+{{doba_uchovavani}}
+
+\textbf{IV. Práva subjektu}
+
+{{prava_subjektu}}
+
+\textbf{V. Příjemci údajů}
+
+{{prijemci_udaju}}
+
+\vspace{2em}
+
+\noindent Datum souhlasu: {{datum_souhlasu}}
+
+\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{spravce_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
+# Template 6 — Výpověď z pracovního poměru ze strany zaměstnavatele (employer termination)
+# ---------------------------------------------------------------------------
+
+EMPLOYER_TERMINATION_TEMPLATE = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\noindent\textbf{{{soud}}}
+
+\vspace{2em}
+
+\noindent\textbf{Zaměstnavatel:}
+{{zamestnavatel_jmeno}}, {{zamestnavatel_adresa}}, IČO {{zamestnavatel_ico}}
+
+\noindent\textbf{Zaměstnanec:}
+{{zamestnanec_jmeno}}, {{zamestnanec_adresa}}, datum narození {{zamestnanec_datum_narozeni}}
+
+\vspace{1em}
+
+\begin{center}
+{\large\textbf{Výpověď z pracovního poměru ze strany zaměstnavatele}}
+\end{center}
+
+\vspace{1em}
+
+\textbf{I. Identifikace pracovního poměru}
+
+Pozice: {{pracovni_pozice}}
+
+Datum uzavření smlouvy: {{datum_uzavreni_smlouvy}}
+
+\textbf{II. Výpověď a její důvod}
+
+Paragraf výpovědi: {{paragraf_vypovedi}}
+
+Důvod výpovědi: {{duvod_vypovedi}}
+
+\textbf{III. Výpovědní doba}
+
+{{vypovedni_doba}}
+
+\textbf{IV. Poučení zaměstnance}\n\textit{(§ 72 ZP)}
+
+{{poucenim}}
+
+\vspace{2em}
+
+\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{zamestnavatel_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
+# Template 7 — Smlouva o převodu podílu ve s.r.o. (share transfer)
+# ---------------------------------------------------------------------------
+
+SHARE_TRANSFER_TEMPLATE = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\noindent\textbf{{{soud}}}
+
+\vspace{2em}
+
+\noindent\textbf{Převodce:}
+{{prevodce_jmeno}}, {{prevodce_adresa}}, IČO {{prevodce_rc_ico}}
+
+\noindent\textbf{Nabyvatel:}
+{{nabyvatel_jmeno}}, {{nabyvatel_adresa}}, IČO {{nabyvatel_rc_ico}}
+
+\vspace{1em}
+
+\begin{center}
+{\large\textbf{Smlouva o převodu podílu ve s.r.o.}}
+\end{center}
+
+\vspace{1em}
+
+\textbf{I. Identifikace společnosti a podílu}
+
+Název společnosti: {{nazev_spolecnosti}}
+
+Sídlo: {{sidlo_spolecnosti}}
+
+IČO: {{ico_spolecnosti}}
+
+Podíl před převodem: {{vyse_podilu_pred}} %
+
+Převáděný podíl: {{vyse_prevadeneho_podilu}} %
+
+\textbf{II. Cena a platební podmínky}
+
+Cena převodu: {{cena_prevodu}}
+
+\textbf{III. Účinnost převodu vůči společnosti}
+
+{{ucinnost}}
+
+\textbf{IV. Prohlášení stran}
+
+{{prohlaseni}}
+
+\textbf{V. Závěrečná ustanovení}
+
+{{zaverecna}}
+
+\vspace{2em}
+
+\noindent V {{misto_uzavreni}} dne {{datum_uzavreni}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{prevodce_jmeno}}
+
+\vspace{2em}
+
+\noindent\rule{8cm}{0.4pt}\\
+{{nabyvatel_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
+
+NAJEMNI_SMLOUVA_PROSTORY_PODNIKANI = """
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage[a4paper, top=2.5cm, bottom=3.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{setspace}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\textit{Vzor --- zkontrolujte a~upravte před podáním. Tento dokument není právním poradenstvím.}}
+\fancyfoot[R]{\small\thepage}
+\setstretch{1.3}
+
+\begin{document}
+
+\begin{center}
+{\large\textbf{Nájemní smlouva --- prostory sloužící k podnikání}}
+\medskip
+\textit{uzavřena dle § 2302--2331 zákona č. 89/2012 Sb., občanský zákoník (OZ)}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I. Smluvní strany}
+
+\medskip
+
+\noindent \textbf{Pronajímatel:} {{pronajimatel_jmeno}}, IČO: {{pronajimatel_ico}}, sídlo: {{pronajimatel_adresa}}
+
+\noindent \textbf{Nájemce:} {{najemce_jmeno}}, IČO: {{najemce_ico}}, sídlo: {{najemce_adresa}}
+
+\vspace{1em}
+
+\textbf{II. Předmět a účel nájmu}
+
+\medskip
+
+Předmětem nájmu jsou nebytové prostory umístěné na adrese: {{predmet_najmu_adresa}}.
+
+Popis prostor: {{predmet_najmu_popis}}.
+
+Výměra pronajímaných prostor: {{vymera}} m².
+
+Prostory budou používány k účelu: {{ucel_najmu}}.
+
+\vspace{1em}
+
+\textbf{III. Doba nájmu}
+
+\medskip
+
+Nájem se sjednává na {{doba_najmu}}.
+
+Počátek nájmu: {{datum_zacatku}}.
+
+{{datum_konce}}
+
+\vspace{1em}
+
+\textbf{IV. Nájemné a platební podmínky}
+
+\medskip
+
+Měsíční nájemné činí {{najemne_mesicne}} Kč.
+
+Kauce: {{kauce}} Kč.
+
+\vspace{1em}
+
+\textbf{V. Kauce}
+
+\medskip
+
+Kauce slouží k zajištění nároků pronajímatele z nájemní smlouvy.
+
+\vspace{1em}
+
+\textbf{VI. Práva a povinnosti}
+
+\medskip
+
+Nájemce je povinen užívat prostory v souladu s účelem nájmu a řádně udržovat pronajaté prostory.
+
+\vspace{1em}
+
+\textbf{VII. Skončení nájmu}
+
+\medskip
+
+Výpovědní doba činí {{vypovedni_doba}} a počíná běžet prvním dnem měsíce následujícího po doručení výpovědi.
+
+\vspace{1em}
+
+\textbf{VIII. Závěrečná ustanovení}
+
+\medskip
+
+Tato smlouva se řídí českým právním řádem. Změny smlouvy vyžadují písemnou formu.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\qquad\rule{8cm}{0.4pt}\\
+\noindent\textit{Pronajímatel}\qquad\qquad\qquad\qquad\qquad\qquad\textit{Nájemce}\\
+\noindent{{pronajimatel_jmeno}}\qquad\qquad\qquad\qquad\qquad\qquad{{najemce_jmeno}}
+
+\end{document}
+
+"""
+
+
+SMLOUVA_O_MLCENLIVOSTI_NDA = """
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage[a4paper, top=2.5cm, bottom=3.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{setspace}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\textit{Vzor --- zkontrolujte a~upravte před podáním. Tento dokument není právním poradenstvím.}}
+\fancyfoot[R]{\small\thepage}
+\setstretch{1.3}
+
+\begin{document}
+
+\begin{center}
+{\large\textbf{Smlouva o mlčenlivosti (NDA)}}
+\medskip
+\textit{uzavřena dle § 1730, § 504 a § 2985 zákona č. 89/2012 Sb., občanský zákoník (OZ)}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I. Smluvní strany}
+
+\medskip
+
+\noindent \textbf{Strana A:} {{strana_a_jmeno}}, IČO: {{strana_a_ico}}, sídlo/bydliště: {{strana_a_adresa}}
+
+\noindent \textbf{Strana B:} {{strana_b_jmeno}}, IČO: {{strana_b_ico}}, sídlo/bydliště: {{strana_b_adresa}}
+
+\vspace{1em}
+
+\textbf{II. Předmět a účel}
+
+\medskip
+
+Předmětem této smlouvy je závazek obou stran zachovávat mlčenlivost o důvěrných informacích, které si navzájem sdělí v souvislosti s: {{predmet_jednani}}.
+
+\vspace{1em}
+
+\textbf{III. Důvěrné informace}
+
+\medskip
+
+Za důvěrné informace se považují veškeré údaje, dokumenty, technické specifikace, obchodní plány a jiné skutečnosti, které: {{definice_duvernych_informaci}}.
+
+\vspace{1em}
+
+\textbf{IV. Závazek mlčenlivosti}
+
+\medskip
+
+Každá ze stran se zavazuje, že bez předchozího písemného souhlasu druhé strany nezpřístupní důvěrné informace třetím osobám a nepoužije je k jiným účelům, než je účel této smlouvy.
+
+\vspace{1em}
+
+\textbf{V. Doba trvání}
+
+\medskip
+
+Závazek mlčenlivosti trvá po dobu {{doba_mlcenlivosti}} od podpisu této smlouvy.
+
+\vspace{1em}
+
+\textbf{VI. Smluvní pokuta}
+
+\medskip
+
+Poruší-li některá ze stran závazek mlčenlivosti, uhradí druhé straně smluvní pokutu ve výši {{smluvni_pokuta}} za každé jednotlivé porušení.
+
+\vspace{1em}
+
+\textbf{VII. Závěrečná ustanovení}
+
+\medskip
+
+Tato smlouva se řídí českým právním řádem. Případné spory budou řešeny u příslušného soudu v České republice.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\qquad\rule{8cm}{0.4pt}\\
+\noindent\textit{Strana A}\qquad\qquad\qquad\qquad\qquad\qquad\textit{Strana B}\\
+\noindent{{strana_a_jmeno}}\qquad\qquad\qquad\qquad\qquad\qquad{{strana_b_jmeno}}
+
+\end{document}
+
+"""
+
+
+SMLOUVA_PREVOD_PODILU_SRO = """
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage[a4paper, top=2.5cm, bottom=3.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{setspace}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\textit{Vzor --- zkontrolujte a~upravte před podáním. Tento dokument není právním poradenstvím.}}
+\fancyfoot[R]{\small\thepage}
+\setstretch{1.3}
+
+\begin{document}
+
+\begin{center}
+{\large\textbf{Smlouva o převodu podílu ve společnosti s ručením omezeným}}
+\medskip
+\textit{uzavřena dle § 207--209 zákona č. 90/2012 Sb., o obchodních korporacích (ZOK)}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I. Smluvní strany}
+
+\medskip
+
+\noindent \textbf{Převodce:} {{prevodce_jmeno}}, {{prevodce_rc_ico}}, bytem/sídlem: {{prevodce_adresa}}
+
+\noindent \textbf{Nabyvatel:} {{nabyvatel_jmeno}}, {{nabyvatel_rc_ico}}, bytem/sídlem: {{nabyvatel_adresa}}
+
+\vspace{1em}
+
+\textbf{II. Předmět smlouvy a převáděný podíl}
+
+\medskip
+
+Předmětem této smlouvy je převod podílu v obchodní společnosti:
+
+\noindent \textbf{Název:} {{nazev_spolecnosti}}
+
+\noindent \textbf{Sídlo:} {{sidlo_spolecnosti}}
+
+\noindent \textbf{IČO:} {{ico_spolecnosti}}
+
+Převodce vlastnil podíl ve výši {{vyse_podilu_pred}} před převodem.
+
+Převodce tímto převádí podíl ve výši {{vyse_prevadeneho_podilu}} na nabyvatele.
+
+\vspace{1em}
+
+\textbf{III. Cena a platební podmínky}
+
+\medskip
+
+Cena převodu činí {{cena_prevodu}} Kč.
+
+\vspace{1em}
+
+\textbf{IV. Účinnost převodu vůči společnosti}
+
+\medskip
+
+Převod podílu nabývá účinnosti vůči společnosti dnem doručení této smlouvy společnosti dle § 209 ZOK.
+
+\vspace{1em}
+
+\textbf{V. Prohlášení stran}
+
+\medskip
+
+Strana převodce prohlašuje, že podíl není zatížen žádnými právy třetích osob.
+
+Strana nabyvatel prohlašuje, že byl seznámen se stavem společnosti a účetní závěrkou.
+
+\vspace{1em}
+
+\textbf{VI. Závěrečná ustanovení}
+
+\medskip
+
+Tato smlouva vyžaduje k platnosti úřední ověření podpisů (§ 209 ZOK).
+
+Tato smlouva se řídí českým právním řádem.
+
+\vspace{3em}
+
+\noindent V~{{misto_uzavreni}} dne {{datum_uzavreni}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\qquad\rule{8cm}{0.4pt}\\
+\noindent\textit{Převodce}\qquad\qquad\qquad\qquad\qquad\qquad\textit{Nabyvatel}\\
+\noindent{{prevodce_jmeno}}\qquad\qquad\qquad\qquad\qquad\qquad{{nabyvatel_jmeno}}
+
+\noindent\begin{small}Podpisy musí být úředně ověřeny dle § 209 ZOK.\end{small}
+
+\end{document}
+
+"""
+
+
+SOUHLAS_ZPRACOVANI_OSOBNICH_UDAJU_GDPR = """
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage[a4paper, top=2.5cm, bottom=3.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{setspace}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\textit{Vzor --- zkontrolujte a~upravte před podáním. Tento dokument není právním poradenstvím.}}
+\fancyfoot[R]{\small\thepage}
+\setstretch{1.3}
+
+\begin{document}
+
+\begin{center}
+{\large\textbf{Souhlas se zpracováním osobních údajů}}
+\medskip
+\textit{dle nařízení (EU) 2016/679 (GDPR), čl. 6 odst. 1 písm. a) a čl. 13; zákon č. 110/2019 Sb.}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I. Správce}
+
+\medskip
+
+\noindent \textbf{Správce:} {{spravce_jmeno}}, IČO: {{spravce_ico}}, sídlo: {{spravce_adresa}}
+
+\noindent Kontakt: {{spravce_kontakt}}
+
+\vspace{1em}
+
+\textbf{II. Subjekt údajů}
+
+\medskip
+
+\noindent \textbf{Subjekt:} {{subjekt_jmeno}}, bytem: {{subjekt_adresa}}
+
+\vspace{1em}
+
+\textbf{III. Účel a kategorie zpracování}
+
+\medskip
+
+Účel zpracování: {{ucel_zpracovani}}.
+
+Kategorie zpracovávaných údajů: {{kategorie_udaju}}.
+
+Právní základ: {{pravni_zaklad}}.
+
+\vspace{1em}
+
+\textbf{IV. Doba uchovávání}
+
+\medskip
+
+Osobní údaje budou uchovávány po dobu {{doba_uchovavani}}.
+
+\vspace{1em}
+
+\textbf{V. Práva subjektu}
+
+\medskip
+
+Subjekt údajů má právo:
+\begin{itemize}
+    \item na přístup ke svým osobním údajům (čl. 15 GDPR)
+    \item na opravu nepřesných údajů (čl. 16 GDPR)
+    \item na výmaz údajů (čl. 17 GDPR)
+    \item na omezení zpracování (čl. 18 GDPR)
+    \item vznést námitku proti zpracování (čl. 21 GDPR)
+    \item na přenositelnost údajů (čl. 20 GDPR)
+    \item kdykoli odvolat souhlas (bez vlivu na zákonnost zpracování před odvoláním)
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{VI. Příjemci údajů}
+
+\medskip
+
+Osobní údaje mohou být předány: {{prijemci_udaju}}.
+
+\vspace{1em}
+
+\textbf{VII. Závěrečná ustanovení}
+
+\medskip
+
+Tímto uděluji svůj svobodný, konkrétní, informovaný a jednoznačný souhlas se zpracováním mých osobních údajů.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_souhlasu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent\textit{Subjekt údajů}\\
+\noindent{{subjekt_jmeno}}
+
+\end{document}
+
+"""
+
+
+VYPOVED_PRACOVNIHO_POMERU_ZAMESTNAVATEL = """
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{TeX Gyre Termes}
+\usepackage[a4paper, top=2.5cm, bottom=3.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{setspace}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\small\textit{Vzor --- zkontrolujte a~upravte před podáním. Tento dokument není právním poradenstvím.}}
+\fancyfoot[R]{\small\thepage}
+\setstretch{1.3}
+
+\begin{document}
+
+\begin{center}
+{\large\textbf{Výpověď z pracovního poměru}}
+\medskip
+\textit{dle § 50--54 a § 52 zákona č. 262/2006 Sb., zákoník práce (ZP)}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I. Identifikace stran a pracovního poměru}
+
+\medskip
+
+\noindent \textbf{Zaměstnavatel:} {{zamestnavatel_jmeno}}, IČO: {{zamestnavatel_ico}}, sídlo: {{zamestnavatel_adresa}}
+
+\noindent \textbf{Zaměstnanec:} {{zamestnanec_jmeno}}, nar. {{zamestnanec_datum_narozeni}}, bytem: {{zamestnanec_adresa}}
+
+\noindent Pracovní pozice: {{pracovni_pozice}}
+
+\noindent Datum uzavření pracovní smlouvy: {{datum_uzavreni_smlouvy}}
+
+\vspace{1em}
+
+\textbf{II. Výpověď a její důvod}
+
+\medskip
+
+Zaměstnavatel tímto dává zaměstnanci výpověď z pracovního poměru dle {{paragraf_vypovedi}}.
+
+Důvod výpovědi: {{duvod_vypovedi}}.
+
+\vspace{1em}
+
+\textbf{III. Výpovědní doba}
+
+\medskip
+
+Výpovědní doba činí 2 měsíce a počíná běžet prvním dnem měsíce následujícího po doručení této výpovědi zaměstnanci, tj. od {{datum_doruceni}}.
+
+\vspace{1em}
+
+\textbf{IV. Poučení zaměstnance}
+
+\medskip
+
+Zaměstnanci náleží právo podat žalobu na neplatnost výpovědi u soudu do 2 měsíců od doručení této výpovědi, a to dle § 72 ZP.
+
+\vspace{1em}
+
+\textbf{V. Závěrečná ustanovení}
+
+\medskip
+
+Tato výpověď se řídí českým právním řádem.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent\textit{Zaměstnavatel}\\
+\noindent{{zamestnavatel_jmeno}}
+
+\noindent\begin{small}Doručeno zaměstnanci dne: {{datum_doruceni}}\end{small}
+
+\end{document}
+
+"""
+
+# Template records
+# ---------------------------------------------------------------------------
+
 # ---------------------------------------------------------------------------
 
 ZALOBA_NA_ZAPLACENI = (
@@ -1257,6 +2104,203 @@ TEMPLATES: list[dict] = [
             "vašich pokynů. Vhodné pro nestandardní podání nebo interní dokumenty."
         ),
     },
+    {
+        "slug": "najemni_smlouva_prostory_podnikani",
+        "name": "Nájemní smlouva — prostory sloužící k podnikání",
+        "jurisdiction": "CZ",
+        "category": "commercial",
+        "latex_template": NAJEMNI_SMLOUVA_PROSTORY_PODNIKANI,
+        "required_fields": [
+        "pronajimatel_jmeno",
+        "pronajimatel_adresa",
+        "pronajimatel_ico",
+        "najemce_jmeno",
+        "najemce_adresa",
+        "najemce_ico",
+        "predmet_najmu_adresa",
+        "predmet_najmu_popis",
+        "vymera",
+        "ucel_najmu",
+        "najemne_mesicne",
+        "kauce",
+        "doba_najmu",
+        "datum_zacatku",
+        "vypovedni_doba",
+        "misto_podpisu",
+        "datum_podpisu"
+],
+        "field_descriptions": {
+        "kauce": "Výše kauce v Kč",
+        "vymera": "Výměra v m²",
+        "doba_najmu": "Doba nájmu (určitá nebo neurčitá)",
+        "ucel_najmu": "Účel nájmu (např. kanceláře, administrativa)",
+        "najemce_ico": "IČO nájemce",
+        "datum_podpisu": "Datum podpisu smlouvy (DD.MM.RRRR)",
+        "datum_zacatku": "Datum počátku nájmu (DD.MM.RRRR)",
+        "misto_podpisu": "Místo podpisu smlouvy",
+        "najemce_jmeno": "Jméno a příjmení nebo obchodní firma nájemce",
+        "najemce_adresa": "Sídlo nájemce",
+        "vypovedni_doba": "Délka výpovědní doby (např. 3 měsíce)",
+        "najemne_mesicne": "Měsíční nájemné v Kč",
+        "pronajimatel_ico": "IČO pronajímatele",
+        "pronajimatel_jmeno": "Jméno a příjmení nebo obchodní firma pronajímatele",
+        "predmet_najmu_popis": "Popis prostor (patro, číslo místnosti, vybavení)",
+        "pronajimatel_adresa": "Sídlo pronajímatele",
+        "predmet_najmu_adresa": "Úplná adresa pronajímaných prostor"
+},
+        "description": "Nájemní smlouva na nebytové prostory pro podnikání dle § 2302–2331 OZ. Vhodná pro kanceláře, sklady, provozovny a další komerční prostory.",
+    },
+    {
+        "slug": "smlouva_o_mlcenlivosti_nda",
+        "name": "Smlouva o mlčenlivosti (NDA)",
+        "jurisdiction": "CZ",
+        "category": "commercial",
+        "latex_template": SMLOUVA_O_MLCENLIVOSTI_NDA,
+        "required_fields": [
+        "strana_a_jmeno",
+        "strana_a_adresa",
+        "strana_a_ico",
+        "strana_b_jmeno",
+        "strana_b_adresa",
+        "strana_b_ico",
+        "predmet_jednani",
+        "definice_duvernych_informaci",
+        "doba_mlcenlivosti",
+        "smluvni_pokuta",
+        "misto_podpisu",
+        "datum_podpisu"
+],
+        "field_descriptions": {
+        "strana_a_ico": "IČO Strana A",
+        "strana_b_ico": "IČO Strana B",
+        "datum_podpisu": "Datum podpisu smlouvy (DD.MM.RRRR)",
+        "misto_podpisu": "Místo podpisu smlouvy",
+        "smluvni_pokuta": "Výše smluvní pokuty za porušení mlčenlivosti (např. 100 000 Kč)",
+        "strana_a_jmeno": "Jméno a příjmení nebo obchodní firma Strana A",
+        "strana_b_jmeno": "Jméno a příjmení nebo obchodní firma Strana B",
+        "predmet_jednani": "Předmět jednání, kvůli kterému se sdělují důvěrné informace",
+        "strana_a_adresa": "Sídlo nebo bydliště Strana A",
+        "strana_b_adresa": "Sídlo nebo bydliště Strana B",
+        "doba_mlcenlivosti": "Doba trvání mlčenlivosti (např. 5 let od podpisu)",
+        "definice_duvernych_informaci": "Definice toho, co se považuje za důvěrné informace"
+},
+        "description": "Vzájemná smlouva o mlčenlivosti pro obchodní jednání, investiční pitch nebo spolupráci. Oba partneři se zavazují nezveřejnit důvěrné informace.",
+    },
+    {
+        "slug": "smlouva_prevod_podilu_sro",
+        "name": "Smlouva o převodu podílu ve s.r.o.",
+        "jurisdiction": "CZ",
+        "category": "commercial",
+        "latex_template": SMLOUVA_PREVOD_PODILU_SRO,
+        "required_fields": [
+        "prevodce_jmeno",
+        "prevodce_adresa",
+        "prevodce_rc_ico",
+        "nabyvatel_jmeno",
+        "nabyvatel_adresa",
+        "nabyvatel_rc_ico",
+        "nazev_spolecnosti",
+        "sidlo_spolecnosti",
+        "ico_spolecnosti",
+        "vyse_podilu_pred",
+        "vyse_prevadeneho_podilu",
+        "cena_prevodu",
+        "misto_uzavreni",
+        "datum_uzavreni"
+],
+        "field_descriptions": {
+        "cena_prevodu": "Cena převodu v Kč (nebo bezúplatně)",
+        "datum_uzavreni": "Datum uzavření smlouvy (DD.MM.RRRR)",
+        "misto_uzavreni": "Místo uzavření smlouvy",
+        "prevodce_jmeno": "Jméno a příjmení nebo obchodní firma převodce",
+        "ico_spolecnosti": "IČO společnosti",
+        "nabyvatel_jmeno": "Jméno a příjmení nebo obchodní firma nabyvatele",
+        "prevodce_adresa": "Bydliště nebo sídlo převodce",
+        "prevodce_rc_ico": "Rodné číslo (FO) nebo IČO (PO) převodce",
+        "nabyvatel_adresa": "Bydliště nebo sídlo nabyvatele",
+        "nabyvatel_rc_ico": "Rodné číslo (FO) nebo IČO (PO) nabyvatele",
+        "vyse_podilu_pred": "Výše podílu před převodem (např. 50 %)",
+        "nazev_spolecnosti": "Název společnosti s.r.o. včetně označení",
+        "sidlo_spolecnosti": "Sídlo společnosti",
+        "vyse_prevadeneho_podilu": "Výše převáděného podílu (např. 25 %)"
+},
+        "description": "Smlouva o převodu podílu ve s.r.o. dle § 207–209 ZOK. Vyžaduje úřední ověření podpisů a je účinná vůči společnosti po doručení.",
+    },
+    {
+        "slug": "souhlas_zpracovani_osobnich_udaju_gdpr",
+        "name": "Souhlas se zpracováním osobních údajů (GDPR)",
+        "jurisdiction": "CZ",
+        "category": "compliance",
+        "latex_template": SOUHLAS_ZPRACOVANI_OSOBNICH_UDAJU_GDPR,
+        "required_fields": [
+        "spravce_jmeno",
+        "spravce_adresa",
+        "spravce_ico",
+        "spravce_kontakt",
+        "subjekt_jmeno",
+        "subjekt_adresa",
+        "ucel_zpracovani",
+        "kategorie_udaju",
+        "pravni_zaklad",
+        "doba_uchovavani",
+        "prijemci_udaju",
+        "datum_souhlasu"
+],
+        "field_descriptions": {
+        "spravce_ico": "IČO správce údajů",
+        "pravni_zaklad": "Právní základ (např. souhlas dle čl. 6 odst. 1 písm. a) GDPR)",
+        "spravce_jmeno": "Jméno a příjmení nebo obchodní firma správce údajů",
+        "subjekt_jmeno": "Jméno a příjmení subjektu údajů",
+        "datum_souhlasu": "Datum udělení souhlasu (DD.MM.RRRR)",
+        "prijemci_udaju": "Kdo má přístup k údajům (např. pouze správce a zpracovatelé)",
+        "spravce_adresa": "Sídlo správce údajů",
+        "subjekt_adresa": "Bydliště subjektu údajů",
+        "doba_uchovavani": "Doba uchovávání údajů (např. 3 roky od udělení souhlasu)",
+        "kategorie_udaju": "Kategorie zpracovávaných údajů (jméno, email, telefon)",
+        "spravce_kontakt": "Kontakt na správce (email, telefon, odpovědná osoba)",
+        "ucel_zpracovani": "Účel zpracování (např. marketingová sdělení)"
+},
+        "description": "GDPR souhlas se zpracováním osobních údajů dle nařízení (EU) 2016/679. Obsahuje výčet práv subjektu údajů podle čl. 15–21 GDPR.",
+    },
+    {
+        "slug": "vypoved_pracovniho_pomeru_zamestnavatel",
+        "name": "Výpověď z pracovního poměru (zaměstnavatel)",
+        "jurisdiction": "CZ",
+        "category": "labor",
+        "latex_template": VYPOVED_PRACOVNIHO_POMERU_ZAMESTNAVATEL,
+        "required_fields": [
+        "zamestnavatel_jmeno",
+        "zamestnavatel_adresa",
+        "zamestnavatel_ico",
+        "zamestnanec_jmeno",
+        "zamestnanec_adresa",
+        "zamestnanec_datum_narozeni",
+        "pracovni_pozice",
+        "datum_uzavreni_smlouvy",
+        "paragraf_vypovedi",
+        "duvod_vypovedi",
+        "datum_doruceni",
+        "misto_podpisu",
+        "datum_podpisu"
+],
+        "field_descriptions": {
+        "datum_podpisu": "Datum podpisu výpovědi (DD.MM.RRRR)",
+        "misto_podpisu": "Místo podpisu výpovědi",
+        "datum_doruceni": "Datum doručení výpovědi zaměstnanci (DD.MM.RRRR)",
+        "duvod_vypovedi": "Konkrétní důvod výpovědi podle § 52 ZP",
+        "pracovni_pozice": "Pracovní pozice zaměstnance",
+        "paragraf_vypovedi": "Paragraf výpovědi (např. § 52 písm. c) ZP)",
+        "zamestnanec_jmeno": "Jméno a příjmení zaměstnance",
+        "zamestnavatel_ico": "IČO zaměstnavatele",
+        "zamestnanec_adresa": "Bydliště zaměstnance",
+        "zamestnavatel_jmeno": "Jméno a příjmení nebo obchodní firma zaměstnavatele",
+        "zamestnavatel_adresa": "Sídlo zaměstnavatele",
+        "datum_uzavreni_smlouvy": "Datum uzavření pracovní smlouvy (DD.MM.RRRR)",
+        "zamestnanec_datum_narozeni": "Datum narození zaměstnance (DD.MM.RRRR)"
+},
+        "description": "Výpověď z pracovního poměru daná zaměstnavatelem dle § 50–54 ZP. Obsahuje povinné poučení o právu na žalobu dle § 72 ZP.",
+    },
+
 ]
 
 # ---------------------------------------------------------------------------
