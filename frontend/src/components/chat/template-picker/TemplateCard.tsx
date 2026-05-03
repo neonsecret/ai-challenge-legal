@@ -28,9 +28,10 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 padding: SPACE[4],
                 borderRadius: RADIUS.lg,
                 width: "100%",
-                minHeight: 44,
+                minHeight: 88,
                 textAlign: "left",
                 cursor: "pointer",
+                overflow: "hidden",
                 background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",
                 border: `1px solid ${active ? "var(--doc-card-hover-border)" : "var(--doc-card-border)"}`,
                 backdropFilter: "blur(8px)",
@@ -47,6 +48,9 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 lineHeight: 1.4,
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.06em",
+                width: "100%",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
             }}>
                 {template.name}
             </span>
@@ -58,6 +62,8 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                     fontSize: TYPE_SCALE.xs,
                     color: "var(--doc-text-secondary)",
                     lineHeight: 1.5,
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
                 }}>
                     {template.description}
                 </span>
