@@ -28,7 +28,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 padding: SPACE[4],
                 borderRadius: RADIUS.lg,
                 width: "100%",
-                minHeight: 88,
+                minHeight: 144,
                 textAlign: "left",
                 cursor: "pointer",
                 overflow: "hidden",
@@ -45,12 +45,13 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 fontSize: TYPE_SCALE.sm,
                 fontWeight: "normal",
                 color: "var(--doc-text-primary)",
-                lineHeight: 1.4,
+                lineHeight: 1.5,
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.06em",
                 width: "100%",
                 wordBreak: "break-word",
                 overflowWrap: "break-word",
+                hyphens: "auto",
             }}>
                 {template.name}
             </span>
@@ -64,13 +65,14 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                     lineHeight: 1.5,
                     wordBreak: "break-word",
                     overflowWrap: "break-word",
+                    width: "100%",
                 }}>
                     {template.description}
                 </span>
             )}
 
             {/* Badges */}
-            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: SPACE[1]}}>
+            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: "auto"}}>
                 <Badge label={template.jurisdiction} variant="jurisdiction" />
                 <Badge label={template.category} variant="category" />
             </div>
@@ -94,6 +96,7 @@ function Badge({label, variant}: {label: string; variant: "jurisdiction" | "cate
             color: isJurisdiction ? "var(--doc-text-label)" : "var(--doc-text-secondary)",
             textTransform: "uppercase" as const,
             letterSpacing: "0.06em",
+            flexShrink: 0,
         }}>
             {label}
         </span>
