@@ -13,7 +13,8 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
     const [active, setActive] = useState(false)
 
     return (
-        <button
+<>
+                <button
             onClick={() => onSelect({slug: template.slug, name: template.name, jurisdiction: template.jurisdiction || undefined})}
             onMouseEnter={() => setActive(true)}
             onMouseLeave={() => setActive(false)}
@@ -31,7 +32,9 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 minHeight: 144,
                 textAlign: "left",
                 cursor: "pointer",
-                overflow: "hidden",
+                overflow: "visible",
+                outline: "2px solid var(--doc-focus-ring)",
+                outlineOffset: "2px",
                 background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",
                 border: `1px solid ${active ? "var(--doc-card-hover-border)" : "var(--doc-card-border)"}`,
                 backdropFilter: "blur(8px)",
@@ -39,7 +42,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 transition: `all ${TIMING.fast} ${EASE.out}`,
             }}
         >
-            {/* Name */}
+                        {/* Name */}
             <span style={{
                 fontFamily: "Georgia, serif",
                 fontSize: TYPE_SCALE.sm,
@@ -77,6 +80,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 <Badge label={template.category} variant="category" />
             </div>
         </button>
+    </>
     )
 }
 
