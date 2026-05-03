@@ -645,6 +645,212 @@ VLASTNI_DOKUMENT = (
 )
 
 # ---------------------------------------------------------------------------
+# Template 9 — Smlouva o dílo
+# ---------------------------------------------------------------------------
+
+SMLOUVA_O_DILO = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\begin{center}
+{\large\textbf{Smlouva o dílo}}
+
+\medskip
+\textit{uzavřená dle § 2586 a násl. zákona č. 89/2012 Sb., občanský zákoník, ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{2em}
+
+\textbf{I.\ Smluvní strany}
+
+\medskip
+
+\noindent\textbf{Zhotovitel:} {{zhotovitel_jmeno}}\\
+Sídlo / bydliště: {{zhotovitel_adresa}}\\
+IČO: {{zhotovitel_ico}}
+
+\medskip
+
+\noindent\textbf{Objednatel:} {{objednatel_jmeno}}\\
+Sídlo / bydliště: {{objednatel_adresa}}
+
+\vspace{1.5em}
+
+\textbf{II.\ Předmět díla}
+
+\medskip
+
+Zhotovitel se zavazuje provést pro objednatele následující dílo:
+
+\medskip
+\begin{quote}
+\textit{{{predmet_dila}}}
+\end{quote}
+
+\medskip
+Místem plnění je: {{misto_plneni}}.
+
+\vspace{1em}
+
+\textbf{III.\ Cena díla a platební podmínky}
+
+\medskip
+
+Smluvní strany sjednávají cenu díla ve výši \textbf{{{cena}}}. Cena je splatná po předání a převzetí díla bez vad, nestanoví-li příloha jinak.
+
+\vspace{1em}
+
+\textbf{IV.\ Termín plnění}
+
+\medskip
+
+Zhotovitel se zavazuje předat dokončené dílo objednateli nejpozději dne \textbf{{{termin_dokonceni}}}.
+
+\vspace{1em}
+
+\textbf{V.\ Předání a převzetí díla}
+
+\medskip
+
+Dílo bude předáno písemným protokolem podepsaným oběma smluvními stranami. Objednatel je oprávněn odmítnout převzetí díla, které má vady bránící jeho řádnému užívání.
+
+\vspace{1em}
+
+\textbf{VI.\ Odpovědnost za vady}
+
+\medskip
+
+Zhotovitel odpovídá za vady díla dle § 2615 a násl. OZ. Záruční doba činí 24~měsíců ode dne předání díla, nebylo-li sjednáno jinak.
+
+\vspace{1em}
+
+\textbf{VII.\ Závěrečná ustanovení}
+
+\medskip
+
+Tato smlouva se řídí právním řádem České republiky. Případné spory budou řešeny příslušnými soudy ČR. Smlouva nabývá účinnosti dnem podpisu oběma smluvními stranami.
+
+\vspace{3em}
+
+\noindent V~{{misto_plneni}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\begin{tabular}{p{7cm}p{7cm}}
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+\textit{Zhotovitel} & \textit{Objednatel} \\
+{{zhotovitel_jmeno}} & {{objednatel_jmeno}}
+\end{tabular}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
+# Template 10 — Zakladatelská listina / Společenská smlouva s.r.o.
+# ---------------------------------------------------------------------------
+
+SPOLECENSKA_SMLOUVA_SRO = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\begin{center}
+{\large\textbf{Zakladatelská listina / Společenská smlouva}}
+
+\medskip
+\textit{společnosti s ručením omezeným}
+
+\medskip
+\textit{uzavřená dle § 146 a násl. zákona č. 90/2012 Sb., zákon o obchodních korporacích}
+\end{center}
+
+\vspace{2em}
+
+\textbf{I.\ Zakladatel(é)}
+
+\medskip
+
+\noindent Jméno: \textbf{{{zakladatel_jmeno}}}\\
+Adresa: {{zakladatel_adresa}}\\
+RČ / IČO: {{zakladatel_rc_ico}}
+
+\vspace{1.5em}
+
+\textbf{II.\ Firma a sídlo společnosti}
+
+\medskip
+
+\noindent\textbf{Obchodní firma:} {{nazev_spolecnosti}}\\
+\textbf{Sídlo:} {{sidlo}}
+
+\vspace{1em}
+
+\textbf{III.\ Předmět podnikání}
+
+\medskip
+
+Předmětem podnikání společnosti je:
+
+\begin{quote}
+\textit{{{predmet_podnikani}}}
+\end{quote}
+
+\vspace{1em}
+
+\textbf{IV.\ Základní kapitál a vklady}
+
+\medskip
+
+Základní kapitál společnosti tvoří peněžitý vklad zakladatele ve výši \textbf{{{vklad}}}~Kč. Vklad bude splacen \textbf{{{splaceni}}}.
+
+Minimální výše základního kapitálu s.r.o.\ činí 1~Kč (§ 142 ZOK).
+
+\vspace{1em}
+
+\textbf{V.\ Jednatelé}
+
+\medskip
+
+\noindent Jednatelem společnosti se jmenuje:
+
+\noindent\textbf{{{jednatel_jmeno}}}\\
+Adresa: {{jednatel_adresa}}
+
+Jednatel je oprávněn jednat jménem společnosti samostatně ve všech věcech.
+
+\vspace{1em}
+
+\textbf{VI.\ Podíl a práva společníka}
+
+\medskip
+
+Zakladatel vlastní obchodní podíl odpovídající jeho vkladu ve výši \textbf{{{vklad}}}~Kč, tj.\ 100~\% základního kapitálu.
+
+\vspace{1em}
+
+\textbf{VII.\ Závěrečná ustanovení}
+
+\medskip
+
+Tato zakladatelská listina / společenská smlouva se řídí zákonem č. 90/2012 Sb. (ZOK) a zákonem č. 89/2012 Sb. (OZ). Společnost vzniká zápisem do obchodního rejstříku.
+
+\vspace{3em}
+
+\noindent V~{{sidlo}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent\textit{Zakladatel}\\
+\noindent{{zakladatel_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
 # Template records
 # ---------------------------------------------------------------------------
 
@@ -953,6 +1159,79 @@ TEMPLATES: list[dict] = [
         "description": (
             "Obecná plná moc pro zastupování fyzické osoby — vhodné pro soudní, správní "
             "i soukromoprávní jednání. Rozsah je třeba přesně specifikovat."
+        ),
+    },
+    {
+        "slug": "smlouva_o_dilo",
+        "name": "Smlouva o dílo",
+        "jurisdiction": "CZ",
+        "category": "commercial",
+        "latex_template": SMLOUVA_O_DILO,
+        "required_fields": [
+            "zhotovitel_jmeno",
+            "zhotovitel_adresa",
+            "zhotovitel_ico",
+            "objednatel_jmeno",
+            "objednatel_adresa",
+            "predmet_dila",
+            "cena",
+            "termin_dokonceni",
+            "misto_plneni",
+            "datum_podpisu",
+        ],
+        "field_descriptions": {
+            "zhotovitel_jmeno": "Jméno a příjmení nebo obchodní firma zhotovitele",
+            "zhotovitel_adresa": "Sídlo nebo bydliště zhotovitele",
+            "zhotovitel_ico": "IČO zhotovitele (fyzická osoba – podnikatel nebo právnická osoba)",
+            "objednatel_jmeno": "Jméno a příjmení nebo obchodní firma objednatele",
+            "objednatel_adresa": "Sídlo nebo bydliště objednatele",
+            "predmet_dila": "Přesný popis výsledku, který se zhotovitel zavazuje vytvořit nebo dodat",
+            "cena": "Sjednávaná cena díla včetně měny (např. 50 000 Kč bez DPH)",
+            "termin_dokonceni": "Datum, do kdy musí být dílo dokončeno a předáno (formát DD.MM.RRRR)",
+            "misto_plneni": "Místo, kde bude dílo provedeno nebo předáno",
+            "datum_podpisu": "Datum uzavření smlouvy (formát DD.MM.RRRR)",
+        },
+        "description": (
+            "Smlouva o dílo dle § 2586–2635 OZ pro freelancery, živnostníky i firmy. "
+            "Vhodná pro zakázky v oblasti IT, stavebnictví, kreativních služeb nebo řemesel."
+        ),
+    },
+    {
+        "slug": "spolecenska_smlouva_sro",
+        "name": "Zakladatelská listina / Společenská smlouva s.r.o.",
+        "jurisdiction": "CZ",
+        "category": "commercial",
+        "latex_template": SPOLECENSKA_SMLOUVA_SRO,
+        "required_fields": [
+            "nazev_spolecnosti",
+            "sidlo",
+            "predmet_podnikani",
+            "zakladatel_jmeno",
+            "zakladatel_adresa",
+            "zakladatel_rc_ico",
+            "vklad",
+            "splaceni",
+            "jednatel_jmeno",
+            "jednatel_adresa",
+            "datum",
+        ],
+        "field_descriptions": {
+            "nazev_spolecnosti": "Obchodní firma společnosti včetně označení s.r.o. (např. Acme Services s.r.o.)",
+            "sidlo": "Úplná adresa sídla společnosti (ulice, čp., město, PSČ)",
+            "predmet_podnikani": "Předmět podnikání — popis činností, které bude společnost provozovat",
+            "zakladatel_jmeno": "Jméno a příjmení nebo obchodní firma zakladatele",
+            "zakladatel_adresa": "Adresa trvalého bydliště nebo sídla zakladatele",
+            "zakladatel_rc_ico": "Rodné číslo zakladatele (fyzická osoba) nebo IČO (právnická osoba)",
+            "vklad": "Výše peněžitého vkladu zakladatele v Kč (min. 1 Kč dle § 142 ZOK)",
+            "splaceni": "Způsob a termín splacení vkladu (např. před zápisem do OR, do 5 let)",
+            "jednatel_jmeno": "Jméno a příjmení jednatele společnosti",
+            "jednatel_adresa": "Adresa trvalého bydliště jednatele",
+            "datum": "Datum podpisu zakladatelské listiny / společenské smlouvy (DD.MM.RRRR)",
+        },
+        "description": (
+            "Zakladatelský dokument s.r.o. dle § 146–154 ZOK. "
+            "Pro jednoho zakladatele slouží jako zakladatelská listina, pro více zakladatelů jako společenská smlouva. "
+            "Nutno ověřit u notáře před zápisem do obchodního rejstříku."
         ),
     },
     {
