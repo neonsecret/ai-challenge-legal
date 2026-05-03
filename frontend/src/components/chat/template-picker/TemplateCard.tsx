@@ -13,8 +13,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
     const [active, setActive] = useState(false)
 
     return (
-<>
-                <button
+        <button
             onClick={() => onSelect({slug: template.slug, name: template.name, jurisdiction: template.jurisdiction || undefined})}
             onMouseEnter={() => setActive(true)}
             onMouseLeave={() => setActive(false)}
@@ -33,8 +32,6 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 textAlign: "left",
                 cursor: "pointer",
                 overflow: "visible",
-                outline: "2px solid var(--doc-focus-ring)",
-                outlineOffset: "2px",
                 background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",
                 border: `1px solid ${active ? "var(--doc-card-hover-border)" : "var(--doc-card-border)"}`,
                 backdropFilter: "blur(8px)",
@@ -42,7 +39,6 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 transition: `all ${TIMING.fast} ${EASE.out}`,
             }}
         >
-                        {/* Name */}
             <span style={{
                 fontFamily: "Georgia, serif",
                 fontSize: TYPE_SCALE.sm,
@@ -59,7 +55,6 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 {template.name}
             </span>
 
-            {/* Description */}
             {template.description && (
                 <span style={{
                     fontFamily: FONT.sans,
@@ -74,13 +69,11 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 </span>
             )}
 
-            {/* Badges */}
             <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: "auto"}}>
                 <Badge label={template.jurisdiction} variant="jurisdiction" />
                 <Badge label={template.category} variant="category" />
             </div>
         </button>
-    </>
     )
 }
 

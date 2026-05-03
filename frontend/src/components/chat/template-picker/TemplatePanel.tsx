@@ -125,7 +125,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                             zIndex: 61,
                             display: "flex",
                             flexDirection: "column",
-                            overflow: "clip",
+                            overflow: "visible",
                             background: "var(--doc-panel-bg)",
                             backdropFilter: "blur(32px) saturate(160%)",
                             WebkitBackdropFilter: "blur(32px) saturate(160%)",
