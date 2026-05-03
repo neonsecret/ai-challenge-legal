@@ -28,9 +28,10 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 padding: SPACE[4],
                 borderRadius: RADIUS.lg,
                 width: "100%",
-                minHeight: 44,
+                minHeight: 144,
                 textAlign: "left",
                 cursor: "pointer",
+                overflow: "hidden",
                 background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",
                 border: `1px solid ${active ? "var(--doc-card-hover-border)" : "var(--doc-card-border)"}`,
                 backdropFilter: "blur(8px)",
@@ -44,9 +45,13 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 fontSize: TYPE_SCALE.sm,
                 fontWeight: "normal",
                 color: "var(--doc-text-primary)",
-                lineHeight: 1.4,
+                lineHeight: 1.5,
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.06em",
+                width: "100%",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
+                hyphens: "auto",
             }}>
                 {template.name}
             </span>
@@ -58,13 +63,16 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                     fontSize: TYPE_SCALE.xs,
                     color: "var(--doc-text-secondary)",
                     lineHeight: 1.5,
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                    width: "100%",
                 }}>
                     {template.description}
                 </span>
             )}
 
             {/* Badges */}
-            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: SPACE[1]}}>
+            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: "auto"}}>
                 <Badge label={template.jurisdiction} variant="jurisdiction" />
                 <Badge label={template.category} variant="category" />
             </div>
@@ -88,6 +96,7 @@ function Badge({label, variant}: {label: string; variant: "jurisdiction" | "cate
             color: isJurisdiction ? "var(--doc-text-label)" : "var(--doc-text-secondary)",
             textTransform: "uppercase" as const,
             letterSpacing: "0.06em",
+            flexShrink: 0,
         }}>
             {label}
         </span>
