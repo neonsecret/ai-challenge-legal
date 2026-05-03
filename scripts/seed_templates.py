@@ -125,340 +125,10 @@ ZALOBA_NEPLATNOST_VYPOVEDI = (
 )
 
 # ---------------------------------------------------------------------------
-# Template 2 — Žaloba na zaplacení
-
-# ---------------------------------------------------------------------------
-# Template 3 — Smlouva o mlčenlivosti (NDA)
+# Commercial / founder lifecycle templates (Templates 3–7, NEO-142)
 # ---------------------------------------------------------------------------
 
-NDA_TEMPLATE = (
-    _CZ_PREAMBLE
-    + r"""
-\begin{document}
-
-\noindent\textbf{{{soud}}}
-
-\vspace{2em}
-
-\noindent\textbf{Smluvní strany:}
-\begin{itemize}
-  \item {{strana_a_jmeno}}, {{strana_a_adresa}}, IČO {{strana_a_ico}}
-  \item {{strana_b_jmeno}}, {{strana_b_adresa}}, IČO {{strana_b_ico}}
-\end{itemize}
-
-\vspace{1em}
-
-\begin{center}
-{\large\textbf{Dohoda o mlčenlivosti (NDA)}}
-\end{center}
-
-\vspace{1em}
-
-\textbf{I. Předmět dohody}
-
-{{predmet_jednani}}
-
-\textbf{II. Definice důvěrných informací}
-
-{{definice_duvernych_informaci}}
-
-\textbf{III. Závazek mlčenlivosti}
-
-{{zavazek_mlcenlivosti}}
-
-\textbf{IV. Doba trvání}
-
-{{doba_mlcenlivosti}}
-
-\textbf{V. Sankce za porušení}
-
-{{smluvni_pokuta}}
-
-\vspace{2em}
-
-\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
-
-\vspace{3em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{strana_a_jmeno}}
-
-\vspace{2em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{strana_b_jmeno}}
-
-\end{document}
-"""
-)
-
-# ---------------------------------------------------------------------------
-# Template 4 — Nájemní smlouva — prostory sloužící k podnikání (commercial lease)
-# ---------------------------------------------------------------------------
-
-COMMERCIAL_LEASE_TEMPLATE = (
-    _CZ_PREAMBLE
-    + r"""
-\begin{document}
-
-\noindent\textbf{{{soud}}}
-
-\vspace{2em}
-
-\noindent\textbf{Smluvní strany:}
-\begin{itemize}
-  \item {{pronajimatel_jmeno}}, {{pronajimatel_adresa}}, IČO {{pronajimatel_ico}}
-  \item {{najemce_jmeno}}, {{najemce_adresa}}, IČO {{najemce_ico}}
-\end{itemize}
-
-\vspace{1em}
-
-\begin{center}
-{\large\textbf{Nájemní smlouva – prostory sloužící k podnikání}}
-\end{center}
-
-\vspace{1em}
-
-\textbf{I. Předmět nájmu}
-
-{{predmet_najmu_adresa}}
-
-{{predmet_najmu_popis}}
-
-\textbf{II. Doba nájmu}
-
-{{doba_najmu}}
-
-\textbf{III. Nájemné a platební podmínky}
-
-Měsíční nájemné: {{najemne_mesicne}} Kč.
-
-Kauce: {{kauce}} Kč.
-
-\textbf{IV. Práva a povinnosti stran}
-
-{{prava_povinnosti}}
-
-\textbf{V. Skončení nájmu}
-
-{{vypovedni_doba}}
-
-\vspace{2em}
-
-\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
-
-\vspace{3em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{pronajimatel_jmeno}}
-
-\vspace{2em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{najemce_jmeno}}
-
-\end{document}
-"""
-)
-
-# ---------------------------------------------------------------------------
-# Template 5 — Souhlas se zpracováním osobních údajů (GDPR consent)
-# ---------------------------------------------------------------------------
-
-GDPR_CONSENT_TEMPLATE = (
-    _CZ_PREAMBLE
-    + r"""
-\begin{document}
-
-\noindent\textbf{{{soud}}}
-
-\vspace{2em}
-
-\noindent\textbf{Správce:}
-{{spravce_jmeno}}, {{spravce_adresa}}, IČO {{spravce_ico}}, kontakt {{spravce_kontakt}}
-
-\noindent\textbf{Subjekt údajů:}
-{{subjekt_jmeno}}, {{subjekt_adresa}}
-
-\vspace{1em}
-
-\begin{center}
-{\large\textbf{Souhlas se zpracováním osobních údajů}}
-\end{center}
-
-\vspace{1em}
-
-\textbf{I. Účel a kategorie zpracování}
-
-{{ucel_zpracovani}}
-
-\textbf{II. Právní základ}
-
-{{pravni_zaklad}}
-
-\textbf{III. Doba uchování}
-
-{{doba_uchovavani}}
-
-\textbf{IV. Práva subjektu}
-
-{{prava_subjektu}}
-
-\textbf{V. Příjemci údajů}
-
-{{prijemci_udaju}}
-
-\vspace{2em}
-
-\noindent Datum souhlasu: {{datum_souhlasu}}
-
-\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
-
-\vspace{3em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{spravce_jmeno}}
-
-\end{document}
-"""
-)
-
-# ---------------------------------------------------------------------------
-# Template 6 — Výpověď z pracovního poměru ze strany zaměstnavatele (employer termination)
-# ---------------------------------------------------------------------------
-
-EMPLOYER_TERMINATION_TEMPLATE = (
-    _CZ_PREAMBLE
-    + r"""
-\begin{document}
-
-\noindent\textbf{{{soud}}}
-
-\vspace{2em}
-
-\noindent\textbf{Zaměstnavatel:}
-{{zamestnavatel_jmeno}}, {{zamestnavatel_adresa}}, IČO {{zamestnavatel_ico}}
-
-\noindent\textbf{Zaměstnanec:}
-{{zamestnanec_jmeno}}, {{zamestnanec_adresa}}, datum narození {{zamestnanec_datum_narozeni}}
-
-\vspace{1em}
-
-\begin{center}
-{\large\textbf{Výpověď z pracovního poměru ze strany zaměstnavatele}}
-\end{center}
-
-\vspace{1em}
-
-\textbf{I. Identifikace pracovního poměru}
-
-Pozice: {{pracovni_pozice}}
-
-Datum uzavření smlouvy: {{datum_uzavreni_smlouvy}}
-
-\textbf{II. Výpověď a její důvod}
-
-Paragraf výpovědi: {{paragraf_vypovedi}}
-
-Důvod výpovědi: {{duvod_vypovedi}}
-
-\textbf{III. Výpovědní doba}
-
-{{vypovedni_doba}}
-
-\textbf{IV. Poučení zaměstnance}\n\textit{(§ 72 ZP)}
-
-{{poucenim}}
-
-\vspace{2em}
-
-\noindent V {{misto_podpisu}} dne {{datum_podpisu}}
-
-\vspace{3em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{zamestnavatel_jmeno}}
-
-\end{document}
-"""
-)
-
-# ---------------------------------------------------------------------------
-# Template 7 — Smlouva o převodu podílu ve s.r.o. (share transfer)
-# ---------------------------------------------------------------------------
-
-SHARE_TRANSFER_TEMPLATE = (
-    _CZ_PREAMBLE
-    + r"""
-\begin{document}
-
-\noindent\textbf{{{soud}}}
-
-\vspace{2em}
-
-\noindent\textbf{Převodce:}
-{{prevodce_jmeno}}, {{prevodce_adresa}}, IČO {{prevodce_rc_ico}}
-
-\noindent\textbf{Nabyvatel:}
-{{nabyvatel_jmeno}}, {{nabyvatel_adresa}}, IČO {{nabyvatel_rc_ico}}
-
-\vspace{1em}
-
-\begin{center}
-{\large\textbf{Smlouva o převodu podílu ve s.r.o.}}
-\end{center}
-
-\vspace{1em}
-
-\textbf{I. Identifikace společnosti a podílu}
-
-Název společnosti: {{nazev_spolecnosti}}
-
-Sídlo: {{sidlo_spolecnosti}}
-
-IČO: {{ico_spolecnosti}}
-
-Podíl před převodem: {{vyse_podilu_pred}} %
-
-Převáděný podíl: {{vyse_prevadeneho_podilu}} %
-
-\textbf{II. Cena a platební podmínky}
-
-Cena převodu: {{cena_prevodu}}
-
-\textbf{III. Účinnost převodu vůči společnosti}
-
-{{ucinnost}}
-
-\textbf{IV. Prohlášení stran}
-
-{{prohlaseni}}
-
-\textbf{V. Závěrečná ustanovení}
-
-{{zaverecna}}
-
-\vspace{2em}
-
-\noindent V {{misto_uzavreni}} dne {{datum_uzavreni}}
-
-\vspace{3em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{prevodce_jmeno}}
-
-\vspace{2em}
-
-\noindent\rule{8cm}{0.4pt}\\
-{{nabyvatel_jmeno}}
-
-\end{document}
-"""
-)
-
-# ---------------------------------------------------------------------------
-
-NAJEMNI_SMLOUVA_PROSTORY_PODNIKANI = """
+NAJEMNI_SMLOUVA_PROSTORY_PODNIKANI = r"""
 \documentclass[12pt,a4paper]{article}
 \usepackage{fontspec}
 \setmainfont{TeX Gyre Termes}
@@ -574,7 +244,7 @@ Tato smlouva se řídí českým právním řádem. Změny smlouvy vyžadují p�
 """
 
 
-SMLOUVA_O_MLCENLIVOSTI_NDA = """
+SMLOUVA_O_MLCENLIVOSTI_NDA = r"""
 \documentclass[12pt,a4paper]{article}
 \usepackage{fontspec}
 \setmainfont{TeX Gyre Termes}
@@ -670,7 +340,7 @@ Tato smlouva se řídí českým právním řádem. Případné spory budou ře�
 """
 
 
-SMLOUVA_PREVOD_PODILU_SRO = """
+SMLOUVA_PREVOD_PODILU_SRO = r"""
 \documentclass[12pt,a4paper]{article}
 \usepackage{fontspec}
 \setmainfont{TeX Gyre Termes}
@@ -774,7 +444,7 @@ Tato smlouva se řídí českým právním řádem.
 """
 
 
-SOUHLAS_ZPRACOVANI_OSOBNICH_UDAJU_GDPR = """
+SOUHLAS_ZPRACOVANI_OSOBNICH_UDAJU_GDPR = r"""
 \documentclass[12pt,a4paper]{article}
 \usepackage{fontspec}
 \setmainfont{TeX Gyre Termes}
@@ -883,7 +553,7 @@ Tímto uděluji svůj svobodný, konkrétní, informovaný a jednoznačný souhl
 """
 
 
-VYPOVED_PRACOVNIHO_POMERU_ZAMESTNAVATEL = """
+VYPOVED_PRACOVNIHO_POMERU_ZAMESTNAVATEL = r"""
 \documentclass[12pt,a4paper]{article}
 \usepackage{fontspec}
 \setmainfont{TeX Gyre Termes}
