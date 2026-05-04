@@ -21,6 +21,10 @@ interface TemplatePanelProps {
 
 const CUSTOM_SLUG = "__custom__"
 
+function nfkd(s: string) {
+    return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase()
+}
+
 export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
     const { t } = useI18n()
     const isMobile = useIsMobile()
@@ -30,6 +34,7 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
 
     const [jurisdiction, setJurisdiction] = useState<JurisdictionFilter | null>(null)
     const [category, setCategory] = useState<string | null>(null)
+    const [search, setSearch] = useState("")
 
     // Derive categories from loaded templates so new backend categories appear automatically
     const categories = useMemo(
@@ -44,6 +49,11 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
         if (!open) return
         load()
     }, [open, load])
+
+    // Clear search on close so the next open starts fresh.
+    useEffect(() => {
+        if (!open) setSearch("")
+    }, [open])
 
     // Escape key + focus trap
     useEffect(() => {
@@ -79,10 +89,12 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
         onClose()
     }, [onSelect, onClose])
 
+    const q = search.trim() ? nfkd(search.trim()) : ""
     const filtered = templates.filter((t: Template) => {
         const jMatch = !jurisdiction || t.jurisdiction.toUpperCase() === jurisdiction.toUpperCase() || (jurisdiction === "General" && !t.jurisdiction)
         const cMatch = !category || t.category.toLowerCase() === category.toLowerCase()
-        return jMatch && cMatch
+        const sMatch = !q || nfkd(t.name).includes(q) || nfkd(t.description ?? "").includes(q)
+        return jMatch && cMatch && sMatch
     })
 
     return (
@@ -221,6 +233,24 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                                     />
                                 ))}
                             </div>
+                            <input
+                                type="search"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder={t("template.search_placeholder")}
+                                aria-label={t("template.search_placeholder")}
+                                style={{
+                                    fontFamily: FONT.sans,
+                                    fontSize: TYPE_SCALE.sm,
+                                    width: "100%",
+                                    padding: `${SPACE[2]}px ${SPACE[3]}px`,
+                                    borderRadius: RADIUS.sm,
+                                    border: "1px solid var(--doc-pill-inactive-border)",
+                                    background: "var(--doc-custom-btn-bg)",
+                                    color: "var(--doc-text-primary)",
+                                    boxSizing: "border-box" as const,
+                                }}
+                            />
                         </div>
 
                         {/* Template list */}

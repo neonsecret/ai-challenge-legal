@@ -239,5 +239,6 @@
   "billing.promocode_error_used": "Sie haben diesen Promocode bereits verwendet",
   "billing.promocode_error_unavailable": "Dieser Promocode ist nicht mehr verfügbar",
   "billing.promocode_error_no_upgrade": "Dieser Promocode verbessert Ihren aktuellen Plan nicht",
-  "billing.promocode_error_rate_limit": "Zu viele Versuche. Bitte versuchen Sie es später erneut."
+  "billing.promocode_error_rate_limit": "Zu viele Versuche. Bitte versuchen Sie es später erneut.",
+  "template.search_placeholder": "Vorlagen suchen…"
 }

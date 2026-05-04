@@ -257,6 +257,7 @@
   "template.custom_subtitle": "Začít od začátku",
   "template.error_load": "Nepodařilo se načíst šablony",
   "template.no_match": "Žádné šablony neodpovídají těmto filtrům",
+  "template.search_placeholder": "Hledat vzory…",
   "template.drafting": "Vytváření dokumentu...",
   "documents.upload_drop_v2": "Přetáhněte PDF, TXT nebo ZIP sem nebo",
   "documents.upload_hint_v2": "PDF, TXT nebo ZIP · max. 50 MB na soubor · max. 200 MB na ZIP",
