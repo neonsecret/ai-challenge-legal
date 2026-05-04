@@ -28,6 +28,10 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 padding: SPACE[4],
                 borderRadius: RADIUS.lg,
                 width: "100%",
+                // DO NOT add minHeight or overflow:hidden/visible here.
+                // Cards must size to their content — TemplatePanel clips at the panel boundary (overflow:clip).
+                // Adding minHeight creates dead space; overflow:visible on the button breaks panel clipping.
+                // Both have been added by well-meaning reviewers and broken the layout each time.
                 textAlign: "left",
                 cursor: "pointer",
                 background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",

@@ -125,7 +125,8 @@ export function TemplatePanel({open, onClose, onSelect}: TemplatePanelProps) {
                             zIndex: 61,
                             display: "flex",
                             flexDirection: "column",
-                            overflow: "clip",
+                            overflow: "clip", // MUST stay "clip" — this is the clipping boundary for TemplateCards.
+                            // Changing to "visible" lets cards bleed outside the modal. Do not change.
                             background: "var(--doc-panel-bg)",
                             backdropFilter: "blur(32px) saturate(160%)",
                             WebkitBackdropFilter: "blur(32px) saturate(160%)",
