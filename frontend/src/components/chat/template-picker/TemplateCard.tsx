@@ -28,10 +28,8 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 padding: SPACE[4],
                 borderRadius: RADIUS.lg,
                 width: "100%",
-                minHeight: 144,
                 textAlign: "left",
                 cursor: "pointer",
-                overflow: "visible",
                 background: active ? "var(--doc-card-hover-bg)" : "var(--doc-card-bg)",
                 border: `1px solid ${active ? "var(--doc-card-hover-border)" : "var(--doc-card-border)"}`,
                 backdropFilter: "blur(8px)",
@@ -69,7 +67,7 @@ export function TemplateCard({template, onSelect}: TemplateCardProps) {
                 </span>
             )}
 
-            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: "auto"}}>
+            <div style={{display: "flex", gap: SPACE[1], flexWrap: "wrap", marginTop: SPACE[1]}}>
                 <Badge label={template.jurisdiction} variant="jurisdiction" />
                 <Badge label={template.category} variant="category" />
             </div>
