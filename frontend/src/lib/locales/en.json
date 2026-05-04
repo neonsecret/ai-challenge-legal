@@ -263,6 +263,7 @@
   "template.custom_subtitle": "Start from scratch",
   "template.error_load": "Failed to load templates",
   "template.no_match": "No templates match these filters",
+  "template.search_placeholder": "Search templates…",
   "template.drafting": "Drafting document...",
   "billing.have_a_promocode": "Have a promocode?",
   "billing.promocode_placeholder": "Enter code",

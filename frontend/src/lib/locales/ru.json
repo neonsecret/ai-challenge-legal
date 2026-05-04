@@ -239,5 +239,6 @@
   "billing.promocode_error_used": "Вы уже использовали этот промокод",
   "billing.promocode_error_unavailable": "Этот промокод больше недоступен",
   "billing.promocode_error_no_upgrade": "Этот промокод не улучшает ваш текущий план",
-  "billing.promocode_error_rate_limit": "Слишком много попыток. Пожалуйста, попробуйте позже."
+  "billing.promocode_error_rate_limit": "Слишком много попыток. Пожалуйста, попробуйте позже.",
+  "template.search_placeholder": "Поиск шаблонов…"
 }
