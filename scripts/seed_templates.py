@@ -1747,6 +1747,357 @@ Tato doložka se řídí zákonem č. 262/2006 Sb., zákoník práce. Změny vy�
 )
 
 # ---------------------------------------------------------------------------
+# Czech tax templates (NEO-169)
+# ---------------------------------------------------------------------------
+
+ODVOLANI_PROTI_ROZHODNUTI_SPRAVCE_DANE = (
+    _CZ_PREAMBLE + r"""
+\begin{document}
+
+\noindent\textbf{{{financni_urad}}}
+
+\vspace{1em}
+
+\noindent\textbf{Odvolatel:} {{dan_subjekt_jmeno}}, {{dan_subjekt_adresa}}, IČO/DIČ: {{dan_subjekt_ico_dic}}
+
+\vspace{2em}
+
+\begin{center}
+{\large\textbf{Odvolání proti rozhodnutí správce daně}}
+\medskip
+\textit{podáno dle § 109 a násl. zákona č. 280/2009 Sb., daňový řád, ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I.\ Identifikace napadeného rozhodnutí}
+
+Odvolávám se proti rozhodnutí {{financni_urad}} ze dne {{datum_doruceni_rozhodnuti}},
+č.\ j.\ {{cislo_jednaci_napadeneho_rozhodnuti}}, které mi bylo doručeno dne {{datum_doruceni_rozhodnuti}}.
+
+Napadené výroky: {{napadene_vyroky}}
+
+\vspace{1em}
+
+\textbf{II.\ Odvolací důvody}
+
+{{odvolaci_duvody}}
+
+\vspace{1em}
+
+\textbf{III.\ Petit}
+
+Na základě výše uvedeného navrhuji, aby odvolací orgán:
+
+{{petit}}
+
+\vspace{1em}
+
+\textbf{IV.\ Závěr}
+
+Toto odvolání podávám v zákonné lhůtě 30 dnů ode dne doručení napadeného rozhodnutí (§ 109 odst.\ 2 DŘ).
+
+\vspace{2em}
+
+\noindent V~{{misto}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent{}{{dan_subjekt_jmeno}}
+
+\end{document}
+"""
+)
+
+ZADOST_O_POSECKANI_UHRADY_DANE = (
+    _CZ_PREAMBLE + r"""
+\begin{document}
+
+\noindent\textbf{{{financni_urad}}}
+
+\vspace{1em}
+
+\noindent\textbf{Žadatel:} {{dan_subjekt_jmeno}}, {{dan_subjekt_adresa}}, IČO/DIČ: {{dan_subjekt_ico_dic}}
+
+\vspace{2em}
+
+\begin{center}
+{\large\textbf{Žádost o posečkání úhrady daně}}
+\medskip
+\textit{podána dle § 156 zákona č. 280/2009 Sb., daňový řád, ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I.\ Předmět žádosti}
+
+Žádám o posečkání úhrady daně: {{dan_a_obdobi}}
+
+Dlužná částka: {{castka_dane}} Kč
+
+Požadovaný termín úhrady: {{pozadovany_termin_uhrady}}
+
+\vspace{1em}
+
+\textbf{II.\ Odůvodnění žádosti}
+
+{{oduvodneni_zadosti}}
+
+\vspace{1em}
+
+\textbf{III.\ Přílohy}
+
+{{prilohy}}
+
+\vspace{1em}
+
+\textbf{IV.\ Závěr}
+
+Prohlašuji, že všechny uvedené skutečnosti jsou pravdivé a úplné. Zavazuji se splnit daňovou povinnost
+v požadovaném termínu a bezodkladně oznámit správci daně změny, které by mohly mít vliv na posečkání.
+
+\vspace{2em}
+
+\noindent V~{{misto}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent{}{{dan_subjekt_jmeno}}
+
+\end{document}
+"""
+)
+
+ZADOST_O_VRACENI_PREPLATKU_NA_DANI = (
+    _CZ_PREAMBLE + r"""
+\begin{document}
+
+\noindent\textbf{{{financni_urad}}}
+
+\vspace{1em}
+
+\noindent\textbf{Žadatel:} {{dan_subjekt_jmeno}}, {{dan_subjekt_adresa}}, IČO/DIČ: {{dan_subjekt_ico_dic}}
+
+\vspace{2em}
+
+\begin{center}
+{\large\textbf{Žádost o vrácení přeplatku na dani}}
+\medskip
+\textit{podána dle § 155 zákona č. 280/2009 Sb., daňový řád, ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I.\ Předmět žádosti}
+
+Žádám o vrácení přeplatku na dani: {{dan_a_obdobi}}
+
+Výše přeplatku: {{castka_preplatku}} Kč
+
+\vspace{1em}
+
+\textbf{II.\ Bankovní účet pro vrácení}
+
+Přeplatek prosím vraťte na bankovní účet č.\ {{cislo_uctu_pro_vraceni}}.
+
+\vspace{1em}
+
+\textbf{III.\ Závěr}
+
+Prohlašuji, že přeplatek vzniklý na výše uvedené dani dosud nebyl vrácen ani použit na úhradu jiných
+daňových povinností. Žádám o jeho vrácení bez zbytečného odkladu v souladu s § 155 odst.\ 5 DŘ.
+
+\vspace{2em}
+
+\noindent V~{{misto}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent{}{{dan_subjekt_jmeno}}
+
+\end{document}
+"""
+)
+
+VYJADRENI_K_VYZVE_K_ODSTRANENI_POCHYBNOSTI = (
+    _CZ_PREAMBLE + r"""
+\begin{document}
+
+\noindent\textbf{{{financni_urad}}}
+
+\vspace{1em}
+
+\noindent\textbf{Daňový subjekt:} {{dan_subjekt_jmeno}}, {{dan_subjekt_adresa}}, IČO/DIČ: {{dan_subjekt_ico_dic}}
+
+\vspace{2em}
+
+\begin{center}
+{\large\textbf{Vyjádření k výzvě k odstranění pochybností}}
+\medskip
+\textit{podáno dle § 89 a § 92 zákona č. 280/2009 Sb., daňový řád, ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I.\ Identifikace výzvy}
+
+Reaguji na výzvu {{financni_urad}} č.\ j.\ {{cislo_jednaci_vyzvy}}, doručenou dne {{datum_doruceni_vyzvy}},
+týkající se daňového období: {{dotcene_obdobi}}.
+
+\vspace{1em}
+
+\textbf{II.\ Vyjádření k pochybnostem správce daně}
+
+{{vyjadreni_k_pochybnostem}}
+
+\vspace{1em}
+
+\textbf{III.\ Předkládané důkazy a doklady}
+
+{{predkladane_dukazy}}
+
+\vspace{1em}
+
+\textbf{IV.\ Závěr}
+
+Jsem přesvědčen/a, že výše uvedené skutečnosti a důkazy pochybnosti správce daně odstraňují.
+Prohlašuji, že všechna tvrzení jsou pravdivá a předložené doklady jsou autentické.
+
+\vspace{2em}
+
+\noindent V~{{misto}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent{}{{dan_subjekt_jmeno}}
+
+\end{document}
+"""
+)
+
+PRIHLASKA_K_REGISTRACI_DPH = (
+    _CZ_PREAMBLE + r"""
+\begin{document}
+
+\noindent\textbf{{{financni_urad}}}
+
+\vspace{1em}
+
+\noindent\textbf{Žadatel:} {{dan_subjekt_jmeno}}, {{dan_subjekt_adresa}}, IČO/DIČ: {{dan_subjekt_ico_dic}}
+
+\vspace{2em}
+
+\begin{center}
+{\large\textbf{Přihláška k registraci k dani z přidané hodnoty}}
+\medskip
+\textit{podána dle § 94a zákona č. 235/2004 Sb., o dani z přidané hodnoty, ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I.\ Identifikace žadatele}
+
+Typ subjektu: {{dan_subjekt_typ}}
+
+\vspace{1em}
+
+\textbf{II.\ Důvod registrace}
+
+{{duvod_registrace}}
+
+Datum zahájení ekonomické činnosti: {{datum_zahajeni_ekon_cinnosti}}
+
+Předpokládaný obrat za 12 po sobě jdoucích měsíců: {{predpoklad_obratu}} Kč
+
+\vspace{1em}
+
+\textbf{III.\ Bankovní účty používané pro ekonomickou činnost}
+
+{{bankovni_ucty}}
+
+\vspace{1em}
+
+\textbf{IV.\ Čestné prohlášení}
+
+Prohlašuji, že veškeré údaje uvedené v této přihlášce jsou správné a úplné. Zavazuji se neprodleně
+oznámit správci daně veškeré změny rozhodných skutečností (§ 127 DŘ).
+
+\vspace{2em}
+
+\noindent V~{{misto}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent{}{{dan_subjekt_jmeno}}
+
+\end{document}
+"""
+)
+
+OZNAMENI_UKONCENI_SAMOSTATNE_VYDELECNE_CINNOSTI = (
+    _CZ_PREAMBLE + r"""
+\begin{document}
+
+\noindent\textbf{Příslušné úřady dle okruhu oznámení}
+
+\vspace{1em}
+
+\noindent\textbf{Oznamovatel:} {{dan_subjekt_jmeno}}, {{dan_subjekt_adresa}}, IČO/DIČ: {{dan_subjekt_ico_dic}}
+
+\vspace{2em}
+
+\begin{center}
+{\large\textbf{Oznámení o ukončení samostatné výdělečné činnosti}}
+\medskip
+\textit{podáno dle zákona č. 589/1992 Sb. a zákona č. 48/1997 Sb., ve znění pozdějších předpisů}
+\end{center}
+
+\vspace{1.5em}
+
+\textbf{I.\ Předmět oznámení}
+
+Oznamuji ukončení samostatné výdělečné činnosti ke dni: \textbf{{{datum_ukonceni}}}
+
+Okruh oznámení: {{okruh_oznameni}}
+
+\vspace{1em}
+
+\textbf{II.\ Sociální pojištění}
+
+{{vc_socialniho_pojisteni}}
+
+\vspace{1em}
+
+\textbf{III.\ Zdravotní pojištění}
+
+{{vc_zdravotniho_pojisteni}}
+
+\vspace{1em}
+
+\textbf{IV.\ Závěr}
+
+Prohlašuji, že veškeré uvedené informace jsou pravdivé. Souhlasím s provedením případného
+vyúčtování pojistného a závazků vyplývajících z ukončení výdělečné činnosti.
+
+\vspace{2em}
+
+\noindent V~{{misto}} dne {{datum}}
+
+\vspace{3em}
+
+\noindent\rule{8cm}{0.4pt}\\
+\noindent{}{{dan_subjekt_jmeno}}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
 # Template records
 # ---------------------------------------------------------------------------
 
@@ -2526,6 +2877,220 @@ TEMPLATES: list[dict] = [
             "Konkurenční doložka dle § 310 ZP omezující zaměstnance v konkurenční činnosti po skončení pracovního poměru. "
             "Max. 1 rok. Vyžaduje peněžité vyrovnání min. ½ průměrného měsíčního výdělku za každý měsíc omezení — "
             "bez tohoto vyrovnání je doložka ze zákona neplatná."
+        ),
+    },
+    {
+        "slug": "odvolani_proti_rozhodnuti_spravce_dane",
+        "name": "Odvolání proti rozhodnutí správce daně",
+        "jurisdiction": "CZ",
+        "category": "tax",
+        "latex_template": ODVOLANI_PROTI_ROZHODNUTI_SPRAVCE_DANE,
+        "required_fields": [
+            "dan_subjekt_jmeno",
+            "dan_subjekt_adresa",
+            "dan_subjekt_ico_dic",
+            "financni_urad",
+            "cislo_jednaci_napadeneho_rozhodnuti",
+            "datum_doruceni_rozhodnuti",
+            "napadene_vyroky",
+            "odvolaci_duvody",
+            "petit",
+            "datum",
+            "misto",
+        ],
+        "field_descriptions": {
+            "dan_subjekt_jmeno": "Jméno a příjmení nebo obchodní firma daňového subjektu",
+            "dan_subjekt_adresa": "Adresa bydliště nebo sídla daňového subjektu",
+            "dan_subjekt_ico_dic": "IČO nebo DIČ daňového subjektu",
+            "financni_urad": "Název a adresa příslušného finančního úřadu",
+            "cislo_jednaci_napadeneho_rozhodnuti": "Číslo jednací napadeného rozhodnutí správce daně",
+            "datum_doruceni_rozhodnuti": "Datum doručení napadeného rozhodnutí (DD.MM.RRRR)",
+            "napadene_vyroky": "Výroky rozhodnutí, proti nimž je odvolání směřováno",
+            "odvolaci_duvody": "Konkrétní odvolací důvody — nesprávné posouzení skutkového stavu nebo právní vady",
+            "petit": "Požadovaný výrok odvolacího orgánu (zrušení, změna rozhodnutí)",
+            "datum": "Datum podání odvolání (DD.MM.RRRR)",
+            "misto": "Místo podání odvolání",
+        },
+        "description": (
+            "Odvolání proti rozhodnutí správce daně dle § 109–116 zákona č. 280/2009 Sb., daňový řád. "
+            "Lhůta 30 dnů ode dne doručení rozhodnutí. Podává se u správce daně, který rozhodnutí vydal."
+        ),
+    },
+    {
+        "slug": "zadost_o_poseckani_uhrady_dane",
+        "name": "Žádost o posečkání úhrady daně",
+        "jurisdiction": "CZ",
+        "category": "tax",
+        "latex_template": ZADOST_O_POSECKANI_UHRADY_DANE,
+        "required_fields": [
+            "dan_subjekt_jmeno",
+            "dan_subjekt_adresa",
+            "dan_subjekt_ico_dic",
+            "financni_urad",
+            "dan_a_obdobi",
+            "castka_dane",
+            "pozadovany_termin_uhrady",
+            "oduvodneni_zadosti",
+            "prilohy",
+            "datum",
+            "misto",
+        ],
+        "field_descriptions": {
+            "dan_subjekt_jmeno": "Jméno a příjmení nebo obchodní firma daňového subjektu",
+            "dan_subjekt_adresa": "Adresa bydliště nebo sídla daňového subjektu",
+            "dan_subjekt_ico_dic": "IČO nebo DIČ daňového subjektu",
+            "financni_urad": "Název a adresa příslušného finančního úřadu",
+            "dan_a_obdobi": "Druh daně a zdaňovací období, jehož se posečkání týká (např. DPH za Q1/2024)",
+            "castka_dane": "Výše dlužné daně v Kč",
+            "pozadovany_termin_uhrady": "Navrhovaný termín úhrady nebo splátkový kalendář (DD.MM.RRRR)",
+            "oduvodneni_zadosti": "Důvody žádosti — doložení přechodných finančních potíží nebo jiných okolností",
+            "prilohy": "Seznam přiložených dokladů prokazujících tvrzené skutečnosti",
+            "datum": "Datum podání žádosti (DD.MM.RRRR)",
+            "misto": "Místo podání žádosti",
+        },
+        "description": (
+            "Žádost o posečkání úhrady daně dle § 156–157 zákona č. 280/2009 Sb., daňový řád. "
+            "Správce daně může posečkání povolit při přechodných finančních obtížích nebo hrozbě závažné újmy."
+        ),
+    },
+    {
+        "slug": "zadost_o_vraceni_preplatku_na_dani",
+        "name": "Žádost o vrácení přeplatku na dani",
+        "jurisdiction": "CZ",
+        "category": "tax",
+        "latex_template": ZADOST_O_VRACENI_PREPLATKU_NA_DANI,
+        "required_fields": [
+            "dan_subjekt_jmeno",
+            "dan_subjekt_adresa",
+            "dan_subjekt_ico_dic",
+            "financni_urad",
+            "dan_a_obdobi",
+            "castka_preplatku",
+            "cislo_uctu_pro_vraceni",
+            "datum",
+            "misto",
+        ],
+        "field_descriptions": {
+            "dan_subjekt_jmeno": "Jméno a příjmení nebo obchodní firma daňového subjektu",
+            "dan_subjekt_adresa": "Adresa bydliště nebo sídla daňového subjektu",
+            "dan_subjekt_ico_dic": "IČO nebo DIČ daňového subjektu",
+            "financni_urad": "Název a adresa příslušného finančního úřadu",
+            "dan_a_obdobi": "Druh daně a zdaňovací období, za které přeplatek vznikl",
+            "castka_preplatku": "Výše přeplatku v Kč",
+            "cislo_uctu_pro_vraceni": "Číslo bankovního účtu pro vrácení přeplatku (ve formátu předčíslí-číslo/kód banky)",
+            "datum": "Datum podání žádosti (DD.MM.RRRR)",
+            "misto": "Místo podání žádosti",
+        },
+        "description": (
+            "Žádost o vrácení přeplatku na dani dle § 155 zákona č. 280/2009 Sb., daňový řád. "
+            "Přeplatek nad 200 Kč se vrací automaticky do 30 dnů; nižší přeplatky pouze na žádost."
+        ),
+    },
+    {
+        "slug": "vyjadreni_k_vyzve_k_odstraneni_pochybnosti",
+        "name": "Vyjádření k výzvě k odstranění pochybností",
+        "jurisdiction": "CZ",
+        "category": "tax",
+        "latex_template": VYJADRENI_K_VYZVE_K_ODSTRANENI_POCHYBNOSTI,
+        "required_fields": [
+            "dan_subjekt_jmeno",
+            "dan_subjekt_adresa",
+            "dan_subjekt_ico_dic",
+            "financni_urad",
+            "cislo_jednaci_vyzvy",
+            "datum_doruceni_vyzvy",
+            "dotcene_obdobi",
+            "vyjadreni_k_pochybnostem",
+            "predkladane_dukazy",
+            "datum",
+            "misto",
+        ],
+        "field_descriptions": {
+            "dan_subjekt_jmeno": "Jméno a příjmení nebo obchodní firma daňového subjektu",
+            "dan_subjekt_adresa": "Adresa bydliště nebo sídla daňového subjektu",
+            "dan_subjekt_ico_dic": "IČO nebo DIČ daňového subjektu",
+            "financni_urad": "Název příslušného finančního úřadu, který výzvu vydal",
+            "cislo_jednaci_vyzvy": "Číslo jednací výzvy k odstranění pochybností",
+            "datum_doruceni_vyzvy": "Datum doručení výzvy (DD.MM.RRRR)",
+            "dotcene_obdobi": "Zdaňovací období, jichž se výzva týká",
+            "vyjadreni_k_pochybnostem": "Věcné vyjádření k jednotlivým pochybnostem správce daně",
+            "predkladane_dukazy": "Seznam předkládaných důkazů a dokladů (faktury, smlouvy, výpisy atd.)",
+            "datum": "Datum podání vyjádření (DD.MM.RRRR)",
+            "misto": "Místo podání vyjádření",
+        },
+        "description": (
+            "Vyjádření k výzvě k odstranění pochybností dle § 89 a § 92 zákona č. 280/2009 Sb., daňový řád. "
+            "Reakce na výzvu vydanou při postupu k odstranění pochybností před zahájením daňové kontroly."
+        ),
+    },
+    {
+        "slug": "prihlaska_k_registraci_dph",
+        "name": "Přihláška k registraci k DPH",
+        "jurisdiction": "CZ",
+        "category": "tax",
+        "latex_template": PRIHLASKA_K_REGISTRACI_DPH,
+        "required_fields": [
+            "dan_subjekt_jmeno",
+            "dan_subjekt_adresa",
+            "dan_subjekt_ico_dic",
+            "financni_urad",
+            "dan_subjekt_typ",
+            "duvod_registrace",
+            "datum_zahajeni_ekon_cinnosti",
+            "predpoklad_obratu",
+            "bankovni_ucty",
+            "datum",
+            "misto",
+        ],
+        "field_descriptions": {
+            "dan_subjekt_jmeno": "Jméno a příjmení nebo obchodní firma žadatele",
+            "dan_subjekt_adresa": "Adresa bydliště nebo sídla žadatele",
+            "dan_subjekt_ico_dic": "IČO žadatele (DIČ bude přiděleno po registraci)",
+            "financni_urad": "Název a adresa místně příslušného finančního úřadu",
+            "dan_subjekt_typ": "Typ subjektu: fyzická osoba / právnická osoba",
+            "duvod_registrace": "Důvod registrace — překročení obratu 2 mil. Kč (§ 6 ZDPH), dobrovolná registrace (§ 94a ZDPH) apod.",
+            "datum_zahajeni_ekon_cinnosti": "Datum zahájení ekonomické činnosti (DD.MM.RRRR)",
+            "predpoklad_obratu": "Předpokládaný obrat za 12 po sobě jdoucích měsíců v Kč",
+            "bankovni_ucty": "Čísla bankovních účtů používaných pro ekonomickou činnost",
+            "datum": "Datum podání přihlášky (DD.MM.RRRR)",
+            "misto": "Místo podání přihlášky",
+        },
+        "description": (
+            "Přihláška k registraci k dani z přidané hodnoty dle § 6, § 6f a § 94a zákona č. 235/2004 Sb., ZDPH. "
+            "Povinná registrace při překročení obratu 2 000 000 Kč za 12 měsíců; dobrovolná registrace kdykoli."
+        ),
+    },
+    {
+        "slug": "oznameni_ukonceni_samostatne_vydelecne_cinnosti",
+        "name": "Oznámení o ukončení samostatné výdělečné činnosti",
+        "jurisdiction": "CZ",
+        "category": "tax",
+        "latex_template": OZNAMENI_UKONCENI_SAMOSTATNE_VYDELECNE_CINNOSTI,
+        "required_fields": [
+            "dan_subjekt_jmeno",
+            "dan_subjekt_adresa",
+            "dan_subjekt_ico_dic",
+            "okruh_oznameni",
+            "datum_ukonceni",
+            "vc_socialniho_pojisteni",
+            "vc_zdravotniho_pojisteni",
+            "datum",
+            "misto",
+        ],
+        "field_descriptions": {
+            "dan_subjekt_jmeno": "Jméno a příjmení OSVČ",
+            "dan_subjekt_adresa": "Adresa trvalého bydliště OSVČ",
+            "dan_subjekt_ico_dic": "IČO nebo DIČ OSVČ",
+            "okruh_oznameni": "Okruh oznámení: finanční úřad / ČSSZ / zdravotní pojišťovna / živnostenský úřad",
+            "datum_ukonceni": "Datum ukončení samostatné výdělečné činnosti (DD.MM.RRRR)",
+            "vc_socialniho_pojisteni": "Informace k sociálnímu pojištění: ČSSZ, variabilní symbol, případná doplatková povinnost",
+            "vc_zdravotniho_pojisteni": "Informace ke zdravotnímu pojištění: název pojišťovny, číslo smlouvy, doplatková povinnost",
+            "datum": "Datum podání oznámení (DD.MM.RRRR)",
+            "misto": "Místo podání oznámení",
+        },
+        "description": (
+            "Oznámení o ukončení samostatné výdělečné činnosti dle zákona č. 589/1992 Sb. (sociální pojištění) "
+            "a zákona č. 48/1997 Sb. (zdravotní pojištění). Lhůta 8 dnů od ukončení SVČ."
         ),
     },
 
