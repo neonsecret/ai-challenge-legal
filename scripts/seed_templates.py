@@ -1368,6 +1368,385 @@ Tato zakladatelská listina / společenská smlouva se řídí zákonem č. 90/2
 )
 
 # ---------------------------------------------------------------------------
+# Hiring templates (NEO-172) — pracovní smlouva, DPP, DPČ, konkurenční doložka
+# ---------------------------------------------------------------------------
+
+PRACOVNI_SMLOUVA = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\begin{center}
+{\large\textbf{Pracovní smlouva}}
+
+\medskip
+\textit{uzavřená dle § 34, § 35, § 38 a § 305 zákona č. 262/2006 Sb., zákoník práce (ZP)}
+\end{center}
+
+\vspace{2em}
+
+\textbf{I.\ Smluvní strany}
+
+\medskip
+
+\noindent\textbf{Zaměstnavatel:} {{zamestnavatel_jmeno}}, IČO: {{zamestnavatel_ico}}, sídlo: {{zamestnavatel_sidlo}}, zastoupený: {{zamestnavatel_organ}}
+
+\medskip
+
+\noindent\textbf{Zaměstnanec:} {{zamestnanec_jmeno}}, nar. {{zamestnanec_datum_narozeni}}, bytem: {{zamestnanec_bydliste}}
+
+\vspace{1.5em}
+
+\textbf{II.\ Druh práce, místo výkonu a den nástupu}
+
+\medskip
+
+Zaměstnanec nastupuje do pracovního poměru na druh práce: \textbf{{{druh_prace}}}.
+
+Místem výkonu práce je: {{misto_vykonu_prace}}.
+
+Pracovní poměr vzniká dnem nástupu do práce: \textbf{{{datum_nastupu}}}.
+
+\vspace{1em}
+
+\textbf{III.\ Mzda}
+
+\medskip
+
+Zaměstnanci náleží základní mzda ve výši \textbf{{{mzda_zakladni}}} Kč hrubého měsíčně.
+
+{{mzda_bonus}}
+
+Mzda je splatná v měsíci následujícím po měsíci, ve kterém vznikl nárok na mzdu.
+
+\vspace{1em}
+
+\textbf{IV.\ Pracovní doba}
+
+\medskip
+
+Pracovní doba je sjednána jako: {{pracovni_doba}}.
+
+Stanovená týdenní pracovní doba činí 40 hodin.
+
+\vspace{1em}
+
+\textbf{V.\ Zkušební doba}
+
+\medskip
+
+Zkušební doba se sjednává v délce \textbf{{{zkusebni_doba}}} (§ 35 ZP; max. 3 měsíce, resp. 6 měsíců pro vedoucí zaměstnance).
+
+\vspace{1em}
+
+\textbf{VI.\ Dovolená}
+
+\medskip
+
+Zaměstnanci náleží dovolená v délce {{delka_dovolene}} týdnů za kalendářní rok (§ 212 a násl. ZP).
+
+\vspace{1em}
+
+\textbf{VII.\ Výpovědní doba}
+
+\medskip
+
+Výpovědní doba činí {{vypovedni_doba}} (§ 51 ZP) a počíná běžet prvním dnem měsíce následujícího po doručení výpovědi.
+
+\vspace{1em}
+
+\textbf{VIII.\ Závěrečná ustanovení}
+
+\medskip
+
+Zaměstnanec byl poučen o předpisech k zajištění bezpečnosti a ochrany zdraví při práci (BOZP) a byl seznámen se zpracováním osobních údajů zaměstnavatelem v souladu s GDPR.
+
+Tato smlouva se řídí zákonem č. 262/2006 Sb., zákoník práce. Změny smlouvy vyžadují písemnou formu.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\begin{tabular}{p{7cm}p{7cm}}
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+\textit{Zaměstnavatel} & \textit{Zaměstnanec} \\
+{{zamestnavatel_jmeno}} & {{zamestnanec_jmeno}}
+\end{tabular}
+
+\end{document}
+"""
+)
+
+DOHODA_O_PROVEDENI_PRACE_DPP = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\begin{center}
+{\large\textbf{Dohoda o provedení práce}}
+
+\medskip
+\textit{uzavřená dle § 75 zákona č. 262/2006 Sb., zákoník práce (ZP)}
+\end{center}
+
+\vspace{2em}
+
+\textbf{I.\ Smluvní strany}
+
+\medskip
+
+\noindent\textbf{Zaměstnavatel:} {{zamestnavatel_jmeno}}, IČO: {{zamestnavatel_ico}}, sídlo: {{zamestnavatel_sidlo}}
+
+\medskip
+
+\noindent\textbf{Pracovník:} {{pracovnik_jmeno}}, nar. {{pracovnik_datum_narozeni}}, bytem: {{pracovnik_bydliste}}
+
+\vspace{1.5em}
+
+\textbf{II.\ Předmět dohody}
+
+\medskip
+
+Pracovník se zavazuje vykonat pro zaměstnavatele tuto práci: \textbf{{{predmet_dohody}}}.
+
+Místo provedení: {{misto_provedeni}}.
+
+\vspace{1em}
+
+\textbf{III.\ Rozsah práce a termín provedení}
+
+\medskip
+
+Sjednaný rozsah práce: \textbf{{{rozsah_prace}}} hodin.
+
+\textit{Upozornění: rozsah práce na základě DPP nesmí u téhož zaměstnavatele přesáhnout 300 hodin v kalendářním roce (§ 75 odst. 2 ZP).}
+
+Termín provedení (splnění dohody): {{doba_provedeni}}.
+
+\vspace{1em}
+
+\textbf{IV.\ Odměna}
+
+\medskip
+
+Za řádně provedenou práci náleží pracovníkovi odměna ve výši \textbf{{{odmena}}} Kč.
+
+\textit{Upozornění: příjem z DPP do výše 10 000 Kč měsíčně u jednoho zaměstnavatele nepodléhá odvodu sociálního a zdravotního pojištění (§ 6 zákona č. 586/1992 Sb., ZDP) --- platné pro rok 2026, hodnota je každoročně indexována.}
+
+\vspace{1em}
+
+\textbf{V.\ Závěrečná ustanovení}
+
+\medskip
+
+Tato dohoda se řídí zákonem č. 262/2006 Sb., zákoník práce. Změny vyžadují písemnou formu.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\begin{tabular}{p{7cm}p{7cm}}
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+\textit{Zaměstnavatel} & \textit{Pracovník} \\
+{{zamestnavatel_jmeno}} & {{pracovnik_jmeno}}
+\end{tabular}
+
+\end{document}
+"""
+)
+
+DOHODA_O_PRACOVNI_CINNOSTI_DPC = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\begin{center}
+{\large\textbf{Dohoda o pracovní činnosti}}
+
+\medskip
+\textit{uzavřená dle § 76 zákona č. 262/2006 Sb., zákoník práce (ZP)}
+\end{center}
+
+\vspace{2em}
+
+\textbf{I.\ Smluvní strany}
+
+\medskip
+
+\noindent\textbf{Zaměstnavatel:} {{zamestnavatel_jmeno}}, IČO: {{zamestnavatel_ico}}, sídlo: {{zamestnavatel_sidlo}}
+
+\medskip
+
+\noindent\textbf{Pracovník:} {{pracovnik_jmeno}}, nar. {{pracovnik_datum_narozeni}}, bytem: {{pracovnik_bydliste}}
+
+\vspace{1.5em}
+
+\textbf{II.\ Druh sjednané práce}
+
+\medskip
+
+Pracovník se zavazuje vykonávat pro zaměstnavatele práci druhu: \textbf{{{druh_prace}}}.
+
+\vspace{1em}
+
+\textbf{III.\ Rozsah pracovní doby}
+
+\medskip
+
+Sjednaný rozsah pracovní doby: \textbf{{{rozsah_pracovni_doby}}}.
+
+\textit{Upozornění: rozsah práce na základě DPČ nesmí v průměru přesáhnout polovinu stanovené týdenní pracovní doby (§ 76 odst. 2 ZP). Průměr se posuzuje za celou dobu, na niž je DPČ sjednána, nejdéle za 52 týdnů.}
+
+\vspace{1em}
+
+\textbf{IV.\ Doba trvání dohody}
+
+\medskip
+
+Dohoda se uzavírá na dobu: \textbf{{{doba_trvani}}}.
+
+\vspace{1em}
+
+\textbf{V.\ Odměna}
+
+\medskip
+
+Za výkon práce náleží pracovníkovi odměna ve výši \textbf{{{odmena}}} Kč měsíčně.
+
+\textit{Upozornění: odměna z DPČ podléhá odvodu sociálního a zdravotního pojištění při překročení rozhodného příjmu 4 500 Kč měsíčně (platné pro rok 2026 --- hodnota je každoročně indexována).}
+
+\vspace{1em}
+
+\textbf{VI.\ Výpovědní doba}
+
+\medskip
+
+Výpovědní doba činí {{vypovedni_doba}} (§ 76 odst. 5 ZP; nestanoví-li dohoda jinak, platí 15 dní).
+
+\vspace{1em}
+
+\textbf{VII.\ Závěrečná ustanovení}
+
+\medskip
+
+Tato dohoda se řídí zákonem č. 262/2006 Sb., zákoník práce. Změny vyžadují písemnou formu.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\begin{tabular}{p{7cm}p{7cm}}
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+\textit{Zaměstnavatel} & \textit{Pracovník} \\
+{{zamestnavatel_jmeno}} & {{pracovnik_jmeno}}
+\end{tabular}
+
+\end{document}
+"""
+)
+
+KONKURENCNI_DOLOZKA = (
+    _CZ_PREAMBLE
+    + r"""
+\begin{document}
+
+\begin{center}
+{\large\textbf{Konkurenční doložka}}
+
+\medskip
+\textit{uzavřená dle § 310 zákona č. 262/2006 Sb., zákoník práce (ZP)}
+\end{center}
+
+\vspace{2em}
+
+\textbf{I.\ Smluvní strany}
+
+\medskip
+
+\noindent\textbf{Zaměstnavatel:} {{zamestnavatel_jmeno}}, IČO: {{zamestnavatel_ico}}, sídlo: {{zamestnavatel_sidlo}}
+
+\medskip
+
+\noindent\textbf{Zaměstnanec:} {{zamestnanec_jmeno}}, nar. {{zamestnanec_datum_narozeni}}, bytem: {{zamestnanec_bydliste}}
+
+\medskip
+
+\noindent Tato doložka je součástí nebo dodatkem k pracovní smlouvě ze dne {{reference_pracovni_smlouvy}}.
+
+\vspace{1.5em}
+
+\textbf{II.\ Závazek zaměstnance}
+
+\medskip
+
+Po skončení pracovního poměru se zaměstnanec zavazuje zdržet se výkonu výdělečné činnosti, která by byla shodná s předmětem činnosti zaměstnavatele nebo která by měla vůči zaměstnavateli soutěžní povahu:
+
+\begin{itemize}
+    \item \textbf{Věcný rozsah:} {{vecny_rozsah}}
+    \item \textbf{Geografický rozsah:} {{geograficky_rozsah}}
+\end{itemize}
+
+\vspace{1em}
+
+\textbf{III.\ Doba trvání závazku}
+
+\medskip
+
+Závazek trvá po dobu \textbf{{{doba_trvani}}} po skončení pracovního poměru (§ 310 odst. 1 ZP; max. 1 rok).
+
+\vspace{1em}
+
+\textbf{IV.\ Peněžité vyrovnání}
+
+\medskip
+
+Zaměstnavatel se zavazuje poskytnout zaměstnanci za každý měsíc plnění závazku peněžité vyrovnání ve výši \textbf{{{penezite_vyrovnani}}} Kč (§ 310 odst. 1 ZP; musí být nejméně polovina průměrného měsíčního výdělku za každý měsíc plnění závazku).
+
+\medskip
+
+\noindent\textbf{\textit{Upozornění: Konkurenční doložka bez sjednaného peněžitého vyrovnání minimálně ve výši poloviny průměrného měsíčního výdělku za každý měsíc plnění závazku je neplatná (§ 310 odst. 1 ZP).}}
+
+\vspace{1em}
+
+\textbf{V.\ Smluvní pokuta}
+
+\medskip
+
+Poruší-li zaměstnanec závazek sjednaný v čl. II, je povinen zaplatit zaměstnavateli smluvní pokutu ve výši \textbf{{{smluvni_pokuta}}} Kč (§ 310 odst. 3 ZP; pokuta musí být přiměřená). Zaplacením smluvní pokuty závazek zaměstnance zaniká.
+
+\vspace{1em}
+
+\textbf{VI.\ Závěrečná ustanovení}
+
+\medskip
+
+Zaměstnavatel může od konkurenční doložky odstoupit, dokud pracovní poměr trvá. Zaměstnanec může od doložky odstoupit, nevyplatí-li zaměstnavatel peněžité vyrovnání do 15 dnů po jeho splatnosti (§ 310 odst. 4 ZP).
+
+Tato doložka se řídí zákonem č. 262/2006 Sb., zákoník práce. Změny vyžadují písemnou formu.
+
+\vspace{3em}
+
+\noindent V~{{misto_podpisu}} dne {{datum_podpisu}}
+
+\vspace{3em}
+
+\noindent\begin{tabular}{p{7cm}p{7cm}}
+\rule{6cm}{0.4pt} & \rule{6cm}{0.4pt} \\
+\textit{Zaměstnavatel} & \textit{Zaměstnanec} \\
+{{zamestnavatel_jmeno}} & {{zamestnanec_jmeno}}
+\end{tabular}
+
+\end{document}
+"""
+)
+
+# ---------------------------------------------------------------------------
 # Template records
 # ---------------------------------------------------------------------------
 
@@ -1969,6 +2348,185 @@ TEMPLATES: list[dict] = [
         "zamestnanec_datum_narozeni": "Datum narození zaměstnance (DD.MM.RRRR)"
 },
         "description": "Výpověď z pracovního poměru daná zaměstnavatelem dle § 50–54 ZP. Obsahuje povinné poučení o právu na žalobu dle § 72 ZP.",
+    },
+    {
+        "slug": "pracovni_smlouva",
+        "name": "Pracovní smlouva",
+        "jurisdiction": "CZ",
+        "category": "labor",
+        "latex_template": PRACOVNI_SMLOUVA,
+        "required_fields": [
+            "zamestnavatel_jmeno",
+            "zamestnavatel_ico",
+            "zamestnavatel_sidlo",
+            "zamestnavatel_organ",
+            "zamestnanec_jmeno",
+            "zamestnanec_datum_narozeni",
+            "zamestnanec_bydliste",
+            "druh_prace",
+            "misto_vykonu_prace",
+            "datum_nastupu",
+            "mzda_zakladni",
+            "mzda_bonus",
+            "pracovni_doba",
+            "zkusebni_doba",
+            "delka_dovolene",
+            "vypovedni_doba",
+            "misto_podpisu",
+            "datum_podpisu",
+        ],
+        "field_descriptions": {
+            "zamestnavatel_jmeno": "Obchodní firma zaměstnavatele (s.r.o. nebo a.s.)",
+            "zamestnavatel_ico": "IČO zaměstnavatele",
+            "zamestnavatel_sidlo": "Sídlo zaměstnavatele (ulice, čp., město, PSČ)",
+            "zamestnavatel_organ": "Statutární orgán jednající za zaměstnavatele (jméno jednatele / představenstva)",
+            "zamestnanec_jmeno": "Jméno a příjmení zaměstnance",
+            "zamestnanec_datum_narozeni": "Datum narození zaměstnance (DD.MM.RRRR)",
+            "zamestnanec_bydliste": "Adresa trvalého bydliště zaměstnance",
+            "druh_prace": "Druh práce / název pracovní pozice (např. Softwarový inženýr)",
+            "misto_vykonu_prace": "Místo výkonu práce (adresa nebo kraj)",
+            "datum_nastupu": "Den nástupu do práce (DD.MM.RRRR) — § 34 odst. 1 písm. c) ZP",
+            "mzda_zakladni": "Základní hrubá mzda v Kč měsíčně",
+            "mzda_bonus": "Popis bonusové složky nebo odměn (nebo ponechat prázdné)",
+            "pracovni_doba": "Druh pracovní doby (plný úvazek / zkrácený úvazek, počet hodin týdně)",
+            "zkusebni_doba": "Délka zkušební doby (max. 3 měsíce, resp. 6 měsíců pro vedoucí — § 35 ZP)",
+            "delka_dovolene": "Počet týdnů dovolené za rok (zákonné minimum 4 týdny — § 212 ZP)",
+            "vypovedni_doba": "Délka výpovědní doby (zákonné minimum 2 měsíce — § 51 ZP)",
+            "misto_podpisu": "Místo podpisu smlouvy",
+            "datum_podpisu": "Datum podpisu smlouvy (DD.MM.RRRR)",
+        },
+        "description": (
+            "Pracovní smlouva na dobu neurčitou nebo určitou pro zaměstnance s.r.o. dle § 34 a násl. ZP. "
+            "Obsahuje všechny zákonné náležitosti: druh práce, místo výkonu, den nástupu, mzdu, "
+            "pracovní dobu, zkušební dobu, dovolenou, výpovědní dobu, BOZP a GDPR poučení."
+        ),
+    },
+    {
+        "slug": "dohoda_o_provedeni_prace_dpp",
+        "name": "Dohoda o provedení práce (DPP)",
+        "jurisdiction": "CZ",
+        "category": "labor",
+        "latex_template": DOHODA_O_PROVEDENI_PRACE_DPP,
+        "required_fields": [
+            "zamestnavatel_jmeno",
+            "zamestnavatel_ico",
+            "zamestnavatel_sidlo",
+            "pracovnik_jmeno",
+            "pracovnik_datum_narozeni",
+            "pracovnik_bydliste",
+            "predmet_dohody",
+            "rozsah_prace",
+            "odmena",
+            "doba_provedeni",
+            "misto_provedeni",
+            "misto_podpisu",
+            "datum_podpisu",
+        ],
+        "field_descriptions": {
+            "zamestnavatel_jmeno": "Obchodní firma zaměstnavatele (s.r.o. nebo a.s.)",
+            "zamestnavatel_ico": "IČO zaměstnavatele",
+            "zamestnavatel_sidlo": "Sídlo zaměstnavatele",
+            "pracovnik_jmeno": "Jméno a příjmení pracovníka",
+            "pracovnik_datum_narozeni": "Datum narození pracovníka (DD.MM.RRRR)",
+            "pracovnik_bydliste": "Adresa trvalého bydliště pracovníka",
+            "predmet_dohody": "Popis práce, která má být vykonána (§ 75 ZP)",
+            "rozsah_prace": "Sjednaný rozsah práce v hodinách (max. 300 h/rok u téhož zaměstnavatele — § 75 ZP)",
+            "odmena": "Celková sjednaná odměna v Kč (nebo hodinová sazba s výpočtem)",
+            "doba_provedeni": "Termín provedení / splnění dohody (datum nebo popis)",
+            "misto_provedeni": "Místo provedení práce",
+            "misto_podpisu": "Místo podpisu dohody",
+            "datum_podpisu": "Datum podpisu dohody (DD.MM.RRRR)",
+        },
+        "description": (
+            "Dohoda o provedení práce dle § 75 ZP pro jednorázové nebo projektové práce. "
+            "Limit 300 hodin ročně u téhož zaměstnavatele. Příjem do 10 000 Kč/měsíc "
+            "nepodléhá odvodům sociálního a zdravotního pojištění (2026, indexováno)."
+        ),
+    },
+    {
+        "slug": "dohoda_o_pracovni_cinnosti_dpc",
+        "name": "Dohoda o pracovní činnosti (DPČ)",
+        "jurisdiction": "CZ",
+        "category": "labor",
+        "latex_template": DOHODA_O_PRACOVNI_CINNOSTI_DPC,
+        "required_fields": [
+            "zamestnavatel_jmeno",
+            "zamestnavatel_ico",
+            "zamestnavatel_sidlo",
+            "pracovnik_jmeno",
+            "pracovnik_datum_narozeni",
+            "pracovnik_bydliste",
+            "druh_prace",
+            "rozsah_pracovni_doby",
+            "doba_trvani",
+            "odmena",
+            "vypovedni_doba",
+            "misto_podpisu",
+            "datum_podpisu",
+        ],
+        "field_descriptions": {
+            "zamestnavatel_jmeno": "Obchodní firma zaměstnavatele (s.r.o. nebo a.s.)",
+            "zamestnavatel_ico": "IČO zaměstnavatele",
+            "zamestnavatel_sidlo": "Sídlo zaměstnavatele",
+            "pracovnik_jmeno": "Jméno a příjmení pracovníka",
+            "pracovnik_datum_narozeni": "Datum narození pracovníka (DD.MM.RRRR)",
+            "pracovnik_bydliste": "Adresa trvalého bydliště pracovníka",
+            "druh_prace": "Druh sjednané práce (§ 76 ZP)",
+            "rozsah_pracovni_doby": "Sjednaný rozsah pracovní doby (max. průměrně ½ stanovené týdenní PD — § 76 ZP, tj. max. 20 h/týden)",
+            "doba_trvani": "Doba trvání dohody (určitá s datem ukončení nebo neurčitá)",
+            "odmena": "Sjednaná odměna v Kč měsíčně (odvody při příjmu nad 4 500 Kč/měs. — 2026, indexováno)",
+            "vypovedni_doba": "Výpovědní doba (zákonně 15 dní, lze sjednat jinak — § 76 odst. 5 ZP)",
+            "misto_podpisu": "Místo podpisu dohody",
+            "datum_podpisu": "Datum podpisu dohody (DD.MM.RRRR)",
+        },
+        "description": (
+            "Dohoda o pracovní činnosti dle § 76 ZP pro opakující se práce do průměrně 20 hodin týdně. "
+            "Má výpovědní dobu (zákonně 15 dní). Odvody pojistného vznikají při příjmu nad 4 500 Kč/měsíc (2026, indexováno)."
+        ),
+    },
+    {
+        "slug": "konkurencni_dolozka",
+        "name": "Konkurenční doložka",
+        "jurisdiction": "CZ",
+        "category": "labor",
+        "latex_template": KONKURENCNI_DOLOZKA,
+        "required_fields": [
+            "zamestnavatel_jmeno",
+            "zamestnavatel_ico",
+            "zamestnavatel_sidlo",
+            "zamestnanec_jmeno",
+            "zamestnanec_datum_narozeni",
+            "zamestnanec_bydliste",
+            "reference_pracovni_smlouvy",
+            "vecny_rozsah",
+            "geograficky_rozsah",
+            "doba_trvani",
+            "penezite_vyrovnani",
+            "smluvni_pokuta",
+            "misto_podpisu",
+            "datum_podpisu",
+        ],
+        "field_descriptions": {
+            "zamestnavatel_jmeno": "Obchodní firma zaměstnavatele (s.r.o. nebo a.s.)",
+            "zamestnavatel_ico": "IČO zaměstnavatele",
+            "zamestnavatel_sidlo": "Sídlo zaměstnavatele",
+            "zamestnanec_jmeno": "Jméno a příjmení zaměstnance",
+            "zamestnanec_datum_narozeni": "Datum narození zaměstnance (DD.MM.RRRR)",
+            "zamestnanec_bydliste": "Adresa trvalého bydliště zaměstnance",
+            "reference_pracovni_smlouvy": "Datum pracovní smlouvy, k níž je doložka sjednána (DD.MM.RRRR)",
+            "vecny_rozsah": "Věcný rozsah omezení — popis zakázaných činností nebo odvětví",
+            "geograficky_rozsah": "Geografický rozsah omezení (např. Česká republika, EU)",
+            "doba_trvani": "Doba trvání závazku po skončení pracovního poměru (max. 1 rok — § 310 odst. 1 ZP)",
+            "penezite_vyrovnani": "Výše měsíčního peněžitého vyrovnání v Kč (min. ½ průměrného měs. výdělku — § 310 odst. 1 ZP; bez tohoto vyrovnání je doložka neplatná)",
+            "smluvni_pokuta": "Výše smluvní pokuty za porušení závazku v Kč (musí být přiměřená — § 310 odst. 3 ZP)",
+            "misto_podpisu": "Místo podpisu doložky",
+            "datum_podpisu": "Datum podpisu doložky (DD.MM.RRRR)",
+        },
+        "description": (
+            "Konkurenční doložka dle § 310 ZP omezující zaměstnance v konkurenční činnosti po skončení pracovního poměru. "
+            "Max. 1 rok. Vyžaduje peněžité vyrovnání min. ½ průměrného měsíčního výdělku za každý měsíc omezení — "
+            "bez tohoto vyrovnání je doložka ze zákona neplatná."
+        ),
     },
 
 ]
